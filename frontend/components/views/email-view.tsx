@@ -2,10 +2,13 @@ import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailListCard from '@/components/email/email-list-card';
 import EmailThread from '@/components/email/email-thread';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { gatewayClient } from '@/lib/gateway-client';
+import { BulkActionType, gatewayClient } from '@/lib/gateway-client';
 import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
@@ -21,6 +24,71 @@ type ViewMode = 'tight' | 'expanded';
 type ReadingPaneMode = 'none' | 'right';
 
 const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
+    // Helper function to get proper present participle form of action verbs
+    const getPresentParticiple = (actionType: BulkActionType): string => {
+        // Handle specific verb conjugations
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'Archiving';
+            case BulkActionType.DELETE:
+                return 'Deleting';
+            case BulkActionType.SNOOZE:
+                return 'Snoozing';
+            case BulkActionType.MARK_READ:
+                return 'Marking as Read';
+            case BulkActionType.MARK_UNREAD:
+                return 'Marking as Unread';
+        }
+    };
+
+    // Helper function to get proper past tense form of action verbs
+    const getPastTense = (actionType: BulkActionType): string => {
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'archived';
+            case BulkActionType.DELETE:
+                return 'deleted';
+            case BulkActionType.SNOOZE:
+                return 'snoozed';
+            case BulkActionType.MARK_READ:
+                return 'marked as read';
+            case BulkActionType.MARK_UNREAD:
+                return 'marked as unread';
+        }
+    };
+
+    // Helper function to get proper infinitive form of action verbs
+    const getInfinitive = (actionType: BulkActionType): string => {
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'archive';
+            case BulkActionType.DELETE:
+                return 'delete';
+            case BulkActionType.SNOOZE:
+                return 'snooze';
+            case BulkActionType.MARK_READ:
+                return 'mark as read';
+            case BulkActionType.MARK_UNREAD:
+                return 'mark as unread';
+        }
+    };
+
+    // Helper function to get proper gerund form of action verbs (for "while X-ing")
+    const getGerund = (actionType: BulkActionType): string => {
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'archiving';
+            case BulkActionType.DELETE:
+                return 'deleting';
+            case BulkActionType.SNOOZE:
+                return 'snoozing';
+            case BulkActionType.MARK_READ:
+                return 'marking as read';
+            case BulkActionType.MARK_UNREAD:
+                return 'marking as unread';
+        }
+    };
+
     const [threads, setThreads] = useState<EmailMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +104,14 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [isInThreadView, setIsInThreadView] = useState(false);
     const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
+    const { toast } = useToast();
+
+    // Bulk action states
+    const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
+    const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
+    const [bulkActionType, setBulkActionType] = useState<BulkActionType | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
     // Determine default provider from active integrations, fallback to 'google' if none available
     const defaultProvider = activeProviders && activeProviders.length > 0 ? activeProviders[0] as 'google' | 'microsoft' : 'google';
@@ -144,7 +220,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
             id: threadId,
-            // Sort emails by date (latest first) so that emails[0] is always the latest email
             // Use safeParseDate to handle invalid dates gracefully
             emails: emails.sort((a, b) => {
                 const dateA = safeParseDate(a.date);
@@ -162,6 +237,19 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             })
         }));
     }, [threads]);
+
+    // Handle email selection (independent from thread viewing)
+    const handleEmailSelect = useCallback((emailId: string, isSelected: boolean) => {
+        setSelectedEmails(prev => {
+            const newSet = new Set(prev);
+            if (isSelected) {
+                newSet.add(emailId);
+            } else {
+                newSet.delete(emailId);
+            }
+            return newSet;
+        });
+    }, []);
 
     // Handle select all emails in current view
     const handleSelectAll = useCallback(() => {
@@ -189,24 +277,104 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setSelectedEmails(new Set());
     }, []);
 
+    // Execute bulk action with progress tracking
+    const executeBulkAction = useCallback(async (actionType: BulkActionType) => {
+        if (selectedEmails.size === 0) return;
+
+        setIsBulkActionRunning(true);
+        setBulkActionProgress(0);
+        setBulkActionType(actionType);
+
+        const emailIds = Array.from(selectedEmails);
+        const totalEmails = emailIds.length;
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            // Execute bulk action via API
+            const response = await gatewayClient.bulkAction(actionType, emailIds, activeProviders);
+
+            if (response.success) {
+                // Handle successful response with or without detailed data
+                if (response.data) {
+                    successCount = response.data.success_count;
+                    errorCount = response.data.error_count;
+                } else {
+                    // If no detailed data but success=true, assume all emails were processed successfully
+                    successCount = totalEmails;
+                    errorCount = 0;
+                }
+
+                // Update progress to 100% since the API handles all emails at once
+                setBulkActionProgress(100);
+            } else {
+                // If the API call failed, treat all as errors
+                errorCount = totalEmails;
+                successCount = 0;
+                setBulkActionProgress(100);
+            }
+
+            // Show success/error toast
+            if (errorCount === 0) {
+                toast({
+                    title: `${getPresentParticiple(actionType)} Successful`,
+                    description: `Successfully ${getPastTense(actionType)} ${successCount} email${successCount !== 1 ? 's' : ''}.`,
+                    variant: "default",
+                });
+            } else if (successCount === 0) {
+                toast({
+                    title: `${getPresentParticiple(actionType)} Failed`,
+                    description: `Failed to ${getInfinitive(actionType)} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: `${getPresentParticiple(actionType)} Partially Complete`,
+                    description: `Successfully ${getPastTense(actionType)} ${successCount} email${successCount !== 1 ? 's' : ''}, but failed to ${getInfinitive(actionType)} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
+                    variant: "default",
+                });
+            }
+
+            // Clear selection after action
+            setSelectedEmails(new Set());
+
+        } catch {
+            toast({
+                title: `${getPresentParticiple(actionType)} Failed`,
+                description: `An error occurred while ${getGerund(actionType)} emails. Please try again.`,
+                variant: "destructive",
+            });
+        } finally {
+            setIsBulkActionRunning(false);
+            setBulkActionProgress(0);
+            setBulkActionType(null);
+        }
+    }, [selectedEmails, toast, activeProviders]);
+
     // Handle bulk actions
     const handleBulkArchive = useCallback(() => {
-        // TODO: Implement bulk archive functionality
-        console.log('Archive emails:', Array.from(selectedEmails));
-        setSelectedEmails(new Set()); // Clear selection after action
-    }, [selectedEmails]);
+        setShowArchiveConfirm(true);
+    }, []);
 
     const handleBulkDelete = useCallback(() => {
-        // TODO: Implement bulk delete functionality
-        console.log('Delete emails:', Array.from(selectedEmails));
-        setSelectedEmails(new Set()); // Clear selection after action
-    }, [selectedEmails]);
+        setShowDeleteConfirm(true);
+    }, []);
 
     const handleBulkSnooze = useCallback(() => {
-        // TODO: Implement bulk snooze functionality
-        console.log('Snooze emails:', Array.from(selectedEmails));
-        setSelectedEmails(new Set()); // Clear selection after action
-    }, [selectedEmails]);
+        setBulkActionType(BulkActionType.SNOOZE);
+        executeBulkAction(BulkActionType.SNOOZE);
+    }, [executeBulkAction]);
+
+    // Confirmed bulk actions
+    const handleConfirmedArchive = useCallback(() => {
+        setShowArchiveConfirm(false);
+        executeBulkAction(BulkActionType.ARCHIVE);
+    }, [executeBulkAction]);
+
+    const handleConfirmedDelete = useCallback(() => {
+        setShowDeleteConfirm(false);
+        executeBulkAction(BulkActionType.DELETE);
+    }, [executeBulkAction]);
 
     // selectedThread was used for fallback logic that has been removed
     // Keeping this for potential future use or debugging
@@ -502,68 +670,61 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                             </div>
                         )}
 
-                        {loading ? (
-                            <div className="p-8 text-center text-muted-foreground">Loading…</div>
-                        ) : error ? (
-                            <div className="p-8 text-center">
-                                {error.includes('No active email integrations') ? (
-                                    <div className="text-amber-600">
-                                        <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
-                                        <a
-                                            href="/settings?page=integrations"
-                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                                        >
-                                            <span>Go to Integrations</span>
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                            </svg>
-                                        </a>
-                                    </div>
-                                ) : error.includes('expired and is being refreshed') ? (
-                                    <div className="text-amber-600">
-                                        <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
-                                        <a
-                                            href="/settings?page=integrations"
-                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                                        >
-                                            <span>Go to Integrations</span>
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                            </svg>
-                                        </a>
-                                    </div>
-                                ) : (
-                                    <div className="text-red-500">{error}</div>
-                                )}
-                            </div>
-                        ) : groupedThreads.length === 0 ? (
-                            <div className="p-8 text-center text-muted-foreground">No emails found.</div>
-                        ) : (
-                            <div className={viewMode === 'tight' ? '' : 'p-4'}>
-                                {groupedThreads.map((thread) => (
-                                    <EmailListCard
-                                        key={thread.id}
-                                        thread={thread}
-                                        mode={viewMode}
-                                        isSelected={selectedThreadId === thread.id}
-                                        onSelect={handleThreadSelect}
-                                        showReadingPane={false}
-                                        selectedEmails={selectedEmails}
-                                        onEmailSelect={(emailId: string, selected: boolean) => {
-                                            setSelectedEmails(prev => {
-                                                const newSet = new Set(prev);
-                                                if (selected) {
-                                                    newSet.add(emailId);
-                                                } else {
-                                                    newSet.delete(emailId);
-                                                }
-                                                return newSet;
-                                            });
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        {/* Email List Content */}
+                        <div className="flex-1 overflow-y-auto">
+                            {loading ? (
+                                <div className="p-8 text-center text-muted-foreground">Loading…</div>
+                            ) : error ? (
+                                <div className="p-8 text-center">
+                                    {error.includes('No active email integrations') ? (
+                                        <div className="text-amber-600">
+                                            <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
+                                            <a
+                                                href="/settings?page=integrations"
+                                                className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                            >
+                                                <span>Go to Integrations</span>
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    ) : error.includes('expired and is being refreshed') ? (
+                                        <div className="text-amber-600">
+                                            <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
+                                            <a
+                                                href="/settings?page=integrations"
+                                                className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                            >
+                                                <span>Go to Integrations</span>
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="text-red-500">{error}</div>
+                                    )}
+                                </div>
+                            ) : groupedThreads.length === 0 ? (
+                                <div className="p-8 text-center text-muted-foreground">No emails found.</div>
+                            ) : (
+                                <div className={viewMode === 'tight' ? '' : 'p-4'}>
+                                    {groupedThreads.map((thread) => (
+                                        <EmailListCard
+                                            key={thread.id}
+                                            thread={thread}
+                                            mode={viewMode}
+                                            isSelected={selectedThreadId === thread.id}
+                                            onSelect={handleThreadSelect}
+                                            showReadingPane={false}
+                                            selectedEmails={selectedEmails}
+                                            onEmailSelect={handleEmailSelect}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -590,6 +751,46 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     </div>
                 )}
             </div>
+
+            {/* Bulk Action Confirmation Dialogs */}
+            <AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Archive</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to archive {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''}? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowArchiveConfirm(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmedArchive}>Archive</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''}? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmedDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {isBulkActionRunning && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white p-3 rounded-lg shadow-lg z-50">
+                    <Progress value={bulkActionProgress} className="h-2" />
+                    <p className="text-sm text-white">
+                        {bulkActionType ? getPresentParticiple(bulkActionType) : ''} {bulkActionProgress}%...
+                    </p>
+                </div>
+            )}
         </div>
     );
 };

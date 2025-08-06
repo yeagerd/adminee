@@ -2,7 +2,7 @@
 Common utilities and configurations for Briefly services.
 """
 
-from .config_secrets import (
+from services.common.config_secrets import (
     clear_cache,
     get_database_url,
     get_llama_cloud_api_key,
@@ -11,7 +11,7 @@ from .config_secrets import (
     get_secret,
     get_token_encryption_salt,
 )
-from .pagination import (
+from services.common.pagination import (
     BaseCursorPagination,
     CursorData,
     CursorPaginationRequest,
@@ -20,8 +20,8 @@ from .pagination import (
     PaginationConfig,
     TokenManager,
 )
-from .settings import PaginationSettings
-from .telemetry import (
+from services.common.settings import PaginationSettings
+from services.common.telemetry import (
     add_span_attributes,
     get_tracer,
     record_exception,
