@@ -229,30 +229,23 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         const emailIds = Array.from(selectedEmails);
         const totalEmails = emailIds.length;
         let successCount = 0;
-        // eslint-disable-next-line prefer-const
-        let errorCount = 0; // Will be incremented when API calls are implemented
+        let errorCount = 0;
 
         try {
-            // Simulate API calls with progress updates
-            for (let i = 0; i < emailIds.length; i++) {
-                // const emailId = emailIds[i]; // Will be used when implementing actual API calls
-
-                // Simulate API call delay
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                // TODO: Replace with actual API calls
-                // const response = await gatewayClient.bulkAction(actionType, [emailId]);
-                // if (response.success) {
-                //     successCount++;
-                // } else {
-                //     errorCount++;
-                // }
-
-                // For now, simulate success
-                successCount++;
-
-                // Update progress
-                setBulkActionProgress(((i + 1) / totalEmails) * 100);
+            // Execute bulk action via API
+            const response = await gatewayClient.bulkAction(actionType, emailIds);
+            
+            if (response.success && response.data) {
+                successCount = response.data.success_count;
+                errorCount = response.data.error_count;
+                
+                // Update progress to 100% since the API handles all emails at once
+                setBulkActionProgress(100);
+            } else {
+                // If the API call failed, treat all as errors
+                errorCount = totalEmails;
+                successCount = 0;
+                setBulkActionProgress(100);
             }
 
             // Show success/error toast

@@ -310,6 +310,33 @@ export class GatewayClient {
         return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/messages/${messageId}/thread?${params.toString()}`);
     }
 
+    // Bulk email operations
+    async bulkAction(
+        actionType: 'archive' | 'delete' | 'snooze',
+        emailIds: string[],
+        providers?: string[]
+    ): Promise<{
+        success: boolean;
+        data?: {
+            success_count: number;
+            error_count: number;
+            errors?: Array<{
+                email_id: string;
+                error: string;
+            }>;
+        };
+        error?: string;
+    }> {
+        return this.request('/api/v1/email/bulk-action', {
+            method: 'POST',
+            body: {
+                action_type: actionType,
+                email_ids: emailIds,
+                providers: providers || ['google', 'microsoft']
+            },
+        });
+    }
+
     async getEmailFolders(
         providers?: string[],
         noCache?: boolean
