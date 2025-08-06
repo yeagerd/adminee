@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
+import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
@@ -144,7 +145,21 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
             id: threadId,
             // Sort emails by date (latest first) so that emails[0] is always the latest email
-            emails: emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            // Use safeParseDate to handle invalid dates gracefully
+            emails: emails.sort((a, b) => {
+                const dateA = safeParseDate(a.date);
+                const dateB = safeParseDate(b.date);
+
+                // If both dates are invalid, maintain original order
+                if (!dateA && !dateB) return 0;
+                // If only dateA is invalid, put it at the end
+                if (!dateA) return 1;
+                // If only dateB is invalid, put it at the end
+                if (!dateB) return -1;
+
+                // Both dates are valid, compare them
+                return dateB.getTime() - dateA.getTime();
+            })
         }));
     }, [threads]);
 
