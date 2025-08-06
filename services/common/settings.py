@@ -30,7 +30,7 @@ class FieldInfo:
         self.required = required
 
 
-def Field(
+def Field(  # noqa: N802
     default: Any = None,
     *,
     description: str = "",
