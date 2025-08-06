@@ -31,10 +31,16 @@ describe('EmailView - Select All Functionality', () => {
             date: '2024-01-02T10:00:00Z',
             from_address: { email: 'sender1@example.com', name: 'Sender 1' },
             to_addresses: [{ email: 'test@example.com', name: 'Test User' }],
+            cc_addresses: [],
+            bcc_addresses: [],
             snippet: 'Test snippet 1',
             body_text: 'Test body 1',
             is_read: false,
             has_attachments: false,
+            labels: [],
+            provider: 'google',
+            provider_message_id: 'provider-email-1',
+            account_email: 'test@example.com',
         },
         {
             id: 'email-2',
@@ -43,10 +49,16 @@ describe('EmailView - Select All Functionality', () => {
             date: '2024-01-01T10:00:00Z',
             from_address: { email: 'sender2@example.com', name: 'Sender 2' },
             to_addresses: [{ email: 'test@example.com', name: 'Test User' }],
+            cc_addresses: [],
+            bcc_addresses: [],
             snippet: 'Test snippet 2',
             body_text: 'Test body 2',
             is_read: true,
             has_attachments: false,
+            labels: [],
+            provider: 'google',
+            provider_message_id: 'provider-email-2',
+            account_email: 'test@example.com',
         },
         {
             id: 'email-3',
@@ -55,10 +67,16 @@ describe('EmailView - Select All Functionality', () => {
             date: '2024-01-03T10:00:00Z',
             from_address: { email: 'sender3@example.com', name: 'Sender 3' },
             to_addresses: [{ email: 'test@example.com', name: 'Test User' }],
+            cc_addresses: [],
+            bcc_addresses: [],
             snippet: 'Test snippet 3',
             body_text: 'Test body 3',
             is_read: false,
             has_attachments: false,
+            labels: [],
+            provider: 'google',
+            provider_message_id: 'provider-email-3',
+            account_email: 'test@example.com',
         },
     ];
 
@@ -74,10 +92,10 @@ describe('EmailView - Select All Functionality', () => {
         });
     });
 
-    it('should select only latest emails in tight view mode', () => {
+    it('should select only latest emails in tight view mode', async () => {
         // Mock the gateway client to return our test emails
-        const { gatewayClient } = require('@/lib/gateway-client');
-        gatewayClient.getEmails.mockResolvedValue({
+        const { gatewayClient } = await import('@/lib/gateway-client');
+        (gatewayClient.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });
 
