@@ -12,6 +12,7 @@ members = [
     "briefly-chat",
     "briefly-meetings",
     "briefly-office",
+    "briefly-shipments",
     "briefly-user",
 ]
 
@@ -468,6 +469,74 @@ requires-dist = [
     { name = "sqlmodel", specifier = ">=0.0.24" },
     { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
     { name = "uvicorn", extras = ["standard"] },
+]
+provides-extras = ["test"]
+
+[[package]]
+name = "briefly-shipments"
+version = "0.1.0"
+source = { editable = "services/shipments" }
+dependencies = [
+    { name = "aiosqlite" },
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "celery" },
+    { name = "fastapi" },
+    { name = "google-cloud-secret-manager" },
+    { name = "httpx" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-distro" },
+    { name = "opentelemetry-exporter-gcp-trace" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-fastapi" },
+    { name = "opentelemetry-instrumentation-httpx" },
+    { name = "opentelemetry-sdk" },
+    { name = "psycopg2-binary" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "pytz" },
+    { name = "redis" },
+    { name = "requests" },
+    { name = "sqlalchemy" },
+    { name = "sqlmodel" },
+    { name = "structlog" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiosqlite" },
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "celery" },
+    { name = "fastapi", specifier = ">=0.116.1,<1.0.0" },
+    { name = "google-cloud-secret-manager" },
+    { name = "httpx", specifier = ">=0.24.0,<1.0.0" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-distro" },
+    { name = "opentelemetry-exporter-gcp-trace" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-fastapi" },
+    { name = "opentelemetry-instrumentation-httpx" },
+    { name = "opentelemetry-sdk" },
+    { name = "psycopg2-binary" },
+    { name = "pydantic", specifier = "==2.11.7" },
+    { name = "pytest", marker = "extra == 'test'" },
+    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
+    { name = "pytz" },
+    { name = "redis" },
+    { name = "requests", specifier = ">=2.31.0,<3.0.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.0" },
+    { name = "sqlmodel", specifier = ">=0.0.24" },
+    { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]
 provides-extras = ["test"]
 
