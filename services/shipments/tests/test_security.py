@@ -443,10 +443,10 @@ class TestCrossUserAccess:
 
         # Verify that the response only contains user123's data (which should be empty)
         response_data = response.json()
-        assert "data" in response_data
+        assert "packages" in response_data
         # The endpoint should filter by authenticated user, not by the user_id parameter
         # So we should get an empty list since user123 has no packages
-        assert len(response_data["data"]) == 0
+        assert len(response_data["packages"]) == 0
 
     async def test_user_cannot_modify_other_user_data(
         self, client, service_auth_headers

@@ -294,7 +294,7 @@ class TestDeletePackage:
         # Verify both packages exist
         list_response = client.get("/v1/shipments/packages/", headers=auth_headers)
         assert list_response.status_code == 200
-        packages = list_response.json()["data"]
+        packages = list_response.json()["packages"]
         package_ids = [p["id"] for p in packages]
         assert package1_id in package_ids
         assert package2_id in package_ids

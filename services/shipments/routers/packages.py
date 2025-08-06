@@ -268,9 +268,12 @@ async def list_packages(
             limit=limit
         )
     
+    # Convert PackageOut objects to dictionaries for the response
+    package_dicts = [pkg.model_dump() for pkg in package_out]
+    
     # Create pagination response
     response = pagination.create_shipments_pagination_response(
-        packages=package_out,
+        packages=package_dicts,
         cursor_info=current_cursor_info,
         has_next=has_next,
         has_prev=has_prev
