@@ -1,7 +1,7 @@
 """
 Base cursor pagination implementation.
 
-This module provides the foundation for cursor-based pagination across all Briefly services.
+This module provides the foundation for cursor-based pagination across all services.
 """
 
 from abc import ABC, abstractmethod
