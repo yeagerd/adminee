@@ -8,9 +8,8 @@ allows for easier testing while maintaining similar functionality.
 from __future__ import annotations
 
 import os
-from abc import ABC
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, TypeVar, Union, get_type_hints
+from typing import Any, TypeVar, Union, get_type_hints
 
 T = TypeVar("T", bound="BaseSettings")
 
@@ -22,7 +21,7 @@ class FieldInfo:
         self,
         default: Any = None,
         description: str = "",
-        validation_alias: Optional[Union[str, list, "AliasChoices"]] = None,
+        validation_alias: str | list | AliasChoices | None = None,
         required: bool = False,
     ) -> None:
         self.default = default
@@ -31,11 +30,11 @@ class FieldInfo:
         self.required = required
 
 
-def Field(
+def field(
     default: Any = None,
     *,
     description: str = "",
-    validation_alias: Optional[Union[str, list, "AliasChoices"]] = None,
+    validation_alias: str | list | AliasChoices | None = None,
     **kwargs: Any,
 ) -> Any:
     """Create a field descriptor for settings."""
@@ -57,7 +56,7 @@ class SettingsConfigDict:
 
     def __init__(
         self,
-        env_file: Optional[str] = None,
+        env_file: str | None = None,
         env_file_encoding: str = "utf-8",
         case_sensitive: bool = True,
         extra: str = "forbid",
@@ -68,7 +67,7 @@ class SettingsConfigDict:
         self.extra = extra
 
 
-class BaseSettings(ABC):
+class BaseSettings:
     """Base class for settings that loads from environment variables."""
 
     model_config: SettingsConfigDict = SettingsConfigDict()
@@ -152,7 +151,7 @@ class BaseSettings(ABC):
             # Set the attribute
             setattr(self, field_name, value)
 
-    def _load_env_file(self, env_file_path: str) -> Dict[str, str]:
+    def _load_env_file(self, env_file_path: str) -> dict[str, str]:
         """Load environment variables from a .env file."""
         env_vars = {}
         env_path = Path(env_file_path)
@@ -160,7 +159,6 @@ class BaseSettings(ABC):
         if env_path.exists():
             with open(
                 env_path,
-                "r",
                 encoding=getattr(self.model_config, "env_file_encoding", "utf-8"),
             ) as f:
                 for line in f:
@@ -171,7 +169,7 @@ class BaseSettings(ABC):
 
         return env_vars
 
-    def _convert_value(self, value: Any, target_type: Type) -> Any:
+    def _convert_value(self, value: Any, target_type: type) -> Any:
         """Convert a string value to the target type."""
         if value is None:
             return None
@@ -222,35 +220,32 @@ class AliasChoices:
     def __init__(self, *choices: str) -> None:
         self.choices = list(choices)
 
-    def __iter__(self) -> "AliasChoices":
+    def __iter__(self) -> AliasChoices:
         return self
 
 
 class PaginationSettings(BaseSettings):
     """Settings for cursor-based pagination."""
-    
+
     model_config = SettingsConfigDict(env_file=".env")
-    
+
     # Secret key for token signing (required)
-    pagination_secret_key: str = Field(
+    pagination_secret_key: str = field(
         default="your-secret-key-change-in-production",
-        description="Secret key for pagination token signing"
+        description="Secret key for pagination token signing",
     )
-    
+
     # Token expiration time in seconds (default: 1 hour)
-    pagination_token_expiry: int = Field(
-        default=3600,
-        description="Pagination token expiration time in seconds"
+    pagination_token_expiry: int = field(
+        default=3600, description="Pagination token expiration time in seconds"
     )
-    
+
     # Maximum page size limit (default: 100)
-    pagination_max_page_size: int = Field(
-        default=100,
-        description="Maximum allowed page size for pagination"
+    pagination_max_page_size: int = field(
+        default=100, description="Maximum allowed page size for pagination"
     )
-    
+
     # Default page size (default: 20)
-    pagination_default_page_size: int = Field(
-        default=20,
-        description="Default page size for pagination"
+    pagination_default_page_size: int = field(
+        default=20, description="Default page size for pagination"
     )

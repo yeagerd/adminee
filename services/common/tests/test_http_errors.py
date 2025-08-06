@@ -8,7 +8,6 @@ Tests the fixes for:
 
 import pytest
 from fastapi import HTTPException
-
 from services.common.http_errors import (
     NotFoundError,
     exception_to_response,

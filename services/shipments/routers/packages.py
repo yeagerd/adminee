@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
+from common.pagination import PaginationConfig
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
-from services.common.http_errors import RateLimitError
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.event_service import EventService
@@ -23,19 +23,16 @@ from services.shipments.schemas import (
     PackageUpdate,
 )
 from services.shipments.schemas.pagination import (
-    PackageListRequest,
-    PackageListResponse,
     CursorValidationError,
-    PaginationError,
+    PackageListResponse,
 )
-from services.shipments.utils.pagination import ShipmentsCursorPagination
-from common.pagination import PaginationConfig
 from services.shipments.service_auth import service_permission_required
 from services.shipments.settings import get_settings
 from services.shipments.utils import (
     normalize_tracking_number,
     validate_tracking_number_format,
 )
+from services.shipments.utils.pagination import ShipmentsCursorPagination
 
 logger = get_logger(__name__)
 
@@ -93,17 +90,17 @@ async def list_packages(
 ) -> PackageListResponse:
     """
     List packages with cursor-based pagination.
-    
+
     This endpoint uses cursor-based pagination instead of offset-based pagination
     for better performance and consistency with concurrent updates.
     """
     logger.info("Fetching packages with cursor pagination", user_id=current_user)
-    
+
     # Basic rate limiting check (simple in-memory counter for demo)
     # In production, use Redis or a proper rate limiting service
-    rate_limit_key = f"pagination_rate_limit:{current_user}"
     # TODO: Implement proper rate limiting with Redis
-    
+    # rate_limit_key = f"pagination_rate_limit:{current_user}"
+
     # Audit logging for pagination usage
     logger.info(
         "Pagination request",
@@ -111,27 +108,23 @@ async def list_packages(
         cursor_provided=bool(cursor),
         limit=limit,
         direction=direction,
-        filters={
-            "carrier": carrier,
-            "status": status,
-            "user_id": user_id
-        }
+        filters={"carrier": carrier, "status": status, "user_id": user_id},
     )
-    
+
     # Initialize pagination configuration
     settings = get_settings()
     pagination_config = PaginationConfig(
         secret_key=settings.pagination_secret_key,
         token_expiry=settings.pagination_token_expiry,
         max_page_size=settings.pagination_max_page_size,
-        default_page_size=settings.pagination_default_page_size
+        default_page_size=settings.pagination_default_page_size,
     )
-    
+
     pagination = ShipmentsCursorPagination(pagination_config)
-    
+
     # Validate and sanitize limit
     limit = pagination.sanitize_limit(limit)
-    
+
     # Input validation and sanitization
     if cursor and len(cursor) > 1000:  # Reasonable limit for cursor tokens
         raise HTTPException(
@@ -139,20 +132,20 @@ async def list_packages(
             detail=CursorValidationError(
                 error="Cursor token too long",
                 cursor_token=cursor[:50] + "...",  # Truncate for security
-                reason="Token length exceeds maximum allowed"
-            ).dict()
+                reason="Token length exceeds maximum allowed",
+            ).dict(),
         )
-    
+
     if direction not in ["next", "prev"]:
         raise HTTPException(
             status_code=400,
             detail=CursorValidationError(
                 error="Invalid pagination direction",
                 cursor_token=cursor,
-                reason="Direction must be 'next' or 'prev'"
-            ).dict()
+                reason="Direction must be 'next' or 'prev'",
+            ).dict(),
         )
-    
+
     # Decode cursor if provided
     cursor_info = None
     if cursor:
@@ -163,10 +156,10 @@ async def list_packages(
                 detail=CursorValidationError(
                     error="Invalid or expired cursor token",
                     cursor_token=cursor,
-                    reason="Token validation failed"
-                ).dict()
+                    reason="Token validation failed",
+                ).dict(),
             )
-    
+
     # Build filters
     filters = {}
     if carrier:
@@ -175,58 +168,64 @@ async def list_packages(
         filters["status"] = status
     if user_id:
         filters["user_id"] = user_id
-    
+
     # Always filter by current user for security
     filters["user_id"] = current_user
-    
+
     # Validate filters
     validated_filters = pagination.validate_shipments_filters(filters)
-    
+
     # Build query with cursor pagination
     query = select(Package).where(Package.user_id == current_user)
-    
+
     # Add cursor-based filtering if cursor is provided
     if cursor_info:
         if cursor_info.direction == "next":
             # For next page: (updated_at > last_updated) OR (updated_at = last_updated AND id > last_id)
             query = query.where(
-                (Package.updated_at > cursor_info.last_timestamp) |
-                ((Package.updated_at == cursor_info.last_timestamp) & (Package.id > cursor_info.last_id))
+                (Package.updated_at > cursor_info.last_timestamp)
+                | (
+                    (Package.updated_at == cursor_info.last_timestamp)
+                    & (Package.id > cursor_info.last_id)
+                )
             )
         else:
             # For previous page: (updated_at < last_updated) OR (updated_at = last_updated AND id < last_id)
             query = query.where(
-                (Package.updated_at < cursor_info.last_timestamp) |
-                ((Package.updated_at == cursor_info.last_timestamp) & (Package.id < cursor_info.last_id))
+                (Package.updated_at < cursor_info.last_timestamp)
+                | (
+                    (Package.updated_at == cursor_info.last_timestamp)
+                    & (Package.id < cursor_info.last_id)
+                )
             )
-    
+
     # Add additional filters
     if validated_filters.get("carrier"):
         query = query.where(Package.carrier == validated_filters["carrier"])
     if validated_filters.get("status"):
         query = query.where(Package.status == validated_filters["status"])
-    
+
     # Add ordering
     if direction == "next":
         query = query.order_by(Package.updated_at.asc(), Package.id.asc())
     else:
         query = query.order_by(Package.updated_at.desc(), Package.id.desc())
-    
+
     # Add limit (fetch one extra to determine if there are more pages)
     query = query.limit(limit + 1)
-    
+
     # Execute query
     result = await session.execute(query)
     packages = result.scalars().all()
-    
+
     # Determine if there are more pages
     has_next = len(packages) > limit
     has_prev = cursor is not None  # If we have a cursor, we can go back
-    
+
     # Remove the extra item used for pagination detection
     if has_next:
         packages = packages[:-1]
-    
+
     # Convert to PackageOut with events count
     package_out = []
     for pkg in packages:
@@ -255,7 +254,7 @@ async def list_packages(
                 labels=[],
             )
         )
-    
+
     # Create cursor info for response
     current_cursor_info = None
     if packages:
@@ -265,28 +264,28 @@ async def list_packages(
             last_updated=last_package.updated_at,
             filters=validated_filters,
             direction=direction,
-            limit=limit
+            limit=limit,
         )
-    
+
     # Convert PackageOut objects to dictionaries for the response
     package_dicts = [pkg.model_dump() for pkg in package_out]
-    
+
     # Create pagination response
     response = pagination.create_shipments_pagination_response(
         packages=package_dicts,
         cursor_info=current_cursor_info,
         has_next=has_next,
-        has_prev=has_prev
+        has_prev=has_prev,
     )
-    
+
     logger.info(
         "Returning packages with cursor pagination",
         user_id=current_user,
         count=len(package_out),
         has_next=has_next,
-        has_prev=has_prev
+        has_prev=has_prev,
     )
-    
+
     return PackageListResponse(**response)
 
 

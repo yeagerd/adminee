@@ -236,16 +236,6 @@ class UserResponse(UserBase):
 
 
 # Import new pagination schemas
-from .pagination import (
-    UserCursorPaginationRequest,
-    UserCursorPaginationResponse,
-    UserSearchRequest,
-    UserListRequest,
-    UserListResponse,
-    UserSearchResponse,
-    CursorValidationError,
-    PaginationError,
-)
 
 
 class UserDeleteResponse(BaseModel):
@@ -315,9 +305,6 @@ class UserOnboardingUpdate(BaseModel):
             )
 
         return self
-
-
-
 
 
 class EmailResolutionRequest(BaseModel):

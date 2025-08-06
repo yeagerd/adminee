@@ -405,8 +405,12 @@ async def get_provider_scopes(
 )
 async def search_users(
     cursor: Optional[str] = Query(None, description="Cursor token for pagination"),
-    limit: Optional[int] = Query(None, ge=1, le=100, description="Number of users per page"),
-    direction: Optional[str] = Query("next", pattern="^(next|prev)$", description="Pagination direction"),
+    limit: Optional[int] = Query(
+        None, ge=1, le=100, description="Number of users per page"
+    ),
+    direction: Optional[str] = Query(
+        "next", pattern="^(next|prev)$", description="Pagination direction"
+    ),
     query: Optional[str] = Query(None, max_length=255, description="Search query"),
     email: Optional[str] = Query(None, description="Filter by email"),
     onboarding_completed: Optional[bool] = Query(
@@ -419,7 +423,7 @@ async def search_users(
 
     This endpoint uses cursor-based pagination instead of offset-based pagination
     for better performance and consistency with concurrent updates.
-    
+
     This endpoint is primarily for administrative or service use.
     Regular users should use other endpoints for their own data.
     """

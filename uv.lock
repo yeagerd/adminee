@@ -269,6 +269,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "greenlet" },
+    { name = "nox" },
 ]
 
 [package.optional-dependencies]
@@ -304,6 +305,7 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.2.3" },
     { name = "isort", marker = "extra == 'dev'" },
     { name = "mypy", marker = "extra == 'dev'" },
+    { name = "nox", specifier = ">=2025.5.1" },
     { name = "nox", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
