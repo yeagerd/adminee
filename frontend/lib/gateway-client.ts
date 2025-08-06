@@ -11,6 +11,15 @@ import { IntegrationStatus } from './constants';
 import { env, validateClientEnv } from './env';
 import { PackageStatus } from './package-status';
 
+// Bulk action types enum
+export enum BulkActionType {
+    ARCHIVE = 'archive',
+    DELETE = 'delete',
+    SNOOZE = 'snooze',
+    MARK_READ = 'mark_read',
+    MARK_UNREAD = 'mark_unread'
+}
+
 interface GatewayClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
     body?: unknown;
@@ -312,7 +321,7 @@ export class GatewayClient {
 
     // Bulk email operations
     async bulkAction(
-        actionType: 'archive' | 'delete' | 'snooze' | 'mark_read' | 'mark_unread',
+        actionType: BulkActionType,
         emailIds: string[],
         providers?: string[]
     ): Promise<{

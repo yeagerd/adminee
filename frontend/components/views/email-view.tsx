@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { gatewayClient } from '@/lib/gateway-client';
+import { BulkActionType, gatewayClient } from '@/lib/gateway-client';
 import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
@@ -25,24 +25,19 @@ type ReadingPaneMode = 'none' | 'right';
 
 const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
     // Helper function to get proper present participle form of action verbs
-    const getPresentParticiple = (actionType: string): string => {
-        const capitalizedAction = actionType.charAt(0).toUpperCase() + actionType.slice(1);
-
+    const getPresentParticiple = (actionType: BulkActionType): string => {
         // Handle specific verb conjugations
         switch (actionType) {
-            case 'archive':
+            case BulkActionType.ARCHIVE:
                 return 'Archiving';
-            case 'delete':
+            case BulkActionType.DELETE:
                 return 'Deleting';
-            case 'snooze':
+            case BulkActionType.SNOOZE:
                 return 'Snoozing';
-            case 'mark_read':
+            case BulkActionType.MARK_READ:
                 return 'Marking as Read';
-            case 'mark_unread':
+            case BulkActionType.MARK_UNREAD:
                 return 'Marking as Unread';
-            default:
-                // Fallback: add 'ing' to the end (works for most regular verbs)
-                return capitalizedAction + 'ing';
         }
     };
 
@@ -66,7 +61,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     // Bulk action states
     const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
     const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
-    const [bulkActionType, setBulkActionType] = useState<'archive' | 'delete' | 'snooze' | 'mark_read' | 'mark_unread' | null>(null);
+    const [bulkActionType, setBulkActionType] = useState<BulkActionType | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
@@ -223,7 +218,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     }, []);
 
     // Execute bulk action with progress tracking
-    const executeBulkAction = useCallback(async (actionType: 'archive' | 'delete' | 'snooze' | 'mark_read' | 'mark_unread') => {
+    const executeBulkAction = useCallback(async (actionType: BulkActionType) => {
         if (selectedEmails.size === 0) return;
 
         setIsBulkActionRunning(true);
@@ -299,19 +294,19 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     }, []);
 
     const handleBulkSnooze = useCallback(() => {
-        setBulkActionType('snooze');
-        executeBulkAction('snooze');
+        setBulkActionType(BulkActionType.SNOOZE);
+        executeBulkAction(BulkActionType.SNOOZE);
     }, [executeBulkAction]);
 
     // Confirmed bulk actions
     const handleConfirmedArchive = useCallback(() => {
         setShowArchiveConfirm(false);
-        executeBulkAction('archive');
+        executeBulkAction(BulkActionType.ARCHIVE);
     }, [executeBulkAction]);
 
     const handleConfirmedDelete = useCallback(() => {
         setShowDeleteConfirm(false);
-        executeBulkAction('delete');
+        executeBulkAction(BulkActionType.DELETE);
     }, [executeBulkAction]);
 
     // selectedThread was used for fallback logic that has been removed
