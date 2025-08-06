@@ -281,6 +281,56 @@ class ShipmentsClient {
     }> {
         return gatewayClient.createTrackingEvent(packageId, eventData);
     }
+
+    /**
+     * Get the next page of packages using cursor pagination
+     */
+    async getNextPage(cursor: string, limit?: number, filters?: {
+        tracking_number?: string;
+        carrier?: string;
+        status?: string;
+        user_id?: string;
+    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+        return this.getPackages({
+            cursor,
+            limit,
+            direction: 'next',
+            ...filters
+        });
+    }
+
+    /**
+     * Get the previous page of packages using cursor pagination
+     */
+    async getPrevPage(cursor: string, limit?: number, filters?: {
+        tracking_number?: string;
+        carrier?: string;
+        status?: string;
+        user_id?: string;
+    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+        return this.getPackages({
+            cursor,
+            limit,
+            direction: 'prev',
+            ...filters
+        });
+    }
+
+    /**
+     * Get the first page of packages using cursor pagination
+     */
+    async getFirstPage(limit?: number, filters?: {
+        tracking_number?: string;
+        carrier?: string;
+        status?: string;
+        user_id?: string;
+    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+        return this.getPackages({
+            limit,
+            direction: 'next',
+            ...filters
+        });
+    }
 }
 
 // Export a singleton instance

@@ -2,8 +2,8 @@ import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
@@ -45,7 +45,7 @@ const DATE_RANGE_OPTIONS = [
 export default function PackageDashboard() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [packages, setPackages] = useState<Package[]>([]);
     const [loading, setLoading] = useState(false);
@@ -56,9 +56,9 @@ export default function PackageDashboard() {
     const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
-    const [selectedCarrierFilters] = useState<string[]>([]);
+    const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('7');
-    
+
     // Cursor-based pagination state
     const [currentCursor, setCurrentCursor] = useState<string | null>(null);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export default function PackageDashboard() {
     const [hasNext, setHasNext] = useState(false);
     const [hasPrev, setHasPrev] = useState(false);
     const [paginationLoading, setPaginationLoading] = useState(false);
-    
+
     // Performance optimizations
     const [cursorCache, setCursorCache] = useState<Map<string, any>>(new Map());
     const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
@@ -78,7 +78,7 @@ export default function PackageDashboard() {
     // URL state management
     const updateURL = (params: Record<string, string | null>) => {
         const newSearchParams = new URLSearchParams(searchParams.toString());
-        
+
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === '') {
                 newSearchParams.delete(key);
@@ -86,7 +86,7 @@ export default function PackageDashboard() {
                 newSearchParams.set(key, value);
             }
         });
-        
+
         const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
         router.push(newURL, { scroll: false });
     };
@@ -97,7 +97,7 @@ export default function PackageDashboard() {
         const status = searchParams.get('status');
         const carrier = searchParams.get('carrier');
         const search = searchParams.get('search');
-        
+
         if (cursor) {
             setCurrentCursor(cursor);
         }
@@ -124,7 +124,9 @@ export default function PackageDashboard() {
             // Limit cache size to prevent memory leaks
             if (newCache.size > 50) {
                 const firstKey = newCache.keys().next().value;
-                newCache.delete(firstKey);
+                if (firstKey) {
+                    newCache.delete(firstKey);
+                }
             }
             return newCache;
         });
@@ -135,11 +137,11 @@ export default function PackageDashboard() {
         if (debounceTimer) {
             clearTimeout(debounceTimer);
         }
-        
+
         const timer = setTimeout(() => {
             loadFirstPage();
         }, 300); // 300ms debounce
-        
+
         setDebounceTimer(timer);
     }, [debounceTimer]);
 
@@ -148,13 +150,13 @@ export default function PackageDashboard() {
         if (debounceTimer) {
             clearTimeout(debounceTimer);
         }
-        
+
         const timer = setTimeout(() => {
             loadFirstPage();
         }, 300);
-        
+
         setDebounceTimer(timer);
-        
+
         return () => {
             if (timer) clearTimeout(timer);
         };
@@ -169,26 +171,26 @@ export default function PackageDashboard() {
                 limit: 20,
                 direction: 'next'
             };
-            
+
             // Add status filters if selected
             if (selectedStatusFilters.length > 0) {
                 filterParams.status = selectedStatusFilters[0]; // API supports single status for now
             }
-            
+
             // Add carrier filters if selected
             if (selectedCarrierFilters.length > 0) {
                 filterParams.carrier = selectedCarrierFilters[0]; // API supports single carrier for now
             }
-            
+
             // Add search term if provided
             if (searchTerm.trim()) {
                 filterParams.tracking_number = searchTerm.trim();
             }
-            
+
             // Check cache first
             const cacheKey = JSON.stringify(filterParams);
             const cachedData = getCachedData(cacheKey);
-            
+
             if (cachedData) {
                 setPackages(cachedData.data || []);
                 setNextCursor(cachedData.pagination.next_cursor || null);
@@ -198,19 +200,19 @@ export default function PackageDashboard() {
                 setCurrentCursor(null);
                 return;
             }
-            
+
             const res = await gatewayClient.getPackages(filterParams);
-            
+
             // Cache the result
             setCachedData(cacheKey, res);
-            
+
             setPackages(res.data || []);
             setNextCursor(res.pagination.next_cursor || null);
             setPrevCursor(res.pagination.prev_cursor || null);
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(null);
-            
+
             // Update URL state
             updateURL({
                 cursor: null,
@@ -220,7 +222,7 @@ export default function PackageDashboard() {
             });
         } catch (err) {
             let errorMessage = 'Failed to fetch packages';
-            
+
             if (err instanceof Error) {
                 // Handle specific cursor-related errors
                 if (err.message.includes('Invalid or expired cursor token')) {
@@ -244,7 +246,7 @@ export default function PackageDashboard() {
                     errorMessage = err.message;
                 }
             }
-            
+
             setError(errorMessage);
         } finally {
             setLoading(false);
@@ -256,7 +258,7 @@ export default function PackageDashboard() {
         // Only apply client-side date range filtering and sorting
         const now = dayjs();
         const startDate: dayjs.Dayjs | null = dateRange !== 'all' ? now.subtract(Number(dateRange) - 1, 'day').startOf('day') : null;
-        
+
         const filtered = packages.filter((pkg) => {
             // Only apply date range filter client-side
             if (!pkg.estimated_delivery) {
@@ -268,7 +270,7 @@ export default function PackageDashboard() {
             }
             return true;
         });
-        
+
         // Apply client-side sorting
         filtered.sort((a, b) => {
             const aValue = a[sortField as keyof Package] as string | number | undefined;
@@ -283,7 +285,7 @@ export default function PackageDashboard() {
             }
             return 0;
         });
-        
+
         return filtered;
     }, [packages, dateRange, sortField, sortDirection]);
 
@@ -328,22 +330,22 @@ export default function PackageDashboard() {
                 limit: 20,
                 direction: 'next'
             };
-            
+
             // Add status filters if selected
             if (selectedStatusFilters.length > 0) {
                 filterParams.status = selectedStatusFilters[0];
             }
-            
+
             // Add carrier filters if selected
             if (selectedCarrierFilters.length > 0) {
                 filterParams.carrier = selectedCarrierFilters[0];
             }
-            
+
             // Add search term if provided
             if (searchTerm.trim()) {
                 filterParams.tracking_number = searchTerm.trim();
             }
-            
+
             const res = await gatewayClient.getPackages(filterParams);
             setPackages(res.data || []);
             setNextCursor(res.pagination.next_cursor || null);
@@ -375,7 +377,7 @@ export default function PackageDashboard() {
 
     const loadNextPage = async () => {
         if (!nextCursor || !hasNext) return;
-        
+
         setPaginationLoading(true);
         setError(null);
         try {
@@ -390,7 +392,7 @@ export default function PackageDashboard() {
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(nextCursor);
-            
+
             // Update URL state
             updateURL({
                 cursor: nextCursor,
@@ -400,7 +402,7 @@ export default function PackageDashboard() {
             });
         } catch (err) {
             let errorMessage = 'Failed to load next page';
-            
+
             if (err instanceof Error) {
                 if (err.message.includes('Invalid or expired cursor token')) {
                     errorMessage = 'Pagination token expired. Loading first page...';
@@ -422,7 +424,7 @@ export default function PackageDashboard() {
                     errorMessage = err.message;
                 }
             }
-            
+
             setError(errorMessage);
         } finally {
             setPaginationLoading(false);
@@ -431,7 +433,7 @@ export default function PackageDashboard() {
 
     const loadPrevPage = async () => {
         if (!prevCursor || !hasPrev) return;
-        
+
         setPaginationLoading(true);
         setError(null);
         try {
@@ -446,7 +448,7 @@ export default function PackageDashboard() {
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(prevCursor);
-            
+
             // Update URL state
             updateURL({
                 cursor: prevCursor,
@@ -456,7 +458,7 @@ export default function PackageDashboard() {
             });
         } catch (err) {
             let errorMessage = 'Failed to load previous page';
-            
+
             if (err instanceof Error) {
                 if (err.message.includes('Invalid or expired cursor token')) {
                     errorMessage = 'Pagination token expired. Loading first page...';
@@ -478,7 +480,7 @@ export default function PackageDashboard() {
                     errorMessage = err.message;
                 }
             }
-            
+
             setError(errorMessage);
         } finally {
             setPaginationLoading(false);
@@ -494,9 +496,9 @@ export default function PackageDashboard() {
             {error && (
                 <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg border border-red-200">
                     <div className="mb-2">{error}</div>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => {
                             setError(null);
                             loadFirstPage();
@@ -590,8 +592,8 @@ export default function PackageDashboard() {
                 pagination={{
                     hasNext,
                     hasPrev,
-                    nextCursor,
-                    prevCursor,
+                    nextCursor: nextCursor || undefined,
+                    prevCursor: prevCursor || undefined,
                     loading: paginationLoading
                 }}
                 onNextPage={loadNextPage}

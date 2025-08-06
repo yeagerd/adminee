@@ -45,7 +45,7 @@ function MultiSelectFilter({ options, selected, onChange }: {
             </div>
         </div>
     );
-});
+}
 
 const PackageList = memo(function PackageList({
     packages,
@@ -181,7 +181,7 @@ const PackageList = memo(function PackageList({
                     )}
                 </TableBody>
             </Table>
-            
+
             {/* Pagination Controls */}
             {pagination && (
                 <div className="flex items-center justify-between mt-4 px-2">
@@ -203,11 +203,11 @@ const PackageList = memo(function PackageList({
                             Previous
                         </Button>
                     </div>
-                    
+
                     <div className="text-sm text-gray-600">
                         {pagination.loading ? 'Loading...' : `Showing ${packages.length} packages`}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
