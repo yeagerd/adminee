@@ -36,6 +36,30 @@ from services.shipments.utils.pagination import ShipmentsCursorPagination
 
 logger = get_logger(__name__)
 
+
+def _parse_iso_datetime(dt_str: str) -> datetime:
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object with timezone info
+
+    Raises:
+        ValueError: If the string cannot be parsed
+    """
+    try:
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        # Try parsing without timezone info (assume UTC)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=timezone.utc)
+
+
 router = APIRouter()
 
 
@@ -186,21 +210,24 @@ async def list_packages(
 
     # Add cursor-based filtering if cursor is provided
     if cursor_info:
+        # Parse the ISO timestamp string to datetime object
+        last_timestamp = _parse_iso_datetime(cursor_info.last_timestamp)
+
         if cursor_info.direction == "next":
             # For next page: (updated_at > last_updated) OR (updated_at = last_updated AND id > last_id)
             query = query.where(
-                (Package.updated_at > cursor_info.last_timestamp)  # type: ignore[operator]
+                (Package.updated_at > last_timestamp)  # type: ignore[operator]
                 | (
-                    (Package.updated_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                    (Package.updated_at == last_timestamp)  # type: ignore[operator]
                     & (Package.id > cursor_info.last_id)  # type: ignore[operator]
                 )
             )
         else:
             # For previous page: (updated_at < last_updated) OR (updated_at = last_updated AND id < last_id)
             query = query.where(
-                (Package.updated_at < cursor_info.last_timestamp)  # type: ignore[operator]
+                (Package.updated_at < last_timestamp)  # type: ignore[operator]
                 | (
-                    (Package.updated_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                    (Package.updated_at == last_timestamp)  # type: ignore[operator]
                     & (Package.id < cursor_info.last_id)  # type: ignore[operator]
                 )
             )

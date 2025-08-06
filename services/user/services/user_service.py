@@ -32,6 +32,29 @@ from services.user.utils.email_collision import EmailCollisionDetector
 logger = audit_logger.logger
 
 
+def _parse_iso_datetime(dt_str: str) -> datetime:
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object with timezone info
+
+    Raises:
+        ValueError: If the string cannot be parsed
+    """
+    try:
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        # Try parsing without timezone info (assume UTC)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=timezone.utc)
+
+
 class UserService:
     """Service class for user profile operations."""
 
@@ -621,21 +644,24 @@ class UserService:
 
                 # Add cursor-based filtering if cursor is provided
                 if cursor_info:
+                    # Parse the ISO timestamp string to datetime object
+                    last_timestamp = _parse_iso_datetime(cursor_info.last_timestamp)
+
                     if cursor_info.direction == "next":
                         # For next page: (created_at > last_created_at) OR (created_at = last_created_at AND id > last_id)
                         query = query.where(
-                            (User.created_at > cursor_info.last_timestamp)  # type: ignore[operator]
+                            (User.created_at > last_timestamp)  # type: ignore[operator]
                             | (
-                                (User.created_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                                (User.created_at == last_timestamp)  # type: ignore[operator]
                                 & (User.id > cursor_info.last_id)  # type: ignore[operator]
                             )
                         )
                     else:
                         # For previous page: (created_at < last_created_at) OR (created_at = last_created_at AND id < last_id)
                         query = query.where(
-                            (User.created_at < cursor_info.last_timestamp)  # type: ignore[operator]
+                            (User.created_at < last_timestamp)  # type: ignore[operator]
                             | (
-                                (User.created_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                                (User.created_at == last_timestamp)  # type: ignore[operator]
                                 & (User.id < cursor_info.last_id)  # type: ignore[operator]
                             )
                         )
