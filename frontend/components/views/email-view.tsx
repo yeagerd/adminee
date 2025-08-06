@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
+import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
@@ -143,8 +144,21 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
             id: threadId,
-            // Sort emails by date (latest first) so that emails[0] is always the latest email
-            emails: emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            // Use safeParseDate to handle invalid dates gracefully
+            emails: emails.sort((a, b) => {
+                const dateA = safeParseDate(a.date);
+                const dateB = safeParseDate(b.date);
+
+                // If both dates are invalid, maintain original order
+                if (!dateA && !dateB) return 0;
+                // If only dateA is invalid, put it at the end
+                if (!dateA) return 1;
+                // If only dateB is invalid, put it at the end
+                if (!dateB) return -1;
+
+                // Both dates are valid, compare them
+                return dateB.getTime() - dateA.getTime();
+            })
         }));
     }, [threads]);
 
@@ -437,7 +451,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     </div>
                 ) : (
                     // Email list (for both two-pane and one-pane modes)
-                    <div className={`flex-1 flex flex-col ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ flexShrink: 0, minWidth: 0 }}>
+                    <div className={`flex-1 flex flex-col overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ minWidth: 0 }}>
                         {/* Selection Header */}
                         {selectedEmails.size > 0 && (
                             <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
@@ -560,7 +574,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
                 {/* Reading pane */}
                 {readingPaneMode === 'right' && selectedThreadId && (
-                    <div className="w-1/2 border-l bg-gray-50 overflow-y-auto" style={{ flexShrink: 0 }}>
+                    <div className="flex-1 border-l bg-gray-50 overflow-y-auto" style={{ minWidth: 0 }}>
                         <div className="p-4">
                             {loadingThread ? (
                                 <div className="p-8 text-center text-muted-foreground">Loading thread...</div>

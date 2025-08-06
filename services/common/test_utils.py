@@ -17,15 +17,17 @@ class BaseIntegrationTest:
 
     def setup_method(self, method: object) -> None:
         """Set up test environment with HTTP call detection rakes."""
-        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
-        # We need to be selective to allow TestClient to work but catch real external calls
+        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are
+        # made
+        # We need to be selective to allow TestClient to work but catch real external
+        # calls
 
         self.http_patches = [
-            # Patch both sync and async httpx clients
             patch(
                 "httpx.AsyncClient._send_single_request",
                 side_effect=AssertionError(
-                    "Real HTTP call detected! AsyncClient._send_single_request was called"
+                    "Real HTTP call detected! AsyncClient._send_single_request was "
+                    "called"
                 ),
             ),
             patch(
@@ -101,7 +103,8 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
             patch(
                 "httpx.AsyncClient._send_single_request",
                 side_effect=AssertionError(
-                    "Real HTTP call detected! AsyncClient._send_single_request was called"
+                    "Real HTTP call detected! AsyncClient._send_single_request was "
+                    "called"
                 ),
             ),
             # Patch requests (commonly used for external calls)
@@ -118,7 +121,8 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
                     "Real HTTP call detected! urllib.request.urlopen was called"
                 ),
             ),
-            # Note: We don't patch httpx.Client.send because TestClient uses it internally
+            # Note: We don't patch httpx.Client.send because TestClient uses it
+            # internally
         ]
 
         # Start all HTTP detection patches
@@ -183,19 +187,22 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
 
 # For services that don't need specific setup, they can use the selective HTTP patches
 class BaseSelectiveHTTPIntegrationTest(BaseIntegrationTest):
-    """Base class for integration tests that need to allow TestClient but block external HTTP calls."""
+    """Base class for integration tests that need to allow TestClient but block
+    external HTTP calls."""
 
     def setup_method(self, method: object) -> None:
         """Set up test environment with selective HTTP call detection."""
-        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
-        # We need to be selective to allow TestClient to work but catch real external calls
+        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are
+        # made
+        # We need to be selective to allow TestClient to work but catch real external
+        # calls
 
         self.http_patches = [
-            # Patch async httpx client (most likely to be used for real external calls)
             patch(
                 "httpx.AsyncClient._send_single_request",
                 side_effect=AssertionError(
-                    "Real HTTP call detected! AsyncClient._send_single_request was called"
+                    "Real HTTP call detected! AsyncClient._send_single_request was "
+                    "called"
                 ),
             ),
             # Patch requests (commonly used for external calls)
@@ -212,7 +219,8 @@ class BaseSelectiveHTTPIntegrationTest(BaseIntegrationTest):
                     "Real HTTP call detected! urllib.request.urlopen was called"
                 ),
             ),
-            # Note: We don't patch httpx.Client.send because TestClient uses it internally
+            # Note: We don't patch httpx.Client.send because TestClient uses it
+            # internally
         ]
 
         # Start all HTTP detection patches

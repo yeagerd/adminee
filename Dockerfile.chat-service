@@ -37,7 +37,7 @@ RUN pip install uv
 # Copy pyproject.toml and uv.lock files
 COPY pyproject.toml uv.lock ./
 COPY services/chat/pyproject.toml ./services/chat/
-COPY services/common/setup.py ./services/common/
+COPY services/common/pyproject.toml ./services/common/
 
 # Install Python dependencies using UV (system-wide installation)
 RUN uv pip install --system -e .
