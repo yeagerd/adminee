@@ -60,7 +60,7 @@ export default function PackageDashboard() {
     const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('7');
 
     // Cursor-based pagination state
-    const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+    const [, setCurrentCursor] = useState<string | null>(null);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [prevCursor, setPrevCursor] = useState<string | null>(null);
     const [hasNext, setHasNext] = useState(false);
@@ -68,15 +68,11 @@ export default function PackageDashboard() {
     const [paginationLoading, setPaginationLoading] = useState(false);
 
     // Performance optimizations
-    const [cursorCache, setCursorCache] = useState<Map<string, any>>(new Map());
+    const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
     const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
-        loadFirstPage();
-    }, []);
-
     // URL state management
-    const updateURL = (params: Record<string, string | null>) => {
+    const updateURL = useCallback((params: Record<string, string | null>) => {
         const newSearchParams = new URLSearchParams(searchParams.toString());
 
         Object.entries(params).forEach(([key, value]) => {
@@ -89,7 +85,7 @@ export default function PackageDashboard() {
 
         const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
         router.push(newURL, { scroll: false });
-    };
+    }, [searchParams, router]);
 
     // Load state from URL on mount
     useEffect(() => {
@@ -117,7 +113,7 @@ export default function PackageDashboard() {
         return cursorCache.get(cacheKey);
     }, [cursorCache]);
 
-    const setCachedData = useCallback((cacheKey: string, data: any) => {
+    const setCachedData = useCallback((cacheKey: string, data: unknown) => {
         setCursorCache(prev => {
             const newCache = new Map(prev);
             newCache.set(cacheKey, data);
@@ -132,18 +128,7 @@ export default function PackageDashboard() {
         });
     }, []);
 
-    // Debounced search function
-    const debouncedSearch = useCallback((searchValue: string) => {
-        if (debounceTimer) {
-            clearTimeout(debounceTimer);
-        }
 
-        const timer = setTimeout(() => {
-            loadFirstPage();
-        }, 300); // 300ms debounce
-
-        setDebounceTimer(timer);
-    }, [debounceTimer]);
 
     // Reload data when filters change (with debouncing for search)
     useEffect(() => {
@@ -160,14 +145,21 @@ export default function PackageDashboard() {
         return () => {
             if (timer) clearTimeout(timer);
         };
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, debounceTimer]);
 
-    const loadFirstPage = async () => {
+    // Define loadFirstPage before the useEffect that uses it
+    const loadFirstPage = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
             // Build filter parameters for server-side filtering
-            const filterParams: any = {
+            const filterParams: {
+                limit: number;
+                direction: 'next' | 'prev';
+                status?: string;
+                carrier?: string;
+                tracking_number?: string;
+            } = {
                 limit: 20,
                 direction: 'next'
             };
@@ -213,13 +205,7 @@ export default function PackageDashboard() {
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(null);
 
-            // Update URL state
-            updateURL({
-                cursor: null,
-                status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
-                carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
-                search: searchTerm.trim() || null
-            });
+
         } catch (err) {
             let errorMessage = 'Failed to fetch packages';
 
@@ -251,7 +237,22 @@ export default function PackageDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, getCachedData, setCachedData]);
+
+    // Call loadFirstPage on mount
+    useEffect(() => {
+        loadFirstPage();
+    }, [loadFirstPage]);
+
+    // Update URL when filters change
+    useEffect(() => {
+        updateURL({
+            cursor: null,
+            status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
+            carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
+            search: searchTerm.trim() || null
+        });
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, updateURL]);
 
     const filteredAndSortedPackages = useMemo(() => {
         // Server-side filtering is now handled by the API
@@ -326,7 +327,13 @@ export default function PackageDashboard() {
         setError(null);
         try {
             // Build filter parameters for server-side filtering
-            const filterParams: any = {
+            const filterParams: {
+                limit: number;
+                direction: 'next' | 'prev';
+                status?: string;
+                carrier?: string;
+                tracking_number?: string;
+            } = {
                 limit: 20,
                 direction: 'next'
             };
