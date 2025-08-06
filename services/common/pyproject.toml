@@ -60,8 +60,9 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-# Enable pycodestyle (`E`), Pyflakes (`F`), and isort (`I`) codes
-select = ["E", "F", "I"]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes
+# Note: isort (`I`) is handled separately by isort to avoid conflicts
+select = ["E", "F"]
 ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

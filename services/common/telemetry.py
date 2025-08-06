@@ -24,6 +24,8 @@ from opentelemetry.sdk.resources import Resource  # type: ignore[import-unresolv
 from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-unresolved]
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,  # type: ignore[import-unresolved]
+)
+from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,  # type: ignore[import-unresolved]
 )
 
