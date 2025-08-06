@@ -1,7 +1,7 @@
 from services.common.settings import (
     BaseSettings,
-    SettingsConfigDict,
     Field,
+    SettingsConfigDict,
 )
 
 

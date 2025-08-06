@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Optional
 
-from .settings import BaseSettings, SettingsConfigDict, Field
+from .settings import BaseSettings, Field, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
