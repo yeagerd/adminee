@@ -229,7 +229,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         const emailIds = Array.from(selectedEmails);
         const totalEmails = emailIds.length;
         let successCount = 0;
-        const errorCount = 0;
+        let errorCount = 0;
 
         try {
             // Simulate API calls with progress updates
