@@ -24,6 +24,24 @@ type ViewMode = 'tight' | 'expanded';
 type ReadingPaneMode = 'none' | 'right';
 
 const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
+    // Helper function to get proper present participle form of action verbs
+    const getPresentParticiple = (actionType: string): string => {
+        const capitalizedAction = actionType.charAt(0).toUpperCase() + actionType.slice(1);
+
+        // Handle specific verb conjugations
+        switch (actionType) {
+            case 'archive':
+                return 'Archiving';
+            case 'delete':
+                return 'Deleting';
+            case 'snooze':
+                return 'Snoozing';
+            default:
+                // Fallback: add 'ing' to the end (works for most regular verbs)
+                return capitalizedAction + 'ing';
+        }
+    };
+
     const [threads, setThreads] = useState<EmailMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -716,7 +734,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white p-3 rounded-lg shadow-lg z-50">
                     <Progress value={bulkActionProgress} className="h-2" />
                     <p className="text-sm text-white">
-                        {bulkActionType ? bulkActionType.charAt(0).toUpperCase() + bulkActionType.slice(1) : ''}ing {bulkActionProgress}%...
+                        {bulkActionType ? getPresentParticiple(bulkActionType) : ''} {bulkActionProgress}%...
                     </p>
                 </div>
             )}
