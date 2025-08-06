@@ -82,7 +82,7 @@ class TestShipmentsCursorPagination:
         """Test creating shipments-specific cursor info."""
         cursor_info = self.pagination.create_shipments_cursor_info(
             last_id="123",
-            last_updated="2023-01-01T00:00:00Z",
+            updated_at="2023-01-01T00:00:00Z",
             filters={"carrier": "fedex"},
             direction="next",
             limit=30,
@@ -349,7 +349,7 @@ class TestShipmentsPaginationIntegration:
         # Create initial cursor info
         cursor_info = self.pagination.create_shipments_cursor_info(
             last_id="123",
-            last_updated="2023-01-01T00:00:00Z",
+            updated_at="2023-01-01T00:00:00Z",
             filters={"carrier": "fedex"},
             direction="next",
             limit=20,
@@ -405,7 +405,7 @@ class TestShipmentsPaginationIntegration:
         for filters in filter_combinations:
             cursor_info = self.pagination.create_shipments_cursor_info(
                 last_id="123",
-                last_updated="2023-01-01T00:00:00Z",
+                updated_at="2023-01-01T00:00:00Z",
                 filters=filters,
                 direction="next",
                 limit=20,
@@ -427,7 +427,7 @@ class TestShipmentsPaginationIntegration:
         # Test next page
         # next_cursor_info = self.pagination.create_shipments_cursor_info(
         #     last_id="123",
-        #     last_updated="2023-01-01T00:00:00Z",
+        #     updated_at="2023-01-01T00:00:00Z",
         #     filters={"carrier": "fedex"},
         #     direction="next",
         #     limit=20,
@@ -439,7 +439,7 @@ class TestShipmentsPaginationIntegration:
         # Test previous page
         # prev_cursor_info = self.pagination.create_shipments_cursor_info(
         #     last_id="123",
-        #     last_updated="2023-01-01T00:00:00Z",
+        #     updated_at="2023-01-01T00:00:00Z",
         #     filters={"carrier": "fedex"},
         #     direction="prev",
         #     limit=20,

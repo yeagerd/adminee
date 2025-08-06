@@ -287,7 +287,7 @@ async def list_packages(
         last_package = packages[-1]
         current_cursor_info = pagination.create_shipments_cursor_info(
             last_id=str(last_package.id),
-            last_updated=last_package.updated_at,
+            updated_at=last_package.updated_at,
             filters=validated_filters,
             direction=direction,
             limit=limit,

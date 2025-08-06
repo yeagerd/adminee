@@ -18,7 +18,7 @@ The Briefly Shipments Service provides package shipment tracking, label manageme
 Instead of using page numbers and offsets, cursor-based pagination uses a "cursor" token that points to a specific item in the dataset. This cursor is a signed, URL-safe token that contains:
 
 - `last_id`: ID of the last item in the current page
-- `last_updated`: Timestamp for consistent ordering
+- `updated_at`: Timestamp for consistent ordering
 - `filters`: Active filter parameters
 - `direction`: Navigation direction ('next' or 'prev')
 - `limit`: Number of items per page

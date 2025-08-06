@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from services.shipments.models import PackageStatus
 
@@ -32,7 +32,7 @@ class PackageOut(BaseModel):
     package_description: Optional[str]
     order_number: Optional[str]
     tracking_link: Optional[str]
-    updated_at: datetime = Field(..., alias="last_updated")
+    updated_at: datetime
     events_count: int
     labels: List[LabelOut]
 

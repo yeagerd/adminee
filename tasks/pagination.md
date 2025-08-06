@@ -156,7 +156,7 @@ The shipments service currently uses offset-based pagination with `page` and `pe
   - [x] `ShipmentsCursorPagination` class extending `BaseCursorPagination`
   - [x] Shipments-specific cursor data structure:
     - [x] `last_id`: UUID of last package in current page
-    - [x] `last_updated`: ISO timestamp for consistent ordering
+    - [x] `updated_at`: ISO timestamp for consistent ordering
     - [x] `filters`: JSON string of active filters (carrier, status, etc.)
     - [x] `direction`: 'next' or 'prev'
     - [x] `limit`: Number of items per page

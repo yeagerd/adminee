@@ -114,7 +114,7 @@ class ShipmentsCursorPagination(BaseCursorPagination):
     def create_shipments_cursor_info(
         self,
         last_id: str,
-        last_updated: Union[str, datetime],
+        updated_at: Union[str, datetime],
         filters: Dict[str, Any],
         direction: str = "next",
         limit: int = None,
@@ -124,7 +124,7 @@ class ShipmentsCursorPagination(BaseCursorPagination):
 
         Args:
             last_id: UUID of last package in current page
-            last_updated: ISO timestamp for consistent ordering
+            updated_at: ISO timestamp for consistent ordering
             filters: JSON string of active filters (carrier, status, etc.)
             direction: 'next' or 'prev'
             limit: Number of items per page
@@ -134,7 +134,7 @@ class ShipmentsCursorPagination(BaseCursorPagination):
         """
         return self.create_cursor_info(
             last_id=last_id,
-            last_timestamp=last_updated,
+            last_timestamp=updated_at,
             filters=filters,
             direction=direction,
             limit=limit,

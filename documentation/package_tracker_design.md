@@ -174,7 +174,7 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
       "package_description": "Electronics",
       "order_number": "123-4567890-1234567",
       "tracking_link": "https://www.ups.com/track?tracknum=1Z999AA1234567890",
-      "last_updated": "2024-03-13T10:30:00Z",
+      "updated_at": "2024-03-13T10:30:00Z",
       "events_count": 5,
       "labels": [
         {
