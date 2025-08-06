@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from services.common.http_errors import (
-    BrieflyAPIException,
+    BrieflyAPIError,
     ErrorCode,
     NotFoundError,
     ServiceError,
@@ -448,11 +448,11 @@ async def create_or_upsert_user_internal(
         logger.error(f"Validation error details: {e.details}")
         if "collision" in str(e.message).lower():
             logger.warning(f"Email collision during user creation: {e.message}")
-            raise BrieflyAPIException(
-                status_code=409,
-                error_code=ErrorCode.ALREADY_EXISTS,
+            raise BrieflyAPIError(
                 message="Email collision detected",
                 details=e.details,
+                error_code=ErrorCode.ALREADY_EXISTS,
+                status_code=409,
             )
         else:
             logger.warning(f"Validation error during user creation: {e.message}")

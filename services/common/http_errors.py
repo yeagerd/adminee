@@ -903,7 +903,7 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
     async def briefly_api_exception_handler(
         request: Request, exc: BrieflyAPIError
     ) -> JSONResponse:
-        """Handle BrieflyAPIException and convert to standardized error response."""
+        """Handle BrieflyAPIError and convert to standardized error response."""
         error_response = exc.to_error_response()
 
         # Log the error with proper formatting

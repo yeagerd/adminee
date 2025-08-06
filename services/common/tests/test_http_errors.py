@@ -162,7 +162,7 @@ class TestExceptionToResponse:
     """Test the exception_to_response utility function."""
 
     def test_briefly_api_exception(self):
-        """Test conversion of BrieflyAPIException."""
+        """Test conversion of BrieflyAPIError."""
         exc = NotFoundError(resource="User", identifier="user-123")
         response = exception_to_response(exc)
 
