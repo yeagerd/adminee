@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
+import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
-import { ChevronLeft, List, ListTodo, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
+import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -33,6 +34,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [readingPaneMode, setReadingPaneMode] = useState<ReadingPaneMode>('right');
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [isInThreadView, setIsInThreadView] = useState(false);
+    const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     // Determine default provider from active integrations, fallback to 'google' if none available
@@ -104,6 +106,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
             setThreads(messages);
             setError(null);
+            // Clear email selections when emails are fetched/updated
+            setSelectedEmails(new Set());
         } catch (e: unknown) {
             setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
         }
@@ -113,6 +117,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setRefreshing(true);
         try {
             await fetchEmails(true); // Pass true to bypass cache
+            // Clear email selections after refresh
+            setSelectedEmails(new Set());
         } finally {
             setRefreshing(false);
         }
@@ -120,6 +126,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
     const handleFolderSelect = useCallback((folder: EmailFolder) => {
         setSelectedFolder(folder);
+        // Clear email selections when folder changes
+        setSelectedEmails(new Set());
     }, []);
 
     // Group emails by thread
@@ -136,9 +144,69 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
             id: threadId,
-            emails
+            // Sort emails by date (latest first) so that emails[0] is always the latest email
+            // Use safeParseDate to handle invalid dates gracefully
+            emails: emails.sort((a, b) => {
+                const dateA = safeParseDate(a.date);
+                const dateB = safeParseDate(b.date);
+
+                // If both dates are invalid, maintain original order
+                if (!dateA && !dateB) return 0;
+                // If only dateA is invalid, put it at the end
+                if (!dateA) return 1;
+                // If only dateB is invalid, put it at the end
+                if (!dateB) return -1;
+
+                // Both dates are valid, compare them
+                return dateB.getTime() - dateA.getTime();
+            })
         }));
     }, [threads]);
+
+    // Handle select all emails in current view
+    const handleSelectAll = useCallback(() => {
+        const allEmailIds = new Set<string>();
+        groupedThreads.forEach(thread => {
+            if (viewMode === 'tight') {
+                // In tight view mode, only select the latest email in each thread
+                // since that's the only one with a visible checkbox
+                const latestEmail = thread.emails[0]; // Assuming emails are sorted by date, latest first
+                if (latestEmail) {
+                    allEmailIds.add(latestEmail.id);
+                }
+            } else {
+                // In expanded view mode, select all emails in each thread
+                thread.emails.forEach(email => {
+                    allEmailIds.add(email.id);
+                });
+            }
+        });
+        setSelectedEmails(allEmailIds);
+    }, [groupedThreads, viewMode]);
+
+    // Handle deselect all emails
+    const handleSelectNone = useCallback(() => {
+        setSelectedEmails(new Set());
+    }, []);
+
+    // Handle bulk actions
+    const handleBulkArchive = useCallback(() => {
+        // TODO: Implement bulk archive functionality
+        console.log('Archive emails:', Array.from(selectedEmails));
+        setSelectedEmails(new Set()); // Clear selection after action
+    }, [selectedEmails]);
+
+    const handleBulkDelete = useCallback(() => {
+        // TODO: Implement bulk delete functionality
+        console.log('Delete emails:', Array.from(selectedEmails));
+        setSelectedEmails(new Set()); // Clear selection after action
+    }, [selectedEmails]);
+
+    const handleBulkSnooze = useCallback(() => {
+        // TODO: Implement bulk snooze functionality
+        console.log('Snooze emails:', Array.from(selectedEmails));
+        setSelectedEmails(new Set()); // Clear selection after action
+    }, [selectedEmails]);
 
     // selectedThread was used for fallback logic that has been removed
     // Keeping this for potential future use or debugging
@@ -238,8 +306,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         })();
         return () => { isMounted = false; };
     }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens, fetchEmails, selectedFolder.label]);
-
-
 
     return (
         <div className="flex flex-col h-full">
@@ -374,6 +440,68 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 ) : (
                     // Email list (for both two-pane and one-pane modes)
                     <div className={`flex-1 flex flex-col overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ minWidth: 0 }}>
+                        {/* Selection Header */}
+                        {selectedEmails.size > 0 && (
+                            <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-sm font-medium text-blue-900">
+                                            {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''} selected
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleSelectNone}
+                                                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                                            >
+                                                <X className="w-4 h-4 mr-1" />
+                                                None
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleSelectAll}
+                                                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                                            >
+                                                <Check className="w-4 h-4 mr-1" />
+                                                All
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleBulkSnooze}
+                                            className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                                            title="Snooze"
+                                        >
+                                            <Clock className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleBulkArchive}
+                                            className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                                            title="Archive"
+                                        >
+                                            <Archive className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleBulkDelete}
+                                            className="text-red-700 hover:text-red-900 hover:bg-red-100"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {loading ? (
                             <div className="p-8 text-center text-muted-foreground">Loading…</div>
                         ) : error ? (
@@ -420,6 +548,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                         isSelected={selectedThreadId === thread.id}
                                         onSelect={handleThreadSelect}
                                         showReadingPane={false}
+                                        selectedEmails={selectedEmails}
+                                        onEmailSelect={(emailId: string, selected: boolean) => {
+                                            setSelectedEmails(prev => {
+                                                const newSet = new Set(prev);
+                                                if (selected) {
+                                                    newSet.add(emailId);
+                                                } else {
+                                                    newSet.delete(emailId);
+                                                }
+                                                return newSet;
+                                            });
+                                        }}
                                     />
                                 ))}
                             </div>
