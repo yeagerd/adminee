@@ -10,6 +10,7 @@ import uuid
 from unittest.mock import MagicMock
 
 import structlog
+
 from services.common.logging_config import (
     EnhancedTextRenderer,
     add_file_line_context,
