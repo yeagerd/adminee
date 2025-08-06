@@ -232,11 +232,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         try {
             // Execute bulk action via API
-            const response = await gatewayClient.bulkAction(actionType, emailIds);
+            const response = await gatewayClient.bulkAction(actionType, emailIds, activeProviders);
 
-            if (response.success && response.data) {
-                successCount = response.data.success_count;
-                errorCount = response.data.error_count;
+            if (response.success) {
+                // Handle successful response with or without detailed data
+                if (response.data) {
+                    successCount = response.data.success_count;
+                    errorCount = response.data.error_count;
+                } else {
+                    // If no detailed data but success=true, assume all emails were processed successfully
+                    successCount = totalEmails;
+                    errorCount = 0;
+                }
 
                 // Update progress to 100% since the API handles all emails at once
                 setBulkActionProgress(100);
@@ -282,7 +289,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setBulkActionProgress(0);
             setBulkActionType(null);
         }
-    }, [selectedEmails, toast]);
+    }, [selectedEmails, toast, activeProviders]);
 
     // Handle bulk actions
     const handleBulkArchive = useCallback(() => {
