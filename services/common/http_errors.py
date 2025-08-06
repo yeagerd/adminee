@@ -286,7 +286,7 @@ class ErrorResponse(BaseModel):
     request_id: str
 
 
-class BrieflyAPIException(Exception):
+class BrieflyAPIError(Exception):
     """
     Base exception class for all Briefly API errors.
 
@@ -315,7 +315,7 @@ class BrieflyAPIException(Exception):
         request_id: Optional request ID (auto-generated if not provided)
 
     Example:
-        >>> error = BrieflyAPIException(
+        >>> error = BrieflyAPIError(
         ...     message="Database connection failed",
         ...     details={"database": "postgres", "timeout": 30},
         ...     error_type="service_error",
@@ -381,7 +381,7 @@ class BrieflyAPIException(Exception):
 
 
 # Common subclasses
-class ValidationError(BrieflyAPIException):
+class ValidationError(BrieflyAPIError):
     """
     Exception for input validation errors (HTTP 422).
 
@@ -445,7 +445,7 @@ class ValidationError(BrieflyAPIException):
         self.value = value
 
 
-class NotFoundError(BrieflyAPIException):
+class NotFoundError(BrieflyAPIError):
     """
     Exception for resource not found errors (HTTP 404).
 
@@ -507,7 +507,7 @@ class NotFoundError(BrieflyAPIException):
         self.identifier = identifier
 
 
-class AuthError(BrieflyAPIException):
+class AuthError(BrieflyAPIError):
     """
     Exception for authentication errors (HTTP 401).
 
@@ -555,7 +555,7 @@ class AuthError(BrieflyAPIException):
         )
 
 
-class ServiceError(BrieflyAPIException):
+class ServiceError(BrieflyAPIError):
     """
     Exception for internal service errors (HTTP 502).
 
@@ -607,7 +607,7 @@ class ServiceError(BrieflyAPIException):
         )
 
 
-class ProviderError(BrieflyAPIException):
+class ProviderError(BrieflyAPIError):
     """
     Exception for external provider integration errors (HTTP 502).
 
@@ -688,7 +688,7 @@ class ProviderError(BrieflyAPIException):
         self.retry_after = retry_after
 
 
-class RateLimitError(BrieflyAPIException):
+class RateLimitError(BrieflyAPIError):
     """
     Exception for rate limiting errors (HTTP 429).
 
@@ -751,7 +751,7 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
     into a standardized ErrorResponse that can be safely returned to API clients.
     It handles three main exception types with different conversion strategies:
 
-    1. BrieflyAPIException: Uses the built-in to_error_response() method
+    1. BrieflyAPIError: Uses the built-in to_error_response() method
     2. HTTPException: Extracts detail information and normalizes format
     3. Generic Exception: Creates a safe internal error response
 
@@ -794,7 +794,7 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
         # Generate a new UUID when no request context is available
         request_id = str(uuid.uuid4())
 
-    if isinstance(exc, BrieflyAPIException):
+    if isinstance(exc, BrieflyAPIError):
         return exc.to_error_response()
     elif isinstance(exc, HTTPException):
         # Handle detail field properly - extract message from dict if needed
@@ -847,7 +847,7 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
     This utility function sets up standardized exception handling across all
     Briefly microservices by registering three levels of exception handlers:
 
-    1. BrieflyAPIException: Handles all custom Briefly exceptions with proper
+    1. BrieflyAPIError: Handles all custom Briefly exceptions with proper
        status codes and structured error responses
     2. HTTPException: Converts FastAPI HTTP exceptions to standard format
     3. Generic Exception: Catches any unhandled exceptions and converts them
@@ -880,7 +880,7 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         ...     # }
 
     Behavior:
-        - BrieflyAPIException: Returns exception's status_code with error details
+        - BrieflyAPIError: Returns exception's status_code with error details
         - HTTPException: Returns exception's status_code with normalized details
         - Generic Exception: Returns 500 status with safe error message
 
@@ -899,11 +899,11 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         adding routes or starting the server.
     """
 
-    @app.exception_handler(BrieflyAPIException)
+    @app.exception_handler(BrieflyAPIError)
     async def briefly_api_exception_handler(
-        request: Request, exc: BrieflyAPIException
+        request: Request, exc: BrieflyAPIError
     ) -> JSONResponse:
-        """Handle BrieflyAPIException and convert to standardized error response."""
+        """Handle BrieflyAPIError and convert to standardized error response."""
         error_response = exc.to_error_response()
 
         # Log the error with proper formatting
