@@ -152,27 +152,28 @@ export default function PackageDashboard() {
             const cacheKey = JSON.stringify(filterParams);
             const cachedData = getCachedData(cacheKey);
 
-            if (cachedData && typeof cachedData === 'object' && 'data' in cachedData && 'pagination' in cachedData) {
-                const cached = cachedData as { data: Package[]; pagination: { next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean } };
-                setPackages(cached.data || []);
-                setNextCursor(cached.pagination.next_cursor || null);
-                setPrevCursor(cached.pagination.prev_cursor || null);
-                setHasNext(cached.pagination.has_next);
-                setHasPrev(cached.pagination.has_prev);
-                setCurrentCursor(cursor);
-                return;
-            }
+            // Temporarily disable cache to fix the structure mismatch
+            // if (cachedData && typeof cachedData === 'object' && 'packages' in cachedData) {
+            //     const cached = cachedData as { packages: Package[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean };
+            //     setPackages(cached.packages || []);
+            //     setNextCursor(cached.next_cursor || null);
+            //     setPrevCursor(cached.prev_cursor || null);
+            //     setHasNext(cached.has_next);
+            //     setHasPrev(cached.has_prev);
+            //     setCurrentCursor(cursor);
+            //     return;
+            // }
 
             const res = await gatewayClient.getPackages(filterParams);
 
             // Cache the result
             setCachedData(cacheKey, res);
 
-            setPackages(res.data || []);
-            setNextCursor(res.pagination.next_cursor || null);
-            setPrevCursor(res.pagination.prev_cursor || null);
-            setHasNext(res.pagination.has_next);
-            setHasPrev(res.pagination.has_prev);
+            setPackages(res.packages || []);
+            setNextCursor(res.next_cursor || null);
+            setPrevCursor(res.prev_cursor || null);
+            setHasNext(res.has_next);
+            setHasPrev(res.has_prev);
             setCurrentCursor(cursor);
 
         } catch (err) {
@@ -206,7 +207,7 @@ export default function PackageDashboard() {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, loadData]);
+    }, [loadData]);
 
     // Update URL when filters change
     useEffect(() => {

@@ -83,8 +83,8 @@ describe('Package Pagination E2E', () => {
     describe('Complete Cursor Pagination User Flows', () => {
         it('should load first page and display pagination controls', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: mockPackages,
-                pagination: mockPaginationInfo,
+                packages: mockPackages,
+                ...mockPaginationInfo,
             });
 
             render(<PackageDashboard />);
@@ -130,12 +130,12 @@ describe('Package Pagination E2E', () => {
 
             (gatewayClient.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: mockPaginationInfo,
+                    packages: mockPackages,
+                    ...mockPaginationInfo,
                 })
                 .mockResolvedValueOnce({
-                    data: nextPagePackages,
-                    pagination: nextPagePagination,
+                    packages: nextPagePackages,
+                    ...nextPagePagination,
                 });
 
             render(<PackageDashboard />);
@@ -174,12 +174,12 @@ describe('Package Pagination E2E', () => {
 
             (gatewayClient.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: mockPaginationInfo,
+                    packages: mockPackages,
+                    ...mockPaginationInfo,
                 })
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: prevPagePagination,
+                    packages: mockPackages,
+                    ...prevPagePagination,
                 });
 
             render(<PackageDashboard />);
@@ -222,12 +222,12 @@ describe('Package Pagination E2E', () => {
 
             (gatewayClient.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: mockPaginationInfo,
+                    packages: mockPackages,
+                    ...mockPaginationInfo,
                 })
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: firstPagePagination,
+                    packages: mockPackages,
+                    ...firstPagePagination,
                 });
 
             render(<PackageDashboard />);
@@ -291,8 +291,8 @@ describe('Package Pagination E2E', () => {
             };
 
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: filteredPackages,
-                pagination: filteredPagination,
+                packages: filteredPackages,
+                ...filteredPagination,
             });
 
             render(<PackageDashboard />);
@@ -322,8 +322,8 @@ describe('Package Pagination E2E', () => {
 
         it('should reset pagination when filters change', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: mockPackages,
-                pagination: mockPaginationInfo,
+                packages: mockPackages,
+                ...mockPaginationInfo,
             });
 
             render(<PackageDashboard />);
@@ -365,8 +365,8 @@ describe('Package Pagination E2E', () => {
         it('should handle expired cursor tokens gracefully', async () => {
             (gatewayClient.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: mockPaginationInfo,
+                    packages: mockPackages,
+                    ...mockPaginationInfo,
                 })
                 .mockRejectedValueOnce(new Error('Invalid or expired cursor token'));
 
@@ -396,8 +396,8 @@ describe('Package Pagination E2E', () => {
         it('should handle invalid cursor tokens gracefully', async () => {
             (gatewayClient.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: mockPaginationInfo,
+                    packages: mockPackages,
+                    ...mockPaginationInfo,
                 })
                 .mockRejectedValueOnce(new Error('Invalid cursor format'));
 
@@ -420,8 +420,8 @@ describe('Package Pagination E2E', () => {
         it('should handle network errors during pagination', async () => {
             (gatewayClient.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
-                    data: mockPackages,
-                    pagination: mockPaginationInfo,
+                    packages: mockPackages,
+                    ...mockPaginationInfo,
                 })
                 .mockRejectedValueOnce(new Error('Network error'));
 
@@ -446,14 +446,12 @@ describe('Package Pagination E2E', () => {
 
         it('should handle empty results gracefully', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: [],
-                pagination: {
-                    next_cursor: null,
-                    prev_cursor: null,
-                    has_next: false,
-                    has_prev: false,
-                    limit: 20,
-                },
+                packages: [],
+                next_cursor: null,
+                prev_cursor: null,
+                has_next: false,
+                has_prev: false,
+                limit: 20,
             });
 
             render(<PackageDashboard />);
@@ -473,8 +471,8 @@ describe('Package Pagination E2E', () => {
     describe('URL State Management', () => {
         it('should update URL parameters when navigating pages', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: mockPackages,
-                pagination: mockPaginationInfo,
+                packages: mockPackages,
+                ...mockPaginationInfo,
             });
 
             render(<PackageDashboard />);
@@ -504,8 +502,8 @@ describe('Package Pagination E2E', () => {
             (useSearchParams as jest.Mock).mockReturnValue(urlWithCursor);
 
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: mockPackages,
-                pagination: mockPaginationInfo,
+                packages: mockPackages,
+                ...mockPaginationInfo,
             });
 
             render(<PackageDashboard />);
@@ -527,8 +525,8 @@ describe('Package Pagination E2E', () => {
             jest.useFakeTimers();
 
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: mockPackages,
-                pagination: mockPaginationInfo,
+                packages: mockPackages,
+                ...mockPaginationInfo,
             });
 
             render(<PackageDashboard />);
@@ -556,8 +554,8 @@ describe('Package Pagination E2E', () => {
 
         it('should cache cursor data for better performance', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                data: mockPackages,
-                pagination: mockPaginationInfo,
+                packages: mockPackages,
+                ...mockPaginationInfo,
             });
 
             render(<PackageDashboard />);

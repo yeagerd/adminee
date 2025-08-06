@@ -509,7 +509,7 @@ export class GatewayClient {
         status?: string;
         user_id?: string;
     }): Promise<{
-        data: Array<{
+        packages: Array<{
             id: string;
             tracking_number: string;
             carrier: string;
@@ -525,16 +525,14 @@ export class GatewayClient {
             events_count: number;
             labels: string[];
         }>;
-        pagination: {
-            next_cursor?: string;
-            prev_cursor?: string;
-            has_next: boolean;
-            has_prev: boolean;
-            limit: number;
-        };
+        next_cursor?: string;
+        prev_cursor?: string;
+        has_next: boolean;
+        has_prev: boolean;
+        limit: number;
     }> {
         const queryParams = new URLSearchParams();
-        
+
         // Cursor-based pagination parameters
         if (params?.cursor) {
             queryParams.append('cursor', params.cursor);
@@ -545,7 +543,7 @@ export class GatewayClient {
         if (params?.direction) {
             queryParams.append('direction', params.direction);
         }
-        
+
         // Filter parameters
         if (params?.tracking_number) {
             queryParams.append('tracking_number', params.tracking_number);
