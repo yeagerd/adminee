@@ -232,7 +232,7 @@ class PaginationSettings(BaseSettings):
 
     # Secret key for token signing (required)
     pagination_secret_key: str = Field(
-        default="your-secret-key-change-in-production",
+        default=...,
         description="Secret key for pagination token signing",
     )
 

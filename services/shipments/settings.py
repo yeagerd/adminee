@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # Pagination settings
     pagination_secret_key: str = Field(
-        default="your-secret-key-change-in-production",
+        default=...,
         validation_alias="PAGINATION_SECRET_KEY",
         description="Secret key for pagination token signing",
     )
