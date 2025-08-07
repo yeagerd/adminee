@@ -176,11 +176,57 @@ export function TimeSlotCalendar({
                         const slotStartInTz = DateTime.fromJSDate(slotStart).setZone(timeZone);
                         const slotEndInTz = DateTime.fromJSDate(slotEnd).setZone(timeZone);
 
-                        // Check for overlap
-                        return (
-                            (slotStartInTz < eventEnd && slotEndInTz > eventStart) ||
-                            (eventStart < slotEndInTz && eventEnd > slotStartInTz)
-                        );
+                        // Check for overlap (end times are non-inclusive)
+                        // A slot conflicts if it overlaps with an event
+                        // Slot: [slotStartInTz, slotEndInTz)
+                        // Event: [eventStart, eventEnd)
+                        // For non-inclusive end times, we need slotStart < eventEnd AND slotEnd > eventStart
+                        // This means:
+                        // - Slot starts before event ends (allows slot to start when event ends)
+                        // - Slot ends after event starts (allows slot to end when event starts)
+                        // Examples:
+                        // - Slot 9:00-9:30, Event 9:30-10:00: No conflict (9:30 > 9:30 is false)
+                        // - Slot 10:00-10:30, Event 9:30-10:00: No conflict (10:00 < 10:00 is false)
+                        const hasConflict = slotStartInTz < eventEnd && slotEndInTz > eventStart;
+
+                        // Debug logging for conflict detection
+                        if (slotStartInTz.toFormat('HH:mm') === '10:30' && event.title === 'Daily Standup') {
+                            console.log('Conflict check for 10:30 slot:', {
+                                slotStart: slotStartInTz.toFormat('HH:mm'),
+                                slotEnd: slotEndInTz.toFormat('HH:mm'),
+                                eventStart: eventStart.toFormat('HH:mm'),
+                                eventEnd: eventEnd.toFormat('HH:mm'),
+                                hasConflict,
+                                slotStartBeforeEventEnd: slotStartInTz < eventEnd,
+                                slotEndAfterEventStart: slotEndInTz > eventStart
+                            });
+                        }
+
+                        // Debug logging for 9:30 slot to understand why it's not being selected
+                        if (slotStartInTz.toFormat('HH:mm') === '09:30') {
+                            console.log('Conflict check for 9:30 slot with', event.title, ':', {
+                                slotStart: slotStartInTz.toFormat('HH:mm'),
+                                slotEnd: slotEndInTz.toFormat('HH:mm'),
+                                eventStart: eventStart.toFormat('HH:mm'),
+                                eventEnd: eventEnd.toFormat('HH:mm'),
+                                hasConflict,
+                                slotStartBeforeEventEnd: slotStartInTz < eventEnd,
+                                slotEndAfterEventStart: slotEndInTz > eventStart
+                            });
+                        }
+
+                        // Also log all conflict checks for debugging
+                        if (slotStartInTz.toFormat('HH:mm') === '10:30') {
+                            console.log('All conflict checks for 10:30 slot with', event.title, ':', {
+                                slotStart: slotStartInTz.toFormat('HH:mm'),
+                                slotEnd: slotEndInTz.toFormat('HH:mm'),
+                                eventStart: eventStart.toFormat('HH:mm'),
+                                eventEnd: eventEnd.toFormat('HH:mm'),
+                                hasConflict
+                            });
+                        }
+
+                        return hasConflict;
                     });
 
                     const isConflict = conflictEvents.length > 0;
@@ -308,7 +354,7 @@ export function TimeSlotCalendar({
         return diffDays;
     }, [effectiveDateRange]);
 
-    // Render calendar events for a specific day
+    // Render calendar events for a specific day using the proven grid positioning approach
     const renderCalendarEvents = (dateKey: string) => {
         const dayEvents = eventsByDate[dateKey] || [];
         console.log(`Rendering events for ${dateKey}:`, dayEvents.length, 'events', dayEvents);
@@ -321,61 +367,56 @@ export function TimeSlotCalendar({
                     const eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(timeZone);
                     const eventEnd = DateTime.fromISO(event.end_time, { zone: 'utc' }).setZone(timeZone);
 
-                    // Calculate position based on the time slot grid
-                    const granularityMinutes = parseInt(granularity);
-                    const timeSlotHeight = 32; // h-8 = 32px
-                    const timeSlotGap = 4; // space-y-1 = 4px
-                    const totalSlotHeight = timeSlotHeight + timeSlotGap;
+                    // Use the same positioning logic as the proven calendar grid view
+                    const slotHeight = 32; // 30-minute slot height (h-8)
+                    const slotsPerHour = 2; // 2 slots per hour (30-minute intervals)
+                    const gridStartHour = businessHours.start;
 
-                    // Calculate minutes from business hours start
-                    const dayStart = DateTime.fromISO(dateKey).setZone(timeZone).set({ hour: businessHours.start, minute: 0 });
+                    // Calculate position in 30-minute slots
+                    const startHour = eventStart.hour;
+                    const startMinute = eventStart.minute;
+                    const hoursFromStart = startHour - gridStartHour;
+                    const minutesOffset = startMinute / 30;
+                    const startSlots = hoursFromStart * slotsPerHour + minutesOffset;
+                    const topPixels = Math.max(0, startSlots * slotHeight);
 
-                    // Convert event times to the user's timezone for positioning
-                    const eventStartInTz = eventStart.setZone(timeZone);
-                    const eventEndInTz = eventEnd.setZone(timeZone);
-
-                    const eventStartMinutes = Math.max(0, eventStartInTz.diff(dayStart, 'minutes').minutes);
-                    const eventEndMinutes = Math.max(0, eventEndInTz.diff(dayStart, 'minutes').minutes);
-                    const eventDurationMinutes = eventEndMinutes - eventStartMinutes;
-
-                    // Find which time slot this event starts in
-                    const slotIndex = Math.floor(eventStartMinutes / granularityMinutes);
-                    const topPosition = slotIndex * totalSlotHeight;
-
-                    // Calculate how many slots this event spans
-                    const slotSpan = Math.ceil(eventDurationMinutes / granularityMinutes);
-                    const height = Math.max(32, slotSpan * totalSlotHeight - timeSlotGap); // Minimum height of one slot
+                    // Calculate height based on duration
+                    const durationMinutes = eventEnd.diff(eventStart, 'minutes').minutes;
+                    const durationSlots = Math.max(1, durationMinutes / 30); // Minimum 1 slot (30 minutes)
+                    const heightPixels = durationSlots * slotHeight; // Use exact slot height
 
                     console.log(`Event "${event.title}":`, {
                         eventStart: eventStart.toFormat('HH:mm'),
                         eventEnd: eventEnd.toFormat('HH:mm'),
-                        eventStartInTz: eventStartInTz.toFormat('HH:mm'),
-                        eventEndInTz: eventEndInTz.toFormat('HH:mm'),
+                        eventStartInTz: eventStart.toFormat('HH:mm'),
+                        eventEndInTz: eventEnd.toFormat('HH:mm'),
                         timeZone,
-                        eventStartMinutes,
-                        eventDurationMinutes,
-                        slotIndex,
-                        topPosition,
-                        slotSpan,
-                        height,
-                        granularityMinutes,
-                        businessHours
+                        startHour,
+                        startMinute,
+                        hoursFromStart,
+                        minutesOffset,
+                        startSlots,
+                        topPixels,
+                        durationMinutes,
+                        durationSlots,
+                        heightPixels,
+                        gridStartHour
                     });
 
                     return (
                         <div
                             key={`${event.id}-${index}`}
-                            className="absolute left-0 right-0 mx-1 bg-blue-100/80 border border-blue-300/60 rounded text-xs text-blue-800 px-1 py-0.5 overflow-hidden"
+                            className="absolute left-1 right-1 bg-blue-100/80 border border-blue-300/60 rounded text-xs text-blue-800 px-1 py-0.5 overflow-hidden"
                             style={{
-                                top: `${topPosition}px`,
-                                height: `${height}px`,
+                                top: `${topPixels}px`,
+                                height: `${heightPixels}px`,
                                 pointerEvents: 'none'
                             }}
-                            title={`${event.title} (${eventStartInTz.toFormat('h:mm a')} - ${eventEndInTz.toFormat('h:mm a')})`}
+                            title={`${event.title} (${eventStart.toFormat('h:mm a')} - ${eventEnd.toFormat('h:mm a')})`}
                         >
                             <div className="truncate font-medium text-blue-900">{event.title}</div>
                             <div className="truncate text-blue-700">
-                                {eventStartInTz.toFormat('h:mm a')} - {eventEndInTz.toFormat('h:mm a')}
+                                {eventStart.toFormat('h:mm a')} - {eventEnd.toFormat('h:mm a')}
                             </div>
                         </div>
                     );
@@ -441,50 +482,71 @@ export function TimeSlotCalendar({
                             ))}
                         </div>
 
-                        {/* Time Slots Grid */}
-                        <div className={`grid gap-1 p-2`} style={{
-                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(60px, 1fr))`
-                        }}>
-                            {/* Time labels */}
-                            <div className="space-y-1">
-                                {Array.from({ length: timeSlotCount }, (_, i) => {
-                                    const hour = businessHours.start + Math.floor(i * parseInt(granularity) / 60);
-                                    const minute = (i * parseInt(granularity)) % 60;
-                                    const time = new Date();
-                                    time.setHours(hour, minute, 0, 0);
-                                    return (
-                                        <div key={i} className="h-8 flex items-center text-xs text-muted-foreground">
-                                            {formatTime(time.toISOString())}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Time slot cells */}
-                            {dateChunk.map(dateKey => (
-                                <div key={dateKey} className="space-y-1 relative">
-                                    {/* Calendar events background layer */}
-                                    {renderCalendarEvents(dateKey)}
-
-                                    {/* Time slot buttons on top */}
-                                    {slotsByDate[dateKey].map((slot, slotIndex) => (
-                                        <button
-                                            key={slotIndex}
-                                            type="button"
-                                            onClick={() => handleSlotClick(slot)}
-                                            className={`
-                                                w-full h-8 rounded border text-xs transition-colors relative z-10
-                                                ${slot.isSelected
-                                                    ? 'bg-teal-600/50 border-teal-700 text-teal-800 hover:bg-teal-600/70'
-                                                    : 'bg-transparent border-gray-300 hover:bg-gray-50/50 hover:border-gray-400'
-                                                }
-                                            `}
-                                            title={`Click to ${slot.isSelected ? 'deselect' : 'select'} this time slot`}
-                                        >
-                                        </button>
-                                    ))}
+                        {/* Time Slots Grid - using proven calendar grid structure */}
+                        <div className="relative">
+                            <div
+                                className="grid"
+                                style={{
+                                    gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(60px, 1fr))`,
+                                    minWidth: `${100 + (dateChunk.length * 60)}px`
+                                }}
+                            >
+                                {/* Time Labels */}
+                                <div className="border-r">
+                                    {Array.from({ length: timeSlotCount }, (_, i) => {
+                                        const hour = businessHours.start + Math.floor(i * parseInt(granularity) / 60);
+                                        const minute = (i * parseInt(granularity)) % 60;
+                                        const time = new Date();
+                                        time.setHours(hour, minute, 0, 0);
+                                        return (
+                                            <div key={i} className="h-8 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500">
+                                                {minute === 0 ? formatTime(time.toISOString()) : ''}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+
+                                {/* Day Columns */}
+                                {dateChunk.map(dateKey => (
+                                    <div key={dateKey} className="border-r relative">
+                                        {/* Horizontal lines for each time slot */}
+                                        {Array.from({ length: timeSlotCount }, (_, i) => (
+                                            <div
+                                                key={`line-${i}`}
+                                                className="absolute left-0 right-0 border-b border-gray-100"
+                                                style={{
+                                                    top: `${i * 32}px`,
+                                                    height: '1px'
+                                                }}
+                                            />
+                                        ))}
+
+                                        {/* Calendar events background layer */}
+                                        {renderCalendarEvents(dateKey)}
+
+                                        {/* Time slot buttons on top */}
+                                        {slotsByDate[dateKey].map((slot, slotIndex) => (
+                                            <button
+                                                key={slotIndex}
+                                                type="button"
+                                                onClick={() => handleSlotClick(slot)}
+                                                className={`
+                                                    absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
+                                                    ${slot.isSelected
+                                                        ? 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
+                                                        : 'bg-transparent border border-transparent hover:bg-gray-50/50 hover:border-gray-400'
+                                                    }
+                                                `}
+                                                style={{
+                                                    top: `${slotIndex * 32}px`
+                                                }}
+                                                title={`Click to ${slot.isSelected ? 'deselect' : 'select'} this time slot`}
+                                            >
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
