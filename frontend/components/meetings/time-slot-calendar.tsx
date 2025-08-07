@@ -180,8 +180,13 @@ export function TimeSlotCalendar({
 
                 start.setTime(currentStart.getTime());
                 end.setTime(currentEnd.getTime());
+            }
 
-
+            // Ensure start date never goes before today
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (start < today) {
+                start.setTime(today.getTime());
             }
 
             return { startDate: start, endDate: end };
