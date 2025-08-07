@@ -135,7 +135,22 @@ export function TimeSlotCalendar({
         }
     }, [dateRangeType, targetDate, rangeDays, dateRange, includeWeekends]);
 
-    // Generate time slots for the date range
+    // Group calendar events by date for conflict detection (moved before timeSlots calculation)
+    const eventsByDateForConflicts = useMemo(() => {
+        const grouped: Record<string, CalendarEvent[]> = {};
+        calendarEvents.forEach(event => {
+            // Use the event's start time in the user's timezone to determine the date
+            const eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(timeZone);
+            const dateKey = eventStart.toFormat('yyyy-MM-dd');
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = [];
+            }
+            grouped[dateKey].push(event);
+        });
+        return grouped;
+    }, [calendarEvents, timeZone]);
+
+    // Generate time slots for the date range (without selection state)
     const timeSlots = useMemo(() => {
         const slots: TimeSlot[] = [];
         const granularityMinutes = parseInt(granularity);
@@ -151,8 +166,6 @@ export function TimeSlotCalendar({
             current.setDate(current.getDate() + 1);
         }
 
-
-
         // Generate time slots for each date
         dates.forEach(date => {
             const startHour = businessHours.start;
@@ -166,8 +179,11 @@ export function TimeSlotCalendar({
                     const slotEnd = new Date(slotStart);
                     slotEnd.setMinutes(slotEnd.getMinutes() + duration);
 
-                    // Check for conflicts with calendar events using timezone-aware comparison
-                    const conflictEvents = calendarEvents.filter(event => {
+                    // Check for conflicts with calendar events on the same day only
+                    const dateKey = date.toISOString().split('T')[0];
+                    const dayEvents = eventsByDateForConflicts[dateKey] || [];
+
+                    const conflictEvents = dayEvents.filter(event => {
                         // Parse event times as UTC and convert to user's timezone
                         const eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(timeZone);
                         const eventEnd = DateTime.fromISO(event.end_time, { zone: 'utc' }).setZone(timeZone);
@@ -181,50 +197,7 @@ export function TimeSlotCalendar({
                         // Slot: [slotStartInTz, slotEndInTz)
                         // Event: [eventStart, eventEnd)
                         // For non-inclusive end times, we need slotStart < eventEnd AND slotEnd > eventStart
-                        // This means:
-                        // - Slot starts before event ends (allows slot to start when event ends)
-                        // - Slot ends after event starts (allows slot to end when event starts)
-                        // Examples:
-                        // - Slot 9:00-9:30, Event 9:30-10:00: No conflict (9:30 > 9:30 is false)
-                        // - Slot 10:00-10:30, Event 9:30-10:00: No conflict (10:00 < 10:00 is false)
                         const hasConflict = slotStartInTz < eventEnd && slotEndInTz > eventStart;
-
-                        // Debug logging for conflict detection
-                        if (slotStartInTz.toFormat('HH:mm') === '10:30' && event.title === 'Daily Standup') {
-                            console.log('Conflict check for 10:30 slot:', {
-                                slotStart: slotStartInTz.toFormat('HH:mm'),
-                                slotEnd: slotEndInTz.toFormat('HH:mm'),
-                                eventStart: eventStart.toFormat('HH:mm'),
-                                eventEnd: eventEnd.toFormat('HH:mm'),
-                                hasConflict,
-                                slotStartBeforeEventEnd: slotStartInTz < eventEnd,
-                                slotEndAfterEventStart: slotEndInTz > eventStart
-                            });
-                        }
-
-                        // Debug logging for 9:30 slot to understand why it's not being selected
-                        if (slotStartInTz.toFormat('HH:mm') === '09:30') {
-                            console.log('Conflict check for 9:30 slot with', event.title, ':', {
-                                slotStart: slotStartInTz.toFormat('HH:mm'),
-                                slotEnd: slotEndInTz.toFormat('HH:mm'),
-                                eventStart: eventStart.toFormat('HH:mm'),
-                                eventEnd: eventEnd.toFormat('HH:mm'),
-                                hasConflict,
-                                slotStartBeforeEventEnd: slotStartInTz < eventEnd,
-                                slotEndAfterEventStart: slotEndInTz > eventStart
-                            });
-                        }
-
-                        // Also log all conflict checks for debugging
-                        if (slotStartInTz.toFormat('HH:mm') === '10:30') {
-                            console.log('All conflict checks for 10:30 slot with', event.title, ':', {
-                                slotStart: slotStartInTz.toFormat('HH:mm'),
-                                slotEnd: slotEndInTz.toFormat('HH:mm'),
-                                eventStart: eventStart.toFormat('HH:mm'),
-                                eventEnd: eventEnd.toFormat('HH:mm'),
-                                hasConflict
-                            });
-                        }
 
                         return hasConflict;
                     });
@@ -234,9 +207,7 @@ export function TimeSlotCalendar({
                     slots.push({
                         start: slotStart.toISOString(),
                         end: slotEnd.toISOString(),
-                        isSelected: selectedTimeSlots.some(
-                            slot => slot.start === slotStart.toISOString() && slot.end === slotEnd.toISOString()
-                        ),
+                        isSelected: false, // Will be calculated separately
                         isConflict,
                         conflictEvents
                     });
@@ -245,7 +216,12 @@ export function TimeSlotCalendar({
         });
 
         return slots;
-    }, [effectiveDateRange, includeWeekends, granularity, businessHours, duration, calendarEvents, selectedTimeSlots]);
+    }, [effectiveDateRange, includeWeekends, granularity, businessHours, duration, eventsByDateForConflicts]);
+
+    // Create a Set for fast selection lookup
+    const selectedSlotsSet = useMemo(() => {
+        return new Set(selectedTimeSlots.map(slot => `${slot.start}-${slot.end}`));
+    }, [selectedTimeSlots]);
 
     // Group calendar events by date for display
     const eventsByDate = useMemo(() => {
@@ -525,25 +501,28 @@ export function TimeSlotCalendar({
                                         {renderCalendarEvents(dateKey)}
 
                                         {/* Time slot buttons on top */}
-                                        {slotsByDate[dateKey].map((slot, slotIndex) => (
-                                            <button
-                                                key={slotIndex}
-                                                type="button"
-                                                onClick={() => handleSlotClick(slot)}
-                                                className={`
-                                                    absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
-                                                    ${slot.isSelected
-                                                        ? 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
-                                                        : 'bg-transparent border border-transparent hover:bg-gray-50/50 hover:border-gray-400'
-                                                    }
-                                                `}
-                                                style={{
-                                                    top: `${slotIndex * 32}px`
-                                                }}
-                                                title={`Click to ${slot.isSelected ? 'deselect' : 'select'} this time slot`}
-                                            >
-                                            </button>
-                                        ))}
+                                        {slotsByDate[dateKey].map((slot, slotIndex) => {
+                                            const isSelected = selectedSlotsSet.has(`${slot.start}-${slot.end}`);
+                                            return (
+                                                <button
+                                                    key={slotIndex}
+                                                    type="button"
+                                                    onClick={() => handleSlotClick(slot)}
+                                                    className={`
+                                                        absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
+                                                        ${isSelected
+                                                            ? 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
+                                                            : 'bg-transparent border border-transparent hover:bg-gray-50/50 hover:border-gray-400'
+                                                        }
+                                                    `}
+                                                    style={{
+                                                        top: `${slotIndex * 32}px`
+                                                    }}
+                                                    title={`Click to ${isSelected ? 'deselect' : 'select'} this time slot`}
+                                                >
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 ))}
                             </div>
