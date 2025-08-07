@@ -25,7 +25,7 @@ const TRACKING_PATTERNS = {
     },
     usps: {
         primary: /[0-9]{20}/g, // USPS 20-digit
-        alternate: [/[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g, /[0-9]{26}/g] // USPS alternate formats including 26-digit
+        alternate: [/[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g] // USPS alternate formats (26-digit handled separately)
     },
     dhl: {
         primary: /[0-9]{10}/g, // DHL 10-digit
@@ -33,7 +33,7 @@ const TRACKING_PATTERNS = {
     },
     amazon: {
         primary: /TBA[0-9]{10}/g, // Amazon TBA format
-        alternate: [/[0-9]{10,}/g] // Generic numeric fallback
+        alternate: [/[0-9]{10,19}/g, /[0-9]{21,25}/g, /[0-9]{27,}/g] // Generic numeric fallback (excluding 20-digit and 26-digit)
     }
 };
 
@@ -241,6 +241,7 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
         // Special case: Amazon shipments - boost confidence for Amazon tracking numbers
         if (isAmazonShipment(senderEmail, subject, body)) {
             result.isShipmentEmail = true;
+            // Always set carrier to Amazon for Amazon shipments, regardless of tracking numbers
             result.detectedCarrier = 'amazon';
             result.confidence = 0.8;
             result.detectedFrom = 'sender';
