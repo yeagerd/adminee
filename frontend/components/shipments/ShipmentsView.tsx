@@ -1,10 +1,12 @@
 import { usePagination } from '@/hooks/use-pagination';
+import { PackageStatus } from '@/lib/package-status';
 import { PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import ShipmentDetailsModal from './ShipmentDetailsModal';
 import ShipmentsList, { ShipmentItem } from './ShipmentsList';
 
 interface ShipmentsViewProps {
@@ -23,6 +25,10 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
     const [carrierFilter, setCarrierFilter] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState<string>('');
+
+    // Modal states
+    const [selectedShipment, setSelectedShipment] = useState<PackageResponse | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Pagination hook
     const {
@@ -136,13 +142,31 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
     }, [handleFilterChange]);
 
     const handleRowClick = (shipment: ShipmentItem) => {
-        // Handle row click - could open details modal
-        console.log('Shipment clicked:', shipment);
+        // Convert ShipmentItem to PackageResponse for the modal
+        const packageResponse: PackageResponse = {
+            id: shipment.id,
+            tracking_number: shipment.tracking_number,
+            carrier: shipment.carrier,
+            status: shipment.status as PackageStatus, // Type assertion needed due to interface differences
+            estimated_delivery: shipment.estimated_delivery,
+            actual_delivery: shipment.actual_delivery,
+            recipient_name: shipment.recipient_name,
+            shipper_name: undefined, // Not available in ShipmentItem
+            package_description: shipment.package_description,
+            order_number: undefined, // Not available in ShipmentItem
+            tracking_link: shipment.tracking_link,
+            updated_at: shipment.updated_at,
+            events_count: shipment.events_count || 0,
+            labels: shipment.labels || [],
+        };
+
+        setSelectedShipment(packageResponse);
+        setIsModalOpen(true);
     };
 
     const handleViewDetails = (shipment: ShipmentItem) => {
-        // Handle view details
-        console.log('View details for:', shipment);
+        // Same as handleRowClick - open the modal
+        handleRowClick(shipment);
     };
 
     const handleTrackPackage = (shipment: ShipmentItem) => {
@@ -153,6 +177,35 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
     const handleSort = (field: string) => {
         // Handle sorting - would need to be implemented with the API
         console.log('Sort by:', field);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedShipment(null);
+    };
+
+    const handleShipmentUpdated = (updatedShipment: PackageResponse) => {
+        // Update the shipment in the local state
+        setShipments(prevShipments =>
+            prevShipments.map(shipment =>
+                shipment.id === updatedShipment.id
+                    ? {
+                        ...shipment,
+                        tracking_number: updatedShipment.tracking_number,
+                        carrier: updatedShipment.carrier,
+                        status: updatedShipment.status,
+                        estimated_delivery: updatedShipment.estimated_delivery,
+                        actual_delivery: updatedShipment.actual_delivery,
+                        recipient_name: updatedShipment.recipient_name,
+                        package_description: updatedShipment.package_description,
+                        tracking_link: updatedShipment.tracking_link,
+                        updated_at: updatedShipment.updated_at,
+                        events_count: updatedShipment.events_count,
+                        labels: updatedShipment.labels,
+                    }
+                    : shipment
+            )
+        );
     };
 
     return (
@@ -224,6 +277,16 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
                 emptyMessage="No shipments found."
                 loadingMessage="Loading shipments..."
             />
+
+            {/* Shipment Details Modal */}
+            {selectedShipment && (
+                <ShipmentDetailsModal
+                    isOpen={isModalOpen}
+                    onClose={handleCloseModal}
+                    shipment={selectedShipment}
+                    onShipmentUpdated={handleShipmentUpdated}
+                />
+            )}
         </div>
     );
 }

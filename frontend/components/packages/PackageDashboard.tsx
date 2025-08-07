@@ -8,6 +8,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
+import ShipmentDetailsModal from '../shipments/ShipmentDetailsModal';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -18,7 +19,6 @@ import { TableCell } from '../ui/table';
 import type { Package } from './AddPackageModal';
 import AddPackageModal from './AddPackageModal';
 import LabelChip from './LabelChip';
-import PackageDetails from './PackageDetails';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -563,11 +563,51 @@ export default function PackageDashboard() {
                 />
             )}
 
-            {selectedPackage && (
-                <PackageDetails
-                    pkg={selectedPackage}
+            {selectedPackage && selectedPackage.id && (
+                <ShipmentDetailsModal
+                    isOpen={!!selectedPackage}
                     onClose={() => setSelectedPackage(null)}
-                    onRefresh={refreshPackages}
+                    shipment={{
+                        id: selectedPackage.id,
+                        tracking_number: selectedPackage.tracking_number,
+                        carrier: selectedPackage.carrier,
+                        status: selectedPackage.status,
+                        estimated_delivery: selectedPackage.estimated_delivery,
+                        actual_delivery: selectedPackage.actual_delivery,
+                        recipient_name: selectedPackage.recipient_name,
+                        shipper_name: selectedPackage.shipper_name,
+                        package_description: selectedPackage.package_description,
+                        order_number: selectedPackage.order_number,
+                        tracking_link: selectedPackage.tracking_link,
+                        updated_at: selectedPackage.updated_at || new Date().toISOString(),
+                        events_count: selectedPackage.events?.length || 0,
+                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label?.name || '') || [],
+                    }}
+                    onShipmentUpdated={(updatedPackage) => {
+                        // Update the package in the local state
+                        setPackages(prevPackages =>
+                            prevPackages.map(pkg =>
+                                pkg.id === updatedPackage.id
+                                    ? {
+                                        ...pkg,
+                                        tracking_number: updatedPackage.tracking_number,
+                                        carrier: updatedPackage.carrier,
+                                        status: updatedPackage.status,
+                                        estimated_delivery: updatedPackage.estimated_delivery,
+                                        actual_delivery: updatedPackage.actual_delivery,
+                                        recipient_name: updatedPackage.recipient_name,
+                                        shipper_name: updatedPackage.shipper_name,
+                                        package_description: updatedPackage.package_description,
+                                        order_number: updatedPackage.order_number,
+                                        tracking_link: updatedPackage.tracking_link,
+                                        updated_at: updatedPackage.updated_at,
+                                        events_count: updatedPackage.events_count,
+                                        labels: updatedPackage.labels,
+                                    }
+                                    : pkg
+                            )
+                        );
+                    }}
                 />
             )}
         </div>
