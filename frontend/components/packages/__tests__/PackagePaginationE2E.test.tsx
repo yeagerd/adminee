@@ -550,7 +550,7 @@ describe('Package Pagination E2E', () => {
 
             // Verify cached data was used (no additional API calls for same page)
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledTimes(3); // Initial + next + prev
+                expect(gatewayClient.getPackages).toHaveBeenCalledTimes(2); // Initial + next (prev uses cache)
             });
         });
     });

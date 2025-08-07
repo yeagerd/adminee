@@ -68,8 +68,7 @@ export default function PackageDashboard() {
     const [paginationLoading, setPaginationLoading] = useState(false);
 
     // Performance optimizations
-    // Temporarily disable cache to fix the structure mismatch
-    // const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
+    const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
 
     // Load state from URL on mount
     useEffect(() => {
@@ -93,25 +92,24 @@ export default function PackageDashboard() {
     }, [searchParams]);
 
     // Cursor caching functions
-    // Temporarily disable cache to fix the structure mismatch
-    // const getCachedData = useCallback((cacheKey: string) => {
-    //     return cursorCache.get(cacheKey);
-    // }, [cursorCache]);
+    const getCachedData = useCallback((cacheKey: string) => {
+        return cursorCache.get(cacheKey);
+    }, [cursorCache]);
 
-    // const setCachedData = useCallback((cacheKey: string, data: unknown) => {
-    //     setCursorCache(prev => {
-    //         const newCache = new Map(prev);
-    //         newCache.set(cacheKey, data);
-    //         // Limit cache size to prevent memory leaks
-    //         if (newCache.size > 50) {
-    //             const firstKey = newCache.keys().next().value;
-    //             if (firstKey) {
-    //                 newCache.delete(firstKey);
-    //         }
-    //         }
-    //         return newCache;
-    //     });
-    // }, []);
+    const setCachedData = useCallback((cacheKey: string, data: unknown) => {
+        setCursorCache(prev => {
+            const newCache = new Map(prev);
+            newCache.set(cacheKey, data);
+            // Limit cache size to prevent memory leaks
+            if (newCache.size > 50) {
+                const firstKey = newCache.keys().next().value;
+                if (firstKey) {
+                    newCache.delete(firstKey);
+                }
+            }
+            return newCache;
+        });
+    }, []);
 
     // Main data loading function
     const loadData = useCallback(async (cursor: string | null = null, direction: 'next' | 'prev' = 'next') => {
@@ -131,8 +129,10 @@ export default function PackageDashboard() {
                 direction
             };
 
-            if (cursor) {
-                filterParams.cursor = cursor;
+            // Use cursor from parameter or from URL
+            const cursorToUse = cursor || searchParams.get('cursor');
+            if (cursorToUse) {
+                filterParams.cursor = cursorToUse;
             }
 
             // Add status filters if selected
@@ -151,31 +151,30 @@ export default function PackageDashboard() {
             }
 
             // Check cache first
-            // const cacheKey = JSON.stringify(filterParams);
-            // Temporarily disable cache to fix the structure mismatch
-            // const cachedData = getCachedData(cacheKey);
-            // if (cachedData && typeof cachedData === 'object' && 'packages' in cachedData) {
-            //     const cached = cachedData as { packages: Package[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean };
-            //     setPackages(cached.packages || []);
-            //     setNextCursor(cached.next_cursor || null);
-            //     setPrevCursor(cached.prev_cursor || null);
-            //     setHasNext(cached.has_next);
-            //     setHasPrev(cached.has_prev);
-            //     setCurrentCursor(cursor);
-            //     return;
-            // }
+            const cacheKey = JSON.stringify(filterParams);
+            const cachedData = getCachedData(cacheKey);
+            if (cachedData && typeof cachedData === 'object' && 'packages' in cachedData) {
+                const cached = cachedData as { packages: Package[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean };
+                setPackages(cached.packages || []);
+                setNextCursor(cached.next_cursor || null);
+                setPrevCursor(cached.prev_cursor || null);
+                setHasNext(cached.has_next);
+                setHasPrev(cached.has_prev);
+                setCurrentCursor(cursorToUse);
+                return;
+            }
 
             const res = await gatewayClient.getPackages(filterParams);
 
             // Cache the result
-            // setCachedData(cacheKey, res);
+            setCachedData(cacheKey, res);
 
             setPackages(res.packages || []);
             setNextCursor(res.next_cursor || null);
             setPrevCursor(res.prev_cursor || null);
             setHasNext(res.has_next);
             setHasPrev(res.has_prev);
-            setCurrentCursor(cursor);
+            setCurrentCursor(cursorToUse);
 
         } catch (err) {
             let errorMessage = 'Failed to fetch packages';
@@ -199,7 +198,7 @@ export default function PackageDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, getCachedData, setCachedData, searchParams]);
 
     // Load first page on mount and when filters change
     useEffect(() => {
@@ -309,6 +308,12 @@ export default function PackageDashboard() {
         setPaginationLoading(true);
         try {
             await loadData(nextCursor, 'next');
+
+            // Update URL with cursor
+            const newSearchParams = new URLSearchParams(searchParams.toString());
+            newSearchParams.set('cursor', nextCursor);
+            const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
+            router.push(newURL, { scroll: false });
         } finally {
             setPaginationLoading(false);
         }
@@ -320,6 +325,12 @@ export default function PackageDashboard() {
         setPaginationLoading(true);
         try {
             await loadData(prevCursor, 'prev');
+
+            // Update URL with cursor
+            const newSearchParams = new URLSearchParams(searchParams.toString());
+            newSearchParams.set('cursor', prevCursor);
+            const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
+            router.push(newURL, { scroll: false });
         } finally {
             setPaginationLoading(false);
         }
