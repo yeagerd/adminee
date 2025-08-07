@@ -35,7 +35,7 @@ os.environ["PUBSUB_EMULATOR_HOST"] = "localhost:8085"
 os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
 
 try:
-    from google.cloud import pubsub_v1
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 except ImportError:
     print(
         "Error: google-cloud-pubsub not installed. "
