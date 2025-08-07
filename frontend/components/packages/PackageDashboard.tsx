@@ -57,7 +57,6 @@ export default function PackageDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
     const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
@@ -299,11 +298,6 @@ export default function PackageDashboard() {
         }
     };
 
-    const handleCellEdit = (id: string, field: string, value: string) => {
-        // Implementation for cell editing
-        console.log('Cell edit:', { id, field, value });
-    };
-
     const handleAddPackage = async () => {
         setShowAddModal(true);
     };
@@ -354,68 +348,10 @@ export default function PackageDashboard() {
     // Row renderer function
     const renderPackageRow = (pkg: Package) => (
         <>
-            <TableCell onClick={e => e.stopPropagation()}>
-                {editingCell?.id === pkg.id && editingCell?.field === 'tracking_number' ? (
-                    <Input
-                        defaultValue={pkg.tracking_number}
-                        onBlur={e => handleCellEdit(pkg.id!, 'tracking_number', e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'tracking_number', e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCell(null);
-                        }}
-                        autoFocus
-                    />
-                ) : (
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => setEditingCell({ id: pkg.id!, field: 'tracking_number' })}
-                    >
-                        {pkg.tracking_number}
-                    </span>
-                )}
-            </TableCell>
+            <TableCell>{pkg.tracking_number}</TableCell>
             <TableCell><Badge>{pkg.status}</Badge></TableCell>
-            <TableCell onClick={e => e.stopPropagation()}>
-                {editingCell?.id === pkg.id && editingCell?.field === 'estimated_delivery' ? (
-                    <Input
-                        type="date"
-                        defaultValue={pkg.estimated_delivery}
-                        onBlur={e => handleCellEdit(pkg.id!, 'estimated_delivery', e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'estimated_delivery', e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCell(null);
-                        }}
-                        autoFocus
-                    />
-                ) : (
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => setEditingCell({ id: pkg.id!, field: 'estimated_delivery' })}
-                    >
-                        {pkg.estimated_delivery}
-                    </span>
-                )}
-            </TableCell>
-            <TableCell onClick={e => e.stopPropagation()}>
-                {editingCell?.id === pkg.id && editingCell?.field === 'package_description' ? (
-                    <Input
-                        defaultValue={pkg.package_description}
-                        onBlur={e => handleCellEdit(pkg.id!, 'package_description', e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'package_description', e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCell(null);
-                        }}
-                        autoFocus
-                    />
-                ) : (
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => setEditingCell({ id: pkg.id!, field: 'package_description' })}
-                    >
-                        {pkg.package_description}
-                    </span>
-                )}
-            </TableCell>
+            <TableCell>{pkg.estimated_delivery}</TableCell>
+            <TableCell>{pkg.package_description}</TableCell>
             <TableCell>
                 <div className="flex flex-wrap gap-1">
                     {(pkg.labels || []).map((label: string | { name: string }, idx: number) => (
