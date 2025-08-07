@@ -175,7 +175,7 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
             expect(calledSlots.length).toBeGreaterThan(0);
             
             // All selected slots should be on business days
-            calledSlots.forEach((slot: any) => {
+            calledSlots.forEach((slot: { start: string; end: string }) => {
                 const slotDate = new Date(slot.start);
                 const dayOfWeek = slotDate.getDay();
                 expect(dayOfWeek).toBeGreaterThanOrEqual(1); // Monday
