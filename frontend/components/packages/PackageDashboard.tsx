@@ -259,10 +259,10 @@ export default function PackageDashboard() {
     }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, searchParams, router]);
 
     const filteredAndSortedPackages = useMemo(() => {
-        let filtered = [...packages];
+        const filtered = [...packages];
 
         // Apply sorting
-        filtered.sort((a, b) => {
+        return filtered.sort((a, b) => {
             let aValue: string | number | undefined = a[sortField as keyof Package] as string | number | undefined;
             let bValue: string | number | undefined = b[sortField as keyof Package] as string | number | undefined;
 
@@ -284,8 +284,6 @@ export default function PackageDashboard() {
                 return (aValue ?? '') > (bValue ?? '') ? -1 : (aValue ?? '') < (bValue ?? '') ? 1 : 0;
             }
         });
-
-        return filtered;
     }, [packages, sortField, sortDirection]);
 
     const handleSort = (field: string) => {

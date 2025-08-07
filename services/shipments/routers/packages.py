@@ -273,8 +273,8 @@ async def list_packages(
             # Filter packages with estimated_delivery >= days_ago
             # Include packages with null estimated_delivery (they should be shown)
             query = query.where(
-                (Package.estimated_delivery.is_not(None) & (Package.estimated_delivery >= days_ago))  # type: ignore[operator]
-                | (Package.estimated_delivery.is_(None))
+                (Package.estimated_delivery.isnot(None) & (Package.estimated_delivery >= days_ago))  # type: ignore[operator,union-attr]
+                | (Package.estimated_delivery.is_(None))  # type: ignore[union-attr]
             )
 
     # Add ordering
