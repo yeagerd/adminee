@@ -62,7 +62,7 @@ class UserCursorPagination(BaseCursorPagination):
             # (created_at = last_created_at AND id > last_id)
             filters["cursor_filter"] = (
                 "(created_at > :last_created_at) OR "
-                "(created_at = last_created_at AND id > last_id)"
+                "(created_at = :last_created_at AND id > :last_id)"
             )
             filters["cursor_params"] = {
                 "last_created_at": _parse_iso_datetime(cursor_info.last_timestamp),
@@ -73,7 +73,7 @@ class UserCursorPagination(BaseCursorPagination):
             # (created_at = last_created_at AND id < last_id)
             filters["cursor_filter"] = (
                 "(created_at < :last_created_at) OR "
-                "(created_at = last_created_at AND id < last_id)"
+                "(created_at = :last_created_at AND id < :last_id)"
             )
             filters["cursor_params"] = {
                 "last_created_at": _parse_iso_datetime(cursor_info.last_timestamp),

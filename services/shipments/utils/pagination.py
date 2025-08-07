@@ -62,7 +62,7 @@ class ShipmentsCursorPagination(BaseCursorPagination):
             # (updated_at = last_updated AND id > last_id)
             filters["cursor_filter"] = (
                 "(updated_at > :last_updated) OR "
-                "(updated_at = last_updated AND id > last_id)"
+                "(updated_at = :last_updated AND id > :last_id)"
             )
             filters["cursor_params"] = {
                 "last_updated": _parse_iso_datetime(cursor_info.last_timestamp),
@@ -73,7 +73,7 @@ class ShipmentsCursorPagination(BaseCursorPagination):
             # (updated_at = last_updated AND id < last_id)
             filters["cursor_filter"] = (
                 "(updated_at < :last_updated) OR "
-                "(updated_at = last_updated AND id < last_id)"
+                "(updated_at = :last_updated AND id < :last_id)"
             )
             filters["cursor_params"] = {
                 "last_updated": _parse_iso_datetime(cursor_info.last_timestamp),
