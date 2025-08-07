@@ -5,7 +5,7 @@ This module provides user-specific cursor pagination functionality
 extending the common base pagination.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
 from services.common.pagination.base import BaseCursorPagination, CursorInfo
@@ -33,7 +33,7 @@ def _parse_iso_datetime(dt_str: str) -> datetime:
     except ValueError:
         # Try parsing without timezone info (assume UTC)
         dt = datetime.fromisoformat(dt_str)
-        return dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.replace(tzinfo=timezone.utc)
 
 
 class UserCursorPagination(BaseCursorPagination):
