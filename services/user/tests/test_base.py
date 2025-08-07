@@ -27,6 +27,7 @@ class BaseUserManagementTest:
         os.environ["API_CHAT_USER_KEY"] = "test-chat-key"
         os.environ["API_OFFICE_USER_KEY"] = "test-office-key"
         os.environ["API_MEETINGS_USER_KEY"] = "test-meetings-key"
+        os.environ["PAGINATION_SECRET_KEY"] = "test-pagination-secret-key"
 
         # Optional environment variables with test defaults
         os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")

@@ -185,6 +185,7 @@ async def db_setup(monkeypatch):
         api_office_user_key="test-office-key",
         api_meetings_user_key="test-meetings-key",
         token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+        pagination_secret_key="test-pagination-secret-key",
     )
     monkeypatch.setattr("services.user.settings._settings", test_settings)
 

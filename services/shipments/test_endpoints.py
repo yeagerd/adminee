@@ -22,6 +22,7 @@ def patch_settings_and_engine():
     test_settings = shipments_settings.Settings(
         db_url_shipments=shared_db_url,
         api_frontend_shipments_key="test-frontend-shipments-key",
+        pagination_secret_key="test-pagination-secret-key",
     )
 
     # Store original settings for cleanup

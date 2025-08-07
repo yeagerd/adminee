@@ -28,6 +28,7 @@ async def setup_test_database():
         api_chat_office_key="test-chat-office-key",
         user_service_url="http://localhost:8001",
         office_service_url="http://localhost:8003",
+        pagination_secret_key="test-pagination-secret-key",
     )
 
     # Save original singleton
