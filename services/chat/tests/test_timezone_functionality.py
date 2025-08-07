@@ -39,6 +39,7 @@ def patch_chat_settings_singleton():
         environment="test",
         log_level="INFO",
         log_format="json",
+        pagination_secret_key="test-pagination-secret-key",
     )
     yield
     chat_settings._settings = None

@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { gatewayClient } from '@/lib/gateway-client';
+import gatewayClient from '@/lib/gateway-client';
 import { EmailFolder } from '@/types/office-service';
 import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';

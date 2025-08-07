@@ -10,13 +10,11 @@ dependencies = [
     "pydantic==2.11.7",
     "structlog>=25.4.0,<26.0.0",
     "httpx>=0.24.0,<1.0.0",
-
     # LLM and AI
     "llama-index>=0.12.0,<0.13.0",
     "llama-index-embeddings-openai>=0.3.0,<0.4.0",
     "llama-index-llms-litellm>=0.3.0,<0.6.0",
     "litellm==1.73.6",
-
     # Database
     "sqlmodel>=0.0.24",
     "sqlalchemy>=2.0.0",
@@ -24,10 +22,8 @@ dependencies = [
     "asyncpg",
     "alembic",
     "greenlet",
-
     # GCP
     "google-cloud-secret-manager",
-
     # OpenTelemetry
     "opentelemetry-api",
     "opentelemetry-sdk",
@@ -35,7 +31,8 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-distro",
-    "opentelemetry-exporter-gcp-trace"
+    "opentelemetry-exporter-gcp-trace",
+    "itsdangerous>=2.2.0",
 ]
 
 [project.optional-dependencies]

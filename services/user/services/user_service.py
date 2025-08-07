@@ -8,26 +8,51 @@ profile management, and user lifecycle management.
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlmodel import func, select
+from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ValidationError
 from services.user.database import get_async_session
 from services.user.models.user import User
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
+)
 from services.user.schemas.user import (
     EmailResolutionRequest,
     EmailResolutionResponse,
     UserCreate,
     UserDeleteResponse,
-    UserListResponse,
     UserOnboardingUpdate,
     UserResponse,
-    UserSearchRequest,
     UserUpdate,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.utils.email_collision import EmailCollisionDetector
 
 logger = audit_logger.logger
+
+
+def _parse_iso_datetime(dt_str: str) -> datetime:
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object with timezone info
+
+    Raises:
+        ValueError: If the string cannot be parsed
+    """
+    try:
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        # Try parsing without timezone info (assume UTC)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=timezone.utc)
 
 
 class UserService:
@@ -527,59 +552,179 @@ class UserService:
 
     async def search_users(self, search_request: UserSearchRequest) -> UserListResponse:
         """
-        Search users with pagination.
+        Search users with cursor-based pagination.
 
         Args:
-            search_request: Search criteria and pagination parameters
+            search_request: Search criteria and cursor pagination parameters
 
         Returns:
-            Paginated user list response
+            Paginated user list response with cursor information
         """
         try:
             async_session = get_async_session()
             async with async_session() as session:
+                # Initialize pagination configuration
+                from common.pagination import PaginationConfig
+
+                from services.user.settings import get_settings
+                from services.user.utils.pagination import UserCursorPagination
+
+                settings = get_settings()
+                pagination_config = PaginationConfig(
+                    secret_key=settings.pagination_secret_key,
+                    token_expiry=settings.pagination_token_expiry,
+                    max_page_size=settings.pagination_max_page_size,
+                    default_page_size=settings.pagination_default_page_size,
+                )
+
+                pagination = UserCursorPagination(pagination_config)
+
+                # Input validation and sanitization
+                if (
+                    search_request.cursor and len(search_request.cursor) > 1000
+                ):  # Reasonable limit for cursor tokens
+                    raise ValidationError(
+                        message="Cursor token too long",
+                        field="cursor",
+                        value=search_request.cursor[:50]
+                        + "...",  # Truncate for security
+                    )
+
+                if search_request.direction and search_request.direction not in [
+                    "next",
+                    "prev",
+                ]:
+                    raise ValidationError(
+                        message="Invalid pagination direction",
+                        field="direction",
+                        value=search_request.direction,
+                    )
+
+                # Audit logging for pagination usage
+                logger.info(
+                    "User search pagination request",
+                    cursor_provided=bool(search_request.cursor),
+                    limit=search_request.limit,
+                    direction=search_request.direction,
+                    filters={
+                        "query": search_request.query,
+                        "email": search_request.email,
+                        "onboarding_completed": search_request.onboarding_completed,
+                    },
+                )
+
+                # Validate and sanitize limit
+                limit = pagination.sanitize_limit(search_request.limit)
+
+                # Decode cursor if provided
+                cursor_info = None
+                if search_request.cursor:
+                    cursor_info = pagination.decode_cursor(search_request.cursor)
+                    if not cursor_info:
+                        raise ValidationError(
+                            message="Invalid or expired cursor token",
+                            field="cursor",
+                            value=search_request.cursor,
+                        )
+
+                # Build filters
+                filters = {}
+                if search_request.query:
+                    filters["query"] = search_request.query
+                if search_request.email:
+                    filters["email"] = search_request.email
+                if search_request.onboarding_completed is not None:
+                    filters["onboarding_completed"] = search_request.onboarding_completed  # type: ignore[assignment]
+
+                # Validate filters
+                validated_filters = pagination.validate_user_filters(filters)
+
                 # Build base query for non-deleted users
                 query = select(User).where(User.deleted_at is None)
 
-                # Apply filters with simple comparisons for now
-                if search_request.email:
-                    query = query.where(User.email == search_request.email)
+                # Add cursor-based filtering if cursor is provided
+                if cursor_info:
+                    # Parse the ISO timestamp string to datetime object
+                    last_timestamp = _parse_iso_datetime(cursor_info.last_timestamp)
 
-                if search_request.onboarding_completed is not None:
+                    if cursor_info.direction == "next":
+                        # For next page: (created_at > last_created_at) OR (created_at = last_created_at AND id > last_id)
+                        query = query.where(
+                            (User.created_at > last_timestamp)  # type: ignore[operator]
+                            | (
+                                (User.created_at == last_timestamp)  # type: ignore[operator]
+                                & (User.id > cursor_info.last_id)  # type: ignore[operator]
+                            )
+                        )
+                    else:
+                        # For previous page: (created_at < last_created_at) OR (created_at = last_created_at AND id < last_id)
+                        query = query.where(
+                            (User.created_at < last_timestamp)  # type: ignore[operator]
+                            | (
+                                (User.created_at == last_timestamp)  # type: ignore[operator]
+                                & (User.id < cursor_info.last_id)  # type: ignore[operator]
+                            )
+                        )
+
+                # Add additional filters
+                if validated_filters.get("email"):
+                    query = query.where(User.email == validated_filters["email"])
+                if validated_filters.get("onboarding_completed") is not None:
                     query = query.where(
-                        User.onboarding_completed == search_request.onboarding_completed
+                        User.onboarding_completed
+                        == validated_filters["onboarding_completed"]
                     )
-
-                if search_request.query:
+                if validated_filters.get("query"):
                     # Search by exact first_name match for simplicity
-                    query = query.where(User.first_name == search_request.query)
+                    query = query.where(User.first_name == validated_filters["query"])
 
-                # Get total count
-                count_query = select(func.count()).select_from(query.subquery())
-                total_result = await session.execute(count_query)
-                total = total_result.scalar() or 0
+                # Add ordering
+                direction = search_request.direction or "next"
+                if direction == "next":
+                    query = query.order_by(User.created_at.asc(), User.id.asc())  # type: ignore[attr-defined,union-attr]
+                else:
+                    query = query.order_by(User.created_at.desc(), User.id.desc())  # type: ignore[attr-defined,union-attr]
 
-                # Apply pagination
-                offset = (search_request.page - 1) * search_request.page_size
-                paginated_query = query.offset(offset).limit(search_request.page_size)
+                # Add limit (fetch one extra to determine if there are more pages)
+                query = query.limit(limit + 1)
 
-                result = await session.execute(paginated_query)
+                # Execute query
+                result = await session.execute(query)
                 users = list(result.scalars().all())
 
-                # Calculate pagination info
-                has_next = (search_request.page * search_request.page_size) < total
-                has_previous = search_request.page > 1
+                # Determine if there are more pages
+                has_next = len(users) > limit
+                has_prev = (
+                    search_request.cursor is not None
+                )  # If we have a cursor, we can go back
 
-                logger.info(f"Found {total} users matching search criteria")
+                # Remove the extra item used for pagination detection
+                if has_next:
+                    users = users[:-1]
 
-                return UserListResponse(
+                # Create cursor info for response
+                current_cursor_info = None
+                if users:
+                    last_user = users[-1]
+                    current_cursor_info = pagination.create_user_cursor_info(
+                        last_id=last_user.id,  # type: ignore[arg-type]
+                        last_created_at=last_user.created_at,
+                        filters=validated_filters,
+                        direction=direction,
+                        limit=limit,
+                    )
+
+                # Create pagination response
+                response = pagination.create_user_pagination_response(
                     users=[UserResponse.from_orm(user) for user in users],
-                    total=total,
-                    page=search_request.page,
-                    page_size=search_request.page_size,
+                    cursor_info=current_cursor_info,
                     has_next=has_next,
-                    has_previous=has_previous,
+                    has_prev=has_prev,
                 )
+
+                logger.info(f"Found {len(users)} users with cursor pagination")
+
+                return UserListResponse(**response)
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")

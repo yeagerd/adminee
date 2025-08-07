@@ -34,6 +34,7 @@ def patch_settings():
         api_chat_office_key="test-chat-office-key",
         api_meetings_office_key="test-meetings-office-key",
         api_office_user_key="test-office-user-key",
+        pagination_secret_key="test-pagination-secret-key",
     )
 
     # Directly set the singleton instead of using monkeypatch

@@ -28,6 +28,7 @@ async def test_lifespan_disposes_engine():
             port=8000,
             debug=False,
             environment="test",
+            pagination_secret_key="test-pagination-secret-key",
         )
 
         # Create a proper async context manager mock

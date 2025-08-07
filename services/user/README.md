@@ -1,4 +1,12 @@
-# User Management Service - OpenTelemetry Configuration
+# User Management Service
+
+This service provides user management, authentication, and profile functionality for Briefly. It uses **cursor-based pagination** for all list endpoints to ensure consistent results and better performance.
+
+## API Documentation
+
+For detailed API documentation including cursor-based pagination examples, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
+
+## OpenTelemetry Configuration
 
 This document outlines how to configure OpenTelemetry for the User Management Service, both for deployment on Google Cloud Run and for local development.
 

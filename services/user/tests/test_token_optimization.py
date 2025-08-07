@@ -32,6 +32,7 @@ def patch_settings():
         api_meetings_user_key="test-meetings-key",
         redis_url="redis://localhost:6379/1",
         environment="test",
+        pagination_secret_key="test-pagination-secret-key",
     )
 
     # Directly set the singleton instead of using monkeypatch

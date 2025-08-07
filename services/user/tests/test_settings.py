@@ -39,6 +39,7 @@ class TestSettings:
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -60,6 +61,7 @@ class TestSettings:
             assert settings.api_chat_user_key == "test-chat-key"
             assert settings.api_office_user_key == "test-office-key"
             assert settings.api_meetings_user_key == "test-meetings-key"
+            assert settings.pagination_secret_key == "test-pagination-secret-key"
 
     def test_environment_variable_override(self):
         """Test that environment variables override default settings."""
@@ -76,6 +78,7 @@ class TestSettings:
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -91,6 +94,7 @@ class TestSettings:
             assert settings.api_chat_user_key == "test-chat-key"
             assert settings.api_office_user_key == "test-office-key"
             assert settings.api_meetings_user_key == "test-meetings-key"
+            assert settings.pagination_secret_key == "test-pagination-secret-key"
 
     def test_security_settings(self):
         """Test security-related settings."""
@@ -103,16 +107,14 @@ class TestSettings:
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
                 "TOKEN_ENCRYPTION_SALT": "test-salt",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
             settings = _TestableSettings()
 
-            assert settings.api_frontend_user_key == "test-frontend-key"
-            assert settings.api_chat_user_key == "test-chat-key"
-            assert settings.api_office_user_key == "test-office-key"
-            assert settings.api_meetings_user_key == "test-meetings-key"
             assert settings.token_encryption_salt == "test-salt"
+            assert settings.pagination_secret_key == "test-pagination-secret-key"
 
     def test_oauth_provider_settings(self):
         """Test OAuth provider configuration."""
@@ -128,6 +130,7 @@ class TestSettings:
                 "GOOGLE_CLIENT_SECRET": "test-google-secret",
                 "AZURE_AD_CLIENT_ID": "test-microsoft-id",
                 "AZURE_AD_CLIENT_SECRET": "test-microsoft-secret",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -151,6 +154,7 @@ class TestSettings:
                 "REDIS_URL": "redis://testhost:6380",
                 "CELERY_BROKER_URL": "redis://testhost:6380/1",
                 "CELERY_RESULT_BACKEND": "redis://testhost:6380/2",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -165,7 +169,10 @@ class TestSettings:
         # Test that settings fail to load without required API keys
         with patch.dict(
             os.environ,
-            {"DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly"},
+            {
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
+            },
             clear=True,
         ):
             with pytest.raises(ValueError):
@@ -181,6 +188,7 @@ class TestSettings:
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -202,6 +210,7 @@ class TestSettings:
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -225,6 +234,7 @@ class TestSettings:
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
                 "service_name": "lowercase-test",
                 "HOST": "uppercase-test",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
             },
             clear=True,
         ):
@@ -256,6 +266,7 @@ class TestSettings:
                     "API_CHAT_USER_KEY": "test-chat-key",
                     "API_OFFICE_USER_KEY": "test-office-key",
                     "API_MEETINGS_USER_KEY": "test-meetings-key",
+                    "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
                     "DEBUG": env_value,
                 },
                 clear=True,
@@ -273,6 +284,7 @@ class TestSettings:
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
                 "PORT": "8080",
             },
             clear=True,
@@ -291,6 +303,7 @@ class TestSettings:
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
                 "API_MEETINGS_USER_KEY": "test-meetings-key",
+                "PAGINATION_SECRET_KEY": "test-pagination-secret-key",
                 "PORT": "8001",
             },
             clear=True,

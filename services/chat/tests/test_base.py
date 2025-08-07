@@ -34,6 +34,7 @@ class BaseChatTest(BaseSelectiveHTTPIntegrationTest):
             office_service_url="http://localhost:8003",
             log_level="INFO",
             log_format="json",
+            pagination_secret_key="test-pagination-secret-key",
         )
 
         # Set the test settings as the singleton

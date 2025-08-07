@@ -43,6 +43,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             user_service_url="http://localhost:8001",
             log_level="INFO",
             log_format="json",
+            pagination_secret_key="test-pagination-secret-key",
         )
         self._original_settings = getattr(meetings_settings, "_settings", None)
         meetings_settings._settings = test_settings

@@ -31,14 +31,16 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
+)
 from services.user.schemas.user import (
     UserBase,
     UserCreate,
     UserDeleteResponse,
-    UserListResponse,
     UserOnboardingUpdate,
     UserResponse,
-    UserSearchRequest,
     UserUpdate,
 )
 

@@ -3,6 +3,9 @@ name = "briefly-meetings"
 version = "0.1.0"
 description = "Meeting Scheduler Service for Briefly"
 requires-python = ">=3.12"
+dependencies = [
+    "itsdangerous>=2.2.0",
+]
 
 [tool.poetry.dependencies]
 fastapi = "^0.110.0"

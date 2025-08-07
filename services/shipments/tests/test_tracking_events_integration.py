@@ -27,6 +27,7 @@ def patch_settings():
     test_settings = shipments_settings.Settings(
         db_url_shipments="sqlite:///:memory:",
         api_frontend_shipments_key="test-frontend-shipments-key",
+        pagination_secret_key="test-pagination-secret-key",
     )
 
     # Directly set the singleton instead of using monkeypatch

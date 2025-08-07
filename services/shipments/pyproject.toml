@@ -34,6 +34,10 @@ dependencies = [
     "opentelemetry-exporter-gcp-trace",
     # GCP
     "google-cloud-secret-manager",
+    # Pagination
+    "itsdangerous>=2.1.0",
+    "pytest-asyncio>=1.0.0",
+    "pyjwt>=2.10.1",
 ]
 
 [project.optional-dependencies]
@@ -49,3 +53,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["*"]
+
+[dependency-groups]
+dev = [
+    "pyjwt>=2.10.1",
+]
