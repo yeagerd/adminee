@@ -651,7 +651,7 @@ export function TimeSlotCalendar({
                             <Label>Days Around Target (±{Math.floor(rangeDays / 2)})</Label>
                             <input
                                 type="range"
-                                min="3"
+                                min="1"
                                 max="14"
                                 step="1"
                                 value={rangeDays}
