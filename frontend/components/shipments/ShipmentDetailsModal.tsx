@@ -62,7 +62,6 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
         tracking_link: '',
     });
     const [originalData, setOriginalData] = useState<ShipmentFormData | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -102,26 +101,27 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             setSuccess(false);
 
             // Fetch events when modal opens
+            const fetchEvents = async () => {
+                if (!shipment?.id) return;
+
+                setLoadingEvents(true);
+                setEventsError(null);
+                try {
+                    const fetchedEvents = await gatewayClient.getTrackingEvents(shipment.id);
+                    setEvents(fetchedEvents);
+                } catch (error) {
+                    console.error('Failed to fetch tracking events:', error);
+                    setEventsError('Failed to load tracking events');
+                } finally {
+                    setLoadingEvents(false);
+                }
+            };
+
             fetchEvents();
         }
     }, [isOpen, shipment]);
 
-    // Fetch tracking events
-    const fetchEvents = async () => {
-        if (!shipment?.id) return;
 
-        setLoadingEvents(true);
-        setEventsError(null);
-        try {
-            const fetchedEvents = await gatewayClient.getTrackingEvents(shipment.id);
-            setEvents(fetchedEvents);
-        } catch (error) {
-            console.error('Failed to fetch tracking events:', error);
-            setEventsError('Failed to load tracking events');
-        } finally {
-            setLoadingEvents(false);
-        }
-    };
 
     // Handle event deletion (stage for deletion)
     const handleDeleteEvent = (eventId: string) => {

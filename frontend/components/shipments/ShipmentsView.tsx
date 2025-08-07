@@ -1,4 +1,5 @@
 import { usePagination } from '@/hooks/use-pagination';
+import { PackageStatus } from '@/lib/package-status';
 import { PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -146,7 +147,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
             id: shipment.id,
             tracking_number: shipment.tracking_number,
             carrier: shipment.carrier,
-            status: shipment.status as any, // Type assertion needed due to interface differences
+            status: shipment.status as PackageStatus, // Type assertion needed due to interface differences
             estimated_delivery: shipment.estimated_delivery,
             actual_delivery: shipment.actual_delivery,
             recipient_name: shipment.recipient_name,
