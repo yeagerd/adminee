@@ -107,15 +107,31 @@ export function TimeSlotCalendar({
     // Date range selection
     const [dateRangeType, setDateRangeType] = useState<'target' | 'range'>('target');
     const [targetDate, setTargetDate] = useState(() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().split('T')[0];
+        // Set default date to 3 business days ahead of today
+        const today = new Date();
+        let businessDaysAhead = 0;
+        // eslint-disable-next-line prefer-const
+        let currentDate = new Date(today);
+
+        while (businessDaysAhead < 3) {
+            currentDate.setDate(currentDate.getDate() + 1);
+            if (isBusinessDay(currentDate)) {
+                businessDaysAhead++;
+            }
+        }
+
+        return currentDate.toISOString().split('T')[0];
     });
-    const [dateRange, setDateRange] = useState<DateRange>({
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const [dateRange, setDateRange] = useState<DateRange>(() => {
+        const today = new Date();
+        const endDate = new Date(today);
+        endDate.setDate(endDate.getDate() + 7);
+        return {
+            startDate: today,
+            endDate: endDate
+        };
     });
-    const [rangeDays, setRangeDays] = useState(7);
+    const [daysAround, setDaysAround] = useState(2); // Default to +/- 2 days
 
     // Display options
     const [includeWeekends, setIncludeWeekends] = useState(false);
@@ -137,42 +153,40 @@ export function TimeSlotCalendar({
             const end = new Date(targetDate + 'T00:00:00');
 
             if (includeWeekends) {
-                // Use calendar days
-                const daysBefore = Math.floor((rangeDays - 1) / 2);
-                const daysAfter = rangeDays - 1 - daysBefore;
-                start.setDate(start.getDate() - daysBefore);
-                end.setDate(end.getDate() + daysAfter);
+                // Use calendar days - simply add/subtract daysAround
+                start.setDate(start.getDate() - daysAround);
+                end.setDate(end.getDate() + daysAround);
             } else {
-                // Use business days - we want a range that contains rangeDays business days
-                // For odd numbers, put target in the middle. For even numbers, distribute evenly.
-                const daysBefore = Math.floor((rangeDays - 1) / 2);
-                const daysAfter = rangeDays - 1 - daysBefore;
-
-                // Start from target date
+                // Use business days - calculate business days before and after
                 let currentStart = new Date(target);
                 let currentEnd = new Date(target);
 
                 // Calculate business days before
-                for (let i = 0; i < daysBefore; i++) {
+                for (let i = 0; i < daysAround; i++) {
                     currentStart = getPreviousBusinessDay(currentStart);
                 }
 
                 // Calculate business days after
-                for (let i = 0; i < daysAfter; i++) {
+                for (let i = 0; i < daysAround; i++) {
                     currentEnd = getNextBusinessDay(currentEnd);
                 }
 
                 start.setTime(currentStart.getTime());
                 end.setTime(currentEnd.getTime());
+            }
 
-
+            // Ensure start date never goes before today
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (start < today) {
+                start.setTime(today.getTime());
             }
 
             return { startDate: start, endDate: end };
         } else {
             return dateRange;
         }
-    }, [dateRangeType, targetDate, rangeDays, dateRange, includeWeekends]);
+    }, [dateRangeType, targetDate, daysAround, dateRange, includeWeekends]);
 
     // Group calendar events by date for conflict detection (moved before timeSlots calculation)
     const eventsByDateForConflicts = useMemo(() => {
@@ -588,6 +602,7 @@ export function TimeSlotCalendar({
                                     type="date"
                                     value={targetDate}
                                     onChange={(e) => setTargetDate(e.target.value)}
+                                    min={new Date().toISOString().split('T')[0]}
                                     className="w-full border rounded px-3 py-2"
                                 />
                             </div>
@@ -602,6 +617,7 @@ export function TimeSlotCalendar({
                                             ...prev,
                                             startDate: new Date(e.target.value)
                                         }))}
+                                        min={new Date().toISOString().split('T')[0]}
                                         className="w-full border rounded px-3 py-2"
                                     />
                                 </div>
@@ -614,6 +630,7 @@ export function TimeSlotCalendar({
                                             ...prev,
                                             endDate: new Date(e.target.value)
                                         }))}
+                                        min={new Date().toISOString().split('T')[0]}
                                         className="w-full border rounded px-3 py-2"
                                     />
                                 </div>
@@ -624,14 +641,14 @@ export function TimeSlotCalendar({
                     {/* Range Days (for target mode) */}
                     {dateRangeType === 'target' && (
                         <div className="space-y-2">
-                            <Label>Days Around Target (±{Math.floor(rangeDays / 2)})</Label>
+                            <Label>Days Around Target (±{daysAround})</Label>
                             <input
                                 type="range"
-                                min="3"
-                                max="14"
+                                min="0"
+                                max="10"
                                 step="1"
-                                value={rangeDays}
-                                onChange={(e) => setRangeDays(parseInt(e.target.value))}
+                                value={daysAround}
+                                onChange={(e) => setDaysAround(parseInt(e.target.value))}
                                 className="w-full"
                             />
                             <div className="text-sm text-muted-foreground">
