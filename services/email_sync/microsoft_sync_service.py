@@ -92,7 +92,9 @@ def process_microsoft_notification(message: Any) -> None:
                     backoff = min(backoff * 2, 60)
             else:
                 logging.error("ALERT: Failed to publish email after retries. ")
-                continue
+                # If we can't publish to pubsub, we should nack the message
+                message.nack()
+                return
 
             # Mark email as processed
             email_tracking_service.mark_email_processed(
@@ -104,8 +106,17 @@ def process_microsoft_notification(message: Any) -> None:
             f"Processed {processed_count} emails from Microsoft Graph for {user_email}"
         )
 
+        # Acknowledge the message
+        message.ack()
+
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON in Microsoft notification: {e}")
+        message.nack()
+        return
     except Exception as e:
         logging.error(f"Error processing Microsoft notification: {e}")
+        # Negative acknowledge the message on error
+        message.nack()
         raise
 
 

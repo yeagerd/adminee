@@ -7,8 +7,15 @@ from unittest.mock import MagicMock
 from googleapiclient.errors import HttpError
 
 
-def get_gmail_service() -> Any:
-    """Get Gmail service instance."""
+def get_gmail_service(user_id: str = None) -> Any:
+    """Get Gmail service instance.
+
+    Args:
+        user_id: The user's email address (optional for now)
+
+    Returns:
+        Gmail service instance
+    """
     # This would normally use Google API client library
     # For now, return a mock service
     return MagicMock()
@@ -28,7 +35,7 @@ def refresh_gmail_subscription(user_id: str) -> bool:
         logging.info(f"Refreshing Gmail watch subscription for user {user_id}")
 
         # Get authenticated Gmail service
-        service = get_gmail_service()
+        service = get_gmail_service(user_id)
 
         # Gmail watch request parameters
         watch_request = {
