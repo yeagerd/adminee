@@ -25,6 +25,8 @@ export interface Package {
     order_number?: string;
     tracking_link?: string;
     email_message_id?: string;
+    updated_at?: string;
+    events_count?: number;
     labels?: (string | { name: string })[];
     events?: TrackingEvent[];
 }

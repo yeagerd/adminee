@@ -563,12 +563,12 @@ export default function PackageDashboard() {
                 />
             )}
 
-            {selectedPackage && (
+            {selectedPackage && selectedPackage.id && (
                 <ShipmentDetailsModal
                     isOpen={!!selectedPackage}
                     onClose={() => setSelectedPackage(null)}
                     shipment={{
-                        id: selectedPackage.id || '',
+                        id: selectedPackage.id,
                         tracking_number: selectedPackage.tracking_number,
                         carrier: selectedPackage.carrier,
                         status: selectedPackage.status,
@@ -579,7 +579,7 @@ export default function PackageDashboard() {
                         package_description: selectedPackage.package_description,
                         order_number: selectedPackage.order_number,
                         tracking_link: selectedPackage.tracking_link,
-                        updated_at: new Date().toISOString(), // Default value since Package doesn't have this
+                        updated_at: selectedPackage.updated_at || new Date().toISOString(),
                         events_count: selectedPackage.events?.length || 0,
                         labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label?.name || '') || [],
                     }}
@@ -600,6 +600,9 @@ export default function PackageDashboard() {
                                         package_description: updatedPackage.package_description,
                                         order_number: updatedPackage.order_number,
                                         tracking_link: updatedPackage.tracking_link,
+                                        updated_at: updatedPackage.updated_at,
+                                        events_count: updatedPackage.events_count,
+                                        labels: updatedPackage.labels,
                                     }
                                     : pkg
                             )
