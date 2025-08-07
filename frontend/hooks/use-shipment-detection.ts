@@ -74,32 +74,38 @@ function extractTrackingNumbers(text: string, body: string = ""): Array<{ tracki
         const existing = matches.get(trackingNumber);
 
         // Check if this number overlaps with any existing number in position
-        const hasPositionalOverlap = Array.from(matches.values()).some(match =>
+        const overlappingMatches = Array.from(matches.values()).filter(match =>
             !(end <= match.start || start >= match.end)
         );
 
         // If there's positional overlap, prioritize longer matches
-        if (hasPositionalOverlap) {
-            const overlappingMatch = Array.from(matches.values()).find(match =>
-                !(end <= match.start || start >= match.end)
-            );
-
-            if (overlappingMatch) {
-                // If this match is longer than the overlapping match, remove the shorter one
-                if (trackingNumber.length > overlappingMatch.trackingNumber.length) {
-                    // Remove only the overlapping match with lower length
-                    matches.delete(overlappingMatch.trackingNumber);
-                } else if (trackingNumber.length < overlappingMatch.trackingNumber.length) {
-                    // If this match is shorter, don't add it
-                    return;
+        if (overlappingMatches.length > 0) {
+            // Find the best overlapping match to compare against
+            const bestOverlappingMatch = overlappingMatches.reduce((best, current) => {
+                if (current.trackingNumber.length > best.trackingNumber.length) {
+                    return current;
+                } else if (current.trackingNumber.length < best.trackingNumber.length) {
+                    return best;
                 } else {
                     // Same length, use confidence as tiebreaker
-                    if (confidence <= overlappingMatch.confidence) {
-                        return;
-                    } else {
-                        // Remove only the lower confidence overlapping match
-                        matches.delete(overlappingMatch.trackingNumber);
-                    }
+                    return current.confidence > best.confidence ? current : best;
+                }
+            });
+
+            // If this match is longer than the best overlapping match, remove all overlapping matches
+            if (trackingNumber.length > bestOverlappingMatch.trackingNumber.length) {
+                // Remove all overlapping matches
+                overlappingMatches.forEach(match => matches.delete(match.trackingNumber));
+            } else if (trackingNumber.length < bestOverlappingMatch.trackingNumber.length) {
+                // If this match is shorter, don't add it
+                return;
+            } else {
+                // Same length, use confidence as tiebreaker
+                if (confidence <= bestOverlappingMatch.confidence) {
+                    return;
+                } else {
+                    // Remove all overlapping matches
+                    overlappingMatches.forEach(match => matches.delete(match.trackingNumber));
                 }
             }
         }
