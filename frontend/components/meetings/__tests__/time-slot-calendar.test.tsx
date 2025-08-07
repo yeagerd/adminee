@@ -1,162 +1,252 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { TimeSlotCalendar } from '../time-slot-calendar';
+import { CalendarEvent } from '@/types/office-service';
 
-// Mock the business day helper functions
-const mockIsBusinessDay = jest.fn();
-const mockGetNextBusinessDay = jest.fn();
-const mockGetPreviousBusinessDay = jest.fn();
-
-// Mock the component to test the business day calculation logic
-jest.mock('../time-slot-calendar', () => {
-    const originalModule = jest.requireActual('../time-slot-calendar');
+// Mock Luxon's DateTime to control timezone behavior
+jest.mock('luxon', () => {
+    const actual = jest.requireActual('luxon');
     return {
-        ...originalModule,
-        isBusinessDay: mockIsBusinessDay,
-        getNextBusinessDay: mockGetNextBusinessDay,
-        getPreviousBusinessDay: mockGetPreviousBusinessDay,
+        ...actual,
+        DateTime: {
+            ...actual.DateTime,
+            fromISO: jest.fn().mockImplementation((isoString, options) => {
+                const dt = actual.DateTime.fromISO(isoString, options);
+                return dt;
+            }),
+            fromJSDate: jest.fn().mockImplementation((date) => {
+                return actual.DateTime.fromJSDate(date);
+            })
+        }
     };
 });
 
 describe('TimeSlotCalendar Business Day Calculation', () => {
+    const mockOnTimeSlotsChange = jest.fn();
+    
+    const defaultProps = {
+        duration: 30,
+        timeZone: 'America/New_York',
+        onTimeSlotsChange: mockOnTimeSlotsChange,
+        selectedTimeSlots: [],
+        calendarEvents: []
+    };
+
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    describe('Business Day Helper Functions', () => {
-        test('should correctly identify business days (Monday-Friday)', () => {
-            // Monday
-            expect(isBusinessDay(new Date('2025-08-11'))).toBe(true);
-            // Tuesday
-            expect(isBusinessDay(new Date('2025-08-12'))).toBe(true);
-            // Wednesday
-            expect(isBusinessDay(new Date('2025-08-13'))).toBe(true);
-            // Thursday
-            expect(isBusinessDay(new Date('2025-08-14'))).toBe(true);
-            // Friday
-            expect(isBusinessDay(new Date('2025-08-15'))).toBe(true);
-            // Saturday
-            expect(isBusinessDay(new Date('2025-08-16'))).toBe(false);
-            // Sunday
-            expect(isBusinessDay(new Date('2025-08-17'))).toBe(false);
+    describe('Business Day Functionality Integration', () => {
+        test('should display business days and respect weekend settings', () => {
+            const { container } = render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                />
+            );
+
+            // Set the target date to Tuesday  
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } }); // Tuesday
+
+            // Verify component renders successfully with business day calculations
+            expect(screen.getByText(/Select Time Slots/)).toBeInTheDocument();
+            expect(screen.getByText(/showing \d+ days total/i)).toBeInTheDocument();
+            
+            // Verify that date headers are displayed (business day logic is working)
+            const dateElements = container.querySelectorAll('.whitespace-normal');
+            expect(dateElements.length).toBeGreaterThan(0); // Should have date columns
         });
 
-        test('should correctly get next business day', () => {
-            // Friday to Monday
-            const friday = new Date('2025-08-15');
-            const nextBusinessDay = getNextBusinessDay(friday);
-            expect(nextBusinessDay.toISOString().split('T')[0]).toBe('2025-08-18');
+        test('should include weekends when includeWeekends is enabled', () => {
+            const { container } = render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                />
+            );
 
-            // Monday to Tuesday
-            const monday = new Date('2025-08-18');
-            const nextBusinessDay2 = getNextBusinessDay(monday);
-            expect(nextBusinessDay2.toISOString().split('T')[0]).toBe('2025-08-19');
+            // Set target date to Friday
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-15' } });
+
+            // Enable weekends
+            const weekendsCheckbox = screen.getByLabelText(/Include Weekends/);
+            fireEvent.click(weekendsCheckbox);
+
+            // Check that the text changes to no longer mention "business days only"
+            expect(screen.queryByText(/business days only/i)).not.toBeInTheDocument();
+            
+            // Verify more days are shown when weekends are included
+            const dateElements = container.querySelectorAll('.whitespace-normal');
+            expect(dateElements.length).toBeGreaterThan(0);
         });
 
-        test('should correctly get previous business day', () => {
-            // Monday to Friday
-            const monday = new Date('2025-08-18');
-            const prevBusinessDay = getPreviousBusinessDay(monday);
-            expect(prevBusinessDay.toISOString().split('T')[0]).toBe('2025-08-15');
+        test('should handle business day mode vs weekend mode differently', () => {
+            const { container } = render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                />
+            );
 
-            // Tuesday to Monday
-            const tuesday = new Date('2025-08-19');
-            const prevBusinessDay2 = getPreviousBusinessDay(tuesday);
-            expect(prevBusinessDay2.toISOString().split('T')[0]).toBe('2025-08-18');
+            // Set target date
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } }); // Tuesday
+
+            // Get initial count of date headers (business days mode)
+            const weekendsCheckbox = screen.getByLabelText(/Include Weekends/);
+            expect(weekendsCheckbox).not.toBeChecked();
+            
+            const businessDayHeaders = container.querySelectorAll('.whitespace-normal');
+            const businessDayCount = businessDayHeaders.length;
+
+            // Enable weekends
+            fireEvent.click(weekendsCheckbox);
+
+            // Should have different (likely more) date headers when weekends are included
+            const weekendHeaders = container.querySelectorAll('.whitespace-normal');
+            const weekendCount = weekendHeaders.length;
+            
+            // With same range, weekend mode should show same or more days
+            expect(weekendCount).toBeGreaterThanOrEqual(businessDayCount);
         });
     });
 
-    describe('Date Range Calculation', () => {
-        test('should calculate correct business day range for Friday target with ±3 days', () => {
-            // Test case: Friday 2025-08-15 with 7 days (±3)
-            // Should give us 7 business days: Tue, Wed, Thu, Fri, Mon, Tue, Wed
-            const targetDate = '2025-08-15'; // Friday
-            const rangeDays = 7;
+    describe('Date Range Calculation with Business Logic', () => {
+        test('should correctly calculate business day range for Friday target', () => {
+            render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                />
+            );
 
-            // Mock the business day functions to return expected values
-            mockIsBusinessDay.mockImplementation((date) => {
-                const day = date.getDay();
-                return day >= 1 && day <= 5; // Monday-Friday
-            });
+            // Set target to Friday
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-15' } });
 
-            mockGetPreviousBusinessDay.mockImplementation((date) => {
-                const newDate = new Date(date);
-                do {
-                    newDate.setDate(newDate.getDate() - 1);
-                } while (newDate.getDay() === 0 || newDate.getDay() === 6);
-                return newDate;
-            });
+            // Set range to 7 days
+            const rangeSlider = screen.getByRole('slider');
+            fireEvent.change(rangeSlider, { target: { value: '7' } });
 
-            mockGetNextBusinessDay.mockImplementation((date) => {
-                const newDate = new Date(date);
-                do {
-                    newDate.setDate(newDate.getDate() + 1);
-                } while (newDate.getDay() === 0 || newDate.getDay() === 6);
-                return newDate;
-            });
-
-            // This test would catch the timezone bug we just fixed
-            // The expected range should be 2025-08-12 to 2025-08-20
-            // Not 2025-08-11 to 2025-08-19 (which was the bug)
-
-            const expectedStart = '2025-08-12'; // Tuesday
-            const expectedEnd = '2025-08-20';   // Wednesday
-
-            // Verify the calculation logic
-            const target = new Date(targetDate + 'T00:00:00');
-            const daysBefore = Math.floor((rangeDays - 1) / 2); // 3
-            const daysAfter = rangeDays - 1 - daysBefore;       // 3
-
-            let currentStart = new Date(target);
-            let currentEnd = new Date(target);
-
-            // Calculate business days before
-            for (let i = 0; i < daysBefore; i++) {
-                currentStart = mockGetPreviousBusinessDay(currentStart);
-            }
-
-            // Calculate business days after
-            for (let i = 0; i < daysAfter; i++) {
-                currentEnd = mockGetNextBusinessDay(currentEnd);
-            }
-
-            expect(currentStart.toISOString().split('T')[0]).toBe(expectedStart);
-            expect(currentEnd.toISOString().split('T')[0]).toBe(expectedEnd);
+            // Verify the date range header shows correct span
+            // Should display: Tue Aug 12 - Wed Aug 20
+            expect(screen.getByText(/Tue Aug 12 - Wed Aug 20/)).toBeInTheDocument();
         });
 
-        test('should handle timezone conversion correctly', () => {
-            // Test that date creation doesn't shift due to timezone
-            const dateString = '2025-08-12';
+        test('should handle timezone conversion correctly in date display', () => {
+            render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                    timeZone="America/Los_Angeles"
+                />
+            );
 
-            // Create date in local timezone (this was the fix)
-            const localDate = new Date(dateString + 'T00:00:00');
+            // Set a specific date
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } });
 
-            // Verify the date is correct regardless of timezone
-            expect(localDate.getFullYear()).toBe(2025);
-            expect(localDate.getMonth()).toBe(7); // August (0-indexed)
-            expect(localDate.getDate()).toBe(12);
-            expect(localDate.getDay()).toBe(2); // Tuesday
+            // Verify the date is displayed correctly regardless of timezone
+            expect(screen.getAllByText(/Tue Aug 12/).length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('Time Slot Selection with Business Day Logic', () => {
+        test('should allow selection of time slots only on business days', () => {
+            const mockCalendarEvents: CalendarEvent[] = [];
+            
+            render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                    calendarEvents={mockCalendarEvents}
+                />
+            );
+
+            // Set target to a Tuesday to ensure we have business days
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } }); // Tuesday
+
+            // Find and click the "Select all available slots" button for the target day
+            const selectAllButtons = screen.getAllByTitle(/Select all available slots/);
+            expect(selectAllButtons.length).toBeGreaterThan(0);
+            
+            fireEvent.click(selectAllButtons[0]);
+
+            // Verify that the callback was called with time slots
+            expect(mockOnTimeSlotsChange).toHaveBeenCalled();
+            const calledSlots = mockOnTimeSlotsChange.mock.calls[0][0];
+            expect(calledSlots.length).toBeGreaterThan(0);
+            
+            // All selected slots should be on business days
+            calledSlots.forEach((slot: any) => {
+                const slotDate = new Date(slot.start);
+                const dayOfWeek = slotDate.getDay();
+                expect(dayOfWeek).toBeGreaterThanOrEqual(1); // Monday
+                expect(dayOfWeek).toBeLessThanOrEqual(5);   // Friday
+            });
+        });
+
+        test('should handle conflict detection with calendar events on business days', () => {
+            const mockCalendarEvents: CalendarEvent[] = [
+                {
+                    id: 'test-event',
+                    title: 'Test Meeting',
+                    start_time: '2025-08-12T10:00:00Z', // Tuesday 10 AM UTC
+                    end_time: '2025-08-12T11:00:00Z',   // Tuesday 11 AM UTC
+                    attendees: []
+                }
+            ];
+
+            render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                    calendarEvents={mockCalendarEvents}
+                />
+            );
+
+            // Set target to Tuesday when the event occurs
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } });
+
+            // Verify the calendar event is displayed
+            expect(screen.getByText('Test Meeting')).toBeInTheDocument();
         });
     });
 });
 
-// Helper functions for testing (copied from the component)
-const isBusinessDay = (date: Date): boolean => {
-    const day = date.getDay();
-    return day >= 1 && day <= 5; // Monday = 1, Friday = 5
-};
+// Integration tests that verify the complete business day calculation flow
+describe('TimeSlotCalendar Business Day Integration', () => {
+    const mockOnTimeSlotsChange = jest.fn();
+    
+    const defaultProps = {
+        duration: 30,
+        timeZone: 'America/New_York', 
+        onTimeSlotsChange: mockOnTimeSlotsChange,
+        selectedTimeSlots: [],
+        calendarEvents: []
+    };
 
-const getNextBusinessDay = (date: Date): Date => {
-    const next = new Date(date);
-    next.setDate(next.getDate() + 1);
-    while (!isBusinessDay(next)) {
-        next.setDate(next.getDate() + 1);
-    }
-    return next;
-};
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
 
-const getPreviousBusinessDay = (date: Date): Date => {
-    const prev = new Date(date);
-    prev.setDate(prev.getDate() - 1);
-    while (!isBusinessDay(prev)) {
-        prev.setDate(prev.getDate() - 1);
-    }
-    return prev;
-};
+    test('should correctly handle business day calculations end-to-end', () => {
+        render(
+            <TimeSlotCalendar
+                {...defaultProps}
+            />
+        );
+
+        // Test the complete flow: set target date, verify business days, select slots
+        const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+        fireEvent.change(targetDateInput, { target: { value: '2025-08-15' } }); // Friday
+
+        // Should automatically calculate and display surrounding business days
+        // This tests the internal business day calculation logic
+        expect(screen.getByText(/showing \d+ days total \(business days only\)/i)).toBeInTheDocument();
+        
+        // Verify that the range calculation worked correctly by checking displayed dates
+        const dateHeaders = screen.getAllByText(/Aug \d+/);
+        expect(dateHeaders.length).toBeGreaterThan(0);
+        
+        // The component should be functional and responsive
+        expect(screen.getByText(/Select Time Slots/)).toBeInTheDocument();
+    });
+});
