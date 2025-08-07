@@ -79,12 +79,13 @@ def validate_tracking_number_format(
         carrier_lower = carrier.lower()
 
         if carrier_lower == "ups":
-            # UPS: 1Z + 16 alphanumeric characters, or 9-12 digits
+            # UPS: 1Z + 16 alphanumeric characters, or 9, 10, 12, or 26 digits
             return bool(
                 re.match(r"^1Z[0-9A-Z]{16}$", normalized)
                 or re.match(r"^[0-9]{9}$", normalized)
                 or re.match(r"^[0-9]{10}$", normalized)
                 or re.match(r"^[0-9]{12}$", normalized)
+                or re.match(r"^[0-9]{26}$", normalized)
             )
 
         elif carrier_lower == "fedex":

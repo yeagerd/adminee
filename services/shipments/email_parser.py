@@ -40,21 +40,6 @@ class EmailParser:
             "keywords": ["shipment", "package", "order", "delivery", "tracking"],
             "tracking_patterns": [r"1Z[0-9A-Z]{16}", r"TBA[0-9]{10}", r"[0-9]{10,}"],
         },
-        "ups": {
-            "domains": ["ups.com", "ups.ca"],
-            "keywords": ["ups", "united parcel service", "tracking"],
-            "tracking_patterns": [
-                r"1Z[0-9A-Z]{16}",
-                r"[0-9]{9}",
-                r"[0-9]{10}",
-                r"[0-9]{12}",
-            ],
-        },
-        "fedex": {
-            "domains": ["fedex.com", "fedex.ca"],
-            "keywords": ["fedex", "federal express", "tracking"],
-            "tracking_patterns": [r"[0-9]{12}", r"[0-9]{15}", r"[0-9]{22}"],
-        },
         "usps": {
             "domains": ["usps.com"],
             "keywords": ["usps", "united states postal service", "tracking"],
@@ -65,6 +50,22 @@ class EmailParser:
                 r"[0-9]{15}",
                 r"[0-9]{26}",  # USPS 26-digit tracking numbers
             ],
+        },
+        "ups": {
+            "domains": ["ups.com", "ups.ca"],
+            "keywords": ["ups", "united parcel service", "tracking"],
+            "tracking_patterns": [
+                r"1Z[0-9A-Z]{16}",
+                r"[0-9]{9}",
+                r"[0-9]{10}",
+                r"[0-9]{12}",
+                r"[0-9]{26}",
+            ],
+        },
+        "fedex": {
+            "domains": ["fedex.com", "fedex.ca"],
+            "keywords": ["fedex", "federal express", "tracking"],
+            "tracking_patterns": [r"[0-9]{12}", r"[0-9]{15}", r"[0-9]{22}"],
         },
         "dhl": {
             "domains": ["dhl.com", "dhl.de"],
@@ -162,7 +163,7 @@ class EmailParser:
         # If no carrier detected from sender but we have tracking numbers, try to detect from tracking number
         if not detected_carrier and tracking_numbers:
             detected_carrier = self._detect_carrier_from_tracking_number(
-                tracking_numbers[0]
+                tracking_numbers[0], body
             )
             if detected_carrier:
                 result.detected_carrier = detected_carrier
@@ -191,7 +192,7 @@ class EmailParser:
         return None
 
     def _detect_carrier_from_tracking_number(
-        self, tracking_number: str
+        self, tracking_number: str, body: str = ""
     ) -> Optional[str]:
         """Detect carrier from tracking number format"""
         if not tracking_number:
@@ -199,6 +200,16 @@ class EmailParser:
 
         # Remove any non-alphanumeric characters
         clean_number = re.sub(r"[^0-9A-Za-z]", "", tracking_number)
+
+        # Special handling for 26-digit tracking numbers (UPS Mail Innovations vs USPS)
+        if len(clean_number) == 26 and clean_number.isdigit():
+            # Check if this is UPS Mail Innovations by looking for UPS context in the body
+            body_lower = body.lower()
+            if "ups.com" in body_lower or "united parcel service" in body_lower:
+                return "ups"
+            else:
+                # Default to USPS for 26-digit numbers without UPS context
+                return "usps"
 
         # Check each carrier's patterns
         for carrier, patterns in self.CARRIER_PATTERNS.items():
