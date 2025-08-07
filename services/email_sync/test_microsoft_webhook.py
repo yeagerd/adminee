@@ -309,9 +309,7 @@ class TestMicrosoftWebhook(BaseSelectiveHTTPIntegrationTest):
     def test_microsoft_webhook_logging_on_success(self, caplog):
         """Test that success is logged."""
         caplog.set_level(logging.INFO)
-        with patch(
-            "services.email_sync.microsoft_webhook.publish_message"
-        ) as mock_publish:
+        with patch("services.email_sync.microsoft_webhook.publish_message"):
             client = self.create_test_client(app)
             resp = client.post(
                 "/microsoft/webhook",
@@ -326,9 +324,7 @@ class TestMicrosoftWebhook(BaseSelectiveHTTPIntegrationTest):
     def test_microsoft_webhook_logging_on_unauthorized(self, caplog):
         """Test that unauthorized access is logged."""
         caplog.set_level(logging.WARNING)
-        with patch(
-            "services.email_sync.microsoft_webhook.publish_message"
-        ) as mock_publish:
+        with patch("services.email_sync.microsoft_webhook.publish_message"):
             client = self.create_test_client(app)
             resp = client.post(
                 "/microsoft/webhook",
@@ -341,9 +337,7 @@ class TestMicrosoftWebhook(BaseSelectiveHTTPIntegrationTest):
     def test_microsoft_webhook_logging_on_invalid_payload(self, caplog):
         """Test that invalid payload is logged."""
         caplog.set_level(logging.ERROR)
-        with patch(
-            "services.email_sync.microsoft_webhook.publish_message"
-        ) as mock_publish:
+        with patch("services.email_sync.microsoft_webhook.publish_message"):
             client = self.create_test_client(app)
             resp = client.post(
                 "/microsoft/webhook",
