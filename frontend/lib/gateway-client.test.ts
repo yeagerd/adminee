@@ -119,11 +119,11 @@ describe('GatewayClient', () => {
             const result = await client.getPackages();
 
             expect(result).toEqual(mockPackagesResponse);
-            expect(result.pagination).toHaveProperty('next_cursor');
-            expect(result.pagination).toHaveProperty('prev_cursor');
-            expect(result.pagination).toHaveProperty('has_next');
-            expect(result.pagination).toHaveProperty('has_prev');
-            expect(result.pagination).toHaveProperty('limit');
+            expect(result).toHaveProperty('next_cursor');
+            expect(result).toHaveProperty('prev_cursor');
+            expect(result).toHaveProperty('has_next');
+            expect(result).toHaveProperty('has_prev');
+            expect(result).toHaveProperty('limit');
         });
 
         it('handles empty pagination response', async () => {
@@ -131,23 +131,21 @@ describe('GatewayClient', () => {
                 ok: true,
                 headers: { get: () => 'application/json' },
                 json: async () => ({
-                    data: [],
-                    pagination: {
-                        next_cursor: null,
-                        prev_cursor: null,
-                        has_next: false,
-                        has_prev: false,
-                        limit: 20
-                    }
+                    packages: [],
+                    next_cursor: null,
+                    prev_cursor: null,
+                    has_next: false,
+                    has_prev: false,
+                    limit: 20
                 }),
             });
 
             const client = new GatewayClient();
             const result = await client.getPackages();
 
-            expect(result.data).toEqual([]);
-            expect(result.pagination.has_next).toBe(false);
-            expect(result.pagination.has_prev).toBe(false);
+            expect(result.packages).toEqual([]);
+            expect(result.has_next).toBe(false);
+            expect(result.has_prev).toBe(false);
         });
 
         it('handles cursor validation errors', async () => {

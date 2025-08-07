@@ -141,7 +141,7 @@ class ShipmentsClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return gatewayClient.getPackages(params);
     }
 
@@ -161,19 +161,19 @@ class ShipmentsClient {
         const response = await gatewayClient.getPackages(params);
 
         // If no packages found, return null
-        if (response.data.length === 0) {
+        if (response.packages.length === 0) {
             return null;
         }
 
         // If exactly one package found, return it
-        if (response.data.length === 1) {
-            return response.data[0];
+        if (response.packages.length === 1) {
+            return response.packages[0];
         }
 
         // Multiple packages found - handle based on carrier specification
         if (carrier) {
             // If carrier was specified, try to find a package that matches the specified carrier
-            const matchingPackage = response.data.find(pkg => pkg.carrier === carrier);
+            const matchingPackage = response.packages.find((pkg: PackageResponse) => pkg.carrier === carrier);
             if (matchingPackage) {
                 return matchingPackage;
             }
@@ -290,7 +290,7 @@ class ShipmentsClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return this.getPackages({
             cursor,
             limit,
@@ -307,7 +307,7 @@ class ShipmentsClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return this.getPackages({
             cursor,
             limit,
@@ -324,7 +324,7 @@ class ShipmentsClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
+    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return this.getPackages({
             limit,
             direction: 'next',
