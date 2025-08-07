@@ -25,7 +25,7 @@ const FieldUpdateMessage: React.FC<FieldUpdateMessageProps> = ({
     }
 
     return (
-        <div className="text-xs text-blue-600 ml-28">
+        <div className="text-xs text-blue-600 text-left">
             {message}
         </div>
     );

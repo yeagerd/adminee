@@ -10,7 +10,7 @@ import { gatewayClient } from '@/lib/gateway-client';
 import { PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
-import { Calendar, ExternalLink, FileText, Loader2, Package, Trash2, Truck, User } from 'lucide-react';
+import { BadgeCheck, Calendar, ExternalLink, FileText, Hash, Loader2, Package, Tag, Trash2, Truck, User } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 interface ShipmentDetailsModalProps {
@@ -265,7 +265,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                         {/* Tracking Number */}
                         <div className="space-y-2">
                             <Label htmlFor="tracking_number" className="flex items-center gap-2">
-                                <Package className="h-4 w-4" />
+                                <Hash className="h-4 w-4" />
                                 Tracking Number
                             </Label>
                             <Input
@@ -308,7 +308,10 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
 
                         {/* Status */}
                         <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
+                            <Label htmlFor="status" className="flex items-center gap-2">
+                                <BadgeCheck className="h-4 w-4" />
+                                Status
+                            </Label>
                             <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value as PackageStatus)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select status" />
@@ -406,7 +409,10 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
 
                         {/* Order Number */}
                         <div className="space-y-2">
-                            <Label htmlFor="order_number">Order Number</Label>
+                            <Label htmlFor="order_number" className="flex items-center gap-2">
+                                <Tag className="h-4 w-4" />
+                                Order Number
+                            </Label>
                             <Input
                                 id="order_number"
                                 value={formData.order_number}
