@@ -12,6 +12,7 @@ jest.mock('@/lib/gateway-client', () => ({
     gatewayClient: {
         getEmails: jest.fn(),
         getThread: jest.fn(),
+        getEmailFolders: jest.fn(),
     },
 }));
 
@@ -80,7 +81,7 @@ describe('EmailView - Select All Functionality', () => {
         },
     ];
 
-    beforeEach(() => {
+    beforeEach(async () => {
         mockUseIntegrations.mockReturnValue({
             integrations: [],
             activeProviders: ['google'],
@@ -89,6 +90,19 @@ describe('EmailView - Select All Functionality', () => {
             hasExpiredButRefreshableTokens: false,
             refreshIntegrations: jest.fn(),
             triggerAutoRefreshIfNeeded: jest.fn(),
+        });
+
+        // Mock the gateway client methods
+        const { gatewayClient } = await import('@/lib/gateway-client');
+        (gatewayClient.getEmails as jest.Mock).mockResolvedValue({
+            data: { messages: mockEmails }
+        });
+        (gatewayClient.getEmailFolders as jest.Mock).mockResolvedValue({
+            success: true,
+            data: { folders: [] }
+        });
+        (gatewayClient.getThread as jest.Mock).mockResolvedValue({
+            data: { thread: null }
         });
     });
 
