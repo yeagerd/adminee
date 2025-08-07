@@ -9,7 +9,7 @@ import os
 from unittest.mock import patch
 
 from services.email_sync.email_parser_service import process_email
-from services.email_sync.test_data import (
+from services.email_sync.tests.test_data import (
     create_mock_message,
 )
 

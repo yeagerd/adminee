@@ -16,7 +16,7 @@ os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
 
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.email_sync.app import app
-from services.email_sync.test_data import (
+from services.email_sync.tests.test_data import (
     gmail_webhook_payload,
     gmail_webhook_payload_with_multiple_emails,
     microsoft_webhook_payload,

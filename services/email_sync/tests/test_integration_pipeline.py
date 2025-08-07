@@ -17,7 +17,7 @@ os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.email_sync.app import app
 from services.email_sync.email_parser_service import process_email
-from services.email_sync.test_data import (
+from services.email_sync.tests.test_data import (
     amazon_shipped_email,
     create_mock_message,
     gmail_webhook_payload,

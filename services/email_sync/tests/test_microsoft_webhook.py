@@ -9,7 +9,7 @@ os.environ["PYTHON_ENV"] = "test"
 
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.email_sync.app import app
-from services.email_sync.test_data import (
+from services.email_sync.tests.test_data import (
     microsoft_webhook_payload,
     microsoft_webhook_payload_multiple_changes,
 )
