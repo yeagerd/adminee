@@ -26,8 +26,7 @@ dependencies = [
     "opentelemetry-instrumentation-httpx>=0.42b0,<1.0.0",
     "opentelemetry-exporter-otlp-proto-http>=1.20.0,<2.0.0",
     
-    # Common dependencies (shared with other services)
-    "briefly-common>=0.1.0"
+    # Common dependencies are imported directly from services.common
 ]
 
 [project.optional-dependencies]
