@@ -188,23 +188,53 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             }
 
             // Delete staged events if any
+            let successfullyDeletedCount = 0;
             if (hasStagedDeletions) {
-                const deletePromises = Array.from(eventsToDelete).map(eventId =>
-                    gatewayClient.deleteTrackingEvent(shipment.id, eventId)
-                );
-                await Promise.all(deletePromises);
+                const deletePromises = Array.from(eventsToDelete).map(async (eventId) => {
+                    try {
+                        await gatewayClient.deleteTrackingEvent(shipment.id, eventId);
+                        return { success: true, eventId };
+                    } catch (error) {
+                        console.error(`Failed to delete event ${eventId}:`, error);
+                        return { success: false, eventId, error };
+                    }
+                });
 
-                // If only events were deleted (no form changes), create an updated shipment object
-                // with the correct events_count for the callback
-                if (!hasFormChanges) {
-                    updatedShipment = {
-                        ...shipment,
-                        events_count: Math.max(0, shipment.events_count - eventsToDelete.size)
-                    };
+                const results = await Promise.allSettled(deletePromises);
+                const successfulDeletions = results
+                    .filter((result): result is PromiseFulfilledResult<{ success: boolean; eventId: string }> =>
+                        result.status === 'fulfilled' && result.value.success
+                    );
+                const failedDeletions = results
+                    .filter((result): result is PromiseFulfilledResult<{ success: boolean; eventId: string; error: unknown }> =>
+                        result.status === 'fulfilled' && !result.value.success
+                    );
+
+                successfullyDeletedCount = successfulDeletions.length;
+
+                // Log failed deletions for debugging
+                if (failedDeletions.length > 0) {
+                    console.warn('Some event deletions failed:', failedDeletions);
+                }
+
+                // If any deletions failed, show a warning but continue
+                if (failedDeletions.length > 0) {
+                    setError(`Warning: ${failedDeletions.length} event(s) could not be deleted. Other changes were saved successfully.`);
                 }
             }
 
-            setSuccess(true);
+            // Update the shipment object with the correct events_count
+            // This handles both cases: form changes + event deletions, or just event deletions
+            const finalEventsCount = Math.max(0, updatedShipment.events_count - successfullyDeletedCount);
+            updatedShipment = {
+                ...updatedShipment,
+                events_count: finalEventsCount
+            };
+
+            // Show success message (unless there were partial failures)
+            if (successfullyDeletedCount === eventsToDelete.size) {
+                setSuccess(true);
+            }
 
             // Call the callback if provided
             if (onShipmentUpdated) {
@@ -215,6 +245,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             setTimeout(() => {
                 onClose();
                 setSuccess(false);
+                setError(null); // Clear any warning messages
             }, 1500);
 
         } catch (err) {
