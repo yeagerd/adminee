@@ -17,7 +17,6 @@ const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
 
 export function MeetingPollNew() {
-    console.log('🔄 MeetingPollNew component re-rendering');
     const { setMeetingSubView } = useToolStateUtils();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
@@ -54,7 +53,6 @@ export function MeetingPollNew() {
 
     // Stable callback for time slot changes
     const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
-        console.log('🔄 Parent: onTimeSlotsChange called with', newSlots.length, 'slots');
         setTimeSlots(newSlots);
     }, []);
 
@@ -98,8 +96,6 @@ export function MeetingPollNew() {
                             ? response.data
                             : response.data.events || [];
                         setCalendarEvents(events);
-                        console.log(`Loaded ${events.length} calendar events for conflict detection`);
-                        console.log('Calendar events:', events);
                     }
                 })
                 .catch((err) => {

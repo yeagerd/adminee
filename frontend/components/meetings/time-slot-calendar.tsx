@@ -60,18 +60,15 @@ const getPreviousBusinessDay = (date: Date): Date => {
 interface TimeSlotCellProps {
     slot: TimeSlot;
     slotIndex: number;
-    dateKey: string;
     isSelected: boolean;
     onSlotClick: (slot: TimeSlot) => void;
 }
 
-const TimeSlotCell = memo<TimeSlotCellProps>(({ slot, slotIndex, dateKey, isSelected, onSlotClick }) => {
-    const slotKey = `${slot.start}-${slot.end}`;
-    console.log(`🔄 Rendering cell: ${dateKey} ${slotKey} (selected: ${isSelected})`);
+const TimeSlotCell = memo<TimeSlotCellProps>(({ slot, slotIndex, isSelected, onSlotClick }) => {
 
     return (
         <button
-            key={slotKey}
+            key={`${slot.start}-${slot.end}`}
             type="button"
             onClick={() => onSlotClick(slot)}
             className={`
@@ -103,7 +100,6 @@ export function TimeSlotCalendar({
     selectedTimeSlots,
     calendarEvents = []
 }: TimeSlotCalendarProps) {
-    console.log('🔄 TimeSlotCalendar component re-rendering');
 
     // Use ref to track current selected slots without dependencies
     const selectedSlotsRef = useRef(selectedTimeSlots);
@@ -195,7 +191,6 @@ export function TimeSlotCalendar({
 
     // Generate time slots for the date range (without selection state)
     const timeSlots = useMemo(() => {
-        console.log('🔄 Recalculating timeSlots');
         const slots: TimeSlot[] = [];
         const granularityMinutes = parseInt(granularity);
 
@@ -264,25 +259,21 @@ export function TimeSlotCalendar({
 
     // Create a Set for fast selection lookup
     const selectedSlotsSet = useMemo(() => {
-        console.log('🔄 Recalculating selectedSlotsSet');
         return new Set(selectedTimeSlots.map(slot => `${slot.start}-${slot.end}`));
     }, [selectedTimeSlots]);
 
     // Group calendar events by date for display
     const eventsByDate = useMemo(() => {
-        console.log('Grouping calendar events:', calendarEvents.length, 'total events');
         const grouped: Record<string, CalendarEvent[]> = {};
         calendarEvents.forEach(event => {
-            // Use the event's start time in the user's timezone to determine the date
-            const eventStart = DateTime.fromISO(event.start_time).setZone(timeZone);
+            // Use the event's start time in UTC and convert to user's timezone to determine the date
+            const eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(timeZone);
             const dateKey = eventStart.toFormat('yyyy-MM-dd');
-            console.log(`Event "${event.title}" goes to date ${dateKey}`);
             if (!grouped[dateKey]) {
                 grouped[dateKey] = [];
             }
             grouped[dateKey].push(event);
         });
-        console.log('Grouped events by date:', Object.keys(grouped), grouped);
         return grouped;
     }, [calendarEvents, timeZone]);
 
@@ -301,19 +292,13 @@ export function TimeSlotCalendar({
 
     // Handle slot selection - use ref to avoid dependencies
     const handleSlotClick = useCallback((slot: TimeSlot) => {
-        const slotKey = `${slot.start}-${slot.end}`;
-
         // Use ref to get current state without dependencies
         const currentSlots = selectedSlotsRef.current;
         const isCurrentlySelected = currentSlots.some(s => s.start === slot.start && s.end === slot.end);
 
-        console.log(`🖱️ Clicked slot: ${slotKey} (currently selected: ${isCurrentlySelected})`);
-
         const newSelectedSlots = isCurrentlySelected
             ? currentSlots.filter(s => !(s.start === slot.start && s.end === slot.end))
             : [...currentSlots, { start: slot.start, end: slot.end }];
-
-        console.log(`📊 Selection changed: ${currentSlots.length} → ${newSelectedSlots.length} slots`);
         onTimeSlotsChange(newSelectedSlots);
     }, [onTimeSlotsChange]);
 
@@ -334,7 +319,8 @@ export function TimeSlotCalendar({
             });
         } else if (action === 'all_times') {
             // Add all slots for this day regardless of availability
-            const allSlots = daySlots.filter(slot => !slot.isSelected);
+            const existingIds = new Set(selectedTimeSlots.map(slot => `${slot.start}-${slot.end}`));
+            const allSlots = daySlots.filter(slot => !existingIds.has(`${slot.start}-${slot.end}`));
             newSelectedSlots = [...newSelectedSlots, ...allSlots.map(slot => ({ start: slot.start, end: slot.end }))];
         } else if (action === 'none') {
             // Remove all slots for this day
@@ -385,7 +371,6 @@ export function TimeSlotCalendar({
 
     // Memoized calendar event rendering for each day
     const memoizedCalendarEvents = useMemo(() => {
-        console.log('🔄 Recalculating memoizedCalendarEvents');
         const memoized: Record<string, React.ReactNode> = {};
 
         Object.keys(eventsByDate).forEach(dateKey => {
@@ -557,7 +542,6 @@ export function TimeSlotCalendar({
                                                     key={`${slot.start}-${slot.end}`}
                                                     slot={slot}
                                                     slotIndex={slotIndex}
-                                                    dateKey={dateKey}
                                                     isSelected={isSelected}
                                                     onSlotClick={handleSlotClick}
                                                 />
