@@ -1,12 +1,11 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarEvent } from '@/types/office-service';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Check, CheckCheck, Clock, X } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -31,6 +30,32 @@ interface DateRange {
     endDate: Date;
 }
 
+// Helper function to check if a date is a business day (Monday-Friday)
+const isBusinessDay = (date: Date): boolean => {
+    const day = date.getDay();
+    return day >= 1 && day <= 5; // Monday = 1, Friday = 5
+};
+
+// Helper function to get next business day
+const getNextBusinessDay = (date: Date): Date => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    while (!isBusinessDay(next)) {
+        next.setDate(next.getDate() + 1);
+    }
+    return next;
+};
+
+// Helper function to get previous business day
+const getPreviousBusinessDay = (date: Date): Date => {
+    const prev = new Date(date);
+    prev.setDate(prev.getDate() - 1);
+    while (!isBusinessDay(prev)) {
+        prev.setDate(prev.getDate() - 1);
+    }
+    return prev;
+};
+
 export function TimeSlotCalendar({
     duration,
     timeZone,
@@ -52,7 +77,7 @@ export function TimeSlotCalendar({
     const [rangeDays, setRangeDays] = useState(7);
 
     // Display options
-    const [showWeekends, setShowWeekends] = useState(true);
+    const [includeWeekends, setIncludeWeekends] = useState(false);
     const [granularity, setGranularity] = useState<'15' | '30' | '60'>('30');
 
     // Business hours (configurable)
@@ -66,18 +91,39 @@ export function TimeSlotCalendar({
         if (dateRangeType === 'target') {
             const target = new Date(targetDate);
             const start = new Date(target);
-            // For even rangeDays, distribute evenly around target
-            // For odd rangeDays, put target in the middle
-            const daysBefore = Math.floor((rangeDays - 1) / 2);
-            const daysAfter = rangeDays - 1 - daysBefore;
-            start.setDate(start.getDate() - daysBefore);
             const end = new Date(target);
-            end.setDate(end.getDate() + daysAfter);
+
+            if (includeWeekends) {
+                // Use calendar days
+                const daysBefore = Math.floor((rangeDays - 1) / 2);
+                const daysAfter = rangeDays - 1 - daysBefore;
+                start.setDate(start.getDate() - daysBefore);
+                end.setDate(end.getDate() + daysAfter);
+            } else {
+                // Use business days
+                let daysBefore = Math.floor((rangeDays - 1) / 2);
+                let daysAfter = rangeDays - 1 - daysBefore;
+
+                // Calculate business days before
+                let currentStart = new Date(target);
+                for (let i = 0; i < daysBefore; i++) {
+                    currentStart = getPreviousBusinessDay(currentStart);
+                }
+                start.setTime(currentStart.getTime());
+
+                // Calculate business days after
+                let currentEnd = new Date(target);
+                for (let i = 0; i < daysAfter; i++) {
+                    currentEnd = getNextBusinessDay(currentEnd);
+                }
+                end.setTime(currentEnd.getTime());
+            }
+
             return { startDate: start, endDate: end };
         } else {
             return dateRange;
         }
-    }, [dateRangeType, targetDate, rangeDays, dateRange]);
+    }, [dateRangeType, targetDate, rangeDays, dateRange, includeWeekends]);
 
     // Generate time slots for the date range
     const timeSlots = useMemo(() => {
@@ -89,7 +135,7 @@ export function TimeSlotCalendar({
         const current = new Date(effectiveDateRange.startDate);
         while (current <= effectiveDateRange.endDate) {
             const dayOfWeek = current.getDay();
-            if (showWeekends || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
+            if (includeWeekends || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
                 dates.push(new Date(current));
             }
             current.setDate(current.getDate() + 1);
@@ -134,7 +180,7 @@ export function TimeSlotCalendar({
         });
 
         return slots;
-    }, [effectiveDateRange, showWeekends, granularity, businessHours, duration, calendarEvents, selectedTimeSlots]);
+    }, [effectiveDateRange, includeWeekends, granularity, businessHours, duration, calendarEvents, selectedTimeSlots]);
 
     // Handle slot selection
     const handleSlotClick = useCallback((slot: TimeSlot) => {
@@ -146,6 +192,35 @@ export function TimeSlotCalendar({
 
         onTimeSlotsChange(newSelectedSlots);
     }, [selectedTimeSlots, onTimeSlotsChange]);
+
+    // Handle day-level selection
+    const handleDaySelection = useCallback((dateKey: string, action: 'all' | 'all_times' | 'none') => {
+        const daySlots = slotsByDate[dateKey] || [];
+        let newSelectedSlots = [...selectedTimeSlots];
+
+        if (action === 'all') {
+            // Add all non-conflicting slots for this day
+            const availableSlots = daySlots.filter(slot => !slot.isConflict);
+            const slotIds = availableSlots.map(slot => `${slot.start}-${slot.end}`);
+            const existingIds = new Set(selectedTimeSlots.map(slot => `${slot.start}-${slot.end}`));
+
+            availableSlots.forEach(slot => {
+                if (!existingIds.has(`${slot.start}-${slot.end}`)) {
+                    newSelectedSlots.push({ start: slot.start, end: slot.end });
+                }
+            });
+        } else if (action === 'all_times') {
+            // Add all slots for this day regardless of availability
+            const allSlots = daySlots.filter(slot => !slot.isSelected);
+            newSelectedSlots = [...newSelectedSlots, ...allSlots.map(slot => ({ start: slot.start, end: slot.end }))];
+        } else if (action === 'none') {
+            // Remove all slots for this day
+            const daySlotIds = new Set(daySlots.map(slot => `${slot.start}-${slot.end}`));
+            newSelectedSlots = selectedTimeSlots.filter(slot => !daySlotIds.has(`${slot.start}-${slot.end}`));
+        }
+
+        onTimeSlotsChange(newSelectedSlots);
+    }, [selectedTimeSlots, onTimeSlotsChange, slotsByDate]);
 
     // Group slots by date for display
     const slotsByDate = useMemo(() => {
@@ -192,22 +267,6 @@ export function TimeSlotCalendar({
         return diffDays;
     }, [effectiveDateRange]);
 
-    // Navigation
-    const navigateDateRange = (direction: 'prev' | 'next') => {
-        const days = direction === 'next' ? rangeDays : -rangeDays;
-        if (dateRangeType === 'target') {
-            const newTarget = new Date(targetDate);
-            newTarget.setDate(newTarget.getDate() + days);
-            setTargetDate(newTarget.toISOString().split('T')[0]);
-        } else {
-            const newStart = new Date(dateRange.startDate);
-            newStart.setDate(newStart.getDate() + days);
-            const newEnd = new Date(dateRange.endDate);
-            newEnd.setDate(newEnd.getDate() + days);
-            setDateRange({ startDate: newStart, endDate: newEnd });
-        }
-    };
-
     // Render a single grid for a chunk of dates
     const renderGrid = (dateChunk: string[], chunkIndex: number) => {
         const timeSlotCount = Math.floor((businessHours.end - businessHours.start) * 60 / parseInt(granularity));
@@ -224,15 +283,42 @@ export function TimeSlotCalendar({
                 </div>
                 <div className="overflow-x-auto">
                     <div className="min-w-max">
-                        {/* Header */}
+                        {/* Header with day selection controls */}
                         <div className={`grid gap-1 p-2 bg-muted/50`} style={{
                             gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(60px, 1fr))`
                         }}>
                             <div className="p-2 text-sm font-medium text-muted-foreground">Time</div>
                             {dateChunk.map(dateKey => (
                                 <div key={dateKey} className="p-2 text-sm font-medium text-center">
-                                    <div className="whitespace-normal leading-tight">
+                                    <div className="whitespace-normal leading-tight mb-2">
                                         {formatDate(dateKey)}
+                                    </div>
+                                    {/* Day selection buttons */}
+                                    <div className="flex gap-1 justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDaySelection(dateKey, 'all')}
+                                            className="w-5 h-5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs flex items-center justify-center"
+                                            title="Select all available slots"
+                                        >
+                                            <Check className="h-2 w-2" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDaySelection(dateKey, 'all_times')}
+                                            className="w-5 h-5 bg-gray-800 hover:bg-gray-900 text-white rounded text-xs flex items-center justify-center"
+                                            title="Select all times regardless of availability"
+                                        >
+                                            <CheckCheck className="h-2 w-2" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDaySelection(dateKey, 'none')}
+                                            className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded text-xs flex items-center justify-center"
+                                            title="Deselect all slots for this day"
+                                        >
+                                            <X className="h-2 w-2" />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -369,7 +455,7 @@ export function TimeSlotCalendar({
                                 className="w-full"
                             />
                             <div className="text-sm text-muted-foreground">
-                                Showing {actualDaysInRange} days total
+                                Showing {actualDaysInRange} days total {!includeWeekends && '(business days only)'}
                             </div>
                         </div>
                     )}
@@ -378,11 +464,11 @@ export function TimeSlotCalendar({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="flex items-center space-x-2">
                             <Checkbox
-                                id="showWeekends"
-                                checked={showWeekends}
-                                onCheckedChange={(checked) => setShowWeekends(checked as boolean)}
+                                id="includeWeekends"
+                                checked={includeWeekends}
+                                onCheckedChange={(checked) => setIncludeWeekends(checked as boolean)}
                             />
-                            <Label htmlFor="showWeekends">Show Weekends</Label>
+                            <Label htmlFor="includeWeekends">Include Weekends</Label>
                         </div>
 
                         <div className="space-y-2">
@@ -434,17 +520,8 @@ export function TimeSlotCalendar({
             {/* Calendar Grid */}
             <Card>
                 <CardContent className="p-0">
-                    {/* Navigation */}
-                    <div className="flex items-center justify-between p-4 border-b">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigateDateRange('prev')}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Previous
-                        </Button>
-
+                    {/* Header without navigation */}
+                    <div className="flex items-center justify-center p-4 border-b">
                         <div className="text-center">
                             <div className="font-medium">
                                 {formatDate(effectiveDateRange.startDate.toISOString())} - {formatDate(effectiveDateRange.endDate.toISOString())}
@@ -453,15 +530,6 @@ export function TimeSlotCalendar({
                                 {Object.keys(slotsByDate).length} days, {timeSlots.length} time slots
                             </div>
                         </div>
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigateDateRange('next')}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
                     </div>
 
                     {/* Multiple Calendar Grids */}
@@ -494,6 +562,14 @@ export function TimeSlotCalendar({
                                 <Clock className="h-3 w-3 mx-auto" />
                             </div>
                             <span>Conflict</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                                <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                                <div className="w-3 h-3 bg-gray-800 rounded"></div>
+                                <div className="w-3 h-3 bg-red-500 rounded"></div>
+                            </div>
+                            <span>Day controls: Available | All Times | None</span>
                         </div>
                     </div>
                 </CardContent>
