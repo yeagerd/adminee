@@ -581,7 +581,7 @@ export default function PackageDashboard() {
                         tracking_link: selectedPackage.tracking_link,
                         updated_at: new Date().toISOString(), // Default value since Package doesn't have this
                         events_count: selectedPackage.events?.length || 0,
-                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label.name) || [],
+                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label?.name || '') || [],
                     }}
                     onShipmentUpdated={(updatedPackage) => {
                         // Update the package in the local state

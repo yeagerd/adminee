@@ -113,7 +113,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
         setLoadingEvents(true);
         setEventsError(null);
         try {
-            const fetchedEvents = await shipmentsClient.getTrackingEvents(shipment.id);
+            const fetchedEvents = await gatewayClient.getTrackingEvents(shipment.id);
             setEvents(fetchedEvents);
         } catch (error) {
             console.error('Failed to fetch tracking events:', error);
