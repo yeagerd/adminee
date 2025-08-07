@@ -9,10 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { gatewayClient } from '@/lib/gateway-client';
 import { PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { PackageResponse, shipmentsClient } from '@/lib/shipments-client';
-import { safeParseDateToISOString } from '@/lib/utils';
-import { Calendar, ExternalLink, FileText, Loader2, Package, Truck, User } from 'lucide-react';
+import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
+import { Calendar, ExternalLink, FileText, Loader2, Package, Trash2, Truck, User } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import TrackingTimeline from '../packages/TrackingTimeline';
 
 interface ShipmentDetailsModalProps {
     isOpen: boolean;
@@ -79,7 +78,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
     }>>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [eventsError, setEventsError] = useState<string | null>(null);
-    const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+    const [eventsToDelete, setEventsToDelete] = useState<Set<string>>(new Set());
 
     // Initialize form data when modal opens
     useEffect(() => {
@@ -124,23 +123,18 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
         }
     };
 
-    // Handle event deletion
-    const handleDeleteEvent = async (eventId: string) => {
-        if (!confirm('Are you sure you want to delete this tracking event? This action cannot be undone.')) {
-            return;
-        }
+    // Handle event deletion (stage for deletion)
+    const handleDeleteEvent = (eventId: string) => {
+        setEventsToDelete(prev => new Set(prev).add(eventId));
+    };
 
-        setDeletingEventId(eventId);
-        try {
-            await gatewayClient.deleteTrackingEvent(shipment.id, eventId);
-            // Remove the deleted event from the local state
-            setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
-        } catch (error) {
-            console.error('Failed to delete tracking event:', error);
-            alert('Failed to delete tracking event. Please try again.');
-        } finally {
-            setDeletingEventId(null);
-        }
+    // Handle event restoration (unstage from deletion)
+    const handleRestoreEvent = (eventId: string) => {
+        setEventsToDelete(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(eventId);
+            return newSet;
+        });
     };
 
     const handleInputChange = (field: keyof ShipmentFormData, value: string) => {
@@ -177,14 +171,29 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                 });
             }
 
+            // Check if there are any changes (form data or staged deletions)
+            const hasFormChanges = Object.keys(updateData).length > 0;
+            const hasStagedDeletions = eventsToDelete.size > 0;
+
             // If no changes, just close the modal
-            if (Object.keys(updateData).length === 0) {
+            if (!hasFormChanges && !hasStagedDeletions) {
                 onClose();
                 return;
             }
 
-            // Update the shipment
-            const updatedShipment = await shipmentsClient.updatePackage(shipment.id, updateData);
+            // Update the shipment if there are form changes
+            let updatedShipment = shipment;
+            if (hasFormChanges) {
+                updatedShipment = await shipmentsClient.updatePackage(shipment.id, updateData);
+            }
+
+            // Delete staged events if any
+            if (hasStagedDeletions) {
+                const deletePromises = Array.from(eventsToDelete).map(eventId =>
+                    gatewayClient.deleteTrackingEvent(shipment.id, eventId)
+                );
+                await Promise.all(deletePromises);
+            }
 
             setSuccess(true);
 
@@ -213,14 +222,16 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
         if (originalData) {
             setFormData(originalData);
         }
+        // Clear staged deletions
+        setEventsToDelete(new Set());
         setError(null);
         onClose();
     };
 
-    const hasChanges = originalData && Object.keys(formData).some(key => {
+    const hasChanges = (originalData && Object.keys(formData).some(key => {
         const field = key as keyof ShipmentFormData;
         return formData[field] !== originalData[field];
-    });
+    })) || eventsToDelete.size > 0;
 
     if (!isOpen) return null;
 
@@ -465,11 +476,45 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                         ) : events.length === 0 ? (
                             <div className="text-sm text-gray-500">No tracking events found.</div>
                         ) : (
-                            <TrackingTimeline
-                                events={events}
-                                onDeleteEvent={handleDeleteEvent}
-                                deletingEventId={deletingEventId}
-                            />
+                            <ol className="border-l-2 border-blue-500 pl-4">
+                                {events.map((event, idx) => {
+                                    const isMarkedForDeletion = eventsToDelete.has(event.id);
+                                    return (
+                                        <li key={idx} className="mb-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="text-xs text-gray-400">{safeParseDateToLocaleString(event.event_date, {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}</div>
+                                                    <div className={`font-semibold ${isMarkedForDeletion ? 'line-through text-gray-400' : ''}`}>
+                                                        {isMarkedForDeletion && <Trash2 className="inline h-4 w-4 mr-2 text-red-500" />}
+                                                        {event.status}
+                                                    </div>
+                                                    {event.location && <div className={`text-sm ${isMarkedForDeletion ? 'text-gray-300' : 'text-gray-500'}`}>{event.location}</div>}
+                                                    {event.description && <div className={`text-xs ${isMarkedForDeletion ? 'text-gray-300' : 'text-gray-400'}`}>{event.description}</div>}
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => isMarkedForDeletion ? handleRestoreEvent(event.id) : handleDeleteEvent(event.id)}
+                                                    className="ml-2 h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                                    aria-label={isMarkedForDeletion ? "Restore tracking event" : "Delete tracking event"}
+                                                >
+                                                    {isMarkedForDeletion ? (
+                                                        <span className="text-xs">↶</span>
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ol>
                         )}
                     </div>
                 </div>

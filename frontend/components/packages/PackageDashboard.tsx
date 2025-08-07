@@ -8,6 +8,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
+import ShipmentDetailsModal from '../shipments/ShipmentDetailsModal';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -18,7 +19,6 @@ import { TableCell } from '../ui/table';
 import type { Package } from './AddPackageModal';
 import AddPackageModal from './AddPackageModal';
 import LabelChip from './LabelChip';
-import ShipmentDetailsModal from '../shipments/ShipmentDetailsModal';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -585,9 +585,9 @@ export default function PackageDashboard() {
                     }}
                     onShipmentUpdated={(updatedPackage) => {
                         // Update the package in the local state
-                        setPackages(prevPackages => 
-                            prevPackages.map(pkg => 
-                                pkg.id === updatedPackage.id 
+                        setPackages(prevPackages =>
+                            prevPackages.map(pkg =>
+                                pkg.id === updatedPackage.id
                                     ? {
                                         ...pkg,
                                         tracking_number: updatedPackage.tracking_number,

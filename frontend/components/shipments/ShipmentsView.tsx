@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import ShipmentsList, { ShipmentItem } from './ShipmentsList';
 import ShipmentDetailsModal from './ShipmentDetailsModal';
+import ShipmentsList, { ShipmentItem } from './ShipmentsList';
 
 interface ShipmentsViewProps {
     className?: string;
@@ -158,7 +158,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
             events_count: shipment.events_count || 0,
             labels: shipment.labels || [],
         };
-        
+
         setSelectedShipment(packageResponse);
         setIsModalOpen(true);
     };
@@ -185,9 +185,9 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
 
     const handleShipmentUpdated = (updatedShipment: PackageResponse) => {
         // Update the shipment in the local state
-        setShipments(prevShipments => 
-            prevShipments.map(shipment => 
-                shipment.id === updatedShipment.id 
+        setShipments(prevShipments =>
+            prevShipments.map(shipment =>
+                shipment.id === updatedShipment.id
                     ? {
                         ...shipment,
                         tracking_number: updatedShipment.tracking_number,
