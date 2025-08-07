@@ -428,4 +428,62 @@ describe('useShipmentDetection', () => {
         expect(result.current.trackingNumbers.map(t => t.trackingNumber)).toContain('TBA1234567890');
         expect(result.current.confidence).toBeGreaterThanOrEqual(0.8);
     });
+
+    it('should correctly detect 26-digit tracking numbers as USPS by default', () => {
+        const email: EmailMessage = {
+            id: '26digit-usps',
+            subject: 'Your USPS package has shipped',
+            body_text: 'Your package with tracking number 12345678901234567890123456 has been shipped.',
+            from_address: {
+                name: 'USPS',
+                email: 'tracking@usps.com'
+            },
+            to_addresses: [],
+            cc_addresses: [],
+            bcc_addresses: [],
+            date: new Date().toISOString(),
+            labels: [],
+            is_read: false,
+            has_attachments: false,
+            provider: 'google',
+            provider_message_id: 'test-message-id',
+            account_email: 'test@example.com'
+        };
+        const { result } = renderHook(() => useShipmentDetection(email));
+        expect(result.current.isShipmentEmail).toBe(true);
+        expect(result.current.detectedCarrier).toBe('usps');
+        expect(result.current.trackingNumbers.map(t => t.trackingNumber)).toContain('12345678901234567890123456');
+        // Should be detected as USPS
+        const uspsTracking = result.current.trackingNumbers.find(t => t.trackingNumber === '12345678901234567890123456');
+        expect(uspsTracking?.carrier).toBe('usps');
+    });
+
+    it('should detect 26-digit tracking numbers as UPS when UPS context is present', () => {
+        const email: EmailMessage = {
+            id: '26digit-ups',
+            subject: 'Your UPS Mail Innovations package has shipped',
+            body_text: 'Your package with tracking number 12345678901234567890123456 has been shipped via UPS Mail Innovations. Track at https://www.ups.com/track?tracknum=12345678901234567890123456',
+            from_address: {
+                name: 'UPS',
+                email: 'tracking@ups.com'
+            },
+            to_addresses: [],
+            cc_addresses: [],
+            bcc_addresses: [],
+            date: new Date().toISOString(),
+            labels: [],
+            is_read: false,
+            has_attachments: false,
+            provider: 'google',
+            provider_message_id: 'test-message-id',
+            account_email: 'test@example.com'
+        };
+        const { result } = renderHook(() => useShipmentDetection(email));
+        expect(result.current.isShipmentEmail).toBe(true);
+        expect(result.current.detectedCarrier).toBe('ups');
+        expect(result.current.trackingNumbers.map(t => t.trackingNumber)).toContain('12345678901234567890123456');
+        // Should be detected as UPS due to UPS context in body
+        const upsTracking = result.current.trackingNumbers.find(t => t.trackingNumber === '12345678901234567890123456');
+        expect(upsTracking?.carrier).toBe('ups');
+    });
 }); 

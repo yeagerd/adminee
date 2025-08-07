@@ -17,7 +17,7 @@ export interface ShipmentDetectionResult {
 const TRACKING_PATTERNS = {
     ups: {
         primary: /1Z[0-9A-Z]{15,}/g, // UPS 1Z format
-        alternate: [/[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g, /[0-9]{26}/g] // UPS numeric formats including 26-digit
+        alternate: [/[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g] // UPS numeric formats (excluding 26-digit to avoid USPS conflict)
     },
     fedex: {
         primary: /[0-9]{12}/g, // FedEx 12-digit
@@ -25,7 +25,7 @@ const TRACKING_PATTERNS = {
     },
     usps: {
         primary: /[0-9]{20}/g, // USPS 20-digit
-        alternate: [/[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g] // USPS alternate formats
+        alternate: [/[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g, /[0-9]{26}/g] // USPS alternate formats including 26-digit
     },
     dhl: {
         primary: /[0-9]{10}/g, // DHL 10-digit
@@ -59,7 +59,7 @@ const AMAZON_DOMAINS = [
 /**
  * Extracts tracking numbers from text, prioritizing carrier-specific patterns
  */
-function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; carrier: string; confidence: number }> {
+function extractTrackingNumbers(text: string, body: string = ""): Array<{ trackingNumber: string; carrier: string; confidence: number }> {
     const matches = new Map<string, {
         trackingNumber: string;
         carrier: string;
@@ -99,28 +99,36 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
                     // Same length, use confidence as tiebreaker
                     if (confidence <= overlappingMatch.confidence) {
                         return;
-                    }
-                    // Remove the overlapping match with lower confidence
-                    for (const [key, match] of matches.entries()) {
-                        if (!(end <= match.start || start >= match.end) && confidence > match.confidence) {
-                            matches.delete(key);
+                    } else {
+                        // Remove the lower confidence match
+                        for (const [key, match] of matches.entries()) {
+                            if (!(end <= match.start || start >= match.end)) {
+                                matches.delete(key);
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Add the new match if it has higher confidence or doesn't exist
-        if (!existing || confidence > existing.confidence) {
-            matches.set(trackingNumber, {
-                trackingNumber,
-                carrier,
-                confidence,
-                start,
-                end,
-                priority
-            });
+        // Special handling for 26-digit tracking numbers (UPS Mail Innovations vs USPS)
+        if (trackingNumber.length === 26 && /^\d+$/.test(trackingNumber)) {
+            const bodyLower = body.toLowerCase();
+            if (bodyLower.includes('ups.com') || bodyLower.includes('united parcel service')) {
+                carrier = 'ups';
+            } else {
+                carrier = 'usps';
+            }
         }
+
+        matches.set(trackingNumber, {
+            trackingNumber,
+            carrier,
+            confidence,
+            start,
+            end,
+            priority
+        });
     };
 
     // Collect all carrier-specific matches with priority
@@ -146,6 +154,18 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         for (const match of genericMatches) {
             addMatch(match[0], 'unknown', 0.4, match.index!, match.index! + match[0].length, 3);
         }
+    }
+
+    // Special handling for 26-digit patterns that could be UPS Mail Innovations or USPS
+    const twentySixDigitPattern = /[0-9]{26}/g;
+    const twentySixDigitMatches = text.matchAll(twentySixDigitPattern);
+    for (const match of twentySixDigitMatches) {
+        const bodyLower = body.toLowerCase();
+        let carrier = 'usps'; // Default to USPS
+        if (bodyLower.includes('ups.com') || bodyLower.includes('united parcel service')) {
+            carrier = 'ups';
+        }
+        addMatch(match[0], carrier, 0.7, match.index!, match.index! + match[0].length, 2);
     }
 
     // Only deduplicate by tracking number value and confidence
@@ -218,7 +238,7 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
         const originalBody = email.body_text || email.body_html || '';
         const originalText = `${originalSubject} ${originalBody}`;
 
-        result.trackingNumbers = extractTrackingNumbers(originalText);
+        result.trackingNumbers = extractTrackingNumbers(originalText, originalBody);
 
         // Set as shipment email if tracking numbers are found
         if (result.trackingNumbers.length > 0) {
