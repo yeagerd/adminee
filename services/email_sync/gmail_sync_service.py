@@ -90,13 +90,15 @@ def process_gmail_notification(message: Any) -> None:
                     break
                 except Exception as e:
                     logging.error(
-                        f"Failed to publish email to pubsub: {e}, retrying in {backoff}s"
+                        f"Failed to publish email to pubsub: {e}, "
+                        f"retrying in {backoff}s"
                     )
                     time.sleep(backoff)
                     backoff = min(backoff * 2, 60)
             else:
                 logging.error(
-                    f"ALERT: Failed to publish email after retries. Email: {email['id']}"
+                    f"ALERT: Failed to publish email after retries. "
+                    f"Email: {email['id']}"
                 )
                 message.nack()
                 return
@@ -127,7 +129,8 @@ def process_gmail_notification(message: Any) -> None:
             )
 
         logging.info(
-            f"Successfully processed {processed_count} new emails for {notification.email_address}"
+            f"Successfully processed {processed_count} new emails for "
+            f"{notification.email_address}"
         )
         message.ack()
 

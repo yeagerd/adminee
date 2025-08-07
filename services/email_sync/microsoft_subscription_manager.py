@@ -93,7 +93,8 @@ def refresh_microsoft_subscription(user_id: str) -> bool:
                 # TODO: Trigger token refresh
             elif response.status_code == 403:
                 logging.error(
-                    f"Permission denied for user {user_id}. Check Graph API permissions."
+                    f"Permission denied for user {user_id}. "
+                    f"Check Graph API permissions."
                 )
             elif response.status_code == 404:
                 logging.error(

@@ -288,7 +288,11 @@ class TestEmailParserIntegration(BaseEmailSyncIntegrationTest):
             # Test UPS tracking email
             email_data = {
                 "from": "UPS <noreply@ups.com>",
-                "body": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890E <br>Estimated Delivery: January 17, 2024",
+                "body": (
+                    "Your package has been shipped and is on its way!<br><br>"
+                    "Tracking Number: 1Z999AA1234567890E <br>"
+                    "Estimated Delivery: January 17, 2024"
+                ),
             }
             mock_msg = create_mock_message(email_data)
 
@@ -313,7 +317,14 @@ class TestEmailParserIntegration(BaseEmailSyncIntegrationTest):
             # Test Amazon shipped email
             email_data = {
                 "from": "Amazon <order-update@amazon.com>",
-                "body": "Your Amazon order has shipped!<br><br>Order #123-4567890-1234567<br>Estimated delivery: January 17, 2024<br><br>View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567",
+                "body": (
+                    "Your Amazon order has shipped!<br><br>"
+                    "Order #123-4567890-1234567<br>"
+                    "Estimated delivery: January 17, 2024<br><br>"
+                    "View your order: "
+                    "https://www.amazon.com/gp/your-account/order-details?"
+                    "orderID=123-4567890-1234567"
+                ),
             }
             mock_msg = create_mock_message(email_data)
 
@@ -338,7 +349,12 @@ class TestEmailParserIntegration(BaseEmailSyncIntegrationTest):
             # Test survey email
             email_data = {
                 "from": "Survey Team <surveys@example.com>",
-                "body": "Thank you for your recent purchase!<br><br>We'd love to hear your feedback. Please complete our survey:<br><br>https://survey.ourapp.com/response/abc123 <br><br>Your feedback helps us improve our service.",
+                "body": (
+                    "Thank you for your recent purchase!<br><br>"
+                    "We'd love to hear your feedback. Please complete our survey:<br><br>"
+                    "https://survey.ourapp.com/response/abc123 <br><br>"
+                    "Your feedback helps us improve our service."
+                ),
             }
             mock_msg = create_mock_message(email_data)
 
@@ -407,7 +423,10 @@ class TestPipelineErrorHandling(BaseEmailSyncIntegrationTest):
             # Test with valid email data
             email_data = {
                 "from": "UPS <noreply@ups.com>",
-                "body": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890",
+                "body": (
+                    "Your package has been shipped and is on its way!<br><br>"
+                    "Tracking Number: 1Z999AA1234567890"
+                ),
             }
             mock_msg = create_mock_message(email_data)
 
@@ -438,15 +457,24 @@ class TestPipelinePerformance(BaseEmailSyncIntegrationTest):
             test_emails = [
                 {
                     "from": "UPS <noreply@ups.com>",
-                    "body": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890",
+                    "body": (
+                        "Your package has been shipped and is on its way!<br><br>"
+                        "Tracking Number: 1Z999AA1234567890"
+                    ),
                 },
                 {
                     "from": "Amazon <order-update@amazon.com>",
-                    "body": "Your Amazon order has shipped!<br><br>Order #123-4567890-1234567",
+                    "body": (
+                        "Your Amazon order has shipped!<br><br>"
+                        "Order #123-4567890-1234567"
+                    ),
                 },
                 {
                     "from": "Survey Team <surveys@example.com>",
-                    "body": "Please complete our survey: https://survey.ourapp.com/response/abc123",
+                    "body": (
+                        "Please complete our survey: "
+                        "https://survey.ourapp.com/response/abc123"
+                    ),
                 },
             ]
 
@@ -472,7 +500,13 @@ class TestPipelinePerformance(BaseEmailSyncIntegrationTest):
             # Test with HTML and special characters
             email_data = {
                 "from": "UPS <noreply@ups.com>",
-                "body": "<html><body><p>Your package has been shipped!</p><br><br>Tracking Number: <strong>1Z999AA1234567890E</strong> <br>Estimated Delivery: January 17, 2024<br><br><a href='https://www.ups.com/track?tracknum=1Z999AA1234567890E'>Track your package</a></body></html>",
+                "body": (
+                    "<html><body><p>Your package has been shipped!</p><br><br>"
+                    "Tracking Number: <strong>1Z999AA1234567890E</strong> <br>"
+                    "Estimated Delivery: January 17, 2024<br><br>"
+                    "<a href='https://www.ups.com/track?tracknum=1Z999AA1234567890E'>"
+                    "Track your package</a></body></html>"
+                ),
             }
             mock_msg = create_mock_message(email_data)
 

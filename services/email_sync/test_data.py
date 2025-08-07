@@ -97,7 +97,9 @@ def ups_tracking_email() -> Dict[str, Any]:
         "id": "gmail_ups_123",
         "threadId": "thread_ups_123",
         "labelIds": ["INBOX"],
-        "snippet": "Your UPS package has been shipped. Tracking number: 1Z999AA1234567890E",
+        "snippet": (
+            "Your UPS package has been shipped. " "Tracking number: 1Z999AA1234567890E"
+        ),
         "payload": {
             "headers": [
                 {"name": "Subject", "value": "Your UPS package has been shipped"},
@@ -106,7 +108,13 @@ def ups_tracking_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 10:30:00 +0000"},
             ],
             "body": {
-                "data": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890E<br>Estimated Delivery: January 17, 2024<br><br>Track your package: https://www.ups.com/track?tracknum=1Z999AA1234567890E"
+                "data": (
+                    "Your UPS package has been shipped and is on its way!<br><br>"
+                    "Tracking Number: 1Z999AA1234567890E<br>"
+                    "Estimated Delivery: January 17, 2024<br><br>"
+                    "Track your package: "
+                    "https://www.ups.com/track?tracknum=1Z999AA1234567890E"
+                ),
             },
         },
         "internalDate": "1705312200000",
@@ -128,7 +136,14 @@ def fedex_tracking_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 11:00:00 +0000"},
             ],
             "body": {
-                "data": "Your FedEx package is on its way!<br><br>Tracking Number: 1234 5678 9012<br>Status: In Transit<br>Estimated Delivery: January 18, 2024<br><br>Track your package: https://www.fedex.com/fedextrack/?trknbr=123456789012"
+                "data": (
+                    "Your FedEx package has been shipped and is on its way!<br><br>"
+                    "Tracking Number: 1234 5678 9012<br>"
+                    "Status: In Transit<br>"
+                    "Estimated Delivery: January 18, 2024<br><br>"
+                    "Track your package: "
+                    "https://www.fedex.com/fedextrack/?trknbr=123456789012"
+                ),
             },
         },
         "internalDate": "1705312800000",
@@ -150,7 +165,15 @@ def usps_tracking_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 12:00:00 +0000"},
             ],
             "body": {
-                "data": "Your USPS package has been delivered!<br><br>Tracking Number: 9400111899223856928499<br>Status: Delivered<br>Delivered to: Front Door<br><br>Track your package: https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223856928499"
+                "data": (
+                    "Your USPS package has been delivered!<br><br>"
+                    "Tracking Number: 9400111899223856928499<br>"
+                    "Status: Delivered<br>"
+                    "Delivered to: Front Door<br><br>"
+                    "Track your package: "
+                    "https://tools.usps.com/go/TrackConfirmAction?"
+                    "tLabels=9400111899223856928499"
+                ),
             },
         },
         "internalDate": "1705316400000",
@@ -163,7 +186,9 @@ def multiple_tracking_email() -> Dict[str, Any]:
         "id": "gmail_multi_999",
         "threadId": "thread_multi_999",
         "labelIds": ["INBOX"],
-        "snippet": "Multiple packages shipped: UPS 1Z999AA1234567890E, FedEx 123456789012",
+        "snippet": (
+            "Multiple packages shipped: UPS 1Z999AA1234567890E, " "FedEx 123456789012"
+        ),
         "payload": {
             "headers": [
                 {"name": "Subject", "value": "Multiple packages shipped"},
@@ -172,7 +197,18 @@ def multiple_tracking_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 13:00:00 +0000"},
             ],
             "body": {
-                "data": "Your orders have been shipped!<br><br>Package 1:<br>UPS Tracking: 1Z999AA1234567890E<br>Estimated Delivery: January 17, 2024<br><br>Package 2:<br>FedEx Tracking: 123456789012<br>Estimated Delivery: January 18, 2024<br><br>Package 3:<br>USPS Tracking: 9400111899223856928499<br>Estimated Delivery: January 19, 2024"
+                "data": (
+                    "Multiple packages have been shipped!<br><br>"
+                    "Package 1:<br>"
+                    "UPS Tracking: 1Z999AA1234567890E<br>"
+                    "Estimated Delivery: January 17, 2024<br><br>"
+                    "Package 2:<br>"
+                    "FedEx Tracking: 123456789012<br>"
+                    "Estimated Delivery: January 18, 2024<br><br>"
+                    "Package 3:<br>"
+                    "USPS Tracking: 9400111899223856928499<br>"
+                    "Estimated Delivery: January 19, 2024"
+                ),
             },
         },
         "internalDate": "1705320000000",
@@ -199,7 +235,14 @@ def amazon_shipped_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 14:00:00 +0000"},
             ],
             "body": {
-                "data": "Your Amazon order has shipped!<br><br>Order #123-4567890-1234567<br>Estimated delivery: January 17, 2024<br><br>View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567"
+                "data": (
+                    "Your Amazon order has shipped!<br><br>"
+                    "Order #123-4567890-1234567<br>"
+                    "Estimated delivery: January 17, 2024<br><br>"
+                    "View your order: "
+                    "https://www.amazon.com/gp/your-account/order-details?"
+                    "orderID=123-4567890-1234567"
+                ),
             },
         },
         "internalDate": "1705323600000",
@@ -224,7 +267,14 @@ def amazon_expected_delivery_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 15:00:00 +0000"},
             ],
             "body": {
-                "data": "Your Amazon package is expected to arrive tomorrow!<br><br>Order #123-4567890-1234567<br>Expected delivery: January 16, 2024<br><br>View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567"
+                "data": (
+                    "Your Amazon order is expected to arrive soon!<br><br>"
+                    "Order #123-4567890-1234567<br>"
+                    "Expected delivery: January 16, 2024<br><br>"
+                    "View your order: "
+                    "https://www.amazon.com/gp/your-account/order-details?"
+                    "orderID=123-4567890-1234567"
+                ),
             },
         },
         "internalDate": "1705327200000",
@@ -246,7 +296,14 @@ def amazon_delivered_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 16:00:00 +0000"},
             ],
             "body": {
-                "data": "Your Amazon package has been delivered!<br><br>Order #123-4567890-1234567<br>Delivered: January 15, 2024<br><br>View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567"
+                "data": (
+                    "Your Amazon order has been delivered!<br><br>"
+                    "Order #123-4567890-1234567<br>"
+                    "Delivered: January 15, 2024<br><br>"
+                    "View your order: "
+                    "https://www.amazon.com/gp/your-account/order-details?"
+                    "orderID=123-4567890-1234567"
+                ),
             },
         },
         "internalDate": "1705330800000",
@@ -271,7 +328,14 @@ def amazon_delayed_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 17:00:00 +0000"},
             ],
             "body": {
-                "data": "Your Amazon package delivery has been delayed.<br><br>Order #123-4567890-1234567<br>New estimated delivery: January 19, 2024<br><br>View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567"
+                "data": (
+                    "Your Amazon order delivery has been updated!<br><br>"
+                    "Order #123-4567890-1234567<br>"
+                    "New estimated delivery: January 19, 2024<br><br>"
+                    "View your order: "
+                    "https://www.amazon.com/gp/your-account/order-details?"
+                    "orderID=123-4567890-1234567"
+                ),
             },
         },
         "internalDate": "1705334400000",
@@ -298,7 +362,12 @@ def survey_response_email() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 18:00:00 +0000"},
             ],
             "body": {
-                "data": "Thank you for your recent purchase!<br><br>We'd love to hear your feedback. Please complete our survey:<br><br>https://survey.ourapp.com/response/abc123<br><br>Your feedback helps us improve our service."
+                "data": (
+                    "Thank you for your recent purchase! We'd love to hear "
+                    "your feedback. Please complete our survey:<br><br>"
+                    "https://survey.ourapp.com/response/abc123<br><br>"
+                    "Your feedback helps us improve our service."
+                ),
             },
         },
         "internalDate": "1705338000000",
@@ -320,7 +389,15 @@ def multiple_survey_emails() -> Dict[str, Any]:
                 {"name": "Date", "value": "Mon, 15 Jan 2024 19:00:00 +0000"},
             ],
             "body": {
-                "data": "We have multiple surveys for you to complete:<br><br>Product Feedback: https://survey.ourapp.com/response/def456<br>Service Quality: https://survey.ourapp.com/response/ghi789<br>Overall Experience: https://survey.ourapp.com/response/jkl012"
+                "data": (
+                    "We'd love your feedback on multiple aspects of our service!<br><br>"
+                    "Product Feedback: "
+                    "https://survey.ourapp.com/response/def456<br>"
+                    "Service Quality: "
+                    "https://survey.ourapp.com/response/ghi789<br>"
+                    "Overall Experience: "
+                    "https://survey.ourapp.com/response/jkl012"
+                ),
             },
         },
         "internalDate": "1705341600000",
@@ -344,8 +421,14 @@ def microsoft_ups_email() -> Dict[str, Any]:
         "receivedDateTime": "2024-01-15T10:30:00Z",
         "bodyPreview": "Your package has been shipped and is on its way!",
         "body": {
-            "contentType": "HTML",
-            "content": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890E<br>Estimated Delivery: January 17, 2024<br><br>Track your package: https://www.ups.com/track?tracknum=1Z999AA1234567890E",
+            "content": (
+                "Your UPS package has been shipped and is on its way!<br><br>"
+                "Tracking Number: 1Z999AA1234567890E<br>"
+                "Estimated Delivery: January 17, 2024<br><br>"
+                "Track your package: "
+                "https://www.ups.com/track?tracknum=1Z999AA1234567890E"
+            ),
+            "contentType": "html",
         },
     }
 
@@ -364,8 +447,15 @@ def microsoft_amazon_email() -> Dict[str, Any]:
         "receivedDateTime": "2024-01-15T14:00:00Z",
         "bodyPreview": "Your Amazon order has shipped!",
         "body": {
-            "contentType": "HTML",
-            "content": "Your Amazon order has shipped!<br><br>Order #123-4567890-1234567<br>Estimated delivery: January 17, 2024<br><br>View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567",
+            "content": (
+                "Your Amazon order has shipped!<br><br>"
+                "Order #123-4567890-1234567<br>"
+                "Estimated delivery: January 17, 2024<br><br>"
+                "View your order: "
+                "https://www.amazon.com/gp/your-account/order-details?"
+                "orderID=123-4567890-1234567"
+            ),
+            "contentType": "html",
         },
     }
 
@@ -384,8 +474,13 @@ def microsoft_survey_email() -> Dict[str, Any]:
         "receivedDateTime": "2024-01-15T18:00:00Z",
         "bodyPreview": "Thank you for your recent purchase!",
         "body": {
-            "contentType": "HTML",
-            "content": "Thank you for your recent purchase!<br><br>We'd love to hear your feedback. Please complete our survey:<br><br>https://survey.ourapp.com/response/abc123<br><br>Your feedback helps us improve our service.",
+            "content": (
+                "Thank you for your recent purchase! We'd love to hear "
+                "your feedback. Please complete our survey:<br><br>"
+                "https://survey.ourapp.com/response/abc123<br><br>"
+                "Your feedback helps us improve our service."
+            ),
+            "contentType": "html",
         },
     }
 

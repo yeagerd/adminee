@@ -15,7 +15,9 @@ def test_refresh_gmail_subscription(mock_get_service):
     mock_watch = mock_users.watch.return_value
     mock_watch.execute.return_value = {
         "historyId": "1234567890123456789",  # Realistic Gmail history ID
-        "expiration": "1704067200000",  # 2024-01-01T00:00:00Z in milliseconds since epoch
+        "expiration": (
+            "1704067200000"  # 2024-01-01T00:00:00Z in milliseconds since epoch
+        ),
     }
 
     # Test the function

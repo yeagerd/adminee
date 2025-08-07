@@ -9,8 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy.orm import Session
-from sqlmodel import select
+from sqlmodel import Session, select
 
 from services.common.settings import BaseSettings, Field
 from services.email_sync.database import get_session, init_db
@@ -31,11 +30,11 @@ class EmailTrackingSettings(BaseSettings):
 class EmailTrackingService:
     """Service for managing email processing state."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = EmailTrackingSettings()
         self._init_database()
 
-    def _init_database(self):
+    def _init_database(self) -> None:
         """Initialize the tracking database."""
         init_db()
 
@@ -62,7 +61,7 @@ class EmailTrackingService:
         last_processed_timestamp: Optional[datetime] = None,
         history_id: Optional[str] = None,
         delta_link: Optional[str] = None,
-    ):
+    ) -> None:
         """Update the processing state for a user and provider."""
         with self._get_session() as session:
             statement = select(EmailProcessingState).where(
@@ -109,7 +108,7 @@ class EmailTrackingService:
         provider: str,
         email_id: str,
         email_timestamp: Optional[datetime] = None,
-    ):
+    ) -> None:
         """Mark an email as processed."""
         self.update_processing_state(
             user_email=user_email,

@@ -35,5 +35,8 @@ class EmailProcessingState(SQLModel, table=True):
         ),
     )
 
-    def __repr__(self):
-        return f"<EmailProcessingState(user_email='{self.user_email}', provider='{self.provider}')>"
+    def __repr__(self) -> str:
+        return (
+            f"<EmailProcessingState(user_email='{self.user_email}', "
+            f"provider='{self.provider}')>"
+        )

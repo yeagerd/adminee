@@ -21,7 +21,7 @@ class TestMicrosoftGraphClientIntegration:
         return MicrosoftGraphClient(access_token="test-access-token")
 
     def test_real_microsoft_graph_api_integration_stubbed(self, graph_client):
-        """Test integration with real Microsoft Graph API using test account (currently stubbed)."""
+        """Test integration with real Microsoft Graph API (stubbed)."""
         # Currently the method is stubbed and returns empty list
         notification = {
             "value": [
@@ -60,7 +60,7 @@ class TestMicrosoftGraphClientIntegration:
     def test_microsoft_graph_api_authentication_error_handling_stubbed(
         self, graph_client
     ):
-        """Test handling of authentication errors and token refresh (currently stubbed)."""
+        """Test handling of authentication errors and token refresh (stubbed)."""
         # Currently the method is stubbed and doesn't raise exceptions
         notification = {
             "value": [{"changeType": "created", "resource": "me/messages/msg1"}]
@@ -94,7 +94,7 @@ class TestMicrosoftGraphClientIntegration:
         # 3. Verify appropriate exception is raised after max retries
 
     def test_microsoft_graph_api_different_change_types_stubbed(self, graph_client):
-        """Test handling of different change types in notifications (currently stubbed)."""
+        """Test handling of different change types in notifications (stubbed)."""
         # Currently the method is stubbed and doesn't handle different change types
         notification = {
             "value": [
@@ -150,7 +150,7 @@ class TestMicrosoftGraphClientIntegration:
         assert result == []
 
     def test_microsoft_graph_api_batch_processing_stubbed(self, graph_client):
-        """Test processing multiple emails in a single notification (currently stubbed)."""
+        """Test processing multiple emails in a single notification (stubbed)."""
         # Currently the method is stubbed and doesn't process batches
         notification = {
             "value": [
@@ -181,7 +181,7 @@ class TestMicrosoftGraphClientIntegration:
         assert client2.base_url == "https://graph.microsoft.com/v1.0"
 
     def test_microsoft_graph_api_error_response_handling_stubbed(self, graph_client):
-        """Test handling of various error responses from Graph API (currently stubbed)."""
+        """Test handling of various error responses from Graph API (stubbed)."""
         # Currently the method is stubbed and doesn't handle errors
         notification = {
             "value": [{"changeType": "created", "resource": "me/messages/msg1"}]

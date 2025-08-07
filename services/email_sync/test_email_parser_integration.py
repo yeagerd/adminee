@@ -26,7 +26,10 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "UPS <noreply@ups.com>",
             "subject": "Your UPS package has been shipped",
-            "body": "Your UPS package has been shipped. Tracking number: 1Z999AA1234567890E",
+            "body": (
+                "Your UPS package has been shipped. "
+                "Tracking number: 1Z999AA1234567890E"
+            ),
         }
 
         # Create mock message
@@ -60,7 +63,9 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "FedEx <noreply@fedex.com>",
             "subject": "Your FedEx package has been shipped",
-            "body": "Your FedEx package has been shipped. Tracking number: 123456789012",
+            "body": (
+                "Your FedEx package has been shipped. " "Tracking number: 123456789012"
+            ),
         }
 
         # Create mock message
@@ -94,7 +99,10 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "USPS <noreply@usps.com>",
             "subject": "Your USPS package has been shipped",
-            "body": "Your USPS package has been shipped. Tracking number: 9400100000000000000000",
+            "body": (
+                "Your USPS package has been shipped. "
+                "Tracking number: 9400100000000000000000"
+            ),
         }
 
         # Create mock message
@@ -128,7 +136,12 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "Amazon <order-update@amazon.com>",
             "subject": "Your Amazon order has shipped",
-            "body": "Your Amazon order has shipped! Order #123-4567890-1234567. View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567",
+            "body": (
+                "Your Amazon order has shipped! Order #123-4567890-1234567. "
+                "View your order: "
+                "https://www.amazon.com/gp/your-account/order-details?"
+                "orderID=123-4567890-1234567"
+            ),
         }
 
         # Create mock message
@@ -162,7 +175,12 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "Amazon <order-update@amazon.com>",
             "subject": "Your Amazon package has been delivered",
-            "body": "Your Amazon package has been delivered! Order #123-4567890-1234567. View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567",
+            "body": (
+                "Your Amazon package has been delivered! Order #123-4567890-1234567. "
+                "View your order: "
+                "https://www.amazon.com/gp/your-account/order-details?"
+                "orderID=123-4567890-1234567"
+            ),
         }
 
         # Create mock message
@@ -195,7 +213,12 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "Amazon <order-update@amazon.com>",
             "subject": "Your Amazon package delivery has been delayed",
-            "body": "Your Amazon package delivery has been delayed! Order #123-4567890-1234567. View your order: https://www.amazon.com/gp/your-account/order-details?orderID=123-4567890-1234567",
+            "body": (
+                "Your Amazon package delivery has been delayed! Order #123-4567890-1234567. "
+                "View your order: "
+                "https://www.amazon.com/gp/your-account/order-details?"
+                "orderID=123-4567890-1234567"
+            ),
         }
 
         # Create mock message
@@ -228,7 +251,10 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "Survey Team <surveys@example.com>",
             "subject": "Please complete our survey",
-            "body": "Thank you for your recent purchase! We'd love to hear your feedback. Please complete our survey: https://survey.ourapp.com/response/abc123",
+            "body": (
+                "Thank you for your recent purchase! We'd love to hear your feedback. "
+                "Please complete our survey: https://survey.ourapp.com/response/abc123"
+            ),
         }
 
         # Create mock message
@@ -261,7 +287,11 @@ class TestEmailParserSampleDataIntegration:
         email_data = {
             "from": "Shipping Updates <shipping@example.com>",
             "subject": "Multiple packages shipped",
-            "body": "Your orders have been shipped! Package 1: UPS Tracking: 1Z999AA1234567890E. Package 2: FedEx Tracking: 123456789012. Package 3: USPS Tracking: 9400111899223856928499",
+            "body": (
+                "Multiple packages shipped! Package 1: UPS Tracking: 1Z999AA1234567890E. "
+                "Package 2: FedEx Tracking: 123456789012. "
+                "Package 3: USPS Tracking: 9400111899223856928499"
+            ),
         }
 
         # Create mock message

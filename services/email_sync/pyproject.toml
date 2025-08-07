@@ -34,7 +34,8 @@ dependencies = [
 test = [
     "pytest",
     "pytest-asyncio",
-    "respx"
+    "respx",
+    "google-cloud-pubsub>=2.18.0,<3.0.0"
 ]
 
 [build-system]
@@ -104,4 +105,9 @@ ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
-unfixable = [] 
+unfixable = []
+
+# Ignore line length for test files
+[tool.ruff.lint.per-file-ignores]
+"test_*.py" = ["E501"]
+"*test*.py" = ["E501"] 

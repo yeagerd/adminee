@@ -101,8 +101,11 @@ class MicrosoftGraphClient:
         try:
             # Get the full message with body
             url = f"{self.base_url}/me/messages/{message_id}"
-            params = {
-                "$select": "id,subject,from,toRecipients,receivedDateTime,body,bodyPreview,importance,isRead,hasAttachments",
+            params: Dict[str, str] = {
+                "$select": (
+                    "id,subject,from,toRecipients,receivedDateTime,body,"
+                    "bodyPreview,importance,isRead,hasAttachments"
+                ),
                 "$expand": "attachments",
             }
 
@@ -221,10 +224,13 @@ class MicrosoftGraphClient:
                     # Start new delta query
                     url = f"{self.base_url}/me/messages/delta"
 
-                params = {
-                    "$select": "id,subject,from,toRecipients,receivedDateTime,body,bodyPreview,importance,isRead,hasAttachments",
+                params: Dict[str, str] = {
+                    "$select": (
+                        "id,subject,from,toRecipients,receivedDateTime,body,"
+                        "bodyPreview,importance,isRead,hasAttachments"
+                    ),
                     "$expand": "attachments",
-                    "$top": 50,  # Limit batch size
+                    "$top": "50",  # Limit batch size
                 }
 
                 headers = {

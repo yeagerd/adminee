@@ -85,14 +85,15 @@ def process_microsoft_notification(message: Any) -> None:
                     break
                 except Exception as e:
                     logging.error(
-                        f"Failed to publish email to pubsub: {e}, retrying in {backoff}s"
+                        f"Failed to publish email to pubsub: {e}, "
+                        f"retrying in {backoff}s"
                     )
                     time.sleep(backoff)
-                    backoff = min(backoff * 2, 60)
-            else:
-                logging.error(
-                    f"ALERT: Failed to publish email after retries. Email: {email['id']}"
-                )
+                else:
+                    logging.error(
+                        f"ALERT: Failed to publish email after retries. "
+                        f"Email: {email['id']}"
+                    )
                 message.nack()
                 return
 

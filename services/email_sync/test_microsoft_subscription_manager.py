@@ -52,12 +52,12 @@ def test_refresh_microsoft_subscription(
 )
 @patch("services.email_sync.microsoft_subscription_manager.requests.patch")
 class TestMicrosoftSubscriptionManagerIntegration:
-    """Integration tests for Microsoft subscription manager with real Graph API calls."""
+    """Integration tests for Microsoft subscription manager (Graph API calls)."""
 
     def test_real_microsoft_graph_subscription_integration_stubbed(
         self, mock_patch, mock_get_subscription_id, mock_get_token
     ):
-        """Test integration with real Microsoft Graph API for subscription management (currently stubbed)."""
+        """Test integration with real Microsoft Graph API for subscription management (stubbed)."""
         # Mock the dependencies
         mock_get_token.return_value = "mock_access_token"
         mock_get_subscription_id.return_value = "subscription-id-123"
@@ -80,7 +80,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
     def test_microsoft_graph_subscription_authentication_error_stubbed(
         self, mock_patch, mock_get_subscription_id, mock_get_token
     ):
-        """Test handling of authentication errors during subscription refresh (currently stubbed)."""
+        """Test handling of authentication errors during subscription refresh (stubbed)."""
         # Mock the dependencies
         mock_get_token.return_value = "mock_access_token"
         mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -98,7 +98,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
     def test_microsoft_graph_subscription_rate_limit_handling_stubbed(
         self, mock_patch, mock_get_subscription_id, mock_get_token
     ):
-        """Test handling of rate limits during subscription refresh (currently stubbed)."""
+        """Test handling of rate limits during subscription refresh (stubbed)."""
         # Mock the dependencies
         mock_get_token.return_value = "mock_access_token"
         mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -134,7 +134,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
     def test_microsoft_graph_subscription_network_error_stubbed(
         self, mock_patch, mock_get_subscription_id, mock_get_token
     ):
-        """Test handling of network errors during subscription refresh (currently stubbed)."""
+        """Test handling of network errors during subscription refresh (stubbed)."""
         # Mock the dependencies
         mock_get_token.return_value = "mock_access_token"
         mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -150,7 +150,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
     def test_microsoft_graph_subscription_successful_refresh_stubbed(
         self, mock_patch, mock_get_subscription_id, mock_get_token
     ):
-        """Test successful subscription refresh with proper response handling (currently stubbed)."""
+        """Test successful subscription refresh with proper response handling (stubbed)."""
         # Mock the dependencies
         mock_get_token.return_value = "mock_access_token"
         mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"

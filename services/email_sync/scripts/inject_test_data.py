@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import time
+from typing import Any, Dict
 
 # Add the parent directory to the path so we can import test_data
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -37,7 +38,8 @@ try:
     from google.cloud import pubsub_v1
 except ImportError:
     print(
-        "Error: google-cloud-pubsub not installed. Install with: pip install google-cloud-pubsub"
+        "Error: google-cloud-pubsub not installed. "
+        "Install with: pip install google-cloud-pubsub"
     )
     sys.exit(1)
 
@@ -52,25 +54,39 @@ class TestDataInjector:
 
         # Define topic names
         self.topics = {
-            "gmail_notifications": f"projects/{project_id}/topics/gmail-notifications",
-            "microsoft_notifications": f"projects/{project_id}/topics/microsoft-notifications",
-            "email_processing": f"projects/{project_id}/topics/email-processing",
-            "package_tracker_events": f"projects/{project_id}/topics/package-tracker-events",
+            "gmail_notifications": (
+                f"projects/{project_id}/topics/gmail-notifications"
+            ),
+            "microsoft_notifications": (
+                f"projects/{project_id}/topics/microsoft-notifications"
+            ),
+            "email_processing": (f"projects/{project_id}/topics/email-processing"),
+            "package_tracker_events": (
+                f"projects/{project_id}/topics/package-tracker-events"
+            ),
             "survey_events": f"projects/{project_id}/topics/survey-events",
             "amazon_events": f"projects/{project_id}/topics/amazon-events",
         }
 
         # Define subscription names
         self.subscriptions = {
-            "gmail_notifications": f"projects/{project_id}/subscriptions/gmail-notifications-sub",
-            "microsoft_notifications": f"projects/{project_id}/subscriptions/microsoft-notifications-sub",
-            "email_processing": f"projects/{project_id}/subscriptions/email-processing-sub",
-            "package_tracker_events": f"projects/{project_id}/subscriptions/package-tracker-events-sub",
+            "gmail_notifications": (
+                f"projects/{project_id}/subscriptions/gmail-notifications-sub"
+            ),
+            "microsoft_notifications": (
+                f"projects/{project_id}/subscriptions/microsoft-notifications-sub"
+            ),
+            "email_processing": (
+                f"projects/{project_id}/subscriptions/email-processing-sub"
+            ),
+            "package_tracker_events": (
+                f"projects/{project_id}/subscriptions/package-tracker-events-sub"
+            ),
             "survey_events": f"projects/{project_id}/subscriptions/survey-events-sub",
             "amazon_events": f"projects/{project_id}/subscriptions/amazon-events-sub",
         }
 
-    def create_topics_and_subscriptions(self):
+    def create_topics_and_subscriptions(self) -> None:
         """Create all required topics and subscriptions."""
         print("Creating topics and subscriptions...")
 
@@ -100,7 +116,7 @@ class TestDataInjector:
                 else:
                     print(f"✗ Failed to create subscription {sub_name}: {e}")
 
-    def publish_gmail_webhooks(self):
+    def publish_gmail_webhooks(self) -> None:
         """Publish Gmail webhook notifications."""
         print("\nPublishing Gmail webhook notifications...")
 
@@ -121,7 +137,7 @@ class TestDataInjector:
             except Exception as e:
                 print(f"✗ Failed to publish Gmail webhook {i}: {e}")
 
-    def publish_microsoft_webhooks(self):
+    def publish_microsoft_webhooks(self) -> None:
         """Publish Microsoft webhook notifications."""
         print("\nPublishing Microsoft webhook notifications...")
 
@@ -142,7 +158,7 @@ class TestDataInjector:
             except Exception as e:
                 print(f"✗ Failed to publish Microsoft webhook {i}: {e}")
 
-    def publish_email_data(self):
+    def publish_email_data(self) -> None:
         """Publish email data to email-processing topic."""
         print("\nPublishing email data to email-processing topic...")
 
@@ -186,17 +202,17 @@ class TestDataInjector:
             except Exception as e:
                 print(f"✗ Failed to publish email {i}: {e}")
 
-    def listen_for_events(self, duration: int = 30):
+    def listen_for_events(self, duration: int = 30) -> Dict[str, list]:
         """Listen for events on downstream topics."""
         print(f"\nListening for events for {duration} seconds...")
 
-        received_events = {
+        received_events: Dict[str, list] = {
             "package_tracker_events": [],
             "survey_events": [],
             "amazon_events": [],
         }
 
-        def callback(message):
+        def callback(message: Any) -> None:
             """Callback for received messages."""
             try:
                 data = json.loads(message.data.decode("utf-8"))
@@ -205,7 +221,8 @@ class TestDataInjector:
                 if "package-tracker-events" in topic_name:
                     received_events["package_tracker_events"].append(data)
                     print(
-                        f"📦 Package event: {data.get('carrier', 'Unknown')} - {data.get('tracking_number', 'No tracking')}"
+                        f"📦 Package event: {data.get('carrier', 'Unknown')} - "
+                        f"{data.get('tracking_number', 'No tracking')}"
                     )
                 elif "survey-events" in topic_name:
                     received_events["survey_events"].append(data)
@@ -248,7 +265,7 @@ class TestDataInjector:
         return received_events
 
 
-def main():
+def main() -> None:
     """Main function."""
     parser = argparse.ArgumentParser(
         description="Inject test data into pubsub emulator"

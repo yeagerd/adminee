@@ -22,9 +22,10 @@ def test_fetch_emails_since_history_id(mock_build):
     )
 
     # Mock empty response
-    mock_service.users.return_value.history.return_value.list.return_value.execute.return_value = {
-        "history": []
-    }
+    mock_response = {"history": []}
+    mock_service.users.return_value.history.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
     # Test that the method exists and can be called
     result = client.fetch_emails_since_history_id("me", "12345")
@@ -99,7 +100,7 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
                     {"name": "To", "value": "recipient@example.com"},
                     {"name": "Subject", "value": "Test Subject 2"},
                 ],
-                "body": {"data": "VGVzdCBib2R5IDI="},  # Base64 encoded "Test body 2"
+                "body": {"data": "VGVzdCBib2R5 IDI="},  # Base64 encoded "Test body 2"
             },
         }
 
@@ -149,9 +150,10 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
         rate_limit_error = HttpError(
             resp=MagicMock(status=429), content=b"Rate limit exceeded"
         )
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.side_effect = (
-            rate_limit_error
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
         )
+        mock_service.execute.side_effect = rate_limit_error
 
         # The method should raise an exception after retries
         with pytest.raises(Exception, match="Max retries exceeded"):
@@ -163,9 +165,10 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
 
         # Mock authentication error (401)
         auth_error = HttpError(resp=MagicMock(status=401), content=b"Unauthorized")
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.side_effect = (
-            auth_error
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
         )
+        mock_service.execute.side_effect = auth_error
 
         # The method should raise the authentication error
         with pytest.raises(HttpError):
@@ -186,17 +189,12 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
         mock_message = {
             "id": "msg1",
             "threadId": "thread1",
-            "payload": {
-                "headers": [
-                    {"name": "From", "value": "sender@example.com"},
-                    {"name": "Subject", "value": "Test Subject"},
-                ],
-                "body": {"data": "VGVzdCBib2R5"},  # Base64 encoded "Test body"
-            },
+            "payload": {"headers": [], "body": {"data": ""}},
         }
-        gmail_client._mock_service.users.return_value.messages.return_value.get.return_value.execute.return_value = (
-            mock_message
+        mock_service = (
+            gmail_client._mock_service.users.return_value.messages.return_value.get.return_value
         )
+        mock_service.execute.return_value = mock_message
 
         # Call the method
         result = gmail_client.fetch_emails_since_history_id("me", "12345")
@@ -208,9 +206,10 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
     def test_gmail_api_network_error_handling_mocked(self, gmail_client):
         """Test handling of network errors with mocked service."""
         # Mock network error
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.side_effect = Exception(
-            "Network error"
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
         )
+        mock_service.execute.side_effect = Exception("Network error")
 
         # The method should raise the original exception since it's not an HttpError
         with pytest.raises(Exception, match="Network error"):
@@ -245,10 +244,11 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
     def test_gmail_api_empty_history_response_mocked(self, gmail_client):
         """Test handling of empty history responses with mocked service."""
         # Mock empty history response
-        mock_history_response = {"history": []}
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.return_value = (
-            mock_history_response
+        mock_response = {"history": []}
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
         )
+        mock_service.execute.return_value = mock_response
 
         # Call the method
         result = gmail_client.fetch_emails_since_history_id("me", "12345")
@@ -307,9 +307,11 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
     def test_gmail_api_fetch_with_different_user_ids(self, gmail_client):
         """Test fetching emails with different user IDs."""
         # Mock empty responses
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.return_value = {
-            "history": []
-        }
+        mock_response = {"history": []}
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
+        )
+        mock_service.execute.return_value = mock_response
 
         # Test with different user IDs
         result1 = gmail_client.fetch_emails_since_history_id("me", "12345")
@@ -331,9 +333,11 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
     def test_gmail_api_fetch_with_different_history_ids(self, gmail_client):
         """Test fetching emails with different history IDs."""
         # Mock empty responses
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.return_value = {
-            "history": []
-        }
+        mock_response = {"history": []}
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
+        )
+        mock_service.execute.return_value = mock_response
 
         # Test with different history IDs
         result1 = gmail_client.fetch_emails_since_history_id("me", "12345")
@@ -353,9 +357,11 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
     def test_gmail_api_fetch_with_retry_parameters(self, gmail_client):
         """Test fetching emails with different retry parameters."""
         # Mock empty responses
-        gmail_client._mock_service.users.return_value.history.return_value.list.return_value.execute.return_value = {
-            "history": []
-        }
+        mock_response = {"history": []}
+        mock_service = (
+            gmail_client._mock_service.users.return_value.history.return_value.list.return_value
+        )
+        mock_service.execute.return_value = mock_response
 
         # Test with different max_retries values
         result1 = gmail_client.fetch_emails_since_history_id(

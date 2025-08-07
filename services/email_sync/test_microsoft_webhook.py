@@ -253,7 +253,9 @@ class TestMicrosoftWebhook:
             with app.test_client() as client:
                 resp = client.post(
                     "/microsoft/webhook",
-                    data='{"value": [{"changeType": "created", "resource": "me/messages/1"',  # Incomplete JSON
+                    data=(
+                        '{"value": [{"changeType": "created", "resource": "me/messages/1"'
+                    ),  # Incomplete JSON
                     headers={
                         "X-Microsoft-Signature": "test-microsoft-webhook-secret",
                         "Content-Type": "application/json",
@@ -451,7 +453,9 @@ class TestMicrosoftWebhook:
                             "resource": "me/messages/1",
                             "resourceData": {
                                 "id": "msg1",
-                                "subject": "Email with special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?",
+                                "subject": (
+                                    "Email with special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?"
+                                ),
                                 "receivedDateTime": "2024-01-15T10:30:00Z",
                             },
                         }

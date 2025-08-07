@@ -179,7 +179,12 @@ def test_amazon_order_link():
 
 def test_publish_events():
     msg = make_email(
-        "UPS: 1Z12345E1512345676 FedEx: 1234 5678 9012 USPS: 9400111899223856928499 Survey: https://survey.ourapp.com/response/abc123 Amazon: shipped. View order: https://www.amazon.com/gp/your-account/order-details?orderID=123ABC456",
+        (
+            "UPS: 1Z12345E1512345676 FedEx: 1234 5678 9012 USPS: 9400111899223856928499 "
+            "Survey: https://survey.ourapp.com/response/abc123 "
+            "Amazon: shipped. View order: "
+            "https://www.amazon.com/gp/your-account/order-details?orderID=123ABC456"
+        ),
         from_addr="order-update@amazon.com",
     )
     with patch(

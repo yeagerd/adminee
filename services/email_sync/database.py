@@ -1,6 +1,7 @@
 """Database configuration for email sync service."""
 
 import os
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel
@@ -8,7 +9,7 @@ from sqlmodel import Session, SQLModel
 from services.email_sync.models.email_tracking import EmailProcessingState  # noqa: F401
 
 
-def get_engine():
+def get_engine() -> Any:
     """Get the database engine."""
     database_url = os.getenv(
         "EMAIL_TRACKING_DATABASE_URL", "sqlite:///email_tracking.db"
@@ -22,7 +23,7 @@ def get_session() -> Session:
     return Session(engine)
 
 
-def init_db():
+def init_db() -> None:
     """Initialize the database by creating all tables."""
     engine = get_engine()
     SQLModel.metadata.create_all(bind=engine)
