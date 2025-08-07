@@ -734,13 +734,8 @@ export function TimeSlotCalendar({
                             <div className="font-medium">
                                 {formatDateFromDate(effectiveDateRange.startDate)} - {formatDateFromDate(effectiveDateRange.endDate)}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                                {Object.keys(slotsByDate).length} days, {timeSlots.length} time slots
-                                {calendarEvents.length > 0 && (
-                                    <span className="ml-2 text-blue-600">
-                                        • {calendarEvents.length} calendar events
-                                    </span>
-                                )}
+                            <div className="text-sm text-blue-600">
+                                Select start time options for your <span className="text-teal-600 font-medium underline">{duration}-minute</span> meeting
                             </div>
                         </div>
                     </div>
