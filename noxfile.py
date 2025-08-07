@@ -42,13 +42,10 @@ def lint(session: nox.Session) -> None:
 def typecheck(session: nox.Session) -> None:
     """Run type checking."""
     session.install("mypy", "types-requests", "types-pytz")
-    # Install all services for comprehensive type checking
-    session.install("-e", "services/common")
-    session.install("-e", "services/user")
-    session.install("-e", "services/chat")
-    session.install("-e", "services/office")
-    session.install("-e", "services/shipments")
-    session.install("-e", "services/meetings")
+    
+    # Use UV to sync workspace packages
+    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
+    
     session.run("mypy", "services")
     session.run("npx", "pyright", "services/", external=True)
 
@@ -57,25 +54,23 @@ def typecheck(session: nox.Session) -> None:
 def typecheck_strict(session: nox.Session) -> None:
     """Run strict type checking."""
     session.install("mypy", "types-requests", "types-pytz")
-    session.install("-e", "services/common")
+    
+    # Use UV to sync workspace packages
+    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
+    
     session.run("mypy", "services/common", "--strict")
 
 
 @nox.session(python="3.12")
 def test(session: nox.Session) -> None:
     """Run tests for all services."""
-    # Install common dependencies
+    # Install test dependencies
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "pytest-xdist", "respx"
     )
 
-    # Install services
-    session.install("-e", "services/common")
-    session.install("-e", "services/user")
-    session.install("-e", "services/chat")
-    session.install("-e", "services/office")
-    session.install("-e", "services/shipments")
-    session.install("-e", "services/meetings")
+    # Use UV to sync workspace packages (this ensures they're installed in editable mode)
+    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     # Run tests
     session.run("python", "-m", "pytest", "services/", "-v", "-n", "auto")
@@ -87,12 +82,9 @@ def test_fast(session: nox.Session) -> None:
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
     )
-    session.install("-e", "services/common")
-    session.install("-e", "services/user")
-    session.install("-e", "services/chat")
-    session.install("-e", "services/office")
-    session.install("-e", "services/shipments")
-    session.install("-e", "services/meetings")
+    
+    # Use UV to sync workspace packages
+    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     session.run(
         "python", "-m", "pytest", "services/user/tests/", "-v", "-k", "not slow"
@@ -111,12 +103,9 @@ def test_cov(session: nox.Session) -> None:
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
     )
-    session.install("-e", "services/common")
-    session.install("-e", "services/user")
-    session.install("-e", "services/chat")
-    session.install("-e", "services/office")
-    session.install("-e", "services/shipments")
-    session.install("-e", "services/meetings")
+    
+    # Use UV to sync workspace packages
+    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     session.run(
         "python",
@@ -153,12 +142,9 @@ def test_serial(session: nox.Session) -> None:
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
     )
-    session.install("-e", "services/common")
-    session.install("-e", "services/user")
-    session.install("-e", "services/chat")
-    session.install("-e", "services/office")
-    session.install("-e", "services/shipments")
-    session.install("-e", "services/meetings")
+    
+    # Use UV to sync workspace packages
+    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
     session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
