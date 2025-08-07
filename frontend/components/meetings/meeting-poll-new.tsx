@@ -9,6 +9,7 @@ import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-clien
 import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
@@ -20,7 +21,13 @@ export function MeetingPollNew() {
     const { setMeetingSubView } = useToolStateUtils();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
-    const [step, setStep] = useState(1);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Get initial step from URL or default to 1
+    const initialStep = parseInt(searchParams.get('step') || '1', 10);
+    const [step, setStep] = useState(Math.max(1, Math.min(4, initialStep)));
+
     // Step 1: Basic Info
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -50,6 +57,38 @@ export function MeetingPollNew() {
     const isStep1Valid = title && duration > 0 && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
     const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+
+    // Update URL when step changes
+    const updateStepInURL = useCallback((newStep: number) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('step', newStep.toString());
+        window.history.pushState({ step: newStep }, '', url.toString());
+    }, []);
+
+    // Handle browser navigation (back/forward buttons)
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            const url = new URL(window.location.href);
+            const stepParam = url.searchParams.get('step');
+            const newStep = stepParam ? parseInt(stepParam, 10) : 1;
+            setStep(Math.max(1, Math.min(4, newStep)));
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // Update URL when step changes internally
+    useEffect(() => {
+        updateStepInURL(step);
+    }, [step, updateStepInURL]);
+
+    // Validate step is within bounds
+    useEffect(() => {
+        if (step < 1 || step > 4) {
+            setStep(1);
+        }
+    }, [step]);
 
     // Stable callback for time slot changes
     const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
@@ -145,6 +184,10 @@ export function MeetingPollNew() {
             if (sendEmails) {
                 // Send invitations via email
                 await gatewayClient.sendMeetingInvitations(createdPollData.id);
+                // Clean up URL by removing step parameter
+                const url = new URL(window.location.href);
+                url.searchParams.delete('step');
+                window.history.replaceState({}, '', url.toString());
                 setMeetingSubView('list');
             } else {
                 // Show individual response links
@@ -162,6 +205,10 @@ export function MeetingPollNew() {
     };
 
     const handleCancel = () => {
+        // Clean up URL by removing step parameter
+        const url = new URL(window.location.href);
+        url.searchParams.delete('step');
+        window.history.replaceState({}, '', url.toString());
         setMeetingSubView('list');
     };
 
@@ -253,7 +300,13 @@ export function MeetingPollNew() {
                             </div>
 
                             <div className="flex gap-2">
-                                <Button onClick={() => setMeetingSubView('list')}>
+                                <Button onClick={() => {
+                                    // Clean up URL by removing step parameter
+                                    const url = new URL(window.location.href);
+                                    url.searchParams.delete('step');
+                                    window.history.replaceState({}, '', url.toString());
+                                    setMeetingSubView('list');
+                                }}>
                                     Back to Polls
                                 </Button>
                             </div>
