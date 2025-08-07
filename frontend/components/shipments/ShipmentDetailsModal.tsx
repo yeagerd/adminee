@@ -137,7 +137,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
         });
     };
 
-    const handleInputChange = (field: keyof ShipmentFormData, value: string) => {
+    const handleInputChange = (field: keyof ShipmentFormData, value: string | PackageStatus) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
@@ -193,6 +193,15 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                     gatewayClient.deleteTrackingEvent(shipment.id, eventId)
                 );
                 await Promise.all(deletePromises);
+
+                // If only events were deleted (no form changes), create an updated shipment object
+                // with the correct events_count for the callback
+                if (!hasFormChanges) {
+                    updatedShipment = {
+                        ...shipment,
+                        events_count: Math.max(0, shipment.events_count - eventsToDelete.size)
+                    };
+                }
             }
 
             setSuccess(true);
