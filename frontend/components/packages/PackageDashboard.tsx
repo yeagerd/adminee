@@ -1,20 +1,24 @@
+import { usePagination } from '@/hooks/use-pagination';
 import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle, Clock, ExternalLink, Plus, Truck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
+import PaginatedDataTable, { ColumnDefinition } from '../ui/paginated-data-table';
+import { TableCell } from '../ui/table';
 import type { Package } from './AddPackageModal';
 import AddPackageModal from './AddPackageModal';
+import LabelChip from './LabelChip';
 import PackageDetails from './PackageDetails';
-import PackageList from './PackageList';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -59,16 +63,29 @@ export default function PackageDashboard() {
     const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('7');
 
-    // Cursor-based pagination state
-    const [, setCurrentCursor] = useState<string | null>(null);
-    const [nextCursor, setNextCursor] = useState<string | null>(null);
-    const [prevCursor, setPrevCursor] = useState<string | null>(null);
-    const [hasNext, setHasNext] = useState(false);
-    const [hasPrev, setHasPrev] = useState(false);
-    const [paginationLoading, setPaginationLoading] = useState(false);
-
     // Performance optimizations
     const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
+
+    // Handle page changes
+    const handlePageChange = useCallback((cursor: string | null, direction: 'next' | 'prev' | 'first') => {
+        if (direction === 'first') {
+            loadData(null, 'next');
+        } else {
+            loadData(cursor, direction);
+        }
+    }, []);
+
+    // Pagination hook
+    const {
+        paginationState,
+        paginationHandlers,
+        setPaginationData,
+        setLoading: setPaginationLoading,
+        resetPagination,
+    } = usePagination({
+        initialLimit: 20,
+        onPageChange: handlePageChange,
+    });
 
     // Load state from URL on mount
     useEffect(() => {
@@ -78,9 +95,6 @@ export default function PackageDashboard() {
         const search = searchParams.get('search');
         const dateRangeParam = searchParams.get('dateRange');
 
-        if (cursor) {
-            setCurrentCursor(cursor);
-        }
         if (status) {
             setSelectedStatusFilters([status]);
         }
@@ -166,11 +180,13 @@ export default function PackageDashboard() {
             if (cachedData && typeof cachedData === 'object' && 'packages' in cachedData) {
                 const cached = cachedData as { packages: Package[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean };
                 setPackages(cached.packages || []);
-                setNextCursor(cached.next_cursor || null);
-                setPrevCursor(cached.prev_cursor || null);
-                setHasNext(cached.has_next);
-                setHasPrev(cached.has_prev);
-                setCurrentCursor(cursorToUse);
+                setPaginationData({
+                    hasNext: cached.has_next,
+                    hasPrev: cached.has_prev,
+                    nextCursor: cached.next_cursor,
+                    prevCursor: cached.prev_cursor,
+                    itemsCount: cached.packages?.length || 0,
+                });
                 return;
             }
 
@@ -180,11 +196,13 @@ export default function PackageDashboard() {
             setCachedData(cacheKey, res);
 
             setPackages(res.packages || []);
-            setNextCursor(res.next_cursor || null);
-            setPrevCursor(res.prev_cursor || null);
-            setHasNext(res.has_next);
-            setHasPrev(res.has_prev);
-            setCurrentCursor(cursorToUse);
+            setPaginationData({
+                hasNext: res.has_next,
+                hasPrev: res.has_prev,
+                nextCursor: res.next_cursor,
+                prevCursor: res.prev_cursor,
+                itemsCount: res.packages?.length || 0,
+            });
 
         } catch (err) {
             let errorMessage = 'Failed to fetch packages';
@@ -194,11 +212,7 @@ export default function PackageDashboard() {
                 if (err.message.includes('Invalid or expired cursor token')) {
                     errorMessage = 'Invalid or expired cursor token';
                     // Reset pagination state
-                    setNextCursor(null);
-                    setPrevCursor(null);
-                    setHasNext(false);
-                    setHasPrev(false);
-                    setCurrentCursor(null);
+                    resetPagination();
                 } else {
                     errorMessage = err.message;
                 }
@@ -308,41 +322,128 @@ export default function PackageDashboard() {
         await loadData();
     };
 
-    const loadNextPage = async () => {
-        if (!hasNext || !nextCursor || paginationLoading) return;
 
-        setPaginationLoading(true);
-        try {
-            await loadData(nextCursor, 'next');
-
-            // Update URL with cursor
-            const newSearchParams = new URLSearchParams(searchParams.toString());
-            newSearchParams.set('cursor', nextCursor);
-            const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
-            router.push(newURL, { scroll: false });
-        } finally {
-            setPaginationLoading(false);
-        }
-    };
-
-    const loadPrevPage = async () => {
-        if (!hasPrev || !prevCursor || paginationLoading) return;
-
-        setPaginationLoading(true);
-        try {
-            await loadData(prevCursor, 'prev');
-
-            // Update URL with cursor
-            const newSearchParams = new URLSearchParams(searchParams.toString());
-            newSearchParams.set('cursor', prevCursor);
-            const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
-            router.push(newURL, { scroll: false });
-        } finally {
-            setPaginationLoading(false);
-        }
-    };
 
     const handleRowClick = (pkg: Package) => setSelectedPackage(pkg);
+
+    // Define columns for the data table
+    const columns: ColumnDefinition<Package>[] = [
+        {
+            key: 'tracking_number',
+            header: 'Tracking Number',
+            sortable: true,
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+        },
+        {
+            key: 'estimated_delivery',
+            header: 'Est. Delivery',
+            sortable: true,
+        },
+        {
+            key: 'package_description',
+            header: 'Description',
+            sortable: false,
+        },
+        {
+            key: 'labels',
+            header: 'Labels',
+            sortable: false,
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            sortable: false,
+            align: 'center',
+        },
+    ];
+
+    // Row renderer function
+    const renderPackageRow = (pkg: Package, index: number) => (
+        <>
+            <TableCell onClick={e => e.stopPropagation()}>
+                {editingCell?.id === pkg.id && editingCell?.field === 'tracking_number' ? (
+                    <Input
+                        defaultValue={pkg.tracking_number}
+                        onBlur={e => handleCellEdit(pkg.id!, 'tracking_number', e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'tracking_number', e.currentTarget.value);
+                            if (e.key === 'Escape') setEditingCell(null);
+                        }}
+                        autoFocus
+                    />
+                ) : (
+                    <span
+                        className="cursor-pointer"
+                        onClick={() => setEditingCell({ id: pkg.id!, field: 'tracking_number' })}
+                    >
+                        {pkg.tracking_number}
+                    </span>
+                )}
+            </TableCell>
+            <TableCell><Badge>{pkg.status}</Badge></TableCell>
+            <TableCell onClick={e => e.stopPropagation()}>
+                {editingCell?.id === pkg.id && editingCell?.field === 'estimated_delivery' ? (
+                    <Input
+                        type="date"
+                        defaultValue={pkg.estimated_delivery}
+                        onBlur={e => handleCellEdit(pkg.id!, 'estimated_delivery', e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'estimated_delivery', e.currentTarget.value);
+                            if (e.key === 'Escape') setEditingCell(null);
+                        }}
+                        autoFocus
+                    />
+                ) : (
+                    <span
+                        className="cursor-pointer"
+                        onClick={() => setEditingCell({ id: pkg.id!, field: 'estimated_delivery' })}
+                    >
+                        {pkg.estimated_delivery}
+                    </span>
+                )}
+            </TableCell>
+            <TableCell onClick={e => e.stopPropagation()}>
+                {editingCell?.id === pkg.id && editingCell?.field === 'package_description' ? (
+                    <Input
+                        defaultValue={pkg.package_description}
+                        onBlur={e => handleCellEdit(pkg.id!, 'package_description', e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'package_description', e.currentTarget.value);
+                            if (e.key === 'Escape') setEditingCell(null);
+                        }}
+                        autoFocus
+                    />
+                ) : (
+                    <span
+                        className="cursor-pointer"
+                        onClick={() => setEditingCell({ id: pkg.id!, field: 'package_description' })}
+                    >
+                        {pkg.package_description}
+                    </span>
+                )}
+            </TableCell>
+            <TableCell>
+                <div className="flex flex-wrap gap-1">
+                    {(pkg.labels || []).map((label: string | { name: string }, idx: number) => (
+                        <LabelChip key={idx} label={typeof label === 'string' ? label : label?.name || ''} />
+                    ))}
+                </div>
+            </TableCell>
+            <TableCell onClick={e => e.stopPropagation()}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(pkg.tracking_link, '_blank')}
+                >
+                    <ExternalLink className="h-4 w-4" />
+                </Button>
+            </TableCell>
+        </>
+    );
 
     // Calculate summary statistics
     const summaryStats = useMemo(() => {
@@ -516,25 +617,16 @@ export default function PackageDashboard() {
             </div>
 
             {/* Package List */}
-            <PackageList
-                packages={filteredAndSortedPackages}
+            <PaginatedDataTable
+                data={filteredAndSortedPackages}
+                columns={columns}
+                pagination={paginationState}
+                paginationHandlers={paginationHandlers}
                 onSort={handleSort}
-                onCellEdit={handleCellEdit}
                 onRowClick={handleRowClick}
-                editingCell={editingCell}
-                setEditingCell={setEditingCell}
-                selectedStatusFilters={selectedStatusFilters}
-                onStatusFilterChange={setSelectedStatusFilters}
-                pagination={{
-                    hasNext,
-                    hasPrev,
-                    nextCursor: nextCursor || undefined,
-                    prevCursor: prevCursor || undefined,
-                    loading: paginationLoading
-                }}
-                onNextPage={loadNextPage}
-                onPrevPage={loadPrevPage}
-                onFirstPage={() => loadData()}
+                rowRenderer={renderPackageRow}
+                emptyMessage="No packages found."
+                loadingMessage="Loading packages..."
             />
 
             {/* Modals */}
