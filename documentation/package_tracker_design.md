@@ -174,7 +174,7 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
       "package_description": "Electronics",
       "order_number": "123-4567890-1234567",
       "tracking_link": "https://www.ups.com/track?tracknum=1Z999AA1234567890",
-      "last_updated": "2024-03-13T10:30:00Z",
+      "updated_at": "2024-03-13T10:30:00Z",
       "events_count": 5,
       "labels": [
         {
@@ -191,9 +191,11 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
     }
   ],
   "pagination": {
-    "page": 1,
-    "per_page": 20,
-    "total": 45
+    "next_cursor": "eyJsYXN0X2lkIjoiMTIzNDU2Nzg5MC1hYmNkLWVmZ2gtaWprbC1tbm9wIiwibGFzdF91cGRhdGVkIjoiMjAyNC0wMy0xM1QxMDozMDowMFoiLCJmaWx0ZXJzIjp7fSwiZGlyZWN0aW9uIjoibmV4dCIsImxpbWl0IjoyMH0=",
+    "prev_cursor": null,
+    "has_next": true,
+    "has_prev": false,
+    "limit": 20
   }
 }
 ```

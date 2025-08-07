@@ -8,6 +8,13 @@ dependencies = [
     "pydantic==2.11.7",
     "python-dotenv>=1.0.0,<2.0.0",
     "fastapi>=0.68.0",
+    "itsdangerous>=2.1.0",
+    "opentelemetry-api>=1.36.0",
+    "opentelemetry-sdk>=1.36.0",
+    "opentelemetry-instrumentation>=0.57b0",
+    "opentelemetry-instrumentation-fastapi>=0.57b0",
+    "opentelemetry-instrumentation-httpx>=0.57b0",
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
@@ -67,4 +74,4 @@ ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
-unfixable = [] 
+unfixable = []

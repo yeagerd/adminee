@@ -90,6 +90,7 @@
         "eslint-config-next": "^15.3.3",
         "eslint-plugin-react": "^7.37.5",
         "globals": "^16.2.0",
+        "identity-obj-proxy": "^3.0.0",
         "jest": "^30.0.4",
         "jest-environment-jsdom": "^30.0.5",
         "postcss": "^8",

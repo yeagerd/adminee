@@ -537,10 +537,16 @@ export class GatewayClient {
     }
 
     async getPackages(params?: {
+        cursor?: string;
+        limit?: number;
+        direction?: 'next' | 'prev';
         tracking_number?: string;
         carrier?: string;
+        status?: string;
+        user_id?: string;
+        date_range?: string;
     }): Promise<{
-        data: Array<{
+        packages: Array<{
             id: string;
             tracking_number: string;
             carrier: string;
@@ -556,21 +562,40 @@ export class GatewayClient {
             events_count: number;
             labels: string[];
         }>;
-        pagination: {
-            page: number;
-            per_page: number;
-            total: number;
-            total_pages: number;
-            has_next: boolean;
-            has_prev: boolean;
-        };
+        next_cursor?: string;
+        prev_cursor?: string;
+        has_next: boolean;
+        has_prev: boolean;
+        limit: number;
     }> {
         const queryParams = new URLSearchParams();
+
+        // Cursor-based pagination parameters
+        if (params?.cursor) {
+            queryParams.append('cursor', params.cursor);
+        }
+        if (params?.limit) {
+            queryParams.append('limit', params.limit.toString());
+        }
+        if (params?.direction) {
+            queryParams.append('direction', params.direction);
+        }
+
+        // Filter parameters
         if (params?.tracking_number) {
             queryParams.append('tracking_number', params.tracking_number);
         }
         if (params?.carrier) {
             queryParams.append('carrier', params.carrier);
+        }
+        if (params?.status) {
+            queryParams.append('status', params.status);
+        }
+        if (params?.user_id) {
+            queryParams.append('user_id', params.user_id);
+        }
+        if (params?.date_range) {
+            queryParams.append('date_range', params.date_range);
         }
 
         const url = queryParams.toString() ? `/api/v1/shipments/packages?${queryParams.toString()}` : '/api/v1/shipments/packages';

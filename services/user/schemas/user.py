@@ -235,15 +235,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)  # Enable ORM mode for Ormar models
 
 
-class UserListResponse(BaseModel):
-    """Schema for paginated user list responses."""
-
-    users: list[UserResponse] = Field(..., description="List of users")
-    total: int = Field(..., description="Total number of users")
-    page: int = Field(..., description="Current page number")
-    page_size: int = Field(..., description="Number of users per page")
-    has_next: bool = Field(..., description="Whether there are more pages")
-    has_previous: bool = Field(..., description="Whether there are previous pages")
+# Import new pagination schemas
 
 
 class UserDeleteResponse(BaseModel):
@@ -313,43 +305,6 @@ class UserOnboardingUpdate(BaseModel):
             )
 
         return self
-
-
-class UserSearchRequest(BaseModel):
-    """Schema for user search requests."""
-
-    query: Optional[str] = Field(None, max_length=255, description="Search query")
-    email: Optional[EmailStr] = Field(None, description="Filter by email")
-    onboarding_completed: Optional[bool] = Field(
-        None, description="Filter by onboarding status"
-    )
-    page: int = Field(1, ge=1, description="Page number")
-    page_size: int = Field(20, ge=1, le=100, description="Number of results per page")
-
-    @field_validator("query")
-    @classmethod
-    def validate_query(cls: type["UserSearchRequest"], v: Any) -> Any:
-        """Validate search query format."""
-        if v is None:
-            return v
-
-        # Check for SQL injection patterns
-        check_sql_injection_patterns(str(v), "search_query")
-
-        # Sanitize the input
-        sanitized = sanitize_text_input(str(v), max_length=255)
-
-        return sanitized
-
-    @field_validator("email")
-    @classmethod
-    def validate_email_search(cls: type["UserSearchRequest"], v: Any) -> Any:
-        """Enhanced email validation for search filters."""
-        if v is None:
-            return v
-
-        # Use comprehensive email validation
-        return validate_email_address(v)
 
 
 class EmailResolutionRequest(BaseModel):

@@ -32,7 +32,7 @@ def build_api_key_mapping(
     """
     settings = get_settings()
     api_key_mapping = {}
-    for config_name, config in api_key_configs.items():
+    for _config_name, config in api_key_configs.items():
         actual_key_value = getattr(settings, config.settings_key, None)
         if actual_key_value:
             api_key_mapping[actual_key_value] = config

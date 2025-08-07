@@ -29,6 +29,30 @@ from services.user.services.preferences_service import PreferencesService
 from services.user.tests.test_base import BaseUserManagementTest
 
 
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the _settings global variable to return test settings."""
+    import services.user.settings as user_settings
+
+    test_settings = user_settings.Settings(
+        db_url_user="sqlite:///:memory:",
+        api_frontend_user_key="test-frontend-key",
+        api_chat_user_key="test-chat-key",
+        api_office_user_key="test-office-key",
+        api_meetings_user_key="test-meetings-key",
+        token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+        nextauth_jwt_key="test-nextauth-secret",
+        oauth_redirect_uri="https://example.com/oauth/callback",
+        google_client_id="test-google-client-id",
+        google_client_secret="test-google-client-secret",
+        azure_ad_client_id="test-microsoft-client-id",
+        azure_ad_client_secret="test-microsoft-client-secret",
+        pagination_secret_key="test-pagination-secret-key",
+    )
+
+    monkeypatch.setattr("services.user.settings._settings", test_settings)
+
+
 class TestPreferencesSchemas:
     """Test preferences Pydantic schemas."""
 
