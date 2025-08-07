@@ -544,6 +544,7 @@ export class GatewayClient {
         carrier?: string;
         status?: string;
         user_id?: string;
+        date_range?: string;
     }): Promise<{
         packages: Array<{
             id: string;
@@ -592,6 +593,9 @@ export class GatewayClient {
         }
         if (params?.user_id) {
             queryParams.append('user_id', params.user_id);
+        }
+        if (params?.date_range) {
+            queryParams.append('date_range', params.date_range);
         }
 
         const url = queryParams.toString() ? `/api/v1/shipments/packages?${queryParams.toString()}` : '/api/v1/shipments/packages';

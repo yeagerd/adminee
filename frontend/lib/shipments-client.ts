@@ -141,6 +141,7 @@ class ShipmentsClient {
         carrier?: string;
         status?: string;
         user_id?: string;
+        date_range?: string;
     }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return gatewayClient.getPackages(params);
     }

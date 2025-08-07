@@ -76,6 +76,7 @@ export default function PackageDashboard() {
         const status = searchParams.get('status');
         const carrier = searchParams.get('carrier');
         const search = searchParams.get('search');
+        const dateRangeParam = searchParams.get('dateRange');
 
         if (cursor) {
             setCurrentCursor(cursor);
@@ -88,6 +89,9 @@ export default function PackageDashboard() {
         }
         if (search) {
             setSearchTerm(search);
+        }
+        if (dateRangeParam && ['7', '30', '90', 'all'].includes(dateRangeParam)) {
+            setDateRange(dateRangeParam as '7' | '30' | '90' | 'all');
         }
     }, [searchParams]);
 
@@ -124,6 +128,7 @@ export default function PackageDashboard() {
                 status?: string;
                 carrier?: string;
                 tracking_number?: string;
+                date_range?: string;
             } = {
                 limit: 20,
                 direction
@@ -148,6 +153,11 @@ export default function PackageDashboard() {
             // Add search term if provided
             if (searchTerm.trim()) {
                 filterParams.tracking_number = searchTerm.trim();
+            }
+
+            // Add date range filter if selected
+            if (dateRange !== 'all') {
+                filterParams.date_range = dateRange;
             }
 
             // Check cache first
@@ -198,7 +208,7 @@ export default function PackageDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, getCachedData, setCachedData, searchParams]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, getCachedData, setCachedData, searchParams]);
 
     // Load first page on mount and when filters change
     useEffect(() => {
@@ -237,21 +247,19 @@ export default function PackageDashboard() {
             newSearchParams.delete('search');
         }
 
+        // Update date range filter
+        if (dateRange !== 'all') {
+            newSearchParams.set('dateRange', dateRange);
+        } else {
+            newSearchParams.delete('dateRange');
+        }
+
         const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
         router.push(newURL, { scroll: false });
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, searchParams, router]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, searchParams, router]);
 
     const filteredAndSortedPackages = useMemo(() => {
         let filtered = [...packages];
-
-        // Apply date range filter
-        if (dateRange !== 'all') {
-            const daysAgo = dayjs().subtract(parseInt(dateRange), 'day');
-            filtered = filtered.filter(pkg => {
-                const deliveryDate = dayjs(pkg.estimated_delivery);
-                return deliveryDate.isSameOrAfter(daysAgo);
-            });
-        }
 
         // Apply sorting
         filtered.sort((a, b) => {
@@ -278,7 +286,7 @@ export default function PackageDashboard() {
         });
 
         return filtered;
-    }, [packages, dateRange, sortField, sortDirection]);
+    }, [packages, sortField, sortDirection]);
 
     const handleSort = (field: string) => {
         if (sortField === field) {

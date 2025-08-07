@@ -21,6 +21,11 @@ class PackageCursorPaginationRequest(CursorPaginationRequest):
     carrier: Optional[str] = Field(None, description="Filter by carrier")
     status: Optional[str] = Field(None, description="Filter by package status")
     user_id: Optional[str] = Field(None, description="Filter by user ID")
+    date_range: Optional[str] = Field(
+        None,
+        pattern="^(7|30|90|all)$",
+        description="Filter by date range: 7, 30, 90 days, or 'all'",
+    )
 
 
 class PackageCursorPaginationResponse(CursorPaginationResponse):
@@ -54,6 +59,11 @@ class PackageSearchRequest(BaseModel):
     status: Optional[str] = Field(None, description="Filter by package status")
     user_id: Optional[str] = Field(None, description="Filter by user ID")
     query: Optional[str] = Field(None, description="General search query")
+    date_range: Optional[str] = Field(
+        None,
+        pattern="^(7|30|90|all)$",
+        description="Filter by date range: 7, 30, 90 days, or 'all'",
+    )
 
 
 class PackageListRequest(BaseModel):
@@ -72,6 +82,11 @@ class PackageListRequest(BaseModel):
     carrier: Optional[str] = Field(None, description="Filter by carrier")
     status: Optional[str] = Field(None, description="Filter by package status")
     user_id: Optional[str] = Field(None, description="Filter by user ID")
+    date_range: Optional[str] = Field(
+        None,
+        pattern="^(7|30|90|all)$",
+        description="Filter by date range: 7, 30, 90 days, or 'all'",
+    )
 
 
 class PackageListResponse(BaseModel):

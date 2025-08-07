@@ -110,6 +110,7 @@ async def list_packages(
     user_id: Optional[str] = None,
     tracking_number: Optional[str] = None,
     email_message_id: Optional[str] = None,
+    date_range: Optional[str] = None,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
@@ -198,6 +199,8 @@ async def list_packages(
         filters["tracking_number"] = tracking_number
     if email_message_id:
         filters["email_message_id"] = email_message_id
+    if date_range:
+        filters["date_range"] = date_range
 
     # Always filter by current user for security
     filters["user_id"] = current_user
@@ -257,6 +260,22 @@ async def list_packages(
             TrackingEvent.email_message_id == validated_filters["email_message_id"]
         )
         query = query.where(Package.id.in_(subquery))  # type: ignore[union-attr]
+
+    if validated_filters.get("date_range"):
+        # Apply date range filtering based on estimated_delivery
+        date_range = validated_filters["date_range"]
+        if date_range in ["7", "30", "90"]:
+            # Calculate the date threshold
+            from datetime import date, timedelta
+
+            days_ago = date.today() - timedelta(days=int(date_range))
+
+            # Filter packages with estimated_delivery >= days_ago
+            # Include packages with null estimated_delivery (they should be shown)
+            query = query.where(
+                (Package.estimated_delivery.is_not(None) & (Package.estimated_delivery >= days_ago))  # type: ignore[operator]
+                | (Package.estimated_delivery.is_(None))
+            )
 
     # Add ordering
     if direction == "next":
