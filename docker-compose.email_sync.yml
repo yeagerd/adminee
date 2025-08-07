@@ -32,4 +32,4 @@ services:
       - GMAIL_TOKEN_URI=https://oauth2.googleapis.com/token
     ports:
       - "8080:8080"
-    command: ["flask", "run", "--host=0.0.0.0", "--port=8080"] 
+    command: ["uvicorn", "services.email_sync.app:app", "--host", "0.0.0.0", "--port", "8080"] 

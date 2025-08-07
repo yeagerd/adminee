@@ -1,14 +1,8 @@
 # mypy: disable-error-code=attr-defined
 import logging
+from typing import Dict
 
-from flask import (  # type: ignore[attr-defined]
-    Flask,
-    Response,
-    abort,
-    jsonify,
-    make_response,
-    request,
-)
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import ValidationError
 
 from services.common.settings import BaseSettings, Field
@@ -24,7 +18,7 @@ class EmailSyncSettings(BaseSettings):
 
 settings = EmailSyncSettings()
 
-app = Flask(__name__)
+app = FastAPI(title="Email Sync Service", version="0.1.0")
 logging.basicConfig(level=logging.INFO)
 
 GMAIL_WEBHOOK_SECRET = settings.GMAIL_WEBHOOK_SECRET
@@ -37,38 +31,43 @@ if test_mode:
 
     publish_message = MagicMock()
 
-# type: ignore[attr-defined]
-app.publish_message = publish_message
-app.register_blueprint(microsoft_webhook_bp)
+
+@app.get("/healthz")
+async def health_check() -> Dict[str, str]:
+    return {"status": "ok"}
 
 
-@app.route("/healthz")
-def health_check() -> Response:
-    return make_response(jsonify({"status": "ok"}), 200)
-
-
-@app.route("/gmail/webhook", methods=["POST"])
-def gmail_webhook() -> Response:
+@app.post("/gmail/webhook")
+async def gmail_webhook(request: Request) -> Dict[str, str]:
     # Auth check
     secret = request.headers.get("X-Gmail-Webhook-Secret")
     if not secret or secret != GMAIL_WEBHOOK_SECRET:
         logging.warning("Unauthorized webhook attempt")
-        abort(401, description="Unauthorized")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     # Parse and validate payload
     try:
-        data = request.get_json(force=True)
+        data = await request.json()
         notification = GmailNotification(**data)
     except (TypeError, ValidationError) as e:
         logging.error(f"Invalid payload: {e}")
-        abort(400, description="Invalid payload")
+        raise HTTPException(status_code=400, detail="Invalid payload")
+
     # Publish to pubsub
     try:
-        app.publish_message(GMAIL_TOPIC, notification.model_dump())  # type: ignore[attr-defined]
+        publish_message(GMAIL_TOPIC, notification.model_dump())
     except Exception as e:
         logging.error(f"Pubsub publish failed: {e}")
-        abort(503, description="Pubsub unavailable")
-    return make_response(jsonify({"status": "ok"}), 200)
+        raise HTTPException(status_code=503, detail="Pubsub unavailable")
+
+    return {"status": "ok"}
+
+
+# Include Microsoft webhook routes
+app.include_router(microsoft_webhook_bp)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8080)

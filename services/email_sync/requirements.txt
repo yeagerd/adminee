@@ -1,6 +1,0 @@
-google-cloud-pubsub
-Flask
-python-dotenv
-pytest
-requests
-pydantic 
