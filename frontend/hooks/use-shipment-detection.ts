@@ -87,11 +87,8 @@ function extractTrackingNumbers(text: string, body: string = ""): Array<{ tracki
             if (overlappingMatch) {
                 // If this match is longer than the overlapping match, remove the shorter one
                 if (trackingNumber.length > overlappingMatch.trackingNumber.length) {
-                    for (const [key, match] of matches.entries()) {
-                        if (!(end <= match.start || start >= match.end)) {
-                            matches.delete(key);
-                        }
-                    }
+                    // Remove only the overlapping match with lower length
+                    matches.delete(overlappingMatch.trackingNumber);
                 } else if (trackingNumber.length < overlappingMatch.trackingNumber.length) {
                     // If this match is shorter, don't add it
                     return;
@@ -100,35 +97,24 @@ function extractTrackingNumbers(text: string, body: string = ""): Array<{ tracki
                     if (confidence <= overlappingMatch.confidence) {
                         return;
                     } else {
-                        // Remove the lower confidence match
-                        for (const [key, match] of matches.entries()) {
-                            if (!(end <= match.start || start >= match.end)) {
-                                matches.delete(key);
-                            }
-                        }
+                        // Remove only the lower confidence overlapping match
+                        matches.delete(overlappingMatch.trackingNumber);
                     }
                 }
             }
         }
 
-        // Special handling for 26-digit tracking numbers (UPS Mail Innovations vs USPS)
-        if (trackingNumber.length === 26 && /^\d+$/.test(trackingNumber)) {
-            const bodyLower = body.toLowerCase();
-            if (bodyLower.includes('ups.com') || bodyLower.includes('united parcel service')) {
-                carrier = 'ups';
-            } else {
-                carrier = 'usps';
-            }
+        // Only add if no existing match or if this match has higher confidence
+        if (!existing || confidence > existing.confidence) {
+            matches.set(trackingNumber, {
+                trackingNumber,
+                carrier,
+                confidence,
+                start,
+                end,
+                priority
+            });
         }
-
-        matches.set(trackingNumber, {
-            trackingNumber,
-            carrier,
-            confidence,
-            start,
-            end,
-            priority
-        });
     };
 
     // Collect all carrier-specific matches with priority
