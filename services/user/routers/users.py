@@ -39,11 +39,13 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
+)
 from services.user.schemas.user import (
     UserCreate,
-    UserListResponse,
     UserResponse,
-    UserSearchRequest,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
@@ -395,42 +397,52 @@ async def get_provider_scopes(
     "/search",
     response_model=UserListResponse,
     summary="Search users",
-    description="Search users with filtering and pagination. For admin/service use.",
+    description="Search users with cursor-based pagination. For admin/service use.",
     responses={
         200: {"description": "User search results retrieved successfully"},
         401: {"description": "Authentication required"},
         422: {"description": "Validation error in search parameters"},
+        400: {"description": "Invalid cursor token"},
     },
 )
 async def search_users(
+    cursor: Optional[str] = Query(None, description="Cursor token for pagination"),
+    limit: Optional[int] = Query(
+        None, ge=1, le=100, description="Number of users per page"
+    ),
+    direction: Optional[str] = Query(
+        "next", pattern="^(next|prev)$", description="Pagination direction"
+    ),
     query: Optional[str] = Query(None, max_length=255, description="Search query"),
     email: Optional[str] = Query(None, description="Filter by email"),
     onboarding_completed: Optional[bool] = Query(
         None, description="Filter by onboarding status"
     ),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Number of results per page"),
     current_user_id: str = Depends(get_current_user),
 ) -> UserListResponse:
     """
-    Search users with filtering and pagination.
+    Search users with cursor-based pagination.
+
+    This endpoint uses cursor-based pagination instead of offset-based pagination
+    for better performance and consistency with concurrent updates.
 
     This endpoint is primarily for administrative or service use.
     Regular users should use other endpoints for their own data.
     """
     try:
         search_request = UserSearchRequest(
+            cursor=cursor,
+            limit=limit,
+            direction=direction,
             query=query,
             email=email,
             onboarding_completed=onboarding_completed,
-            page=page,
-            page_size=page_size,
         )
 
         search_results = await get_user_service().search_users(search_request)
 
         logger.info(
-            f"User search performed by {current_user_id}, found {search_results.total} results"
+            f"User search performed by {current_user_id}, found {len(search_results.users)} results"
         )
         return search_results
 

@@ -32,6 +32,7 @@ class BaseShipmentsTest(BaseSelectiveHTTPIntegrationTest):
             log_format="json",
             environment="development",
             debug=False,
+            pagination_secret_key="test-pagination-secret-key",
         )
 
         # Set the test settings as the singleton

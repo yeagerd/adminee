@@ -23,6 +23,7 @@ test_settings = chat_settings.Settings(
     api_chat_office_key="test-chat-office-key",
     user_service_url="http://localhost:8001",
     office_service_url="http://localhost:8003",
+    pagination_secret_key="test-pagination-secret-key",
 )
 
 # Set the test settings as the singleton
@@ -74,6 +75,7 @@ class TestChatServiceE2E(BaseChatTest):
             api_chat_office_key="test-chat-office-key",
             user_service_url="http://localhost:8001",
             office_service_url="http://localhost:8003",
+            pagination_secret_key="test-pagination-secret-key",
         )
         chat_settings._settings = test_settings
         cls._history_manager = history_manager

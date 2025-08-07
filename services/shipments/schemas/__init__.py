@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from services.shipments.models import PackageStatus
 
@@ -32,7 +32,7 @@ class PackageOut(BaseModel):
     package_description: Optional[str]
     order_number: Optional[str]
     tracking_link: Optional[str]
-    last_updated: datetime = Field(..., alias="updated_at")
+    updated_at: datetime
     events_count: int
     labels: List[LabelOut]
 
@@ -105,14 +105,3 @@ class CarrierConfigOut(BaseModel):
     is_active: bool
     email_patterns: Optional[str]
     created_at: datetime
-
-
-class Pagination(BaseModel):
-    page: int
-    per_page: int
-    total: int
-
-
-class PackageListResponse(BaseModel):
-    data: List[PackageOut]
-    pagination: Pagination

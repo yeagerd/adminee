@@ -14,6 +14,7 @@ try:
     from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter  # type: ignore
 except ImportError:
     CloudTraceSpanExporter = None
+
 from opentelemetry.instrumentation.fastapi import (
     FastAPIInstrumentor,  # type: ignore[import-unresolved]
 )

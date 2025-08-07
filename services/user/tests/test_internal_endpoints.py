@@ -66,6 +66,7 @@ class TestInternalAPI(BaseUserManagementTest):
             test_settings.api_frontend_user_key = "test-frontend-key"
             test_settings.api_chat_user_key = "test-chat-key"
             test_settings.api_office_user_key = "test-office-key"
+            test_settings.pagination_secret_key = "test-pagination-secret-key"
             mock_settings.return_value = test_settings
             client = TestClient(app)
             response = client.get(

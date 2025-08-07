@@ -10,9 +10,10 @@ import pytest
 
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.integration_service import IntegrationService
+from services.user.tests.test_base import BaseUserManagementIntegrationTest
 
 
-class TestRefreshDeduplication:
+class TestRefreshDeduplication(BaseUserManagementIntegrationTest):
     """Test that refresh deduplication works correctly."""
 
     def _setup_mock_session(self):

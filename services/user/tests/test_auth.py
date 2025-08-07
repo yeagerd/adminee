@@ -48,6 +48,7 @@ def patch_settings(monkeypatch):
         google_client_secret="test-google-client-secret",
         azure_ad_client_id="test-microsoft-client-id",
         azure_ad_client_secret="test-microsoft-client-secret",
+        pagination_secret_key="test-pagination-secret-key",
     )
 
     monkeypatch.setattr("services.user.settings._settings", test_settings)

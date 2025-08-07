@@ -12,9 +12,9 @@ import pytest
 from fastapi import HTTPException, status
 
 from services.user.models.user import User
+from services.user.schemas.pagination import UserListResponse
 from services.user.schemas.user import (
     UserCreate,
-    UserListResponse,
     UserResponse,
 )
 from services.user.services.user_service import get_user_service
@@ -53,25 +53,25 @@ class TestUserProfileEndpoints:
         """Test successful user search."""
         mock_search_results = UserListResponse(
             users=[
-                UserResponse(
-                    id=1,
-                    external_auth_id="user_123",
-                    auth_provider="nextauth",
-                    email="test@example.com",
-                    first_name="Test",
-                    last_name="User",
-                    profile_image_url="https://example.com/avatar.jpg",
-                    onboarding_completed=False,
-                    onboarding_step="profile_setup",
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc),
-                )
+                {
+                    "id": 1,
+                    "external_auth_id": "user_123",
+                    "auth_provider": "nextauth",
+                    "email": "test@example.com",
+                    "first_name": "Test",
+                    "last_name": "User",
+                    "profile_image_url": "https://example.com/avatar.jpg",
+                    "onboarding_completed": False,
+                    "onboarding_step": "profile_setup",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc),
+                }
             ],
-            total=1,
-            page=1,
-            page_size=20,
+            next_cursor=None,
+            prev_cursor=None,
             has_next=False,
-            has_previous=False,
+            has_prev=False,
+            limit=20,
         )
 
         with patch.object(
@@ -84,14 +84,14 @@ class TestUserProfileEndpoints:
                 query="test",
                 email=None,
                 onboarding_completed=None,
-                page=1,
-                page_size=20,
+                cursor=None,
+                limit=20,
+                direction="next",
                 current_user_id="user_123",
             )
 
-            assert result.total == 1
             assert len(result.users) == 1
-            assert result.users[0].email == "test@example.com"
+            assert result.users[0]["email"] == "test@example.com"
 
     @pytest.mark.asyncio
     async def test_search_users_with_filters(self):
@@ -104,8 +104,9 @@ class TestUserProfileEndpoints:
                 query="john",
                 email="john@example.com",
                 onboarding_completed=True,
-                page=2,
-                page_size=10,
+                cursor="test_cursor",
+                limit=10,
+                direction="next",
                 current_user_id="user_123",
             )
 
@@ -114,8 +115,8 @@ class TestUserProfileEndpoints:
             assert call_args.query == "john"
             assert call_args.email == "john@example.com"
             assert call_args.onboarding_completed is True
-            assert call_args.page == 2
-            assert call_args.page_size == 10
+            assert call_args.cursor == "test_cursor"
+            assert call_args.limit == 10
 
     @pytest.mark.asyncio
     async def test_get_current_user_profile_success(self):

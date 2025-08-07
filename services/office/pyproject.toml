@@ -13,27 +13,22 @@ dependencies = [
     "httpx",
     "requests",
     "email-validator",
-
     # Database
     "sqlmodel>=0.0.24",
     "sqlalchemy>=2.0.0",
     "aiosqlite",
     "asyncpg",
     "alembic",
-
     # External API Integrations
     "google-auth",
     "google-auth-oauthlib",
     "google-auth-httplib2",
     "google-api-python-client",
     "msal",
-
     # Caching
     "redis",
-
     # GCP
     "google-cloud-secret-manager",
-
     # OpenTelemetry
     "opentelemetry-api",
     "opentelemetry-sdk",
@@ -41,7 +36,8 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-distro",
-    "opentelemetry-exporter-gcp-trace"
+    "opentelemetry-exporter-gcp-trace",
+    "itsdangerous>=2.2.0",
 ]
 
 [project.optional-dependencies]

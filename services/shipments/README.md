@@ -5,8 +5,13 @@ This service implements package shipment tracking for Briefly, including:
 - Real-time carrier tracking integration
 - Package, label, and event management APIs
 - Background jobs for status updates and archiving
+- **Cursor-based pagination** for all list endpoints
 
 See [../../documentation/package_tracker_design.md](../../documentation/package_tracker_design.md) for the full technical design.
+
+## API Documentation
+
+For detailed API documentation including cursor-based pagination examples, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
 
 ## API
 /api/v1/shipments/

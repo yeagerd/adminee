@@ -12,23 +12,53 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
+from services.common.pagination import PaginationConfig
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.event_service import EventService
 from services.shipments.models import Package, utc_now
 from services.shipments.schemas import (
     PackageCreate,
-    PackageListResponse,
     PackageOut,
     PackageUpdate,
 )
+from services.shipments.schemas.pagination import (
+    CursorValidationError,
+    PackageListResponse,
+)
 from services.shipments.service_auth import service_permission_required
+from services.shipments.settings import get_settings
 from services.shipments.utils import (
     normalize_tracking_number,
     validate_tracking_number_format,
 )
+from services.shipments.utils.pagination import ShipmentsCursorPagination
 
 logger = get_logger(__name__)
+
+
+def _parse_iso_datetime(dt_str: str) -> datetime:
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object with timezone info
+
+    Raises:
+        ValueError: If the string cannot be parsed
+    """
+    try:
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        # Try parsing without timezone info (assume UTC)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=timezone.utc)
+
 
 router = APIRouter()
 
@@ -72,78 +102,202 @@ class DataCollectionResponse(BaseModel):
 @router.get("", response_model=PackageListResponse)
 @router.get("/", response_model=PackageListResponse)
 async def list_packages(
+    cursor: Optional[str] = None,
+    limit: Optional[int] = None,
+    direction: Optional[str] = "next",
+    carrier: Optional[str] = None,
+    status: Optional[str] = None,
+    user_id: Optional[str] = None,
+    tracking_number: Optional[str] = None,
+    email_message_id: Optional[str] = None,
+    date_range: Optional[str] = None,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
-    tracking_number: Optional[str] = None,
-    carrier: Optional[str] = None,
-    email_message_id: Optional[str] = None,
-) -> dict:
-    logger.info("Fetching packages for user", user_id=current_user)
+) -> PackageListResponse:
+    """
+    List packages with cursor-based pagination.
+
+    This endpoint uses cursor-based pagination instead of offset-based pagination
+    for better performance and consistency with concurrent updates.
+    """
+    logger.info("Fetching packages with cursor pagination", user_id=current_user)
+
+    # Basic rate limiting check (simple in-memory counter for demo)
+    # In production, use Redis or a proper rate limiting service
+    # TODO: Implement proper rate limiting with Redis
+    # rate_limit_key = f"pagination_rate_limit:{current_user}"
+
+    # Audit logging for pagination usage
+    logger.info(
+        "Pagination request",
+        user_id=current_user,
+        cursor_provided=bool(cursor),
+        limit=limit,
+        direction=direction,
+        filters={"carrier": carrier, "status": status, "user_id": user_id},
+    )
+
+    # Initialize pagination configuration
+    settings = get_settings()
+    pagination_config = PaginationConfig(
+        secret_key=settings.pagination_secret_key,
+        token_expiry=settings.pagination_token_expiry,
+        max_page_size=settings.pagination_max_page_size,
+        default_page_size=settings.pagination_default_page_size,
+    )
+
+    pagination = ShipmentsCursorPagination(pagination_config)
+
+    # Validate and sanitize limit
+    limit = pagination.sanitize_limit(limit)
+
+    # Input validation and sanitization
+    if cursor and len(cursor) > 1000:  # Reasonable limit for cursor tokens
+        raise HTTPException(
+            status_code=400,
+            detail=CursorValidationError(
+                error="Cursor token too long",
+                cursor_token=cursor[:50] + "...",  # Truncate for security
+                reason="Token length exceeds maximum allowed",
+            ).dict(),
+        )
+
+    if direction not in ["next", "prev"]:
+        raise HTTPException(
+            status_code=400,
+            detail=CursorValidationError(
+                error="Invalid pagination direction",
+                cursor_token=cursor,
+                reason="Direction must be 'next' or 'prev'",
+            ).dict(),
+        )
+
+    # Decode cursor if provided
+    cursor_info = None
+    if cursor:
+        cursor_info = pagination.decode_cursor(cursor)
+        if not cursor_info:
+            raise HTTPException(
+                status_code=400,
+                detail=CursorValidationError(
+                    error="Invalid or expired cursor token",
+                    cursor_token=cursor,
+                    reason="Token validation failed",
+                ).dict(),
+            )
+
+    # Build filters
+    filters = {}
+    if carrier:
+        filters["carrier"] = carrier
+    if status:
+        filters["status"] = status
+    if user_id:
+        filters["user_id"] = user_id
+    if tracking_number:
+        filters["tracking_number"] = tracking_number
+    if email_message_id:
+        filters["email_message_id"] = email_message_id
+    if date_range:
+        filters["date_range"] = date_range
+
+    # Always filter by current user for security
+    filters["user_id"] = current_user
+
+    # Validate filters
+    validated_filters = pagination.validate_shipments_filters(filters)
+
+    # Build query with cursor pagination
     query = select(Package).where(Package.user_id == current_user)
 
-    if tracking_number:
-        # Normalize tracking number if carrier is provided
-        normalized_tracking = (
-            normalize_tracking_number(tracking_number, carrier)
-            if carrier
-            else tracking_number
-        )
-        query = query.where(Package.tracking_number == normalized_tracking)
+    # Add cursor-based filtering if cursor is provided
+    if cursor_info:
+        # Parse the ISO timestamp string to datetime object
+        last_timestamp = _parse_iso_datetime(cursor_info.last_timestamp)
 
-        # Execute the query to see how many packages we found
-        result = await session.execute(query)
-        packages = result.scalars().all()
-
-        # If multiple packages found and carrier is provided, filter by carrier
-        if len(packages) > 1 and carrier and carrier != "unknown":
-            # Rebuild query with carrier filtering
-            query = select(Package).where(Package.user_id == current_user)
-            query = query.where(Package.tracking_number == normalized_tracking)
+        if cursor_info.direction == "next":
+            # For next page: (updated_at > last_updated) OR (updated_at = last_updated AND id > last_id)
             query = query.where(
-                (Package.carrier == carrier) | (Package.carrier == "unknown")
+                (Package.updated_at > last_timestamp)  # type: ignore[operator]
+                | (
+                    (Package.updated_at == last_timestamp)  # type: ignore[operator]
+                    & (Package.id > cursor_info.last_id)  # type: ignore[operator]
+                )
             )
-        # If only one package found or no carrier specified, use the original query
-        # (no additional filtering needed)
-    elif email_message_id:
-        # Search by email message ID through events table
-        logger.info(
-            "Filtering packages by email message ID",
-            user_id=current_user,
-            email_message_id=email_message_id,
-        )
-
-        # Get package IDs by email message ID
-        package_ids = await EventService.get_package_ids_by_email_message_id(
-            session, email_message_id, current_user
-        )
-
-        if package_ids:
-            # Filter out None values and ensure we have valid UUIDs
-            valid_package_ids = [pid for pid in package_ids if pid is not None]
-            if valid_package_ids:
-                query = query.where(Package.id.in_(valid_package_ids))  # type: ignore[union-attr]
         else:
-            # No events found, return empty result
-            return {
-                "data": [],
-                "pagination": {"page": 1, "per_page": 100, "total": 0},
-            }
+            # For previous page: (updated_at < last_updated) OR (updated_at = last_updated AND id < last_id)
+            query = query.where(
+                (Package.updated_at < last_timestamp)  # type: ignore[operator]
+                | (
+                    (Package.updated_at == last_timestamp)  # type: ignore[operator]
+                    & (Package.id < cursor_info.last_id)  # type: ignore[operator]
+                )
+            )
 
-    # Execute the final query
-    if tracking_number:
-        # For tracking number searches, we may need to re-execute if carrier filtering was applied
-        if len(packages) > 1 and carrier and carrier != "unknown":
-            # Re-execute the rebuilt query with carrier filtering
-            result = await session.execute(query)
-            packages = result.scalars().all()
-        # Otherwise, packages variable already contains the results from the initial query
+    # Add additional filters
+    if validated_filters.get("carrier"):
+        # If carrier is "unknown", don't filter by carrier (return all packages)
+        if validated_filters["carrier"] == "unknown":
+            pass  # No carrier filtering when carrier is "unknown"
+        else:
+            # Include both the specified carrier and "unknown" carrier packages
+            query = query.where(
+                (Package.carrier == validated_filters["carrier"])
+                | (Package.carrier == "unknown")
+            )
+    if validated_filters.get("status"):
+        query = query.where(Package.status == validated_filters["status"])
+    if validated_filters.get("tracking_number"):
+        query = query.where(
+            Package.tracking_number == validated_filters["tracking_number"]
+        )
+    if validated_filters.get("email_message_id"):
+        # Filter by email_message_id using a subquery
+        from services.shipments.models import TrackingEvent
+
+        subquery = select(TrackingEvent.package_id).where(
+            TrackingEvent.email_message_id == validated_filters["email_message_id"]
+        )
+        query = query.where(Package.id.in_(subquery))  # type: ignore[union-attr]
+
+    if validated_filters.get("date_range"):
+        # Apply date range filtering based on estimated_delivery
+        date_range = validated_filters["date_range"]
+        if date_range in ["7", "30", "90"]:
+            # Calculate the date threshold
+            from datetime import date, timedelta
+
+            days_ago = date.today() - timedelta(days=int(date_range))
+
+            # Filter packages with estimated_delivery >= days_ago
+            # Include packages with null estimated_delivery (they should be shown)
+            query = query.where(
+                (Package.estimated_delivery.isnot(None) & (Package.estimated_delivery >= days_ago))  # type: ignore[operator,union-attr]
+                | (Package.estimated_delivery.is_(None))  # type: ignore[union-attr]
+            )
+
+    # Add ordering
+    if direction == "next":
+        query = query.order_by(Package.updated_at.asc(), Package.id.asc())  # type: ignore[attr-defined,union-attr]
     else:
-        # For non-tracking number searches, execute the query now
-        result = await session.execute(query)
-        packages = result.scalars().all()
+        query = query.order_by(Package.updated_at.desc(), Package.id.desc())  # type: ignore[attr-defined,union-attr]
 
-    logger.info("Found packages for user", user_id=current_user, count=len(packages))
+    # Add limit (fetch one extra to determine if there are more pages)
+    query = query.limit(limit + 1)
+
+    # Execute query
+    result = await session.execute(query)
+    packages = result.scalars().all()
+
+    # Determine if there are more pages
+    has_next = len(packages) > limit
+    has_prev = cursor is not None  # If we have a cursor, we can go back
+
+    # Remove the extra item used for pagination detection
+    if has_next:
+        packages = packages[:-1]
+
     # Convert to PackageOut with events count
     package_out = []
     for pkg in packages:
@@ -172,10 +326,39 @@ async def list_packages(
                 labels=[],
             )
         )
-    return {
-        "data": package_out,
-        "pagination": {"page": 1, "per_page": 100, "total": len(package_out)},
-    }
+
+    # Create cursor info for response
+    current_cursor_info = None
+    if packages:
+        last_package = packages[-1]
+        current_cursor_info = pagination.create_shipments_cursor_info(
+            last_id=str(last_package.id),
+            updated_at=last_package.updated_at,
+            filters=validated_filters,
+            direction=direction,
+            limit=limit,
+        )
+
+    # Convert PackageOut objects to dictionaries for the response
+    package_dicts = [pkg.model_dump() for pkg in package_out]
+
+    # Create pagination response
+    response = pagination.create_shipments_pagination_response(
+        packages=package_dicts,
+        cursor_info=current_cursor_info,
+        has_next=has_next,
+        has_prev=has_prev,
+    )
+
+    logger.info(
+        "Returning packages with cursor pagination",
+        user_id=current_user,
+        count=len(package_out),
+        has_next=has_next,
+        has_prev=has_prev,
+    )
+
+    return PackageListResponse(**response)
 
 
 @router.post("", response_model=PackageOut)
