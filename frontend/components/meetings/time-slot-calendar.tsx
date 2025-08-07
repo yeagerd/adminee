@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CalendarEvent } from '@/types/office-service';
 import { Check, CheckCheck, Clock, Eye, EyeOff, X } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
 interface TimeSlotCalendarProps {
     duration: number;
@@ -56,6 +56,42 @@ const getPreviousBusinessDay = (date: Date): Date => {
     return prev;
 };
 
+// Memoized cell component to prevent unnecessary re-renders
+interface TimeSlotCellProps {
+    slot: TimeSlot;
+    slotIndex: number;
+    dateKey: string;
+    isSelected: boolean;
+    onSlotClick: (slot: TimeSlot) => void;
+}
+
+const TimeSlotCell = memo<TimeSlotCellProps>(({ slot, slotIndex, dateKey, isSelected, onSlotClick }) => {
+    const slotKey = `${slot.start}-${slot.end}`;
+    console.log(`🔄 Rendering cell: ${dateKey} ${slotKey} (selected: ${isSelected})`);
+
+    return (
+        <button
+            key={slotKey}
+            type="button"
+            onClick={() => onSlotClick(slot)}
+            className={`
+                absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
+                ${isSelected
+                    ? 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
+                    : 'bg-transparent border border-transparent hover:bg-gray-50/50 hover:border-gray-400'
+                }
+            `}
+            style={{
+                top: `${slotIndex * 32}px`
+            }}
+            title={`Click to ${isSelected ? 'deselect' : 'select'} this time slot`}
+        >
+        </button>
+    );
+});
+
+TimeSlotCell.displayName = 'TimeSlotCell';
+
 
 
 export function TimeSlotCalendar({
@@ -66,6 +102,10 @@ export function TimeSlotCalendar({
     calendarEvents = []
 }: TimeSlotCalendarProps) {
     console.log('🔄 TimeSlotCalendar component re-rendering');
+
+    // Use ref to track current selected slots without dependencies
+    const selectedSlotsRef = useRef(selectedTimeSlots);
+    selectedSlotsRef.current = selectedTimeSlots;
     // Date range selection
     const [dateRangeType, setDateRangeType] = useState<'target' | 'range'>('target');
     const [targetDate, setTargetDate] = useState(() => {
@@ -257,20 +297,23 @@ export function TimeSlotCalendar({
         return grouped;
     }, [timeSlots]);
 
-    // Handle slot selection
+    // Handle slot selection - use ref to avoid dependencies
     const handleSlotClick = useCallback((slot: TimeSlot) => {
         const slotKey = `${slot.start}-${slot.end}`;
-        const isCurrentlySelected = selectedSlotsSet.has(slotKey);
+
+        // Use ref to get current state without dependencies
+        const currentSlots = selectedSlotsRef.current;
+        const isCurrentlySelected = currentSlots.some(s => s.start === slot.start && s.end === slot.end);
 
         console.log(`🖱️ Clicked slot: ${slotKey} (currently selected: ${isCurrentlySelected})`);
 
         const newSelectedSlots = isCurrentlySelected
-            ? selectedTimeSlots.filter(s => !(s.start === slot.start && s.end === slot.end))
-            : [...selectedTimeSlots, { start: slot.start, end: slot.end }];
+            ? currentSlots.filter(s => !(s.start === slot.start && s.end === slot.end))
+            : [...currentSlots, { start: slot.start, end: slot.end }];
 
-        console.log(`📊 Selection changed: ${selectedTimeSlots.length} → ${newSelectedSlots.length} slots`);
+        console.log(`📊 Selection changed: ${currentSlots.length} → ${newSelectedSlots.length} slots`);
         onTimeSlotsChange(newSelectedSlots);
-    }, [selectedTimeSlots, selectedSlotsSet, onTimeSlotsChange]);
+    }, [onTimeSlotsChange]);
 
     // Handle day-level selection
     const handleDaySelection = useCallback((dateKey: string, action: 'all' | 'all_times' | 'none') => {
@@ -508,26 +551,15 @@ export function TimeSlotCalendar({
                                         {/* Time slot buttons on top */}
                                         {slotsByDate[dateKey].map((slot, slotIndex) => {
                                             const isSelected = selectedSlotsSet.has(`${slot.start}-${slot.end}`);
-                                            const slotKey = `${slot.start}-${slot.end}`;
-                                            console.log(`🔄 Rendering cell: ${dateKey} ${slotKey} (selected: ${isSelected})`);
                                             return (
-                                                <button
-                                                    key={slotKey}
-                                                    type="button"
-                                                    onClick={() => handleSlotClick(slot)}
-                                                    className={`
-                                                        absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
-                                                        ${isSelected
-                                                            ? 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
-                                                            : 'bg-transparent border border-transparent hover:bg-gray-50/50 hover:border-gray-400'
-                                                        }
-                                                    `}
-                                                    style={{
-                                                        top: `${slotIndex * 32}px`
-                                                    }}
-                                                    title={`Click to ${isSelected ? 'deselect' : 'select'} this time slot`}
-                                                >
-                                                </button>
+                                                <TimeSlotCell
+                                                    key={`${slot.start}-${slot.end}`}
+                                                    slot={slot}
+                                                    slotIndex={slotIndex}
+                                                    dateKey={dateKey}
+                                                    isSelected={isSelected}
+                                                    onSlotClick={handleSlotClick}
+                                                />
                                             );
                                         })}
                                     </div>

@@ -9,7 +9,7 @@ import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-clien
 import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
 
@@ -17,6 +17,7 @@ const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
 
 export function MeetingPollNew() {
+    console.log('🔄 MeetingPollNew component re-rendering');
     const { setMeetingSubView } = useToolStateUtils();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
@@ -50,6 +51,12 @@ export function MeetingPollNew() {
     const isStep1Valid = title && duration > 0 && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
     const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+
+    // Stable callback for time slot changes
+    const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
+        console.log('🔄 Parent: onTimeSlotsChange called with', newSlots.length, 'slots');
+        setTimeSlots(newSlots);
+    }, []);
 
     // Step navigation
     const nextStep = () => setStep((s) => s + 1);
@@ -295,7 +302,7 @@ export function MeetingPollNew() {
                                     <TimeSlotCalendar
                                         duration={duration}
                                         timeZone={timeZone}
-                                        onTimeSlotsChange={setTimeSlots}
+                                        onTimeSlotsChange={handleTimeSlotsChange}
                                         selectedTimeSlots={timeSlots}
                                         calendarEvents={calendarEvents}
                                     />
