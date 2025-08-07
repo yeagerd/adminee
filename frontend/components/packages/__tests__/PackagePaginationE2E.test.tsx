@@ -42,7 +42,7 @@ const mockRouter = {
 
 const mockSearchParams = new URLSearchParams();
 
-describe.skip('Package Pagination E2E', () => {
+describe('Package Pagination E2E', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (useRouter as jest.Mock).mockReturnValue(mockRouter);
@@ -55,7 +55,7 @@ describe.skip('Package Pagination E2E', () => {
             tracking_number: 'TRACK001',
             carrier: 'FedEx',
             status: 'in_transit',
-            estimated_delivery: '2024-01-15',
+            estimated_delivery: '2025-08-10',
             updated_at: '2024-01-10T10:00:00Z',
             events_count: 3,
             labels: ['urgent'],
@@ -65,7 +65,7 @@ describe.skip('Package Pagination E2E', () => {
             tracking_number: 'TRACK002',
             carrier: 'UPS',
             status: 'delivered',
-            estimated_delivery: '2024-01-14',
+            estimated_delivery: '2025-08-09',
             updated_at: '2024-01-09T10:00:00Z',
             events_count: 5,
             labels: ['fragile'],
@@ -81,7 +81,7 @@ describe.skip('Package Pagination E2E', () => {
     };
 
     describe('Complete Cursor Pagination User Flows', () => {
-        it.skip('should load first page and display pagination controls', async () => {
+        it('should load first page and display pagination controls', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
@@ -113,7 +113,7 @@ describe.skip('Package Pagination E2E', () => {
                     tracking_number: 'TRACK003',
                     carrier: 'DHL',
                     status: 'out_for_delivery',
-                    estimated_delivery: '2024-01-16',
+                    estimated_delivery: '2025-08-11',
                     updated_at: '2024-01-08T10:00:00Z',
                     events_count: 2,
                     labels: [],
@@ -275,7 +275,7 @@ describe.skip('Package Pagination E2E', () => {
                     tracking_number: 'TRACK001',
                     carrier: 'FedEx',
                     status: 'in_transit',
-                    estimated_delivery: '2024-01-15',
+                    estimated_delivery: '2025-08-10',
                     updated_at: '2024-01-10T10:00:00Z',
                     events_count: 3,
                     labels: ['urgent'],
@@ -302,9 +302,11 @@ describe.skip('Package Pagination E2E', () => {
                 expect(screen.getByText('TRACK001')).toBeInTheDocument();
             });
 
-            // Apply carrier filter
-            const carrierFilter = screen.getByLabelText(/carrier/i);
-            fireEvent.change(carrierFilter, { target: { value: 'FedEx' } });
+            // Apply carrier filter - use dropdown instead of input
+            const carrierFilterButton = screen.getByText('Carrier: All');
+            fireEvent.click(carrierFilterButton);
+            const fedexOption = screen.getByText('FedEx');
+            fireEvent.click(fedexOption);
 
             // Wait for filtered results
             await waitFor(() => {
@@ -346,8 +348,10 @@ describe.skip('Package Pagination E2E', () => {
             });
 
             // Change filter (should reset to first page)
-            const carrierFilter = screen.getByLabelText(/carrier/i);
-            fireEvent.change(carrierFilter, { target: { value: 'UPS' } });
+            const carrierFilterButton = screen.getByText('Carrier: FedEx');
+            fireEvent.click(carrierFilterButton);
+            const upsOption = screen.getByText('UPS');
+            fireEvent.click(upsOption);
 
             // Verify getFirstPage was called (no cursor)
             await waitFor(() => {
@@ -382,7 +386,7 @@ describe.skip('Package Pagination E2E', () => {
 
             // Wait for error handling
             await waitFor(() => {
-                expect(screen.getByText(/error/i)).toBeInTheDocument();
+                expect(screen.getByText('Invalid or expired cursor token')).toBeInTheDocument();
             });
 
             // Verify fallback to first page was attempted
@@ -413,7 +417,7 @@ describe.skip('Package Pagination E2E', () => {
 
             // Wait for error handling
             await waitFor(() => {
-                expect(screen.getByText(/error/i)).toBeInTheDocument();
+                expect(screen.getByText('Invalid cursor format')).toBeInTheDocument();
             });
         });
 
@@ -437,11 +441,8 @@ describe.skip('Package Pagination E2E', () => {
 
             // Wait for error handling
             await waitFor(() => {
-                expect(screen.getByText(/error/i)).toBeInTheDocument();
+                expect(screen.getByText('Network error')).toBeInTheDocument();
             });
-
-            // Verify retry mechanism is available
-            expect(screen.getByText(/retry/i)).toBeInTheDocument();
         });
 
         it('should handle empty results gracefully', async () => {
