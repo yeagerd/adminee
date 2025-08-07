@@ -107,13 +107,29 @@ export function TimeSlotCalendar({
     // Date range selection
     const [dateRangeType, setDateRangeType] = useState<'target' | 'range'>('target');
     const [targetDate, setTargetDate] = useState(() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().split('T')[0];
+        // Set default date to 3 business days ahead of today
+        const today = new Date();
+        let businessDaysAhead = 0;
+        // eslint-disable-next-line prefer-const
+        let currentDate = new Date(today);
+
+        while (businessDaysAhead < 3) {
+            currentDate.setDate(currentDate.getDate() + 1);
+            if (isBusinessDay(currentDate)) {
+                businessDaysAhead++;
+            }
+        }
+
+        return currentDate.toISOString().split('T')[0];
     });
-    const [dateRange, setDateRange] = useState<DateRange>({
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const [dateRange, setDateRange] = useState<DateRange>(() => {
+        const today = new Date();
+        const endDate = new Date(today);
+        endDate.setDate(endDate.getDate() + 7);
+        return {
+            startDate: today,
+            endDate: endDate
+        };
     });
     const [rangeDays, setRangeDays] = useState(7);
 
@@ -588,6 +604,7 @@ export function TimeSlotCalendar({
                                     type="date"
                                     value={targetDate}
                                     onChange={(e) => setTargetDate(e.target.value)}
+                                    min={new Date().toISOString().split('T')[0]}
                                     className="w-full border rounded px-3 py-2"
                                 />
                             </div>
@@ -602,6 +619,7 @@ export function TimeSlotCalendar({
                                             ...prev,
                                             startDate: new Date(e.target.value)
                                         }))}
+                                        min={new Date().toISOString().split('T')[0]}
                                         className="w-full border rounded px-3 py-2"
                                     />
                                 </div>
@@ -614,6 +632,7 @@ export function TimeSlotCalendar({
                                             ...prev,
                                             endDate: new Date(e.target.value)
                                         }))}
+                                        min={new Date().toISOString().split('T')[0]}
                                         className="w-full border rounded px-3 py-2"
                                     />
                                 </div>
