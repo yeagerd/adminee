@@ -56,6 +56,8 @@ const getPreviousBusinessDay = (date: Date): Date => {
     return prev;
 };
 
+
+
 export function TimeSlotCalendar({
     duration,
     timeZone,
@@ -89,9 +91,10 @@ export function TimeSlotCalendar({
     // Generate date range based on selection type
     const effectiveDateRange = useMemo(() => {
         if (dateRangeType === 'target') {
-            const target = new Date(targetDate);
-            const start = new Date(target);
-            const end = new Date(target);
+            // Create dates in local timezone to avoid timezone conversion issues
+            const target = new Date(targetDate + 'T00:00:00');
+            const start = new Date(targetDate + 'T00:00:00');
+            const end = new Date(targetDate + 'T00:00:00');
 
             if (includeWeekends) {
                 // Use calendar days
@@ -100,23 +103,29 @@ export function TimeSlotCalendar({
                 start.setDate(start.getDate() - daysBefore);
                 end.setDate(end.getDate() + daysAfter);
             } else {
-                // Use business days
-                let daysBefore = Math.floor((rangeDays - 1) / 2);
-                let daysAfter = rangeDays - 1 - daysBefore;
+                // Use business days - we want a range that contains rangeDays business days
+                // For odd numbers, put target in the middle. For even numbers, distribute evenly.
+                const daysBefore = Math.floor((rangeDays - 1) / 2);
+                const daysAfter = rangeDays - 1 - daysBefore;
+
+                // Start from target date
+                let currentStart = new Date(target);
+                let currentEnd = new Date(target);
 
                 // Calculate business days before
-                let currentStart = new Date(target);
                 for (let i = 0; i < daysBefore; i++) {
                     currentStart = getPreviousBusinessDay(currentStart);
                 }
-                start.setTime(currentStart.getTime());
 
                 // Calculate business days after
-                let currentEnd = new Date(target);
                 for (let i = 0; i < daysAfter; i++) {
                     currentEnd = getNextBusinessDay(currentEnd);
                 }
+
+                start.setTime(currentStart.getTime());
                 end.setTime(currentEnd.getTime());
+
+
             }
 
             return { startDate: start, endDate: end };
@@ -140,6 +149,8 @@ export function TimeSlotCalendar({
             }
             current.setDate(current.getDate() + 1);
         }
+
+
 
         // Generate time slots for each date
         dates.forEach(date => {
@@ -182,6 +193,19 @@ export function TimeSlotCalendar({
         return slots;
     }, [effectiveDateRange, includeWeekends, granularity, businessHours, duration, calendarEvents, selectedTimeSlots]);
 
+    // Group slots by date for display
+    const slotsByDate = useMemo(() => {
+        const grouped: Record<string, TimeSlot[]> = {};
+        timeSlots.forEach(slot => {
+            const dateKey = new Date(slot.start).toISOString().split('T')[0];
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = [];
+            }
+            grouped[dateKey].push(slot);
+        });
+        return grouped;
+    }, [timeSlots]);
+
     // Handle slot selection
     const handleSlotClick = useCallback((slot: TimeSlot) => {
         if (slot.isConflict) return; // Don't allow selection of conflicting slots
@@ -222,19 +246,6 @@ export function TimeSlotCalendar({
         onTimeSlotsChange(newSelectedSlots);
     }, [selectedTimeSlots, onTimeSlotsChange, slotsByDate]);
 
-    // Group slots by date for display
-    const slotsByDate = useMemo(() => {
-        const grouped: Record<string, TimeSlot[]> = {};
-        timeSlots.forEach(slot => {
-            const dateKey = new Date(slot.start).toISOString().split('T')[0];
-            if (!grouped[dateKey]) {
-                grouped[dateKey] = [];
-            }
-            grouped[dateKey].push(slot);
-        });
-        return grouped;
-    }, [timeSlots]);
-
     // Chunk dates into groups for multiple grid views
     const dateChunks = useMemo(() => {
         const dateKeys = Object.keys(slotsByDate).sort();
@@ -256,6 +267,12 @@ export function TimeSlotCalendar({
     // Format date for display
     const formatDate = (dateString: string) => {
         return DateTime.fromISO(dateString).setZone(timeZone).toFormat('EEE MMM d');
+    };
+
+    // Format date for display from Date object
+    const formatDateFromDate = (date: Date) => {
+        // Use local timezone to avoid conversion issues
+        return DateTime.fromJSDate(date).toFormat('EEE MMM d');
     };
 
     // Calculate actual number of days in the range
@@ -524,7 +541,7 @@ export function TimeSlotCalendar({
                     <div className="flex items-center justify-center p-4 border-b">
                         <div className="text-center">
                             <div className="font-medium">
-                                {formatDate(effectiveDateRange.startDate.toISOString())} - {formatDate(effectiveDateRange.endDate.toISOString())}
+                                {formatDateFromDate(effectiveDateRange.startDate)} - {formatDateFromDate(effectiveDateRange.endDate)}
                             </div>
                             <div className="text-sm text-muted-foreground">
                                 {Object.keys(slotsByDate).length} days, {timeSlots.length} time slots
