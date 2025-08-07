@@ -86,7 +86,13 @@ export function MeetingPollNew() {
             )
                 .then((response) => {
                     if (response.success && response.data) {
-                        setCalendarEvents(response.data.events || []);
+                        // Handle both array and object response formats
+                        const events = Array.isArray(response.data)
+                            ? response.data
+                            : response.data.events || [];
+                        setCalendarEvents(events);
+                        console.log(`Loaded ${events.length} calendar events for conflict detection`);
+                        console.log('Calendar events:', events);
                     }
                 })
                 .catch((err) => {
@@ -293,6 +299,7 @@ export function MeetingPollNew() {
                                         selectedTimeSlots={timeSlots}
                                         calendarEvents={calendarEvents}
                                     />
+                                    {console.log('Passing calendar events to TimeSlotCalendar:', calendarEvents.length, calendarEvents)}
                                 </div>
                             )}
                             {step === 3 && (
