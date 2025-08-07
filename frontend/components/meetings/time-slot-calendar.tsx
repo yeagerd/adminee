@@ -131,7 +131,7 @@ export function TimeSlotCalendar({
             endDate: endDate
         };
     });
-    const [rangeDays, setRangeDays] = useState(7);
+    const [daysAround, setDaysAround] = useState(2); // Default to +/- 2 days
 
     // Display options
     const [includeWeekends, setIncludeWeekends] = useState(false);
@@ -153,28 +153,21 @@ export function TimeSlotCalendar({
             const end = new Date(targetDate + 'T00:00:00');
 
             if (includeWeekends) {
-                // Use calendar days
-                const daysBefore = Math.floor((rangeDays - 1) / 2);
-                const daysAfter = rangeDays - 1 - daysBefore;
-                start.setDate(start.getDate() - daysBefore);
-                end.setDate(end.getDate() + daysAfter);
+                // Use calendar days - simply add/subtract daysAround
+                start.setDate(start.getDate() - daysAround);
+                end.setDate(end.getDate() + daysAround);
             } else {
-                // Use business days - we want a range that contains rangeDays business days
-                // For odd numbers, put target in the middle. For even numbers, distribute evenly.
-                const daysBefore = Math.floor((rangeDays - 1) / 2);
-                const daysAfter = rangeDays - 1 - daysBefore;
-
-                // Start from target date
+                // Use business days - calculate business days before and after
                 let currentStart = new Date(target);
                 let currentEnd = new Date(target);
 
                 // Calculate business days before
-                for (let i = 0; i < daysBefore; i++) {
+                for (let i = 0; i < daysAround; i++) {
                     currentStart = getPreviousBusinessDay(currentStart);
                 }
 
                 // Calculate business days after
-                for (let i = 0; i < daysAfter; i++) {
+                for (let i = 0; i < daysAround; i++) {
                     currentEnd = getNextBusinessDay(currentEnd);
                 }
 
@@ -193,7 +186,7 @@ export function TimeSlotCalendar({
         } else {
             return dateRange;
         }
-    }, [dateRangeType, targetDate, rangeDays, dateRange, includeWeekends]);
+    }, [dateRangeType, targetDate, daysAround, dateRange, includeWeekends]);
 
     // Group calendar events by date for conflict detection (moved before timeSlots calculation)
     const eventsByDateForConflicts = useMemo(() => {
@@ -648,14 +641,14 @@ export function TimeSlotCalendar({
                     {/* Range Days (for target mode) */}
                     {dateRangeType === 'target' && (
                         <div className="space-y-2">
-                            <Label>Days Around Target (±{Math.floor(rangeDays / 2)})</Label>
+                            <Label>Days Around Target (±{daysAround})</Label>
                             <input
                                 type="range"
-                                min="1"
-                                max="14"
+                                min="0"
+                                max="10"
                                 step="1"
-                                value={rangeDays}
-                                onChange={(e) => setRangeDays(parseInt(e.target.value))}
+                                value={daysAround}
+                                onChange={(e) => setDaysAround(parseInt(e.target.value))}
                                 className="w-full"
                             />
                             <div className="text-sm text-muted-foreground">
