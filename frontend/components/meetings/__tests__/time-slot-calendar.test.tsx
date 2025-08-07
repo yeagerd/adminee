@@ -187,10 +187,20 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
             const mockCalendarEvents: CalendarEvent[] = [
                 {
                     id: 'test-event',
+                    calendar_id: 'test-calendar-id',
                     title: 'Test Meeting',
                     start_time: '2025-08-12T10:00:00Z', // Tuesday 10 AM UTC
                     end_time: '2025-08-12T11:00:00Z',   // Tuesday 11 AM UTC
-                    attendees: []
+                    all_day: false,
+                    attendees: [],
+                    status: 'confirmed',
+                    visibility: 'default',
+                    provider: 'google',
+                    provider_event_id: 'test-provider-event-id',
+                    account_email: 'test@example.com',
+                    calendar_name: 'Test Calendar',
+                    created_at: '2025-08-01T00:00:00Z',
+                    updated_at: '2025-08-01T00:00:00Z'
                 }
             ];
 
