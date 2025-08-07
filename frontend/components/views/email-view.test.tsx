@@ -81,7 +81,7 @@ describe('EmailView - Select All Functionality', () => {
         },
     ];
 
-    beforeEach(() => {
+    beforeEach(async () => {
         mockUseIntegrations.mockReturnValue({
             integrations: [],
             activeProviders: ['google'],
@@ -93,7 +93,7 @@ describe('EmailView - Select All Functionality', () => {
         });
 
         // Mock the gateway client methods
-        const { gatewayClient } = require('@/lib/gateway-client');
+        const { gatewayClient } = await import('@/lib/gateway-client');
         (gatewayClient.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });
