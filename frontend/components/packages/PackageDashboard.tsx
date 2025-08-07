@@ -66,30 +66,25 @@ export default function PackageDashboard() {
     // Performance optimizations
     const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
 
-    // Handle page changes
-    const handlePageChange = useCallback((cursor: string | null, direction: 'next' | 'prev' | 'first') => {
-        if (direction === 'first') {
-            loadData(null, 'next');
-        } else {
-            loadData(cursor, direction);
-        }
-    }, []);
-
     // Pagination hook
     const {
         paginationState,
         paginationHandlers,
         setPaginationData,
-        setLoading: setPaginationLoading,
         resetPagination,
     } = usePagination({
         initialLimit: 20,
-        onPageChange: handlePageChange,
+        onPageChange: (cursor: string | null, direction: 'next' | 'prev' | 'first') => {
+            if (direction === 'first') {
+                loadData(null, 'next');
+            } else {
+                loadData(cursor, direction);
+            }
+        },
     });
 
     // Load state from URL on mount
     useEffect(() => {
-        const cursor = searchParams.get('cursor');
         const status = searchParams.get('status');
         const carrier = searchParams.get('carrier');
         const search = searchParams.get('search');
@@ -136,35 +131,33 @@ export default function PackageDashboard() {
         try {
             // Build filter parameters for server-side filtering
             const filterParams: {
-                limit: number;
-                direction: 'next' | 'prev';
                 cursor?: string;
+                limit?: number;
+                direction?: 'next' | 'prev';
                 status?: string;
                 carrier?: string;
                 tracking_number?: string;
                 date_range?: string;
             } = {
                 limit: 20,
-                direction
+                direction,
             };
 
-            // Use cursor from parameter or from URL
-            const cursorToUse = cursor || searchParams.get('cursor');
-            if (cursorToUse) {
-                filterParams.cursor = cursorToUse;
+            if (cursor) {
+                filterParams.cursor = cursor;
             }
 
-            // Add status filters if selected
+            // Add status filter if selected
             if (selectedStatusFilters.length > 0) {
                 filterParams.status = selectedStatusFilters[0];
             }
 
-            // Add carrier filters if selected
+            // Add carrier filter if selected
             if (selectedCarrierFilters.length > 0) {
                 filterParams.carrier = selectedCarrierFilters[0];
             }
 
-            // Add search term if provided
+            // Add search filter if provided
             if (searchTerm.trim()) {
                 filterParams.tracking_number = searchTerm.trim();
             }
@@ -222,7 +215,7 @@ export default function PackageDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, getCachedData, setCachedData, searchParams]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, getCachedData, setCachedData, setPaginationData, resetPagination]);
 
     // Load first page on mount and when filters change
     useEffect(() => {
@@ -236,9 +229,6 @@ export default function PackageDashboard() {
     // Update URL when filters change
     useEffect(() => {
         const newSearchParams = new URLSearchParams(searchParams.toString());
-
-        // Update cursor
-        newSearchParams.delete('cursor');
 
         // Update status filter
         if (selectedStatusFilters.length > 0) {
@@ -270,7 +260,7 @@ export default function PackageDashboard() {
 
         const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
         router.push(newURL, { scroll: false });
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, searchParams, router]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, dateRange, router, searchParams]);
 
     const filteredAndSortedPackages = useMemo(() => {
         const filtered = [...packages];
@@ -327,7 +317,7 @@ export default function PackageDashboard() {
     const handleRowClick = (pkg: Package) => setSelectedPackage(pkg);
 
     // Define columns for the data table
-    const columns: ColumnDefinition<Package>[] = [
+    const columns: ColumnDefinition[] = [
         {
             key: 'tracking_number',
             header: 'Tracking Number',
@@ -362,7 +352,7 @@ export default function PackageDashboard() {
     ];
 
     // Row renderer function
-    const renderPackageRow = (pkg: Package, index: number) => (
+    const renderPackageRow = (pkg: Package) => (
         <>
             <TableCell onClick={e => e.stopPropagation()}>
                 {editingCell?.id === pkg.id && editingCell?.field === 'tracking_number' ? (

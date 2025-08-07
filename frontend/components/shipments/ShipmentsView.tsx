@@ -42,7 +42,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
         setError(null);
 
         try {
-            const filters: any = {};
+            const filters: Record<string, string> = {};
             if (carrierFilter) filters.carrier = carrierFilter;
             if (statusFilter) filters.status = statusFilter;
 
@@ -128,12 +128,12 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
         } else {
             loadShipments(undefined, 'first');
         }
-    }, []);
+    }, [loadShipments, searchParams]);
 
     // Handle filter changes
     useEffect(() => {
         handleFilterChange();
-    }, [carrierFilter, statusFilter]);
+    }, [handleFilterChange]);
 
     const handleRowClick = (shipment: ShipmentItem) => {
         // Handle row click - could open details modal

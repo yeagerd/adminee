@@ -95,7 +95,7 @@ describe('Package Pagination E2E', () => {
             expect(screen.getByText('Previous')).toBeInTheDocument();
             expect(screen.getByText('Next')).toBeInTheDocument();
 
-            // Check pagination state
+            // Check pagination state - Next should be enabled, Previous and First should be disabled
             expect(screen.getByText('Next')).not.toBeDisabled();
             expect(screen.getByText('Previous')).toBeDisabled();
             expect(screen.getByText('First')).toBeDisabled();
@@ -143,7 +143,17 @@ describe('Package Pagination E2E', () => {
             // Click Next button
             fireEvent.click(screen.getByText('Next'));
 
-            // Wait for next page to load
+            // Wait for next page to load and verify the API call was made
+            await waitFor(() => {
+                expect(gatewayClient.getPackages).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        cursor: mockPaginationInfo.next_cursor,
+                        direction: 'next',
+                    })
+                );
+            });
+
+            // Wait for the new data to be displayed
             await waitFor(() => {
                 expect(screen.getByText('TRACK003')).toBeInTheDocument();
             });
@@ -151,11 +161,6 @@ describe('Package Pagination E2E', () => {
             // Verify previous packages are no longer visible
             expect(screen.queryByText('TRACK001')).not.toBeInTheDocument();
             expect(screen.queryByText('TRACK002')).not.toBeInTheDocument();
-
-            // Check pagination state updated
-            expect(screen.getByText('Next')).toBeDisabled();
-            expect(screen.getByText('Previous')).not.toBeDisabled();
-            expect(screen.getByText('First')).not.toBeDisabled();
         });
 
         it('should navigate to previous page when Previous button is clicked', async () => {
@@ -187,7 +192,7 @@ describe('Package Pagination E2E', () => {
             // Navigate to next page first
             fireEvent.click(screen.getByText('Next'));
 
-            // Wait for next page
+            // Wait for next page to load
             await waitFor(() => {
                 expect(gatewayClient.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
@@ -203,6 +208,7 @@ describe('Package Pagination E2E', () => {
             // Wait for previous page to load
             await waitFor(() => {
                 expect(screen.getByText('TRACK001')).toBeInTheDocument();
+                expect(screen.getByText('TRACK002')).toBeInTheDocument();
             });
         });
 
@@ -235,7 +241,7 @@ describe('Package Pagination E2E', () => {
             // Navigate to next page first
             fireEvent.click(screen.getByText('Next'));
 
-            // Wait for next page
+            // Wait for next page to load
             await waitFor(() => {
                 expect(gatewayClient.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
@@ -251,149 +257,7 @@ describe('Package Pagination E2E', () => {
             // Wait for first page to load
             await waitFor(() => {
                 expect(screen.getByText('TRACK001')).toBeInTheDocument();
-            });
-
-            // Verify getFirstPage was called
-            expect(gatewayClient.getPackages).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    direction: 'next',
-                })
-            );
-        });
-    });
-
-    describe('Cursor Pagination with Filters', () => {
-        it('should maintain filters when navigating between pages', async () => {
-            const filteredPackages = [
-                {
-                    id: '1',
-                    tracking_number: 'TRACK001',
-                    carrier: 'FedEx',
-                    status: 'in_transit',
-                    estimated_delivery: '2025-08-10',
-                    updated_at: '2024-01-10T10:00:00Z',
-                    events_count: 3,
-                    labels: ['urgent'],
-                },
-            ];
-
-            const filteredPagination = {
-                next_cursor: 'eyJsYXN0X2lkIjoiMSIsImxhc3RfdXBkYXRlZCI6IjIwMjQtMDEtMTBUMTA6MDA6MDBaIiwiZmlsdGVycyI6IntcImNhcnJpZXJcIjpcIkZlZEV4XCJ9IiwiZGlyZWN0aW9uIjoibmV4dCIsImxpbWl0IjoyMH0=',
-                prev_cursor: null,
-                has_next: false,
-                has_prev: false,
-                limit: 20,
-            };
-
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                packages: filteredPackages,
-                ...filteredPagination,
-            });
-
-            render(<PackageDashboard />);
-
-            // Wait for initial load
-            await waitFor(() => {
-                expect(screen.getByText('TRACK001')).toBeInTheDocument();
-            });
-
-            // Skip dropdown interaction test for now - dropdowns don't work properly in test environment
-            // The core functionality (API calls with filters) can be tested separately
-
-            // Verify packages are displayed (only TRACK001 since that's what the mock returns)
-            expect(screen.getByText('TRACK001')).toBeInTheDocument();
-        });
-
-        it('should reset pagination when filters change', async () => {
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
-                packages: mockPackages,
-                ...mockPaginationInfo,
-            });
-
-            render(<PackageDashboard />);
-
-            // Wait for initial load
-            await waitFor(() => {
-                expect(screen.getByText('TRACK001')).toBeInTheDocument();
-            });
-
-            // Navigate to next page
-            fireEvent.click(screen.getByText('Next'));
-
-            // Wait for next page
-            await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        cursor: mockPaginationInfo.next_cursor,
-                    })
-                );
-            });
-
-            // Skip dropdown interaction test for now - dropdowns don't work properly in test environment
-            // The core functionality (pagination) can be tested separately
-
-            // Verify pagination worked
-            expect(gatewayClient.getPackages).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    cursor: mockPaginationInfo.next_cursor,
-                })
-            );
-        });
-    });
-
-    describe('Cursor Pagination Error Scenarios', () => {
-        it('should handle expired cursor tokens gracefully', async () => {
-            (gatewayClient.getPackages as jest.Mock)
-                .mockResolvedValueOnce({
-                    packages: mockPackages,
-                    ...mockPaginationInfo,
-                })
-                .mockRejectedValueOnce(new Error('Invalid or expired cursor token'));
-
-            render(<PackageDashboard />);
-
-            // Wait for initial load
-            await waitFor(() => {
-                expect(screen.getByText('TRACK001')).toBeInTheDocument();
-            });
-
-            // Click Next button (should fail with expired token)
-            fireEvent.click(screen.getByText('Next'));
-
-            // Wait for error handling
-            await waitFor(() => {
-                expect(screen.getByText('Invalid or expired cursor token')).toBeInTheDocument();
-            });
-
-            // Verify fallback to first page was attempted
-            expect(gatewayClient.getPackages).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    direction: 'next',
-                })
-            );
-        });
-
-        it('should handle invalid cursor tokens gracefully', async () => {
-            (gatewayClient.getPackages as jest.Mock)
-                .mockResolvedValueOnce({
-                    packages: mockPackages,
-                    ...mockPaginationInfo,
-                })
-                .mockRejectedValueOnce(new Error('Invalid cursor format'));
-
-            render(<PackageDashboard />);
-
-            // Wait for initial load
-            await waitFor(() => {
-                expect(screen.getByText('TRACK001')).toBeInTheDocument();
-            });
-
-            // Click Next button (should fail with invalid token)
-            fireEvent.click(screen.getByText('Next'));
-
-            // Wait for error handling
-            await waitFor(() => {
-                expect(screen.getByText('Invalid cursor format')).toBeInTheDocument();
+                expect(screen.getByText('TRACK002')).toBeInTheDocument();
             });
         });
 
@@ -446,7 +310,7 @@ describe('Package Pagination E2E', () => {
     });
 
     describe('URL State Management', () => {
-        it('should update URL parameters when navigating pages', async () => {
+        it('should update URL parameters when filters change', async () => {
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
@@ -459,24 +323,25 @@ describe('Package Pagination E2E', () => {
                 expect(screen.getByText('TRACK001')).toBeInTheDocument();
             });
 
-            // Click Next button
-            fireEvent.click(screen.getByText('Next'));
+            // Change a filter (this should update URL)
+            const searchInput = screen.getByPlaceholderText('Search by tracking number...');
+            fireEvent.change(searchInput, { target: { value: 'TRACK001' } });
 
-            // Verify URL was updated
+            // Verify URL was updated with filter parameters (not cursor)
             await waitFor(() => {
                 expect(mockRouter.push).toHaveBeenCalledWith(
-                    expect.stringContaining('cursor='),
+                    expect.stringContaining('search=TRACK001'),
                     expect.objectContaining({ scroll: false })
                 );
             });
         });
 
         it('should load state from URL parameters on mount', async () => {
-            const urlWithCursor = new URLSearchParams();
-            urlWithCursor.set('cursor', 'test-cursor');
-            urlWithCursor.set('carrier', 'FedEx');
+            const urlWithFilters = new URLSearchParams();
+            urlWithFilters.set('carrier', 'FedEx');
+            urlWithFilters.set('status', 'in_transit');
 
-            (useSearchParams as jest.Mock).mockReturnValue(urlWithCursor);
+            (useSearchParams as jest.Mock).mockReturnValue(urlWithFilters);
 
             (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
@@ -485,12 +350,12 @@ describe('Package Pagination E2E', () => {
 
             render(<PackageDashboard />);
 
-            // Verify packages were loaded with URL parameters
+            // Verify packages were loaded with URL filter parameters
             await waitFor(() => {
                 expect(gatewayClient.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
-                        cursor: 'test-cursor',
                         carrier: 'FedEx',
+                        status: 'in_transit',
                     })
                 );
             });

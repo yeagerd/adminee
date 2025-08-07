@@ -17,9 +17,9 @@ export interface PaginationHandlers {
     onFirstPage?: () => void;
 }
 
-export interface ColumnDefinition<T> {
+export interface ColumnDefinition {
     key: string;
-    header: string;
+    header: string | React.ReactNode;
     sortable?: boolean;
     width?: string;
     align?: 'left' | 'center' | 'right';
@@ -27,7 +27,7 @@ export interface ColumnDefinition<T> {
 
 export interface PaginatedDataTableProps<T> {
     data: T[];
-    columns: ColumnDefinition<T>[];
+    columns: ColumnDefinition[];
     pagination?: PaginationState;
     paginationHandlers?: PaginationHandlers;
     onSort?: (field: string) => void;
@@ -52,7 +52,7 @@ function PaginatedDataTable<T>({
     className = "",
     tableClassName = "",
 }: PaginatedDataTableProps<T>) {
-    const handleHeaderClick = (column: ColumnDefinition<T>) => {
+    const handleHeaderClick = (column: ColumnDefinition) => {
         if (column.sortable && onSort) {
             onSort(column.key);
         }

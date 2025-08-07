@@ -23,7 +23,7 @@ export interface ShipmentItem {
 
 interface ShipmentsListProps {
     shipments: ShipmentItem[];
-    columns?: ColumnDefinition<ShipmentItem>[];
+    columns?: ColumnDefinition[];
     pagination?: {
         hasNext: boolean;
         hasPrev: boolean;
@@ -59,7 +59,7 @@ const ShipmentsList = memo(function ShipmentsList({
     className = "",
 }: ShipmentsListProps) {
     // Default columns if none provided
-    const defaultColumns: ColumnDefinition<ShipmentItem>[] = [
+    const defaultColumns: ColumnDefinition[] = [
         {
             key: 'tracking_number',
             header: 'Tracking Number',
@@ -107,7 +107,7 @@ const ShipmentsList = memo(function ShipmentsList({
     const finalColumns = columns || defaultColumns;
 
     // Row renderer function
-    const renderShipmentRow = (shipment: ShipmentItem, index: number) => (
+    const renderShipmentRow = (shipment: ShipmentItem) => (
         <>
             <TableCell>
                 <div className="flex items-center gap-2">
