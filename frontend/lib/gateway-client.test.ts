@@ -55,7 +55,7 @@ describe('GatewayClient', () => {
 
     describe('getPackages with cursor-based pagination', () => {
         const mockPackagesResponse = {
-            data: [
+            packages: [
                 {
                     id: '1',
                     tracking_number: '123456789',
@@ -66,13 +66,11 @@ describe('GatewayClient', () => {
                     labels: []
                 }
             ],
-            pagination: {
-                next_cursor: 'eyJsYXN0X2lkIjoxLCJsYXN0X3VwZGF0ZWRfYXQiOiIyMDI0LTAzLTEzVDEwOjMwOjAwWiIsImZpbHRlcnMiOnt9LCJkaXJlY3Rpb24iOiJuZXh0IiwibGltaXQiOjIwfQ==',
-                prev_cursor: null,
-                has_next: true,
-                has_prev: false,
-                limit: 20
-            }
+            next_cursor: 'eyJsYXN0X2lkIjoxLCJsYXN0X3VwZGF0ZWRfYXQiOiIyMDI0LTAzLTEzVDEwOjMwOjAwWiIsImZpbHRlcnMiOnt9LCJkaXJlY3Rpb24iOiJuZXh0IiwibGltaXQiOjIwfQ==',
+            prev_cursor: null,
+            has_next: true,
+            has_prev: false,
+            limit: 20
         };
 
         beforeEach(() => {
@@ -162,7 +160,7 @@ describe('GatewayClient', () => {
             });
 
             const client = new GatewayClient();
-            
+
             await expect(client.getPackages({ cursor: 'invalid-token' })).rejects.toThrow();
         });
     });
