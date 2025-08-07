@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import gatewayClient from '../../../lib/gateway-client';
+
 import PackageDashboard from '../PackageDashboard';
 
 // Mock Next.js navigation
