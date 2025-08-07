@@ -77,14 +77,16 @@ const TimeSlotCell = memo<TimeSlotCellProps>(({ slot, slotIndex, dateKey, isSele
             className={`
                 absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
                 ${isSelected
-                    ? 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
+                    ? slot.isConflict
+                        ? 'bg-orange-500/50 border border-orange-600 text-orange-800 hover:bg-orange-500/70'
+                        : 'bg-teal-600/50 border border-teal-700 text-teal-800 hover:bg-teal-600/70'
                     : 'bg-transparent border border-transparent hover:bg-gray-50/50 hover:border-gray-400'
                 }
             `}
             style={{
                 top: `${slotIndex * 32}px`
             }}
-            title={`Click to ${isSelected ? 'deselect' : 'select'} this time slot`}
+            title={`Click to ${isSelected ? 'deselect' : 'select'} this time slot${slot.isConflict ? ' (conflicts with calendar event)' : ''}`}
         >
         </button>
     );
