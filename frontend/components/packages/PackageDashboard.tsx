@@ -68,7 +68,8 @@ export default function PackageDashboard() {
     const [paginationLoading, setPaginationLoading] = useState(false);
 
     // Performance optimizations
-    const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
+    // Temporarily disable cache to fix the structure mismatch
+    // const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
 
     // Load state from URL on mount
     useEffect(() => {
@@ -92,24 +93,25 @@ export default function PackageDashboard() {
     }, [searchParams]);
 
     // Cursor caching functions
-    const getCachedData = useCallback((cacheKey: string) => {
-        return cursorCache.get(cacheKey);
-    }, [cursorCache]);
+    // Temporarily disable cache to fix the structure mismatch
+    // const getCachedData = useCallback((cacheKey: string) => {
+    //     return cursorCache.get(cacheKey);
+    // }, [cursorCache]);
 
-    const setCachedData = useCallback((cacheKey: string, data: unknown) => {
-        setCursorCache(prev => {
-            const newCache = new Map(prev);
-            newCache.set(cacheKey, data);
-            // Limit cache size to prevent memory leaks
-            if (newCache.size > 50) {
-                const firstKey = newCache.keys().next().value;
-                if (firstKey) {
-                    newCache.delete(firstKey);
-                }
-            }
-            return newCache;
-        });
-    }, []);
+    // const setCachedData = useCallback((cacheKey: string, data: unknown) => {
+    //     setCursorCache(prev => {
+    //         const newCache = new Map(prev);
+    //         newCache.set(cacheKey, data);
+    //         // Limit cache size to prevent memory leaks
+    //         if (newCache.size > 50) {
+    //             const firstKey = newCache.keys().next().value;
+    //             if (firstKey) {
+    //                 newCache.delete(firstKey);
+    //         }
+    //         }
+    //         return newCache;
+    //     });
+    // }, []);
 
     // Main data loading function
     const loadData = useCallback(async (cursor: string | null = null, direction: 'next' | 'prev' = 'next') => {
@@ -149,10 +151,9 @@ export default function PackageDashboard() {
             }
 
             // Check cache first
-            const cacheKey = JSON.stringify(filterParams);
-            const cachedData = getCachedData(cacheKey);
-
+            // const cacheKey = JSON.stringify(filterParams);
             // Temporarily disable cache to fix the structure mismatch
+            // const cachedData = getCachedData(cacheKey);
             // if (cachedData && typeof cachedData === 'object' && 'packages' in cachedData) {
             //     const cached = cachedData as { packages: Package[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean };
             //     setPackages(cached.packages || []);
@@ -167,7 +168,7 @@ export default function PackageDashboard() {
             const res = await gatewayClient.getPackages(filterParams);
 
             // Cache the result
-            setCachedData(cacheKey, res);
+            // setCachedData(cacheKey, res);
 
             setPackages(res.packages || []);
             setNextCursor(res.next_cursor || null);
@@ -198,7 +199,7 @@ export default function PackageDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, getCachedData, setCachedData]);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm]);
 
     // Load first page on mount and when filters change
     useEffect(() => {

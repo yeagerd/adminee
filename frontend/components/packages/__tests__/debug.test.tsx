@@ -122,7 +122,7 @@ describe('Debug Test', () => {
 
         (gatewayClient.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
-        const { container } = render(<PackageDashboard />);
+        render(<PackageDashboard />);
 
         // Wait for the API call to be made
         await waitFor(() => {
@@ -174,7 +174,7 @@ describe('Debug Test', () => {
             return component;
         };
 
-        const { container } = render(<ModifiedPackageDashboard />);
+        render(<ModifiedPackageDashboard />);
 
         // Wait for the API call to be made
         await waitFor(() => {
@@ -183,12 +183,6 @@ describe('Debug Test', () => {
 
         // Wait for the component to update
         await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Debug: log what's actually rendered
-        console.log('Rendered HTML:', container.innerHTML);
-
-        // Check if the package is in the DOM
-        console.log('Container text content:', container.textContent);
 
         // Wait for initial load
         await waitFor(() => {
