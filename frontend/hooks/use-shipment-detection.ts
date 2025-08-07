@@ -151,7 +151,8 @@ function extractTrackingNumbers(text: string, body: string = ""): Array<{ tracki
         if (bodyLower.includes('ups.com') || bodyLower.includes('united parcel service')) {
             carrier = 'ups';
         }
-        addMatch(match[0], carrier, 0.7, match.index!, match.index! + match[0].length, 2);
+        // Use higher confidence (0.8) to ensure this special handling overrides USPS alternate patterns (0.7)
+        addMatch(match[0], carrier, 0.8, match.index!, match.index! + match[0].length, 2);
     }
 
     // Only deduplicate by tracking number value and confidence
