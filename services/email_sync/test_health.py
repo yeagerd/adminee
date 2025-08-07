@@ -2,6 +2,13 @@ import importlib.util
 import os
 import sys
 
+# Set environment variables before importing app
+os.environ["PYTHON_ENV"] = "test"
+os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
+os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
+
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
+
 spec = importlib.util.spec_from_file_location(
     "app", os.path.join(os.path.dirname(__file__), "app.py")
 )
@@ -11,8 +18,9 @@ spec.loader.exec_module(app_module)
 app = app_module.app
 
 
-def test_healthz():
-    with app.test_client() as client:
+class TestHealth(BaseSelectiveHTTPIntegrationTest):
+    def test_healthz(self):
+        client = self.create_test_client(app)
         resp = client.get("/healthz")
         assert resp.status_code == 200
-        assert resp.json["status"] == "ok"
+        assert resp.json()["status"] == "ok"

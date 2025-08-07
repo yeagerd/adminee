@@ -2,11 +2,10 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
 from typing import Any
 
 from services.common.settings import BaseSettings, Field
-from services.email_sync.email_tracking import email_tracking_service
+from services.email_sync.email_tracking import EmailTrackingService
 from services.email_sync.microsoft_graph_client import MicrosoftGraphClient
 from services.email_sync.pubsub_client import publish_message
 
@@ -30,6 +29,7 @@ logging.basicConfig(level=logging.INFO)
 
 def process_microsoft_notification(message: Any) -> None:
     settings = MicrosoftSyncSettings()
+    email_tracking_service = EmailTrackingService()
 
     try:
         data = json.loads(message.data.decode("utf-8"))
@@ -89,38 +89,24 @@ def process_microsoft_notification(message: Any) -> None:
                         f"retrying in {backoff}s"
                     )
                     time.sleep(backoff)
-                else:
-                    logging.error(
-                        f"ALERT: Failed to publish email after retries. "
-                        f"Email: {email['id']}"
-                    )
-                message.nack()
-                return
+                    backoff = min(backoff * 2, 60)
+            else:
+                logging.error("ALERT: Failed to publish email after retries. ")
+                continue
 
             # Mark email as processed
-            email_timestamp = None
-            if email.get("receivedDateTime"):
-                try:
-                    # Microsoft uses ISO 8601 format
-                    email_timestamp = datetime.fromisoformat(
-                        email["receivedDateTime"].replace("Z", "+00:00")
-                    )
-                except (ValueError, TypeError):
-                    email_timestamp = datetime.now(timezone.utc)
-
             email_tracking_service.mark_email_processed(
-                user_email, "microsoft", email["id"], email_timestamp
+                user_email, "microsoft", email["id"]
             )
             processed_count += 1
 
         logging.info(
-            f"Successfully processed {processed_count} new emails for {user_email}"
+            f"Processed {processed_count} emails from Microsoft Graph for {user_email}"
         )
-        message.ack()
 
     except Exception as e:
-        logging.error(f"Failed to process message: {e}")
-        message.nack()
+        logging.error(f"Error processing Microsoft notification: {e}")
+        raise
 
 
 def run() -> None:

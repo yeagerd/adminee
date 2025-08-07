@@ -43,7 +43,7 @@ class TestGmailPipelineIntegration(BaseEmailSyncIntegrationTest):
         """Set up test environment."""
         super().setup_method(method)
 
-    @patch("services.email_sync.app.app.publish_message")
+    @patch("services.email_sync.app.publish_message")
     @patch("services.email_sync.gmail_sync_service.publish_message")
     @patch("services.email_sync.gmail_sync_service.GmailAPIClient")
     def test_gmail_webhook_to_email_processing_pipeline(
@@ -60,105 +60,105 @@ class TestGmailPipelineIntegration(BaseEmailSyncIntegrationTest):
             amazon_shipped_email(),
         ]
 
-        with app.test_client() as client:
-            # Step 1: Send Gmail webhook
-            webhook_payload = gmail_webhook_payload()
-            response = client.post(
-                "/gmail/webhook",
-                json=webhook_payload,
-                headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
-            )
+        client = self.create_test_client(app)
+        # Step 1: Send Gmail webhook
+        webhook_payload = gmail_webhook_payload()
+        response = client.post(
+            "/gmail/webhook",
+            json=webhook_payload,
+            headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
+        )
 
-            assert response.status_code == 200
-            assert response.json["status"] == "ok"
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
 
-            # Step 2: Verify webhook was published to gmail-notifications topic
-            mock_publish.assert_called_once()
-            call_args = mock_publish.call_args
-            assert call_args[0][0] == "gmail-notifications"
+        # Step 2: Verify webhook was published to gmail-notifications topic
+        mock_publish.assert_called_once()
+        call_args = mock_publish.call_args
+        assert call_args[0][0] == "gmail-notifications"
 
-            # Step 3: Simulate Gmail sync service processing
-            # This would normally be triggered by the gmail-notifications message
-            # For testing, we'll directly call the sync service logic
+        # Step 3: Simulate Gmail sync service processing
+        # This would normally be triggered by the gmail-notifications message
+        # For testing, we'll directly call the sync service logic
 
-            # Mock the pubsub message that would be received by the sync service
-            webhook_message = create_mock_message(webhook_payload)
+        # Mock the pubsub message that would be received by the sync service
+        webhook_message = create_mock_message(webhook_payload)
 
-            # Import and call the sync service processing function
-            from services.email_sync.gmail_sync_service import (
-                process_gmail_notification,
-            )
+        # Import and call the sync service processing function
+        from services.email_sync.gmail_sync_service import (
+            process_gmail_notification,
+        )
 
-            process_gmail_notification(webhook_message)
+        process_gmail_notification(webhook_message)
 
-            # Step 4: Verify emails were fetched and published to email-processing topic
-            # The mock should have been called to fetch emails
-            mock_client_instance.fetch_emails_since_history_id.assert_called_once()
+        # Step 4: Verify emails were fetched and published to email-processing topic
+        # The mock should have been called to fetch emails
+        mock_client_instance.fetch_emails_since_history_id.assert_called_once()
 
-            # Step 5: Simulate email parser processing
-            # Process each email through the parser
-            for email in [ups_tracking_email(), amazon_shipped_email()]:
-                # Convert Gmail email format to parser format
-                email_data = {
-                    "from": email["payload"]["headers"][1]["value"],  # From header
-                    "body": email["payload"]["body"]["data"],
-                }
+        # Step 5: Simulate email parser processing
+        # Process each email through the parser
+        for email in [ups_tracking_email(), amazon_shipped_email()]:
+            # Convert Gmail email format to parser format
+            email_data = {
+                "from": email["payload"]["headers"][1]["value"],  # From header
+                "body": email["payload"]["body"]["data"],
+            }
 
-                # Create mock message for parser
-                parser_message = create_mock_message(email_data)
+            # Create mock message for parser
+            parser_message = create_mock_message(email_data)
 
-                # Process through email parser
-                with patch(
-                    "services.email_sync.email_parser_service.publish_message"
-                ) as mock_parser_publish:
-                    process_email(parser_message)
+            # Process through email parser
+            with patch(
+                "services.email_sync.email_parser_service.publish_message"
+            ) as mock_parser_publish:
+                process_email(parser_message)
 
-                    # Verify parser processed the email
-                    assert parser_message.acked
-                    assert not parser_message.nacked
+                # Verify parser processed the email
+                assert parser_message.acked
+                assert not parser_message.nacked
 
-                    # Verify appropriate events were published
-                    if "1Z999AA1234567890E" in email_data["body"]:
-                        # Should publish UPS tracking event
-                        mock_parser_publish.assert_called()
-                        call_args = mock_parser_publish.call_args
-                        assert call_args[0][0] == "package-tracker-events"
-                        assert call_args[0][1]["carrier"] == "UPS"
-                    elif "amazon" in email_data["from"].lower():
-                        # Should publish Amazon event
-                        mock_parser_publish.assert_called()
-                        call_args = mock_parser_publish.call_args
-                        assert call_args[0][0] == "amazon-events"
-                        assert call_args[0][1]["status"] == "shipped"
+                # Verify appropriate events were published
+                if "1Z999AA1234567890E" in email_data["body"]:
+                    # Should publish UPS tracking event
+                    mock_parser_publish.assert_called()
+                    call_args = mock_parser_publish.call_args
+                    assert call_args[0][0] == "package-tracker-events"
+                    assert call_args[0][1]["carrier"] == "UPS"
+                elif "amazon" in email_data["from"].lower():
+                    # Should publish Amazon event
+                    mock_parser_publish.assert_called()
+                    call_args = mock_parser_publish.call_args
+                    assert call_args[0][0] == "amazon-events"
+                    assert call_args[0][1]["status"] == "shipped"
 
-    @patch("services.email_sync.app.app.publish_message")
+    @patch("services.email_sync.app.publish_message")
     def test_gmail_webhook_error_handling(self, mock_publish):
         """Test Gmail webhook error handling scenarios."""
-        with app.test_client() as client:
-            # Test with invalid webhook secret
-            response = client.post(
-                "/gmail/webhook",
-                json=gmail_webhook_payload(),
-                headers={"X-Gmail-Webhook-Secret": "wrong-secret"},
-            )
-            assert response.status_code == 401
+        client = self.create_test_client(app)
+        # Test with invalid webhook secret
+        response = client.post(
+            "/gmail/webhook",
+            json=gmail_webhook_payload(),
+            headers={"X-Gmail-Webhook-Secret": "wrong-secret"},
+        )
+        assert response.status_code == 401
 
-            # Test with invalid payload
-            response = client.post(
-                "/gmail/webhook",
-                json={"invalid": "payload"},
-                headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
-            )
-            assert response.status_code == 400
+        # Test with invalid payload
+        response = client.post(
+            "/gmail/webhook",
+            json={"invalid": "payload"},
+            headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
+        )
+        assert response.status_code == 400
 
-            # Test with pubsub failure
-            mock_publish.side_effect = Exception("pubsub error")
-            response = client.post(
-                "/gmail/webhook",
-                json=gmail_webhook_payload(),
-                headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
-            )
-            assert response.status_code == 503
+        # Test with pubsub failure
+        mock_publish.side_effect = Exception("pubsub error")
+        response = client.post(
+            "/gmail/webhook",
+            json=gmail_webhook_payload(),
+            headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
+        )
+        assert response.status_code == 503
 
 
 class TestMicrosoftPipelineIntegration(BaseEmailSyncIntegrationTest):
@@ -184,93 +184,93 @@ class TestMicrosoftPipelineIntegration(BaseEmailSyncIntegrationTest):
             survey_response_email()
         ]
 
-        with app.test_client() as client:
-            # Step 1: Send Microsoft webhook
-            webhook_payload = microsoft_webhook_payload()
-            response = client.post(
-                "/microsoft/webhook",
-                json=webhook_payload,
-                headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
-            )
+        client = self.create_test_client(app)
+        # Step 1: Send Microsoft webhook
+        webhook_payload = microsoft_webhook_payload()
+        response = client.post(
+            "/microsoft/webhook",
+            json=webhook_payload,
+            headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
+        )
 
-            assert response.status_code == 200
-            assert response.json["status"] == "published"
+        assert response.status_code == 200
+        assert response.json()["status"] == "published"
 
-            # Step 2: Verify webhook was published to microsoft-notifications topic
-            mock_publish.assert_called_once()
-            call_args = mock_publish.call_args
-            assert call_args[0][0] == "microsoft-notifications"
+        # Step 2: Verify webhook was published to microsoft-notifications topic
+        mock_publish.assert_called_once()
+        call_args = mock_publish.call_args
+        assert call_args[0][0] == "microsoft-notifications"
 
-            # Step 3: Simulate Microsoft sync service processing
-            # Mock the pubsub message that would be received by the sync service
-            webhook_message = create_mock_message(webhook_payload)
+        # Step 3: Simulate Microsoft sync service processing
+        # Mock the pubsub message that would be received by the sync service
+        webhook_message = create_mock_message(webhook_payload)
 
-            # Import and call the sync service processing function
-            from services.email_sync.microsoft_sync_service import (
-                process_microsoft_notification,
-            )
+        # Import and call the sync service processing function
+        from services.email_sync.microsoft_sync_service import (
+            process_microsoft_notification,
+        )
 
-            process_microsoft_notification(webhook_message)
+        process_microsoft_notification(webhook_message)
 
-            # Step 4: Verify emails were fetched and published to email-processing topic
-            # The mock should have been called to fetch emails
-            mock_client_instance.fetch_emails_from_notification.assert_called_once()
+        # Step 4: Verify emails were fetched and published to email-processing topic
+        # The mock should have been called to fetch emails
+        mock_client_instance.fetch_emails_from_notification.assert_called_once()
 
-            # Step 5: Simulate email parser processing
-            # Process the survey email through the parser
-            email = survey_response_email()
-            email_data = {
-                "from": email["payload"]["headers"][1]["value"],  # From header
-                "body": email["payload"]["body"]["data"],
-            }
+        # Step 5: Simulate email parser processing
+        # Process the survey email through the parser
+        email = survey_response_email()
+        email_data = {
+            "from": email["payload"]["headers"][1]["value"],  # From header
+            "body": email["payload"]["body"]["data"],
+        }
 
-            # Create mock message for parser
-            parser_message = create_mock_message(email_data)
+        # Create mock message for parser
+        parser_message = create_mock_message(email_data)
 
-            # Process through email parser
-            with patch(
-                "services.email_sync.email_parser_service.publish_message"
-            ) as mock_parser_publish:
-                process_email(parser_message)
+        # Process through email parser
+        with patch(
+            "services.email_sync.email_parser_service.publish_message"
+        ) as mock_parser_publish:
+            process_email(parser_message)
 
-                # Verify parser processed the email
-                assert parser_message.acked
-                assert not parser_message.nacked
+            # Verify parser processed the email
+            assert parser_message.acked
+            assert not parser_message.nacked
 
-                # Verify survey event was published
-                mock_parser_publish.assert_called()
-                call_args = mock_parser_publish.call_args
-                assert call_args[0][0] == "survey-events"
-                assert "survey.ourapp.com" in call_args[0][1]["survey_url"]
+            # Verify survey event was published
+            mock_parser_publish.assert_called()
+            call_args = mock_parser_publish.call_args
+            assert call_args[0][0] == "survey-events"
+            assert "survey.ourapp.com" in call_args[0][1]["survey_url"]
 
     @patch("services.email_sync.microsoft_webhook.publish_message")
     def test_microsoft_webhook_error_handling(self, mock_publish):
         """Test Microsoft webhook error handling scenarios."""
-        with app.test_client() as client:
-            # Test with invalid signature
-            response = client.post(
-                "/microsoft/webhook",
-                json=microsoft_webhook_payload(),
-                headers={"X-Microsoft-Signature": "wrong-secret"},
-            )
-            assert response.status_code == 401
+        client = self.create_test_client(app)
+        # Test with invalid signature
+        response = client.post(
+            "/microsoft/webhook",
+            json=microsoft_webhook_payload(),
+            headers={"X-Microsoft-Signature": "wrong-secret"},
+        )
+        assert response.status_code == 401
 
-            # Test with invalid payload
-            response = client.post(
-                "/microsoft/webhook",
-                json={"invalid": "payload"},
-                headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
-            )
-            assert response.status_code == 400
+        # Test with invalid payload
+        response = client.post(
+            "/microsoft/webhook",
+            json={"invalid": "payload"},
+            headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
+        )
+        assert response.status_code == 400
 
-            # Test with pubsub failure
-            mock_publish.side_effect = Exception("pubsub error")
-            response = client.post(
-                "/microsoft/webhook",
-                json=microsoft_webhook_payload(),
-                headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
-            )
-            assert response.status_code == 400
+        # Test with pubsub failure
+        mock_publish.side_effect = Exception("pubsub error")
+        response = client.post(
+            "/microsoft/webhook",
+            json=microsoft_webhook_payload(),
+            headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
+        )
+        assert response.status_code == 400
 
 
 class TestEmailParserIntegration(BaseEmailSyncIntegrationTest):

@@ -2,11 +2,10 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
 from typing import Any
 
 from services.common.settings import BaseSettings, Field
-from services.email_sync.email_tracking import email_tracking_service
+from services.email_sync.email_tracking import EmailTrackingService
 from services.email_sync.gmail_api_client import GmailAPIClient
 from services.email_sync.pubsub_client import publish_message
 from services.email_sync.schemas import GmailNotification
@@ -38,6 +37,7 @@ logging.basicConfig(level=logging.INFO)
 
 def process_gmail_notification(message: Any) -> None:
     settings = GmailSyncSettings()
+    email_tracking_service = EmailTrackingService()
     EMAIL_PROCESSING_TOPIC = "email-processing"
 
     try:
@@ -96,47 +96,29 @@ def process_gmail_notification(message: Any) -> None:
                     time.sleep(backoff)
                     backoff = min(backoff * 2, 60)
             else:
-                logging.error(
-                    f"ALERT: Failed to publish email after retries. "
-                    f"Email: {email['id']}"
-                )
-                message.nack()
-                return
+                logging.error("ALERT: Failed to publish email after retries. ")
+                continue
 
             # Mark email as processed
-            email_timestamp = None
-            if email.get("internalDate"):
-                try:
-                    # Gmail internalDate is in milliseconds since epoch
-                    timestamp_ms = int(email["internalDate"])
-                    email_timestamp = datetime.fromtimestamp(
-                        timestamp_ms / 1000, tz=timezone.utc
-                    )
-                except (ValueError, TypeError):
-                    email_timestamp = datetime.now(timezone.utc)
-
             email_tracking_service.mark_email_processed(
-                notification.email_address, "gmail", email["id"], email_timestamp
+                notification.email_address, "gmail", email["id"]
             )
             processed_count += 1
 
-        # Update the history ID tracking
-        if latest_history_id:
-            email_tracking_service.update_processing_state(
-                user_email=notification.email_address,
-                provider="gmail",
-                history_id=latest_history_id,
-            )
+        # Update the processing state with the latest history ID
+        email_tracking_service.update_processing_state(
+            user_email=notification.email_address,
+            provider="gmail",
+            history_id=latest_history_id,
+        )
 
         logging.info(
-            f"Successfully processed {processed_count} new emails for "
-            f"{notification.email_address}"
+            f"Processed {processed_count} emails for {notification.email_address}"
         )
-        message.ack()
 
     except Exception as e:
-        logging.error(f"Failed to process message: {e}")
-        message.nack()
+        logging.error(f"Error processing Gmail notification: {e}")
+        raise
 
 
 def run() -> None:

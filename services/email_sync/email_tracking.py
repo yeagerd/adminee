@@ -125,5 +125,5 @@ class EmailTrackingService:
         return email_id == state.last_processed_id
 
 
-# Global instance
-email_tracking_service = EmailTrackingService()
+# Global instance - removed to prevent database initialization during module import
+# email_tracking_service = EmailTrackingService()
