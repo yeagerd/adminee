@@ -388,21 +388,22 @@ export function TimeSlotCalendar({
                         const eventEnd = DateTime.fromISO(event.end_time, { zone: 'utc' }).setZone(timeZone);
 
                         // Use the same positioning logic as the proven calendar grid view
-                        const slotHeight = 32; // 30-minute slot height (h-8)
-                        const slotsPerHour = 2; // 2 slots per hour (30-minute intervals)
+                        const granularityMinutes = parseInt(granularity);
+                        const slotHeight = 32; // Each time slot height (h-8)
+                        const slotsPerHour = 60 / granularityMinutes; // Dynamic slots per hour based on granularity
                         const gridStartHour = businessHours.start;
 
-                        // Calculate position in 30-minute slots
+                        // Calculate position based on current granularity
                         const startHour = eventStart.hour;
                         const startMinute = eventStart.minute;
                         const hoursFromStart = startHour - gridStartHour;
-                        const minutesOffset = startMinute / 30;
+                        const minutesOffset = startMinute / granularityMinutes;
                         const startSlots = hoursFromStart * slotsPerHour + minutesOffset;
                         const topPixels = Math.max(0, startSlots * slotHeight);
 
-                        // Calculate height based on duration
+                        // Calculate height based on duration and current granularity
                         const durationMinutes = eventEnd.diff(eventStart, 'minutes').minutes;
-                        const durationSlots = Math.max(1, durationMinutes / 30); // Minimum 1 slot (30 minutes)
+                        const durationSlots = Math.max(1, durationMinutes / granularityMinutes); // Minimum 1 slot
                         const heightPixels = durationSlots * slotHeight; // Use exact slot height
 
                         return (
@@ -428,7 +429,7 @@ export function TimeSlotCalendar({
         });
 
         return memoized;
-    }, [eventsByDate, showCalendarEvents, timeZone, businessHours.start]);
+    }, [eventsByDate, showCalendarEvents, timeZone, businessHours.start, granularity]);
 
     // Render calendar events for a specific day (now just returns memoized result)
     const renderCalendarEvents = (dateKey: string) => {
