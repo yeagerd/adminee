@@ -9,7 +9,7 @@ import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-clien
 import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
 
@@ -51,6 +51,11 @@ export function MeetingPollNew() {
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
     const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
 
+    // Stable callback for time slot changes
+    const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
+        setTimeSlots(newSlots);
+    }, []);
+
     // Step navigation
     const nextStep = () => setStep((s) => s + 1);
     const prevStep = () => setStep((s) => s - 1);
@@ -86,7 +91,11 @@ export function MeetingPollNew() {
             )
                 .then((response) => {
                     if (response.success && response.data) {
-                        setCalendarEvents(response.data.events || []);
+                        // Handle both array and object response formats
+                        const events = Array.isArray(response.data)
+                            ? response.data
+                            : response.data.events || [];
+                        setCalendarEvents(events);
                     }
                 })
                 .catch((err) => {
@@ -289,7 +298,7 @@ export function MeetingPollNew() {
                                     <TimeSlotCalendar
                                         duration={duration}
                                         timeZone={timeZone}
-                                        onTimeSlotsChange={setTimeSlots}
+                                        onTimeSlotsChange={handleTimeSlotsChange}
                                         selectedTimeSlots={timeSlots}
                                         calendarEvents={calendarEvents}
                                     />
