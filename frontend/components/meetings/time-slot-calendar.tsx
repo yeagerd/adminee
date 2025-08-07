@@ -65,6 +65,7 @@ export function TimeSlotCalendar({
     selectedTimeSlots,
     calendarEvents = []
 }: TimeSlotCalendarProps) {
+    console.log('🔄 TimeSlotCalendar component re-rendering');
     // Date range selection
     const [dateRangeType, setDateRangeType] = useState<'target' | 'range'>('target');
     const [targetDate, setTargetDate] = useState(() => {
@@ -152,6 +153,7 @@ export function TimeSlotCalendar({
 
     // Generate time slots for the date range (without selection state)
     const timeSlots = useMemo(() => {
+        console.log('🔄 Recalculating timeSlots');
         const slots: TimeSlot[] = [];
         const granularityMinutes = parseInt(granularity);
 
@@ -220,6 +222,7 @@ export function TimeSlotCalendar({
 
     // Create a Set for fast selection lookup
     const selectedSlotsSet = useMemo(() => {
+        console.log('🔄 Recalculating selectedSlotsSet');
         return new Set(selectedTimeSlots.map(slot => `${slot.start}-${slot.end}`));
     }, [selectedTimeSlots]);
 
@@ -256,12 +259,18 @@ export function TimeSlotCalendar({
 
     // Handle slot selection
     const handleSlotClick = useCallback((slot: TimeSlot) => {
-        const newSelectedSlots = slot.isSelected
+        const slotKey = `${slot.start}-${slot.end}`;
+        const isCurrentlySelected = selectedSlotsSet.has(slotKey);
+
+        console.log(`🖱️ Clicked slot: ${slotKey} (currently selected: ${isCurrentlySelected})`);
+
+        const newSelectedSlots = isCurrentlySelected
             ? selectedTimeSlots.filter(s => !(s.start === slot.start && s.end === slot.end))
             : [...selectedTimeSlots, { start: slot.start, end: slot.end }];
 
+        console.log(`📊 Selection changed: ${selectedTimeSlots.length} → ${newSelectedSlots.length} slots`);
         onTimeSlotsChange(newSelectedSlots);
-    }, [selectedTimeSlots, onTimeSlotsChange]);
+    }, [selectedTimeSlots, selectedSlotsSet, onTimeSlotsChange]);
 
     // Handle day-level selection
     const handleDaySelection = useCallback((dateKey: string, action: 'all' | 'all_times' | 'none') => {
@@ -330,75 +339,71 @@ export function TimeSlotCalendar({
         return diffDays;
     }, [effectiveDateRange]);
 
-    // Render calendar events for a specific day using the proven grid positioning approach
-    const renderCalendarEvents = (dateKey: string) => {
-        const dayEvents = eventsByDate[dateKey] || [];
-        console.log(`Rendering events for ${dateKey}:`, dayEvents.length, 'events', dayEvents);
-        if (!showCalendarEvents || dayEvents.length === 0) return null;
+    // Memoized calendar event rendering for each day
+    const memoizedCalendarEvents = useMemo(() => {
+        console.log('🔄 Recalculating memoizedCalendarEvents');
+        const memoized: Record<string, React.ReactNode> = {};
 
-        return (
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-                {dayEvents.map((event, index) => {
-                    // Parse the event times as UTC and convert to user's timezone
-                    const eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(timeZone);
-                    const eventEnd = DateTime.fromISO(event.end_time, { zone: 'utc' }).setZone(timeZone);
+        Object.keys(eventsByDate).forEach(dateKey => {
+            const dayEvents = eventsByDate[dateKey] || [];
+            if (!showCalendarEvents || dayEvents.length === 0) {
+                memoized[dateKey] = null;
+                return;
+            }
 
-                    // Use the same positioning logic as the proven calendar grid view
-                    const slotHeight = 32; // 30-minute slot height (h-8)
-                    const slotsPerHour = 2; // 2 slots per hour (30-minute intervals)
-                    const gridStartHour = businessHours.start;
+            memoized[dateKey] = (
+                <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
+                    {dayEvents.map((event, index) => {
+                        // Parse the event times as UTC and convert to user's timezone
+                        const eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(timeZone);
+                        const eventEnd = DateTime.fromISO(event.end_time, { zone: 'utc' }).setZone(timeZone);
 
-                    // Calculate position in 30-minute slots
-                    const startHour = eventStart.hour;
-                    const startMinute = eventStart.minute;
-                    const hoursFromStart = startHour - gridStartHour;
-                    const minutesOffset = startMinute / 30;
-                    const startSlots = hoursFromStart * slotsPerHour + minutesOffset;
-                    const topPixels = Math.max(0, startSlots * slotHeight);
+                        // Use the same positioning logic as the proven calendar grid view
+                        const slotHeight = 32; // 30-minute slot height (h-8)
+                        const slotsPerHour = 2; // 2 slots per hour (30-minute intervals)
+                        const gridStartHour = businessHours.start;
 
-                    // Calculate height based on duration
-                    const durationMinutes = eventEnd.diff(eventStart, 'minutes').minutes;
-                    const durationSlots = Math.max(1, durationMinutes / 30); // Minimum 1 slot (30 minutes)
-                    const heightPixels = durationSlots * slotHeight; // Use exact slot height
+                        // Calculate position in 30-minute slots
+                        const startHour = eventStart.hour;
+                        const startMinute = eventStart.minute;
+                        const hoursFromStart = startHour - gridStartHour;
+                        const minutesOffset = startMinute / 30;
+                        const startSlots = hoursFromStart * slotsPerHour + minutesOffset;
+                        const topPixels = Math.max(0, startSlots * slotHeight);
 
-                    console.log(`Event "${event.title}":`, {
-                        eventStart: eventStart.toFormat('HH:mm'),
-                        eventEnd: eventEnd.toFormat('HH:mm'),
-                        eventStartInTz: eventStart.toFormat('HH:mm'),
-                        eventEndInTz: eventEnd.toFormat('HH:mm'),
-                        timeZone,
-                        startHour,
-                        startMinute,
-                        hoursFromStart,
-                        minutesOffset,
-                        startSlots,
-                        topPixels,
-                        durationMinutes,
-                        durationSlots,
-                        heightPixels,
-                        gridStartHour
-                    });
+                        // Calculate height based on duration
+                        const durationMinutes = eventEnd.diff(eventStart, 'minutes').minutes;
+                        const durationSlots = Math.max(1, durationMinutes / 30); // Minimum 1 slot (30 minutes)
+                        const heightPixels = durationSlots * slotHeight; // Use exact slot height
 
-                    return (
-                        <div
-                            key={`${event.id}-${index}`}
-                            className="absolute left-1 right-1 bg-blue-100/80 border border-blue-300/60 rounded text-xs text-blue-800 px-1 py-0.5 overflow-hidden"
-                            style={{
-                                top: `${topPixels}px`,
-                                height: `${heightPixels}px`,
-                                pointerEvents: 'none'
-                            }}
-                            title={`${event.title} (${eventStart.toFormat('h:mm a')} - ${eventEnd.toFormat('h:mm a')})`}
-                        >
-                            <div className="truncate font-medium text-blue-900">{event.title}</div>
-                            <div className="truncate text-blue-700">
-                                {eventStart.toFormat('h:mm a')} - {eventEnd.toFormat('h:mm a')}
+                        return (
+                            <div
+                                key={`${event.id}-${index}`}
+                                className="absolute left-1 right-1 bg-blue-100/80 border border-blue-300/60 rounded text-xs text-blue-800 px-1 py-0.5 overflow-hidden"
+                                style={{
+                                    top: `${topPixels}px`,
+                                    height: `${heightPixels}px`,
+                                    pointerEvents: 'none'
+                                }}
+                                title={`${event.title} (${eventStart.toFormat('h:mm a')} - ${eventEnd.toFormat('h:mm a')})`}
+                            >
+                                <div className="truncate font-medium text-blue-900">{event.title}</div>
+                                <div className="truncate text-blue-700">
+                                    {eventStart.toFormat('h:mm a')} - {eventEnd.toFormat('h:mm a')}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
-        );
+                        );
+                    })}
+                </div>
+            );
+        });
+
+        return memoized;
+    }, [eventsByDate, showCalendarEvents, timeZone, businessHours.start]);
+
+    // Render calendar events for a specific day (now just returns memoized result)
+    const renderCalendarEvents = (dateKey: string) => {
+        return memoizedCalendarEvents[dateKey] || null;
     };
 
     // Render a single grid for a chunk of dates
@@ -503,9 +508,11 @@ export function TimeSlotCalendar({
                                         {/* Time slot buttons on top */}
                                         {slotsByDate[dateKey].map((slot, slotIndex) => {
                                             const isSelected = selectedSlotsSet.has(`${slot.start}-${slot.end}`);
+                                            const slotKey = `${slot.start}-${slot.end}`;
+                                            console.log(`🔄 Rendering cell: ${dateKey} ${slotKey} (selected: ${isSelected})`);
                                             return (
                                                 <button
-                                                    key={slotIndex}
+                                                    key={slotKey}
                                                     type="button"
                                                     onClick={() => handleSlotClick(slot)}
                                                     className={`

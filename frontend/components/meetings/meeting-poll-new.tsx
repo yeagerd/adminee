@@ -299,7 +299,6 @@ export function MeetingPollNew() {
                                         selectedTimeSlots={timeSlots}
                                         calendarEvents={calendarEvents}
                                     />
-                                    {console.log('Passing calendar events to TimeSlotCalendar:', calendarEvents.length, calendarEvents)}
                                 </div>
                             )}
                             {step === 3 && (
