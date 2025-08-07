@@ -260,7 +260,7 @@ export function TimeSlotCalendar({
         });
 
         return slots;
-    }, [effectiveDateRange, includeWeekends, granularity, businessHours, duration, eventsByDateForConflicts]);
+    }, [effectiveDateRange, includeWeekends, granularity, businessHours, duration, eventsByDateForConflicts, timeZone]);
 
     // Create a Set for fast selection lookup
     const selectedSlotsSet = useMemo(() => {
@@ -325,7 +325,6 @@ export function TimeSlotCalendar({
         if (action === 'all') {
             // Add all non-conflicting slots for this day
             const availableSlots = daySlots.filter(slot => !slot.isConflict);
-            const slotIds = availableSlots.map(slot => `${slot.start}-${slot.end}`);
             const existingIds = new Set(selectedTimeSlots.map(slot => `${slot.start}-${slot.end}`));
 
             availableSlots.forEach(slot => {
