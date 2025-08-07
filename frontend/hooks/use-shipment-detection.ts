@@ -17,7 +17,7 @@ export interface ShipmentDetectionResult {
 const TRACKING_PATTERNS = {
     ups: {
         primary: /1Z[0-9A-Z]{15,}/g, // UPS 1Z format
-        alternate: [/[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g, /[0-9]{26}/g] // UPS numeric formats including 26-digit
+        alternate: [/[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g] // UPS numeric formats (excluding 26-digit to avoid USPS conflict)
     },
     fedex: {
         primary: /[0-9]{12}/g, // FedEx 12-digit
@@ -25,7 +25,7 @@ const TRACKING_PATTERNS = {
     },
     usps: {
         primary: /[0-9]{20}/g, // USPS 20-digit
-        alternate: [/[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g] // USPS alternate formats
+        alternate: [/[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g] // USPS alternate formats (26-digit handled separately)
     },
     dhl: {
         primary: /[0-9]{10}/g, // DHL 10-digit
@@ -33,7 +33,7 @@ const TRACKING_PATTERNS = {
     },
     amazon: {
         primary: /TBA[0-9]{10}/g, // Amazon TBA format
-        alternate: [/[0-9]{10,}/g] // Generic numeric fallback
+        alternate: [/[0-9]{10,19}/g, /[0-9]{21,25}/g, /[0-9]{27,}/g] // Generic numeric fallback (excluding 20-digit and 26-digit)
     }
 };
 
@@ -59,7 +59,7 @@ const AMAZON_DOMAINS = [
 /**
  * Extracts tracking numbers from text, prioritizing carrier-specific patterns
  */
-function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; carrier: string; confidence: number }> {
+function extractTrackingNumbers(text: string, body: string = ""): Array<{ trackingNumber: string; carrier: string; confidence: number }> {
     const matches = new Map<string, {
         trackingNumber: string;
         carrier: string;
@@ -74,43 +74,43 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         const existing = matches.get(trackingNumber);
 
         // Check if this number overlaps with any existing number in position
-        const hasPositionalOverlap = Array.from(matches.values()).some(match =>
+        const overlappingMatches = Array.from(matches.values()).filter(match =>
             !(end <= match.start || start >= match.end)
         );
 
         // If there's positional overlap, prioritize longer matches
-        if (hasPositionalOverlap) {
-            const overlappingMatch = Array.from(matches.values()).find(match =>
-                !(end <= match.start || start >= match.end)
-            );
-
-            if (overlappingMatch) {
-                // If this match is longer than the overlapping match, remove the shorter one
-                if (trackingNumber.length > overlappingMatch.trackingNumber.length) {
-                    for (const [key, match] of matches.entries()) {
-                        if (!(end <= match.start || start >= match.end)) {
-                            matches.delete(key);
-                        }
-                    }
-                } else if (trackingNumber.length < overlappingMatch.trackingNumber.length) {
-                    // If this match is shorter, don't add it
-                    return;
+        if (overlappingMatches.length > 0) {
+            // Find the best overlapping match to compare against
+            const bestOverlappingMatch = overlappingMatches.reduce((best, current) => {
+                if (current.trackingNumber.length > best.trackingNumber.length) {
+                    return current;
+                } else if (current.trackingNumber.length < best.trackingNumber.length) {
+                    return best;
                 } else {
                     // Same length, use confidence as tiebreaker
-                    if (confidence <= overlappingMatch.confidence) {
-                        return;
-                    }
-                    // Remove the overlapping match with lower confidence
-                    for (const [key, match] of matches.entries()) {
-                        if (!(end <= match.start || start >= match.end) && confidence > match.confidence) {
-                            matches.delete(key);
-                        }
-                    }
+                    return current.confidence > best.confidence ? current : best;
+                }
+            });
+
+            // If this match is longer than the best overlapping match, remove all overlapping matches
+            if (trackingNumber.length > bestOverlappingMatch.trackingNumber.length) {
+                // Remove all overlapping matches
+                overlappingMatches.forEach(match => matches.delete(match.trackingNumber));
+            } else if (trackingNumber.length < bestOverlappingMatch.trackingNumber.length) {
+                // If this match is shorter, don't add it
+                return;
+            } else {
+                // Same length, use confidence as tiebreaker
+                if (confidence <= bestOverlappingMatch.confidence) {
+                    return;
+                } else {
+                    // Remove all overlapping matches
+                    overlappingMatches.forEach(match => matches.delete(match.trackingNumber));
                 }
             }
         }
 
-        // Add the new match if it has higher confidence or doesn't exist
+        // Only add if no existing match or if this match has higher confidence
         if (!existing || confidence > existing.confidence) {
             matches.set(trackingNumber, {
                 trackingNumber,
@@ -146,6 +146,19 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         for (const match of genericMatches) {
             addMatch(match[0], 'unknown', 0.4, match.index!, match.index! + match[0].length, 3);
         }
+    }
+
+    // Special handling for 26-digit patterns that could be UPS Mail Innovations or USPS
+    const twentySixDigitPattern = /[0-9]{26}/g;
+    const twentySixDigitMatches = text.matchAll(twentySixDigitPattern);
+    for (const match of twentySixDigitMatches) {
+        const bodyLower = body.toLowerCase();
+        let carrier = 'usps'; // Default to USPS
+        if (bodyLower.includes('ups.com') || bodyLower.includes('united parcel service')) {
+            carrier = 'ups';
+        }
+        // Use higher confidence (0.8) to ensure this special handling overrides USPS alternate patterns (0.7)
+        addMatch(match[0], carrier, 0.8, match.index!, match.index! + match[0].length, 2);
     }
 
     // Only deduplicate by tracking number value and confidence
@@ -218,7 +231,7 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
         const originalBody = email.body_text || email.body_html || '';
         const originalText = `${originalSubject} ${originalBody}`;
 
-        result.trackingNumbers = extractTrackingNumbers(originalText);
+        result.trackingNumbers = extractTrackingNumbers(originalText, originalBody);
 
         // Set as shipment email if tracking numbers are found
         if (result.trackingNumbers.length > 0) {
@@ -235,6 +248,7 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
         // Special case: Amazon shipments - boost confidence for Amazon tracking numbers
         if (isAmazonShipment(senderEmail, subject, body)) {
             result.isShipmentEmail = true;
+            // Always set carrier to Amazon for Amazon shipments, regardless of tracking numbers
             result.detectedCarrier = 'amazon';
             result.confidence = 0.8;
             result.detectedFrom = 'sender';

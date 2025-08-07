@@ -278,6 +278,50 @@ class TestEmailParserCore:
 
         assert len(result.tracking_numbers) >= 2
 
+    def test_26digit_tracking_number_detection(self):
+        """Test that 26-digit tracking numbers are correctly detected as USPS vs UPS."""
+        from services.shipments.email_parser import EmailParser
+
+        parser = EmailParser()
+
+        # Test 1: 26-digit number with USPS context (should be detected as USPS)
+        usps_body = """
+        Your USPS package has been shipped.
+        Tracking number: 12345678901234567890123456
+        
+        Track at: https://tools.usps.com/go/TrackConfirmAction?tLabels=12345678901234567890123456
+        """
+
+        result = parser.parse_email(
+            subject="USPS Shipment",
+            sender="tracking@usps.com",
+            body=usps_body,
+            content_type="text",
+        )
+
+        assert result.is_shipment_email is True
+        assert result.detected_carrier == "usps"
+        assert "12345678901234567890123456" in result.tracking_numbers
+
+        # Test 2: 26-digit number with UPS context (should be detected as UPS)
+        ups_body = """
+        Your UPS Mail Innovations package has been shipped.
+        Tracking number: 12345678901234567890123456
+        
+        Track at: https://www.ups.com/track?tracknum=12345678901234567890123456
+        """
+
+        result = parser.parse_email(
+            subject="UPS Mail Innovations Shipment",
+            sender="tracking@ups.com",
+            body=ups_body,
+            content_type="text",
+        )
+
+        assert result.is_shipment_email is True
+        assert result.detected_carrier == "ups"
+        assert "12345678901234567890123456" in result.tracking_numbers
+
 
 class TestEmailParserAPI:
     """Test email parser API endpoints with authentication."""
