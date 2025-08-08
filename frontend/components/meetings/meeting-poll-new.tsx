@@ -9,7 +9,7 @@ import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-clien
 import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
@@ -21,7 +21,6 @@ export function MeetingPollNew() {
     const { setMeetingSubView } = useToolStateUtils();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
-    const router = useRouter();
     const searchParams = useSearchParams();
 
     // Get initial step from URL or default to 1
@@ -74,7 +73,7 @@ export function MeetingPollNew() {
 
     // Handle browser navigation (back/forward buttons)
     useEffect(() => {
-        const handlePopState = (event: PopStateEvent) => {
+        const handlePopState = () => {
             const url = new URL(window.location.href);
             const stepParam = url.searchParams.get('step');
             const newStep = stepParam ? parseInt(stepParam, 10) : 1;
