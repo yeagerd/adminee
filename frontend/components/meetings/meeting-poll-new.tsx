@@ -100,10 +100,10 @@ export function MeetingPollNew() {
     }, [step, updateStepInURL]);
 
     // Validate and clamp step to bounds, also handle NaN
+    // Do NOT mark as navigating here; we want the URL-sync effect to update the URL to the corrected step
     useEffect(() => {
         const clamped = clampStep(step);
         if (clamped !== step) {
-            isNavigatingRef.current = true;
             setStep(clamped);
         }
     }, [step]);

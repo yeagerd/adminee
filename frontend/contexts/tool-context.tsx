@@ -243,11 +243,8 @@ export function ToolProvider({ children }: { children: ReactNode }) {
             if (toolFromUrl === 'meetings') {
                 const view = searchParams.get('view');
                 const id = searchParams.get('id');
-                const stepParam = searchParams.get('step');
-                const parsedStep = stepParam !== null ? parseInt(stepParam, 10) : NaN;
-                const isValidStep = Number.isFinite(parsedStep) && parsedStep >= 1 && parsedStep <= 4;
 
-                if (view === 'new' || (isValidStep && !view)) {
+                if (view === 'new') {
                     dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'new' } });
                 } else if (view === 'edit' && id) {
                     dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'edit', pollId: id } });
