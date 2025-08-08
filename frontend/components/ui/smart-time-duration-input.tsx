@@ -12,6 +12,7 @@ export interface SmartTimeDurationInputProps {
     inputClassName?: string; // input element
     autoFocus?: boolean;
     onCancel?: () => void; // e.g., Escape key to cancel edit
+    onFinish?: () => void; // called after successful parse on blur/enter (even if unchanged)
 }
 
 // Parse a human-friendly duration string into total minutes.
@@ -116,6 +117,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     inputClassName,
     autoFocus,
     onCancel,
+    onFinish,
 }) => {
     const [text, setText] = useState<string>(String(valueMinutes || ""));
     const isFocusedRef = useRef(false);
@@ -138,6 +140,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
             if (minutes !== valueMinutes) {
                 onChangeMinutes(minutes);
             }
+            onFinish?.();
             return true;
         }
         return false;
@@ -165,6 +168,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
                         (e.target as HTMLInputElement).blur();
                     } else if (e.key === "Escape") {
                         onCancel?.();
+                        onFinish?.();
                     }
                 }}
                 placeholder={placeholder ?? "e.g. 45, 1.5h, 1:30"}

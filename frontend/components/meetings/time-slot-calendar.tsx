@@ -777,6 +777,7 @@ export function TimeSlotCalendar({
                                             setIsEditingDuration(false);
                                         }}
                                         onCancel={() => setIsEditingDuration(false)}
+                                        onFinish={() => setIsEditingDuration(false)}
                                         inputClassName="h-7 text-sm w-[100px]"
                                         autoFocus
                                     />
