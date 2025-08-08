@@ -159,7 +159,14 @@ export function ToolContent() {
                                 <div className="flex items-center justify-between mb-6">
                                     <h1 className="text-2xl font-bold">Meeting Polls</h1>
                                     <Button
-                                        onClick={() => setMeetingSubView('new')}
+                                        onClick={() => {
+                                            // Navigate into new poll flow and seed URL with view=new&step=1
+                                            const url = new URL(window.location.href);
+                                            url.searchParams.set('view', 'new');
+                                            url.searchParams.set('step', '1');
+                                            window.history.pushState({ step: 1 }, '', url.toString());
+                                            setMeetingSubView('new');
+                                        }}
                                         className="bg-teal-600 text-white px-4 py-2 rounded shadow hover:bg-teal-700 font-semibold"
                                     >
                                         + New Meeting Poll
