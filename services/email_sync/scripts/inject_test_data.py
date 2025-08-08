@@ -16,10 +16,8 @@ import sys
 import time
 from typing import Any, Dict
 
-# Add the parent directory to the path so we can import test_data
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from test_data import (
+# Import test data using absolute import path
+from services.email_sync.test_data import (
     get_all_amazon_emails,
     get_all_microsoft_emails,
     get_all_survey_emails,
