@@ -1,24 +1,25 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
-import { CalendarEvent } from '@/types/office-service';
-import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToolState } from "@/contexts/tool-context";
+import type { MeetingPoll, PollParticipant } from '@/lib/gateway-client';
+import { gatewayClient } from '@/lib/gateway-client';
+import { CalendarEvent } from "@/types/office-service";
+import { ArrowLeft, LinkIcon } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import { useUserPreferences } from '../../contexts/settings-context';
-import { TimeSlotCalendar } from './time-slot-calendar';
+import { TimeSlotCalendar } from "./time-slot-calendar";
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
 
 export function MeetingPollNew() {
-    const { setMeetingSubView } = useToolStateUtils();
+    const { setMeetingSubView } = useToolState();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
     const searchParams = useSearchParams();
@@ -51,14 +52,15 @@ export function MeetingPollNew() {
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
     const [revealParticipants, setRevealParticipants] = useState(false);
-    const [createdPoll, setCreatedPoll] = useState<MeetingPoll | null>(null);
-    const [showLinks, setShowLinks] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
     // General
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [createdPoll, setCreatedPoll] = useState<MeetingPoll | null>(null);
+    const [showLinks, setShowLinks] = useState(false);
 
     const isNavigatingRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const headerTitleInputRef = useRef<HTMLInputElement>(null);
 
     // Auto-focus title input when component mounts
     useEffect(() => {
@@ -67,48 +69,121 @@ export function MeetingPollNew() {
         }
     }, [step]);
 
-    // Validation helpers
-    const isStep1Valid = title && duration > 0 && timeZone;
-    const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
-    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+    // Handle title editing
+    const handleEditTitle = () => {
+        setIsEditingTitle(true);
+        // Focus the header title input after a brief delay to ensure it's rendered
+        setTimeout(() => {
+            if (headerTitleInputRef.current) {
+                headerTitleInputRef.current.focus();
+                headerTitleInputRef.current.select();
+            }
+        }, 0);
+    };
 
-    // Update URL when step changes
-    const updateStepInURL = useCallback((newStep: number) => {
-        const url = new URL(window.location.href);
-        const currentStepParam = url.searchParams.get('step');
-        url.searchParams.set('step', newStep.toString());
-        if (currentStepParam === newStep.toString()) {
-            window.history.replaceState({ step: newStep }, '', url.toString());
-        } else {
-            window.history.pushState({ step: newStep }, '', url.toString());
+    const handleTitleBlur = () => {
+        setIsEditingTitle(false);
+    };
+
+    const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            setIsEditingTitle(false);
+        } else if (e.key === 'Escape') {
+            setIsEditingTitle(false);
         }
-    }, []);
+    };
 
-    // Handle browser navigation (back/forward buttons)
-    useEffect(() => {
-        const handlePopState = () => {
-            const url = new URL(window.location.href);
-            const stepParam = url.searchParams.get('step');
-            const parsed = stepParam !== null ? parseInt(stepParam, 10) : 1;
-            isNavigatingRef.current = true;
-            setStep(clampStep(parsed));
-        };
+    // Helpers for manual link distribution
+    const getResponseUrl = (token: string): string =>
+        `${window.location.origin}/public/meetings/respond/${token}`;
 
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
+    const copyToClipboard = async (text: string): Promise<void> => {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+        } catch (err) {
+            console.error('Failed to copy to clipboard', err);
+        }
+    };
 
-    // Update URL when step changes internally
-    useEffect(() => {
-        if (isNavigatingRef.current) {
-            isNavigatingRef.current = false;
+    // Submit
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Validate required fields
+        if (!title.trim()) {
             return;
         }
-        updateStepInURL(step);
-    }, [step, updateStepInURL]);
+
+        if (timeSlots.length === 0) {
+            return;
+        }
+
+        if (participants.length === 0) {
+            return;
+        }
+
+        if (!responseDeadline) {
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const pollData = {
+                title: title.trim(),
+                description: description.trim(),
+                duration_minutes: duration,
+                location: location.trim(),
+                timezone: timeZone,
+                meeting_type: "tbd",
+                time_slots: timeSlots.map(slot => ({
+                    start_time: slot.start,
+                    end_time: slot.end,
+                    timezone: timeZone
+                })),
+                participants: participants.map(p => ({
+                    name: p.name.trim(),
+                    email: p.email.trim()
+                })),
+                response_deadline: responseDeadline,
+                send_emails: sendEmails,
+                reveal_participants: revealParticipants
+            };
+
+            const created = await gatewayClient.createMeetingPoll(pollData);
+            setCreatedPoll(created);
+
+            if (sendEmails) {
+                // If emails are sent, return user to list
+                const url = new URL(window.location.href);
+                url.searchParams.delete('step');
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url.toString());
+                setMeetingSubView('list');
+            } else {
+                // Allow manual distribution: show individual response links
+                setShowLinks(true);
+            }
+        } catch (e: unknown) {
+            console.error('Failed to create meeting poll:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Validate and clamp step to bounds, also handle NaN
-    // Do NOT mark as navigating here; we want the URL-sync effect to update the URL to the corrected step
     useEffect(() => {
         const clamped = clampStep(step);
         if (clamped !== step) {
@@ -116,10 +191,49 @@ export function MeetingPollNew() {
         }
     }, [step]);
 
-    // Stable callback for time slot changes
-    const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
-        setTimeSlots(newSlots);
+    // Sync URL with step changes
+    useEffect(() => {
+        if (isNavigatingRef.current) {
+            isNavigatingRef.current = false;
+            return;
+        }
+
+        // Update URL when step changes
+        const updateStepInURL = (newStep: number) => {
+            const url = new URL(window.location.href);
+            const currentStepParam = url.searchParams.get('step');
+
+            // Always ensure the step param is set on the URL
+            url.searchParams.set('step', newStep.toString());
+
+            if (currentStepParam === newStep.toString()) {
+                window.history.replaceState({ step: newStep }, '', url.toString());
+            } else {
+                window.history.pushState({ step: newStep }, '', url.toString());
+            }
+        };
+
+        updateStepInURL(step);
+    }, [step]);
+
+    // Handle browser navigation (back/forward buttons)
+    useEffect(() => {
+        const handlePopState = () => {
+            const url = new URL(window.location.href);
+            const stepParam = url.searchParams.get('step');
+            const parsed = stepParam !== null ? parseInt(stepParam, 10) : 1;
+            isNavigatingRef.current = true; // prevent URL write-back
+            setStep(clampStep(parsed));
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
     }, []);
+
+    // Stable callback for time slot changes
+    const handleTimeSlotsChange = (newSlots: { start: string; end: string }[]) => {
+        setTimeSlots(newSlots);
+    };
 
     // Step navigation
     const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
@@ -187,87 +301,17 @@ export function MeetingPollNew() {
         setTimeZone(effectiveTimezone);
     }, [effectiveTimezone]);
 
-    // Submit
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        try {
-            const pollData = {
-                title,
-                description,
-                duration_minutes: duration,
-                location,
-                meeting_type: "tbd",
-                response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : undefined,
-                time_slots: timeSlots.map((s) => ({ start_time: s.start, end_time: s.end, timezone: timeZone })),
-                participants: participants.map((p) => ({ email: p.email, name: p.name })),
-                reveal_participants: revealParticipants,
-            };
-            const createdPollData = await gatewayClient.createMeetingPoll(pollData);
-            setCreatedPoll(createdPollData);
-
-            if (sendEmails) {
-                // Send invitations via email
-                await gatewayClient.sendMeetingInvitations(createdPollData.id);
-                // Clean up URL by removing step and view parameters
-                const url = new URL(window.location.href);
-                url.searchParams.delete('step');
-                url.searchParams.delete('view');
-                window.history.replaceState({}, '', url.toString());
-                setMeetingSubView('list');
-            } else {
-                // Show individual response links
-                setShowLinks(true);
-            }
-        } catch (e: unknown) {
-            if (e && typeof e === 'object' && 'message' in e) {
-                setError((e as { message?: string }).message || "Failed to create poll");
-            } else {
-                setError("Failed to create poll");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const copyToClipboard = async (text: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            // You could add a toast notification here for success feedback
-        } catch (error) {
-            console.error('Failed to copy to clipboard:', error);
-            // Fallback for older browsers or non-HTTPS contexts
-            try {
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                // You could add a toast notification here for success feedback
-            } catch (fallbackError) {
-                console.error('Fallback copy method also failed:', fallbackError);
-                // You could add a toast notification here for error feedback
-            }
-        }
-    };
-
-    const getResponseUrl = (responseToken: string) => {
-        const baseUrl = window.location.origin;
-        return `${baseUrl}/public/meetings/respond/${responseToken}`;
-    };
+    // Validation helpers
+    const isStep1Valid = title && duration > 0 && timeZone;
+    const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
+    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
 
     return (
         <div className="px-8 pb-8">
             {/* Sticky header bar */}
             <div className="sticky top-0 z-20 -mx-8 px-8 py-2 bg-white/95 backdrop-blur border-b">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         <Button
                             type="button"
                             variant="destructive"
@@ -297,8 +341,58 @@ export function MeetingPollNew() {
                             </Button>
                         )}
                     </div>
-                    <h1 className="text-lg sm:text-xl font-semibold leading-none">Create New Meeting Poll</h1>
-                    <div className="flex items-center gap-2">
+                    <div
+                        className={
+                            isEditingTitle
+                                ? "flex items-center gap-2 flex-1 min-w-0 px-4"
+                                : "flex items-center justify-center flex-1"
+                        }
+                    >
+                        {isEditingTitle ? (
+                            <div className="flex items-center gap-2 w-full min-w-0">
+                                <input
+                                    ref={headerTitleInputRef}
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    onBlur={handleTitleBlur}
+                                    onKeyDown={handleTitleKeyDown}
+                                    className="text-lg sm:text-xl font-semibold bg-transparent border-b border-gray-300 focus:border-teal-500 focus:outline-none px-1 py-0 flex-1 w-full min-w-0"
+                                    placeholder="Enter meeting title..."
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleTitleBlur}
+                                    className="p-1 text-green-600 border-green-500 hover:bg-green-50"
+                                    aria-label="Save title"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 w-auto">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleEditTitle}
+                                    className="h-6 w-6 p-0 hover:bg-gray-100"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </Button>
+                                <h1 className="text-lg sm:text-xl font-semibold leading-none inline-block">
+                                    {title || "Create New Meeting Poll"}
+                                </h1>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         {step < 4 ? (
                             <Button
                                 type="button"
@@ -328,28 +422,21 @@ export function MeetingPollNew() {
 
             <Card className="mt-6">
                 <CardContent className="pt-6">
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-red-700">
-                            {error}
-                        </div>
-                    )}
-
                     {showLinks && createdPoll ? (
                         <div className="space-y-6">
                             <Alert>
-                                <Mail className="h-4 w-4" />
+                                <LinkIcon className="h-4 w-4" />
                                 <AlertDescription>
                                     I'll send the meeting link to the participants myself. Here are the individual response links for each participant:
                                 </AlertDescription>
                             </Alert>
 
                             <div className="space-y-4">
-                                <h3 className="text-lg font-semibold">Individual Response Links</h3>
                                 {createdPoll.participants.map((participant: PollParticipant) => (
                                     <div key={participant.id} className="border rounded-lg p-4 space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-medium">{participant.name}</p>
+                                                <p className="font-medium">{participant.name || participant.email}</p>
                                                 <p className="text-sm text-gray-600">{participant.email}</p>
                                             </div>
                                             <Button
@@ -397,7 +484,12 @@ export function MeetingPollNew() {
                                     </div>
                                     <div>
                                         <label className="block font-semibold mb-1">Description</label>
-                                        <textarea className="w-full border rounded px-3 py-2" value={description} onChange={e => setDescription(e.target.value)} />
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2 h-24"
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                            placeholder="Describe the meeting purpose..."
+                                        />
                                     </div>
                                     <div>
                                         <label className="block font-semibold mb-1">Duration (minutes)</label>
