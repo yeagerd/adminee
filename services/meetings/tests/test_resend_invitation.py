@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from services.meetings.tests.test_base import BaseMeetingsTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsTest
 
 
 @pytest.fixture

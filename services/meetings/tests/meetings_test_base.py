@@ -101,21 +101,8 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Import all models to ensure they're registered with metadata
         from services.meetings.models.base import Base
 
-        # Debug: Check what tables are in the metadata
-        print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
-
         # Create all tables in the database
         Base.metadata.create_all(models._test_engine)
-
-        # Verify tables were created
-        from sqlalchemy import text
-
-        with models._test_engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table'")
-            )
-            tables = [row[0] for row in result]
-            print(f"Tables in database: {tables}")
 
         # Ensure the get_engine function is properly overridden
         # This is crucial for the API to use the test engine
