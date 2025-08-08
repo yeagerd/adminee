@@ -8,7 +8,7 @@ and lifecycle management for OAuth tokens.
 # Set required environment variables before any imports
 import os
 
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///:memory:")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
 from datetime import datetime, timedelta, timezone
