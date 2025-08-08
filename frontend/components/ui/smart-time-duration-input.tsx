@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export interface SmartTimeDurationInputProps {
-    valueMinutes: number;
+  valueMinutes?: number | null;
     onChangeMinutes: (minutes: number) => void;
     placeholder?: string;
     className?: string; // wrapper
@@ -13,6 +13,7 @@ export interface SmartTimeDurationInputProps {
     autoFocus?: boolean;
     onCancel?: () => void; // e.g., Escape key to cancel edit
     onFinish?: () => void; // called after successful parse on blur/enter (even if unchanged)
+    showHintWhileEditingOnly?: boolean; // if true, hide hint after blur/commit
 }
 
 // Parse a human-friendly duration string into total minutes.
@@ -118,8 +119,9 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     autoFocus,
     onCancel,
     onFinish,
+    showHintWhileEditingOnly,
 }) => {
-    const formatNormalizedText = (minutes: number): string => {
+  const formatNormalizedText = (minutes?: number | null): string => {
         if (!minutes || minutes <= 0) return "";
         if (minutes < 60) {
             return `${minutes} minute${minutes === 1 ? "" : "s"}`;
@@ -133,7 +135,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
         return `${hoursStr} ${unit}`;
     };
 
-    const [text, setText] = useState<string>(formatNormalizedText(valueMinutes));
+  const [text, setText] = useState<string>(formatNormalizedText(valueMinutes));
     const isFocusedRef = useRef(false);
     const [showError, setShowError] = useState(false);
     const suppressBlurCommitRef = useRef(false);
@@ -202,7 +204,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
                 autoFocus={autoFocus}
                 inputMode="decimal"
             />
-            {hint && (
+            {hint && (!showHintWhileEditingOnly || isFocusedRef.current) && (
                 <span className="text-xs text-muted-foreground">{hint}</span>
             )}
         </div>
