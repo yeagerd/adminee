@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToolState } from "@/contexts/tool-context";
+import type { MeetingPoll, PollParticipant } from '@/lib/gateway-client';
 import { gatewayClient } from '@/lib/gateway-client';
 import { CalendarEvent } from "@/types/office-service";
 import { ArrowLeft, LinkIcon } from "lucide-react";
@@ -54,6 +55,8 @@ export function MeetingPollNew() {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     // General
     const [loading, setLoading] = useState(false);
+    const [createdPoll, setCreatedPoll] = useState<MeetingPoll | null>(null);
+    const [showLinks, setShowLinks] = useState(false);
 
     const isNavigatingRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +90,30 @@ export function MeetingPollNew() {
             setIsEditingTitle(false);
         } else if (e.key === 'Escape') {
             setIsEditingTitle(false);
+        }
+    };
+
+    // Helpers for manual link distribution
+    const getResponseUrl = (token: string): string =>
+        `${window.location.origin}/public/meetings/respond/${token}`;
+
+    const copyToClipboard = async (text: string): Promise<void> => {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+        } catch (err) {
+            console.error('Failed to copy to clipboard', err);
         }
     };
 
@@ -135,22 +162,20 @@ export function MeetingPollNew() {
                 reveal_participants: revealParticipants
             };
 
-            await gatewayClient.createMeetingPoll(pollData);
+            const created = await gatewayClient.createMeetingPoll(pollData);
+            setCreatedPoll(created);
 
             if (sendEmails) {
-                // Handle email sending success
-                console.log('Meeting poll created and emails sent');
+                // If emails are sent, return user to list
+                const url = new URL(window.location.href);
+                url.searchParams.delete('step');
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url.toString());
+                setMeetingSubView('list');
             } else {
-                // Show individual response links
-                // setShowLinks(true); // This state variable was removed
+                // Allow manual distribution: show individual response links
+                setShowLinks(true);
             }
-
-            // Clean up URL and navigate to list
-            const url = new URL(window.location.href);
-            url.searchParams.delete('step');
-            url.searchParams.delete('view');
-            window.history.replaceState({}, '', url.toString());
-            setMeetingSubView('list');
         } catch (e: unknown) {
             console.error('Failed to create meeting poll:', e);
         } finally {
@@ -178,14 +203,32 @@ export function MeetingPollNew() {
             const url = new URL(window.location.href);
             const currentStepParam = url.searchParams.get('step');
 
-            if (currentStepParam !== newStep.toString()) {
-                isNavigatingRef.current = true;
+            // Always ensure the step param is set on the URL
+            url.searchParams.set('step', newStep.toString());
+
+            if (currentStepParam === newStep.toString()) {
+                window.history.replaceState({ step: newStep }, '', url.toString());
+            } else {
                 window.history.pushState({ step: newStep }, '', url.toString());
             }
         };
 
         updateStepInURL(step);
     }, [step]);
+
+    // Handle browser navigation (back/forward buttons)
+    useEffect(() => {
+        const handlePopState = () => {
+            const url = new URL(window.location.href);
+            const stepParam = url.searchParams.get('step');
+            const parsed = stepParam !== null ? parseInt(stepParam, 10) : 1;
+            isNavigatingRef.current = true; // prevent URL write-back
+            setStep(clampStep(parsed));
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
 
     // Stable callback for time slot changes
     const handleTimeSlotsChange = (newSlots: { start: string; end: string }[]) => {
@@ -373,175 +416,222 @@ export function MeetingPollNew() {
 
             <Card className="mt-6">
                 <CardContent className="pt-6">
-                    <form id="new-poll-form" onSubmit={handleSubmit} className="space-y-6">
-                        {step === 1 && (
+                    {showLinks && createdPoll ? (
+                        <div className="space-y-6">
+                            <Alert>
+                                <LinkIcon className="h-4 w-4" />
+                                <AlertDescription>
+                                    I'll send the meeting link to the participants myself. Here are the individual response links for each participant:
+                                </AlertDescription>
+                            </Alert>
+
                             <div className="space-y-4">
-                                <div>
-                                    <label className="block font-semibold mb-1">Title</label>
-                                    <input
-                                        className="w-full border rounded px-3 py-2"
-                                        value={title}
-                                        onChange={e => setTitle(e.target.value)}
-                                        required
-                                        ref={titleInputRef}
-                                        placeholder="e.g., Weekly Team Sync"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Description</label>
-                                    <textarea
-                                        className="w-full border rounded px-3 py-2 h-24"
-                                        value={description}
-                                        onChange={e => setDescription(e.target.value)}
-                                        placeholder="Describe the meeting purpose..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Duration (minutes)</label>
-                                    <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Location</label>
-                                    <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Time Zone</label>
-                                    <select className="w-full border rounded px-3 py-2" value={timeZone} onChange={e => setTimeZone(e.target.value)}>
-                                        {getTimeZones().map(tz => (
-                                            <option key={tz} value={tz}>{tz}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                        {step === 2 && (
-                            <div className="space-y-4">
-                                {calendarLoading && (
-                                    <div className="text-center py-4 text-muted-foreground">
-                                        Loading calendar events for conflict detection...
+                                {createdPoll.participants.map((participant: PollParticipant) => (
+                                    <div key={participant.id} className="border rounded-lg p-4 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-medium">{participant.name || participant.email}</p>
+                                                <p className="text-sm text-gray-600">{participant.email}</p>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={async () => await copyToClipboard(getResponseUrl(participant.response_token))}
+                                            >
+                                                Copy Link
+                                            </Button>
+                                        </div>
+                                        <div className="bg-gray-50 p-2 rounded text-sm font-mono break-all">
+                                            {getResponseUrl(participant.response_token)}
+                                        </div>
                                     </div>
-                                )}
-                                <TimeSlotCalendar
-                                    duration={duration}
-                                    timeZone={timeZone}
-                                    onTimeSlotsChange={handleTimeSlotsChange}
-                                    selectedTimeSlots={timeSlots}
-                                    calendarEvents={calendarEvents}
-                                />
+                                ))}
                             </div>
-                        )}
-                        {step === 3 && (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block font-semibold mb-1">Participants</label>
-                                    <div className="flex flex-col sm:flex-row gap-2 mb-2">
+
+                            <div className="flex gap-2">
+                                <Button onClick={() => {
+                                    // Clean up URL by removing step and view parameters
+                                    const url = new URL(window.location.href);
+                                    url.searchParams.delete('step');
+                                    url.searchParams.delete('view');
+                                    window.history.replaceState({}, '', url.toString());
+                                    setMeetingSubView('list');
+                                }}>
+                                    Back to Polls
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <form id="new-poll-form" onSubmit={handleSubmit} className="space-y-6">
+                            {step === 1 && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block font-semibold mb-1">Title</label>
                                         <input
-                                            className="border rounded px-3 py-2"
-                                            value={participantNameInput}
-                                            onChange={e => setParticipantNameInput(e.target.value)}
-                                            placeholder="Name"
-                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            value={title}
+                                            onChange={e => setTitle(e.target.value)}
+                                            required
+                                            ref={titleInputRef}
+                                            placeholder="e.g., Weekly Team Sync"
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Description</label>
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2 h-24"
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                            placeholder="Describe the meeting purpose..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Duration (minutes)</label>
+                                        <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Location</label>
+                                        <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Time Zone</label>
+                                        <select className="w-full border rounded px-3 py-2" value={timeZone} onChange={e => setTimeZone(e.target.value)}>
+                                            {getTimeZones().map(tz => (
+                                                <option key={tz} value={tz}>{tz}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                            {step === 2 && (
+                                <div className="space-y-4">
+                                    {calendarLoading && (
+                                        <div className="text-center py-4 text-muted-foreground">
+                                            Loading calendar events for conflict detection...
+                                        </div>
+                                    )}
+                                    <TimeSlotCalendar
+                                        duration={duration}
+                                        timeZone={timeZone}
+                                        onTimeSlotsChange={handleTimeSlotsChange}
+                                        selectedTimeSlots={timeSlots}
+                                        calendarEvents={calendarEvents}
+                                    />
+                                </div>
+                            )}
+                            {step === 3 && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block font-semibold mb-1">Participants</label>
+                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                                            <input
+                                                className="border rounded px-3 py-2"
+                                                value={participantNameInput}
+                                                onChange={e => setParticipantNameInput(e.target.value)}
+                                                placeholder="Name"
+                                                type="text"
+                                            />
+                                            <input
+                                                className="border rounded px-3 py-2"
+                                                value={participantEmailInput}
+                                                onChange={e => setParticipantEmailInput(e.target.value)}
+                                                placeholder="Email"
+                                                type="email"
+                                            />
+                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
+                                        </div>
+                                        <ul className="flex flex-wrap gap-2">
+                                            {participants.map(p => (
+                                                <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
+                                                    <span>{p.name} ({p.email})</span>
+                                                    <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                            {step === 4 && (
+                                <div className="space-y-4">
+                                    <h2 className="text-lg font-semibold mb-2">Review & Submit</h2>
+                                    <div><b>Title:</b> {title}</div>
+                                    <div><b>Description:</b> {description}</div>
+                                    <div><b>Duration:</b> {duration} min</div>
+                                    <div><b>Location:</b> {location}</div>
+                                    <div><b>Time Zone:</b> {timeZone}</div>
+                                    <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
+                                    <div><b>Time Slots:</b>
+                                        <ul className="ml-4 list-disc">
+                                            {timeSlots.map((slot, idx) => (
+                                                <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <b>Response Deadline:</b>
                                         <input
-                                            className="border rounded px-3 py-2"
-                                            value={participantEmailInput}
-                                            onChange={e => setParticipantEmailInput(e.target.value)}
-                                            placeholder="Email"
-                                            type="email"
+                                            type="date"
+                                            className="ml-2 border rounded px-3 py-1"
+                                            value={responseDeadline}
+                                            onChange={e => setResponseDeadline(e.target.value)}
+                                            required
                                         />
-                                        <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
                                     </div>
-                                    <ul className="flex flex-wrap gap-2">
-                                        {participants.map(p => (
-                                            <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
-                                                <span>{p.name} ({p.email})</span>
-                                                <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
-                        {step === 4 && (
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-semibold mb-2">Review & Submit</h2>
-                                <div><b>Title:</b> {title}</div>
-                                <div><b>Description:</b> {description}</div>
-                                <div><b>Duration:</b> {duration} min</div>
-                                <div><b>Location:</b> {location}</div>
-                                <div><b>Time Zone:</b> {timeZone}</div>
-                                <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
-                                <div><b>Time Slots:</b>
-                                    <ul className="ml-4 list-disc">
-                                        {timeSlots.map((slot, idx) => (
-                                            <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <b>Response Deadline:</b>
-                                    <input
-                                        type="date"
-                                        className="ml-2 border rounded px-3 py-1"
-                                        value={responseDeadline}
-                                        onChange={e => setResponseDeadline(e.target.value)}
-                                        required
-                                    />
-                                </div>
 
-                                <div className="flex items-center space-x-2 pt-4">
-                                    <Checkbox
-                                        id="send-emails"
-                                        checked={sendEmails}
-                                        onCheckedChange={(checked) => setSendEmails(checked as boolean)}
-                                    />
-                                    <label
-                                        htmlFor="send-emails"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                        Send email survey to invitees
-                                    </label>
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reveal-participants"
-                                        checked={revealParticipants}
-                                        onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
-                                    />
-                                    <label
-                                        htmlFor="reveal-participants"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                        Show participant names and emails to invitees
-                                    </label>
-                                </div>
-
-                                {sendEmails && revealParticipants && (
-                                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                                        <p>✓ Participant names and emails will be included in invitation emails</p>
+                                    <div className="flex items-center space-x-2 pt-4">
+                                        <Checkbox
+                                            id="send-emails"
+                                            checked={sendEmails}
+                                            onCheckedChange={(checked) => setSendEmails(checked as boolean)}
+                                        />
+                                        <label
+                                            htmlFor="send-emails"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Send email survey to invitees
+                                        </label>
                                     </div>
-                                )}
 
-                                {!sendEmails && revealParticipants && (
-                                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                                        <p>✓ Participant names and emails will be visible on the response page</p>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="reveal-participants"
+                                            checked={revealParticipants}
+                                            onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
+                                        />
+                                        <label
+                                            htmlFor="reveal-participants"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Show participant names and emails to invitees
+                                        </label>
                                     </div>
-                                )}
 
-                                {!sendEmails && (
-                                    <Alert>
-                                        <LinkIcon className="h-4 w-4" />
-                                        <AlertDescription>
-                                            I'll send the meeting link to the participants myself. You'll get individual response links for each participant.
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-                            </div>
-                        )}
+                                    {sendEmails && revealParticipants && (
+                                        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                                            <p>✓ Participant names and emails will be included in invitation emails</p>
+                                        </div>
+                                    )}
 
-                        {/* Navigation controls moved to sticky header */}
-                    </form>
+                                    {!sendEmails && revealParticipants && (
+                                        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                                            <p>✓ Participant names and emails will be visible on the response page</p>
+                                        </div>
+                                    )}
+
+                                    {!sendEmails && (
+                                        <Alert>
+                                            <LinkIcon className="h-4 w-4" />
+                                            <AlertDescription>
+                                                I'll send the meeting link to the participants myself. You'll get individual response links for each participant.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Navigation controls moved to sticky header */}
+                        </form>
+                    )}
                 </CardContent>
             </Card>
         </div>
