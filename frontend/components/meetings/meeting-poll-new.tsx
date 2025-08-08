@@ -4,9 +4,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-input";
 import { useToolState } from "@/contexts/tool-context";
-import type { MeetingPoll, PollParticipant } from '@/lib/gateway-client';
-import { gatewayClient } from '@/lib/gateway-client';
+import type { MeetingPoll, PollParticipant } from "@/lib/gateway-client";
+import { gatewayClient } from "@/lib/gateway-client";
 import { CalendarEvent } from "@/types/office-service";
 import { ArrowLeft, LinkIcon } from "lucide-react";
 import { useSession } from 'next-auth/react';
@@ -36,7 +37,7 @@ export function MeetingPollNew() {
     // Step 1: Basic Info
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [duration, setDuration] = useState(60);
+    const [duration, setDuration] = useState<number | null>(null);
     const [location, setLocation] = useState("");
     const [timeZone, setTimeZone] = useState(effectiveTimezone || "UTC");
     // Step 2: Time Slots
@@ -144,7 +145,7 @@ export function MeetingPollNew() {
             const pollData = {
                 title: title.trim(),
                 description: description.trim(),
-                duration_minutes: duration,
+                duration_minutes: duration!,
                 location: location.trim(),
                 timezone: timeZone,
                 meeting_type: "tbd",
@@ -302,7 +303,7 @@ export function MeetingPollNew() {
     }, [effectiveTimezone]);
 
     // Validation helpers
-    const isStep1Valid = title && duration > 0 && timeZone;
+    const isStep1Valid = title && (typeof duration === 'number' && duration > 0) && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
     const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
 
@@ -492,8 +493,35 @@ export function MeetingPollNew() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block font-semibold mb-1">Duration (minutes)</label>
-                                        <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
+                                        <label className="block font-semibold mb-1">Duration</label>
+                                        <div className="flex items-center gap-2">
+                                            <SmartTimeDurationInput
+                                                valueMinutes={duration ?? undefined}
+                                                onChangeMinutes={(m) => setDuration(m)}
+                                                className="flex-1"
+                                                inputClassName="w-full"
+                                                showHintWhileEditingOnly
+                                            />
+                                            <div className="flex items-center gap-1">
+                                                {[
+                                                    { label: '15m', value: 15 },
+                                                    { label: '30m', value: 30 },
+                                                    { label: '1hr', value: 60 },
+                                                    { label: '90m', value: 90 },
+                                                    { label: '2hr', value: 120 },
+                                                ].map((opt) => (
+                                                    <button
+                                                        type="button"
+                                                        key={opt.label}
+                                                        className="px-2 py-1 text-xs rounded border hover:bg-muted"
+                                                        onClick={() => setDuration(opt.value)}
+                                                        aria-label={`Set duration ${opt.label}`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block font-semibold mb-1">Location</label>
@@ -511,18 +539,55 @@ export function MeetingPollNew() {
                             )}
                             {step === 2 && (
                                 <div className="space-y-4">
-                                    {calendarLoading && (
-                                        <div className="text-center py-4 text-muted-foreground">
-                                            Loading calendar events for conflict detection...
+                                    {typeof duration !== 'number' ? (
+                                        <div className="border rounded p-4 bg-muted/30">
+                                            <div className="mb-2 font-medium">Set a meeting duration to continue</div>
+                                            <div className="flex items-center gap-2">
+                                                <SmartTimeDurationInput
+                                                    valueMinutes={undefined}
+                                                    onChangeMinutes={(m) => setDuration(m)}
+                                                    className="flex-1"
+                                                    inputClassName="w-full"
+                                                    showHintWhileEditingOnly
+                                                />
+                                                <div className="flex items-center gap-1">
+                                                    {[
+                                                        { label: '15m', value: 15 },
+                                                        { label: '30m', value: 30 },
+                                                        { label: '1hr', value: 60 },
+                                                        { label: '90m', value: 90 },
+                                                        { label: '2hr', value: 120 },
+                                                    ].map((opt) => (
+                                                        <button
+                                                            type="button"
+                                                            key={opt.label}
+                                                            className="px-2 py-1 text-xs rounded border hover:bg-muted"
+                                                            onClick={() => setDuration(opt.value)}
+                                                            aria-label={`Set duration ${opt.label}`}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
+                                    ) : (
+                                        <>
+                                            {calendarLoading && (
+                                                <div className="text-center py-4 text-muted-foreground">
+                                                    Loading calendar events for conflict detection...
+                                                </div>
+                                            )}
+                                            <TimeSlotCalendar
+                                                duration={duration}
+                                                timeZone={timeZone}
+                                                onTimeSlotsChange={handleTimeSlotsChange}
+                                                selectedTimeSlots={timeSlots}
+                                                calendarEvents={calendarEvents}
+                                                onDurationChange={(d) => setDuration(d)}
+                                            />
+                                        </>
                                     )}
-                                    <TimeSlotCalendar
-                                        duration={duration}
-                                        timeZone={timeZone}
-                                        onTimeSlotsChange={handleTimeSlotsChange}
-                                        selectedTimeSlots={timeSlots}
-                                        calendarEvents={calendarEvents}
-                                    />
                                 </div>
                             )}
                             {step === 3 && (
