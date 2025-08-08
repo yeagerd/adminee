@@ -10,7 +10,7 @@ import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
 
@@ -202,9 +202,10 @@ export function MeetingPollNew() {
             if (sendEmails) {
                 // Send invitations via email
                 await gatewayClient.sendMeetingInvitations(createdPollData.id);
-                // Clean up URL by removing step parameter
+                // Clean up URL by removing step and view parameters
                 const url = new URL(window.location.href);
                 url.searchParams.delete('step');
+                url.searchParams.delete('view');
                 window.history.replaceState({}, '', url.toString());
                 setMeetingSubView('list');
             } else {
@@ -223,9 +224,10 @@ export function MeetingPollNew() {
     };
 
     const handleCancel = () => {
-        // Clean up URL by removing step parameter
+        // Clean up URL by removing step and view parameters
         const url = new URL(window.location.href);
         url.searchParams.delete('step');
+        url.searchParams.delete('view');
         window.history.replaceState({}, '', url.toString());
         setMeetingSubView('list');
     };
@@ -319,9 +321,10 @@ export function MeetingPollNew() {
 
                             <div className="flex gap-2">
                                 <Button onClick={() => {
-                                    // Clean up URL by removing step parameter
+                                    // Clean up URL by removing step and view parameters
                                     const url = new URL(window.location.href);
                                     url.searchParams.delete('step');
+                                    url.searchParams.delete('view');
                                     window.history.replaceState({}, '', url.toString());
                                     setMeetingSubView('list');
                                 }}>
