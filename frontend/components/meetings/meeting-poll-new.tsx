@@ -223,15 +223,6 @@ export function MeetingPollNew() {
         }
     };
 
-    const handleCancel = () => {
-        // Clean up URL by removing step and view parameters
-        const url = new URL(window.location.href);
-        url.searchParams.delete('step');
-        url.searchParams.delete('view');
-        window.history.replaceState({}, '', url.toString());
-        setMeetingSubView('list');
-    };
-
     const copyToClipboard = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
