@@ -42,6 +42,38 @@ export function parseDurationInput(raw: string): number | null {
         return Math.round(h * 60) + m;
     }
 
+    // 2b) Number followed by a unit word starting with 'h' or 'm' (e.g., "1 hour", "90 minutes", "1.5 hours")
+    const numberWord = s.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+    if (numberWord) {
+        const num = parseFloat(numberWord[1]);
+        const unit = numberWord[2].toLowerCase();
+        if (!(num > 0)) return null;
+        if (unit.startsWith('h')) {
+            return Math.round(num * 60);
+        }
+        if (unit.startsWith('m')) {
+            return Math.round(num);
+        }
+    }
+
+    // 2c) Two-part forms like "1 hour 30 minutes" or "1 h 30 m"
+    const twoPart = s.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s+(\d+)\s*([a-zA-Z]+)$/);
+    if (twoPart) {
+        const firstVal = parseFloat(twoPart[1]);
+        const firstUnit = twoPart[2].toLowerCase();
+        const secondVal = parseInt(twoPart[3], 10);
+        const secondUnit = twoPart[4].toLowerCase();
+        if (!(firstVal >= 0) || !(secondVal >= 0)) return null;
+        let minutes = 0;
+        if (firstUnit.startsWith('h')) minutes += Math.round(firstVal * 60);
+        else if (firstUnit.startsWith('m')) minutes += Math.round(firstVal);
+        else return null;
+        if (secondUnit.startsWith('h')) minutes += secondVal * 60;
+        else if (secondUnit.startsWith('m')) minutes += secondVal;
+        else return null;
+        return minutes > 0 ? minutes : null;
+    }
+
     // 3) Xm only
     const onlyM = s.match(/^(\d+)\s*m$/);
     if (onlyM) {
@@ -67,7 +99,16 @@ export function parseDurationInput(raw: string): number | null {
 }
 
 function hasExplicitUnit(raw: string): boolean {
-    return /\b[hm]/i.test(raw);
+    const s = raw.trim().toLowerCase();
+    if (!s) return false;
+    // obvious token suffixes like 1h, 10m
+    if (/(\d+(?:\.\d+)?)\s*[hm]\b/.test(s)) return true;
+    // unit words like "hour", "hours", "min", "minutes"
+    const wordUnits = s.match(/\b([a-zA-Z]+)\b/g);
+    if (wordUnits) {
+        return wordUnits.some((tok) => tok[0] === 'h' || tok[0] === 'm');
+    }
+    return false;
 }
 
 function formatAutoDetectHint(raw: string, minutes: number | null): string | null {
