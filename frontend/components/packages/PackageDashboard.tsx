@@ -8,6 +8,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
+import ShipmentDetailsModal from '../shipments/ShipmentDetailsModal';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -18,7 +19,6 @@ import { TableCell } from '../ui/table';
 import type { Package } from './AddPackageModal';
 import AddPackageModal from './AddPackageModal';
 import LabelChip from './LabelChip';
-import PackageDetails from './PackageDetails';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -57,7 +57,6 @@ export default function PackageDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
     const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
@@ -299,11 +298,6 @@ export default function PackageDashboard() {
         }
     };
 
-    const handleCellEdit = (id: string, field: string, value: string) => {
-        // Implementation for cell editing
-        console.log('Cell edit:', { id, field, value });
-    };
-
     const handleAddPackage = async () => {
         setShowAddModal(true);
     };
@@ -354,68 +348,10 @@ export default function PackageDashboard() {
     // Row renderer function
     const renderPackageRow = (pkg: Package) => (
         <>
-            <TableCell onClick={e => e.stopPropagation()}>
-                {editingCell?.id === pkg.id && editingCell?.field === 'tracking_number' ? (
-                    <Input
-                        defaultValue={pkg.tracking_number}
-                        onBlur={e => handleCellEdit(pkg.id!, 'tracking_number', e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'tracking_number', e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCell(null);
-                        }}
-                        autoFocus
-                    />
-                ) : (
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => setEditingCell({ id: pkg.id!, field: 'tracking_number' })}
-                    >
-                        {pkg.tracking_number}
-                    </span>
-                )}
-            </TableCell>
+            <TableCell>{pkg.tracking_number}</TableCell>
             <TableCell><Badge>{pkg.status}</Badge></TableCell>
-            <TableCell onClick={e => e.stopPropagation()}>
-                {editingCell?.id === pkg.id && editingCell?.field === 'estimated_delivery' ? (
-                    <Input
-                        type="date"
-                        defaultValue={pkg.estimated_delivery}
-                        onBlur={e => handleCellEdit(pkg.id!, 'estimated_delivery', e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'estimated_delivery', e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCell(null);
-                        }}
-                        autoFocus
-                    />
-                ) : (
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => setEditingCell({ id: pkg.id!, field: 'estimated_delivery' })}
-                    >
-                        {pkg.estimated_delivery}
-                    </span>
-                )}
-            </TableCell>
-            <TableCell onClick={e => e.stopPropagation()}>
-                {editingCell?.id === pkg.id && editingCell?.field === 'package_description' ? (
-                    <Input
-                        defaultValue={pkg.package_description}
-                        onBlur={e => handleCellEdit(pkg.id!, 'package_description', e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') handleCellEdit(pkg.id!, 'package_description', e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCell(null);
-                        }}
-                        autoFocus
-                    />
-                ) : (
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => setEditingCell({ id: pkg.id!, field: 'package_description' })}
-                    >
-                        {pkg.package_description}
-                    </span>
-                )}
-            </TableCell>
+            <TableCell>{pkg.estimated_delivery}</TableCell>
+            <TableCell>{pkg.package_description}</TableCell>
             <TableCell>
                 <div className="flex flex-wrap gap-1">
                     {(pkg.labels || []).map((label: string | { name: string }, idx: number) => (
@@ -627,11 +563,51 @@ export default function PackageDashboard() {
                 />
             )}
 
-            {selectedPackage && (
-                <PackageDetails
-                    pkg={selectedPackage}
+            {selectedPackage && selectedPackage.id && (
+                <ShipmentDetailsModal
+                    isOpen={!!selectedPackage}
                     onClose={() => setSelectedPackage(null)}
-                    onRefresh={refreshPackages}
+                    shipment={{
+                        id: selectedPackage.id,
+                        tracking_number: selectedPackage.tracking_number,
+                        carrier: selectedPackage.carrier,
+                        status: selectedPackage.status,
+                        estimated_delivery: selectedPackage.estimated_delivery,
+                        actual_delivery: selectedPackage.actual_delivery,
+                        recipient_name: selectedPackage.recipient_name,
+                        shipper_name: selectedPackage.shipper_name,
+                        package_description: selectedPackage.package_description,
+                        order_number: selectedPackage.order_number,
+                        tracking_link: selectedPackage.tracking_link,
+                        updated_at: selectedPackage.updated_at || new Date().toISOString(),
+                        events_count: selectedPackage.events?.length || 0,
+                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label?.name || '') || [],
+                    }}
+                    onShipmentUpdated={(updatedPackage) => {
+                        // Update the package in the local state
+                        setPackages(prevPackages =>
+                            prevPackages.map(pkg =>
+                                pkg.id === updatedPackage.id
+                                    ? {
+                                        ...pkg,
+                                        tracking_number: updatedPackage.tracking_number,
+                                        carrier: updatedPackage.carrier,
+                                        status: updatedPackage.status,
+                                        estimated_delivery: updatedPackage.estimated_delivery,
+                                        actual_delivery: updatedPackage.actual_delivery,
+                                        recipient_name: updatedPackage.recipient_name,
+                                        shipper_name: updatedPackage.shipper_name,
+                                        package_description: updatedPackage.package_description,
+                                        order_number: updatedPackage.order_number,
+                                        tracking_link: updatedPackage.tracking_link,
+                                        updated_at: updatedPackage.updated_at,
+                                        events_count: updatedPackage.events_count,
+                                        labels: updatedPackage.labels,
+                                    }
+                                    : pkg
+                            )
+                        );
+                    }}
                 />
             )}
         </div>
