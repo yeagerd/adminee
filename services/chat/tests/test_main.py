@@ -18,7 +18,7 @@ async def test_lifespan_disposes_engine():
             office_service_url="http://localhost:8003",
             log_level="INFO",
             log_format="json",
-            db_url_chat="sqlite:///test.db",
+            db_url_chat="sqlite:///:memory:",
             llm_provider="fake",
             llm_model="fake-model",
             max_tokens=2000,
