@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartTimeDurationInput } from '@/components/ui/smart-time-duration-input';
 import { CalendarEvent } from '@/types/office-service';
-import { Check, CheckCheck, Clock, Eye, EyeOff, X } from 'lucide-react';
+import { Check, CheckCheck, Clock, Eye, EyeOff, Pencil, X } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
@@ -15,6 +16,7 @@ interface TimeSlotCalendarProps {
     onTimeSlotsChange: (timeSlots: { start: string; end: string }[]) => void;
     selectedTimeSlots: { start: string; end: string }[];
     calendarEvents?: CalendarEvent[];
+    onDurationChange?: (duration: number) => void;
 }
 
 interface TimeSlot {
@@ -98,7 +100,8 @@ export function TimeSlotCalendar({
     timeZone,
     onTimeSlotsChange,
     selectedTimeSlots,
-    calendarEvents = []
+    calendarEvents = [],
+    onDurationChange
 }: TimeSlotCalendarProps) {
 
     // Use ref to track current selected slots without dependencies
@@ -137,6 +140,8 @@ export function TimeSlotCalendar({
     const [includeWeekends, setIncludeWeekends] = useState(false);
     const [granularity, setGranularity] = useState<'15' | '30' | '60'>('30');
     const [showCalendarEvents, setShowCalendarEvents] = useState(true);
+    const [isEditingDuration, setIsEditingDuration] = useState(false);
+    const [tempDuration, setTempDuration] = useState<string>(String(duration));
 
     // Business hours (configurable)
     const [businessHours, setBusinessHours] = useState({
@@ -736,7 +741,35 @@ export function TimeSlotCalendar({
                                 {formatDateFromDate(effectiveDateRange.startDate)} - {formatDateFromDate(effectiveDateRange.endDate)}
                             </div>
                             <div className="text-sm text-blue-600">
-                                Select start time options for your <span className="text-teal-600 font-medium underline">{duration}-minute</span> meeting
+                                Select start time options for your{' '}
+                                {!isEditingDuration ? (
+                                    <span className="text-teal-600 font-medium underline inline-flex items-center">
+                                        {duration}-minute
+                                        <button
+                                            type="button"
+                                            className="ml-1 text-teal-700 hover:text-teal-800"
+                                            onClick={() => {
+                                                setTempDuration(String(duration));
+                                                setIsEditingDuration(true);
+                                            }}
+                                            title="Edit duration"
+                                        >
+                                            <Pencil className="h-3 w-3" />
+                                        </button>
+                                    </span>
+                                ) : (
+                                    <SmartTimeDurationInput
+                                        valueMinutes={duration}
+                                        onChangeMinutes={(mins) => {
+                                            onDurationChange && onDurationChange(mins);
+                                            setIsEditingDuration(false);
+                                        }}
+                                        onCancel={() => setIsEditingDuration(false)}
+                                        inputClassName="h-7 text-sm w-[100px]"
+                                        autoFocus
+                                    />
+                                )}{' '}
+                                meeting
                             </div>
                         </div>
                     </div>

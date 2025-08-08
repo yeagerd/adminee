@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SmartTimeDurationInput } from '@/components/ui/smart-time-duration-input';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
 import { CalendarEvent } from '@/types/office-service';
@@ -400,8 +401,13 @@ export function MeetingPollNew() {
                                         <textarea className="w-full border rounded px-3 py-2" value={description} onChange={e => setDescription(e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className="block font-semibold mb-1">Duration (minutes)</label>
-                                        <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
+                                        <label className="block font-semibold mb-1">Duration</label>
+                                        <SmartTimeDurationInput
+                                            valueMinutes={duration}
+                                            onChangeMinutes={(m) => setDuration(m)}
+                                            className="w-full"
+                                            inputClassName="w-full"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block font-semibold mb-1">Location</label>
@@ -430,6 +436,7 @@ export function MeetingPollNew() {
                                         onTimeSlotsChange={handleTimeSlotsChange}
                                         selectedTimeSlots={timeSlots}
                                         calendarEvents={calendarEvents}
+                                        onDurationChange={(d) => setDuration(d)}
                                     />
                                 </div>
                             )}
