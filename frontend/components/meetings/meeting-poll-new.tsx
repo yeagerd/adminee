@@ -24,8 +24,13 @@ export function MeetingPollNew() {
     const searchParams = useSearchParams();
 
     // Get initial step from URL or default to 1
-    const initialStep = parseInt(searchParams.get('step') || '1', 10);
-    const [step, setStep] = useState(Math.max(1, Math.min(4, initialStep)));
+    const clampStep = (value: number): number => {
+        const numeric = Number.isFinite(value) ? value : 1;
+        return Math.max(1, Math.min(4, numeric));
+    };
+    const stepParamInitial = searchParams.get('step');
+    const parsedInitialStep = stepParamInitial !== null ? parseInt(stepParamInitial, 10) : 1;
+    const [step, setStep] = useState<number>(clampStep(parsedInitialStep));
 
     // Step 1: Basic Info
     const [title, setTitle] = useState("");
@@ -76,9 +81,9 @@ export function MeetingPollNew() {
         const handlePopState = () => {
             const url = new URL(window.location.href);
             const stepParam = url.searchParams.get('step');
-            const newStep = stepParam ? parseInt(stepParam, 10) : 1;
+            const parsed = stepParam !== null ? parseInt(stepParam, 10) : 1;
             isNavigatingRef.current = true;
-            setStep(Math.max(1, Math.min(4, newStep)));
+            setStep(clampStep(parsed));
         };
 
         window.addEventListener('popstate', handlePopState);
@@ -94,10 +99,12 @@ export function MeetingPollNew() {
         updateStepInURL(step);
     }, [step, updateStepInURL]);
 
-    // Validate step is within bounds
+    // Validate and clamp step to bounds, also handle NaN
     useEffect(() => {
-        if (step < 1 || step > 4) {
-            setStep(1);
+        const clamped = clampStep(step);
+        if (clamped !== step) {
+            isNavigatingRef.current = true;
+            setStep(clamped);
         }
     }, [step]);
 
@@ -107,8 +114,8 @@ export function MeetingPollNew() {
     }, []);
 
     // Step navigation
-    const nextStep = () => setStep((s) => s + 1);
-    const prevStep = () => setStep((s) => s - 1);
+    const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
+    const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
 
     // Add participant
     const addParticipant = () => {
