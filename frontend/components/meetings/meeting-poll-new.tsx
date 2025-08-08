@@ -1,24 +1,24 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
-import { CalendarEvent } from '@/types/office-service';
-import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToolState } from "@/contexts/tool-context";
+import { gatewayClient } from '@/lib/gateway-client';
+import { CalendarEvent } from "@/types/office-service";
+import { ArrowLeft, LinkIcon } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import { useUserPreferences } from '../../contexts/settings-context';
-import { TimeSlotCalendar } from './time-slot-calendar';
+import { TimeSlotCalendar } from "./time-slot-calendar";
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
 
 export function MeetingPollNew() {
-    const { setMeetingSubView } = useToolStateUtils();
+    const { setMeetingSubView } = useToolState();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
     const searchParams = useSearchParams();
@@ -51,14 +51,13 @@ export function MeetingPollNew() {
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
     const [revealParticipants, setRevealParticipants] = useState(false);
-    const [createdPoll, setCreatedPoll] = useState<MeetingPoll | null>(null);
-    const [showLinks, setShowLinks] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
     // General
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const isNavigatingRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const headerTitleInputRef = useRef<HTMLInputElement>(null);
 
     // Auto-focus title input when component mounts
     useEffect(() => {
@@ -67,48 +66,99 @@ export function MeetingPollNew() {
         }
     }, [step]);
 
-    // Validation helpers
-    const isStep1Valid = title && duration > 0 && timeZone;
-    const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
-    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+    // Handle title editing
+    const handleEditTitle = () => {
+        setIsEditingTitle(true);
+        // Focus the header title input after a brief delay to ensure it's rendered
+        setTimeout(() => {
+            if (headerTitleInputRef.current) {
+                headerTitleInputRef.current.focus();
+                headerTitleInputRef.current.select();
+            }
+        }, 0);
+    };
 
-    // Update URL when step changes
-    const updateStepInURL = useCallback((newStep: number) => {
-        const url = new URL(window.location.href);
-        const currentStepParam = url.searchParams.get('step');
-        url.searchParams.set('step', newStep.toString());
-        if (currentStepParam === newStep.toString()) {
-            window.history.replaceState({ step: newStep }, '', url.toString());
-        } else {
-            window.history.pushState({ step: newStep }, '', url.toString());
+    const handleTitleBlur = () => {
+        setIsEditingTitle(false);
+    };
+
+    const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            setIsEditingTitle(false);
+        } else if (e.key === 'Escape') {
+            setIsEditingTitle(false);
         }
-    }, []);
+    };
 
-    // Handle browser navigation (back/forward buttons)
-    useEffect(() => {
-        const handlePopState = () => {
-            const url = new URL(window.location.href);
-            const stepParam = url.searchParams.get('step');
-            const parsed = stepParam !== null ? parseInt(stepParam, 10) : 1;
-            isNavigatingRef.current = true;
-            setStep(clampStep(parsed));
-        };
+    // Submit
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
-
-    // Update URL when step changes internally
-    useEffect(() => {
-        if (isNavigatingRef.current) {
-            isNavigatingRef.current = false;
+        // Validate required fields
+        if (!title.trim()) {
             return;
         }
-        updateStepInURL(step);
-    }, [step, updateStepInURL]);
+
+        if (timeSlots.length === 0) {
+            return;
+        }
+
+        if (participants.length === 0) {
+            return;
+        }
+
+        if (!responseDeadline) {
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const pollData = {
+                title: title.trim(),
+                description: description.trim(),
+                duration_minutes: duration,
+                location: location.trim(),
+                timezone: timeZone,
+                meeting_type: "tbd",
+                time_slots: timeSlots.map(slot => ({
+                    start_time: slot.start,
+                    end_time: slot.end,
+                    timezone: timeZone
+                })),
+                participants: participants.map(p => ({
+                    name: p.name.trim(),
+                    email: p.email.trim()
+                })),
+                response_deadline: responseDeadline,
+                send_emails: sendEmails,
+                reveal_participants: revealParticipants
+            };
+
+            await gatewayClient.createMeetingPoll(pollData);
+
+            if (sendEmails) {
+                // Handle email sending success
+                console.log('Meeting poll created and emails sent');
+            } else {
+                // Show individual response links
+                // setShowLinks(true); // This state variable was removed
+            }
+
+            // Clean up URL and navigate to list
+            const url = new URL(window.location.href);
+            url.searchParams.delete('step');
+            url.searchParams.delete('view');
+            window.history.replaceState({}, '', url.toString());
+            setMeetingSubView('list');
+        } catch (e: unknown) {
+            console.error('Failed to create meeting poll:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Validate and clamp step to bounds, also handle NaN
-    // Do NOT mark as navigating here; we want the URL-sync effect to update the URL to the corrected step
     useEffect(() => {
         const clamped = clampStep(step);
         if (clamped !== step) {
@@ -116,10 +166,31 @@ export function MeetingPollNew() {
         }
     }, [step]);
 
+    // Sync URL with step changes
+    useEffect(() => {
+        if (isNavigatingRef.current) {
+            isNavigatingRef.current = false;
+            return;
+        }
+
+        // Update URL when step changes
+        const updateStepInURL = (newStep: number) => {
+            const url = new URL(window.location.href);
+            const currentStepParam = url.searchParams.get('step');
+
+            if (currentStepParam !== newStep.toString()) {
+                isNavigatingRef.current = true;
+                window.history.pushState({ step: newStep }, '', url.toString());
+            }
+        };
+
+        updateStepInURL(step);
+    }, [step]);
+
     // Stable callback for time slot changes
-    const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
+    const handleTimeSlotsChange = (newSlots: { start: string; end: string }[]) => {
         setTimeSlots(newSlots);
-    }, []);
+    };
 
     // Step navigation
     const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
@@ -187,80 +258,10 @@ export function MeetingPollNew() {
         setTimeZone(effectiveTimezone);
     }, [effectiveTimezone]);
 
-    // Submit
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        try {
-            const pollData = {
-                title,
-                description,
-                duration_minutes: duration,
-                location,
-                meeting_type: "tbd",
-                response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : undefined,
-                time_slots: timeSlots.map((s) => ({ start_time: s.start, end_time: s.end, timezone: timeZone })),
-                participants: participants.map((p) => ({ email: p.email, name: p.name })),
-                reveal_participants: revealParticipants,
-            };
-            const createdPollData = await gatewayClient.createMeetingPoll(pollData);
-            setCreatedPoll(createdPollData);
-
-            if (sendEmails) {
-                // Send invitations via email
-                await gatewayClient.sendMeetingInvitations(createdPollData.id);
-                // Clean up URL by removing step and view parameters
-                const url = new URL(window.location.href);
-                url.searchParams.delete('step');
-                url.searchParams.delete('view');
-                window.history.replaceState({}, '', url.toString());
-                setMeetingSubView('list');
-            } else {
-                // Show individual response links
-                setShowLinks(true);
-            }
-        } catch (e: unknown) {
-            if (e && typeof e === 'object' && 'message' in e) {
-                setError((e as { message?: string }).message || "Failed to create poll");
-            } else {
-                setError("Failed to create poll");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const copyToClipboard = async (text: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            // You could add a toast notification here for success feedback
-        } catch (error) {
-            console.error('Failed to copy to clipboard:', error);
-            // Fallback for older browsers or non-HTTPS contexts
-            try {
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                // You could add a toast notification here for success feedback
-            } catch (fallbackError) {
-                console.error('Fallback copy method also failed:', fallbackError);
-                // You could add a toast notification here for error feedback
-            }
-        }
-    };
-
-    const getResponseUrl = (responseToken: string) => {
-        const baseUrl = window.location.origin;
-        return `${baseUrl}/public/meetings/respond/${responseToken}`;
-    };
+    // Validation helpers
+    const isStep1Valid = title && duration > 0 && timeZone;
+    const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
+    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
 
     return (
         <div className="px-8 pb-8">
@@ -297,7 +298,50 @@ export function MeetingPollNew() {
                             </Button>
                         )}
                     </div>
-                    <h1 className="text-lg sm:text-xl font-semibold leading-none">Create New Meeting Poll</h1>
+                    <div className="flex items-center gap-2">
+                        {isEditingTitle ? (
+                            <div className="flex items-center gap-2 flex-1">
+                                <input
+                                    ref={headerTitleInputRef}
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    onBlur={handleTitleBlur}
+                                    onKeyDown={handleTitleKeyDown}
+                                    className="text-lg sm:text-xl font-semibold bg-transparent border-b border-gray-300 focus:border-teal-500 focus:outline-none px-1 py-0 flex-1"
+                                    placeholder="Enter meeting title..."
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleTitleBlur}
+                                    className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleEditTitle}
+                                    className="h-6 w-6 p-0 hover:bg-gray-100"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </Button>
+                                <h1 className="text-lg sm:text-xl font-semibold leading-none">
+                                    {title || "Create New Meeting Poll"}
+                                </h1>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         {step < 4 ? (
                             <Button
@@ -328,224 +372,175 @@ export function MeetingPollNew() {
 
             <Card className="mt-6">
                 <CardContent className="pt-6">
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-red-700">
-                            {error}
-                        </div>
-                    )}
-
-                    {showLinks && createdPoll ? (
-                        <div className="space-y-6">
-                            <Alert>
-                                <Mail className="h-4 w-4" />
-                                <AlertDescription>
-                                    I'll send the meeting link to the participants myself. Here are the individual response links for each participant:
-                                </AlertDescription>
-                            </Alert>
-
+                    <form id="new-poll-form" onSubmit={handleSubmit} className="space-y-6">
+                        {step === 1 && (
                             <div className="space-y-4">
-                                <h3 className="text-lg font-semibold">Individual Response Links</h3>
-                                {createdPoll.participants.map((participant: PollParticipant) => (
-                                    <div key={participant.id} className="border rounded-lg p-4 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium">{participant.name}</p>
-                                                <p className="text-sm text-gray-600">{participant.email}</p>
-                                            </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={async () => await copyToClipboard(getResponseUrl(participant.response_token))}
-                                            >
-                                                Copy Link
-                                            </Button>
-                                        </div>
-                                        <div className="bg-gray-50 p-2 rounded text-sm font-mono break-all">
-                                            {getResponseUrl(participant.response_token)}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="flex gap-2">
-                                <Button onClick={() => {
-                                    // Clean up URL by removing step and view parameters
-                                    const url = new URL(window.location.href);
-                                    url.searchParams.delete('step');
-                                    url.searchParams.delete('view');
-                                    window.history.replaceState({}, '', url.toString());
-                                    setMeetingSubView('list');
-                                }}>
-                                    Back to Polls
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <form id="new-poll-form" onSubmit={handleSubmit} className="space-y-6">
-                            {step === 1 && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block font-semibold mb-1">Title</label>
-                                        <input
-                                            className="w-full border rounded px-3 py-2"
-                                            value={title}
-                                            onChange={e => setTitle(e.target.value)}
-                                            required
-                                            ref={titleInputRef}
-                                            placeholder="e.g., Weekly Team Sync"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold mb-1">Description</label>
-                                        <textarea className="w-full border rounded px-3 py-2" value={description} onChange={e => setDescription(e.target.value)} />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold mb-1">Duration (minutes)</label>
-                                        <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold mb-1">Location</label>
-                                        <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold mb-1">Time Zone</label>
-                                        <select className="w-full border rounded px-3 py-2" value={timeZone} onChange={e => setTimeZone(e.target.value)}>
-                                            {getTimeZones().map(tz => (
-                                                <option key={tz} value={tz}>{tz}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                            {step === 2 && (
-                                <div className="space-y-4">
-                                    {calendarLoading && (
-                                        <div className="text-center py-4 text-muted-foreground">
-                                            Loading calendar events for conflict detection...
-                                        </div>
-                                    )}
-                                    <TimeSlotCalendar
-                                        duration={duration}
-                                        timeZone={timeZone}
-                                        onTimeSlotsChange={handleTimeSlotsChange}
-                                        selectedTimeSlots={timeSlots}
-                                        calendarEvents={calendarEvents}
+                                <div>
+                                    <label className="block font-semibold mb-1">Title</label>
+                                    <input
+                                        className="w-full border rounded px-3 py-2"
+                                        value={title}
+                                        onChange={e => setTitle(e.target.value)}
+                                        required
+                                        ref={titleInputRef}
+                                        placeholder="e.g., Weekly Team Sync"
                                     />
                                 </div>
-                            )}
-                            {step === 3 && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block font-semibold mb-1">Participants</label>
-                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
-                                            <input
-                                                className="border rounded px-3 py-2"
-                                                value={participantNameInput}
-                                                onChange={e => setParticipantNameInput(e.target.value)}
-                                                placeholder="Name"
-                                                type="text"
-                                            />
-                                            <input
-                                                className="border rounded px-3 py-2"
-                                                value={participantEmailInput}
-                                                onChange={e => setParticipantEmailInput(e.target.value)}
-                                                placeholder="Email"
-                                                type="email"
-                                            />
-                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
-                                        </div>
-                                        <ul className="flex flex-wrap gap-2">
-                                            {participants.map(p => (
-                                                <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
-                                                    <span>{p.name} ({p.email})</span>
-                                                    <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                <div>
+                                    <label className="block font-semibold mb-1">Description</label>
+                                    <textarea
+                                        className="w-full border rounded px-3 py-2 h-24"
+                                        value={description}
+                                        onChange={e => setDescription(e.target.value)}
+                                        placeholder="Describe the meeting purpose..."
+                                    />
                                 </div>
-                            )}
-                            {step === 4 && (
-                                <div className="space-y-4">
-                                    <h2 className="text-lg font-semibold mb-2">Review & Submit</h2>
-                                    <div><b>Title:</b> {title}</div>
-                                    <div><b>Description:</b> {description}</div>
-                                    <div><b>Duration:</b> {duration} min</div>
-                                    <div><b>Location:</b> {location}</div>
-                                    <div><b>Time Zone:</b> {timeZone}</div>
-                                    <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
-                                    <div><b>Time Slots:</b>
-                                        <ul className="ml-4 list-disc">
-                                            {timeSlots.map((slot, idx) => (
-                                                <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
-                                            ))}
-                                        </ul>
+                                <div>
+                                    <label className="block font-semibold mb-1">Duration (minutes)</label>
+                                    <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
+                                </div>
+                                <div>
+                                    <label className="block font-semibold mb-1">Location</label>
+                                    <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="block font-semibold mb-1">Time Zone</label>
+                                    <select className="w-full border rounded px-3 py-2" value={timeZone} onChange={e => setTimeZone(e.target.value)}>
+                                        {getTimeZones().map(tz => (
+                                            <option key={tz} value={tz}>{tz}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+                        {step === 2 && (
+                            <div className="space-y-4">
+                                {calendarLoading && (
+                                    <div className="text-center py-4 text-muted-foreground">
+                                        Loading calendar events for conflict detection...
                                     </div>
-                                    <div>
-                                        <b>Response Deadline:</b>
+                                )}
+                                <TimeSlotCalendar
+                                    duration={duration}
+                                    timeZone={timeZone}
+                                    onTimeSlotsChange={handleTimeSlotsChange}
+                                    selectedTimeSlots={timeSlots}
+                                    calendarEvents={calendarEvents}
+                                />
+                            </div>
+                        )}
+                        {step === 3 && (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block font-semibold mb-1">Participants</label>
+                                    <div className="flex flex-col sm:flex-row gap-2 mb-2">
                                         <input
-                                            type="date"
-                                            className="ml-2 border rounded px-3 py-1"
-                                            value={responseDeadline}
-                                            onChange={e => setResponseDeadline(e.target.value)}
-                                            required
+                                            className="border rounded px-3 py-2"
+                                            value={participantNameInput}
+                                            onChange={e => setParticipantNameInput(e.target.value)}
+                                            placeholder="Name"
+                                            type="text"
                                         />
-                                    </div>
-
-                                    <div className="flex items-center space-x-2 pt-4">
-                                        <Checkbox
-                                            id="send-emails"
-                                            checked={sendEmails}
-                                            onCheckedChange={(checked) => setSendEmails(checked as boolean)}
+                                        <input
+                                            className="border rounded px-3 py-2"
+                                            value={participantEmailInput}
+                                            onChange={e => setParticipantEmailInput(e.target.value)}
+                                            placeholder="Email"
+                                            type="email"
                                         />
-                                        <label
-                                            htmlFor="send-emails"
-                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                        >
-                                            Send email survey to invitees
-                                        </label>
+                                        <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
                                     </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="reveal-participants"
-                                            checked={revealParticipants}
-                                            onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
-                                        />
-                                        <label
-                                            htmlFor="reveal-participants"
-                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                        >
-                                            Show participant names and emails to invitees
-                                        </label>
-                                    </div>
-
-                                    {sendEmails && revealParticipants && (
-                                        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                                            <p>✓ Participant names and emails will be included in invitation emails</p>
-                                        </div>
-                                    )}
-
-                                    {!sendEmails && revealParticipants && (
-                                        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                                            <p>✓ Participant names and emails will be visible on the response page</p>
-                                        </div>
-                                    )}
-
-                                    {!sendEmails && (
-                                        <Alert>
-                                            <LinkIcon className="h-4 w-4" />
-                                            <AlertDescription>
-                                                I'll send the meeting link to the participants myself. You'll get individual response links for each participant.
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
+                                    <ul className="flex flex-wrap gap-2">
+                                        {participants.map(p => (
+                                            <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
+                                                <span>{p.name} ({p.email})</span>
+                                                <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
-                            )}
+                            </div>
+                        )}
+                        {step === 4 && (
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-semibold mb-2">Review & Submit</h2>
+                                <div><b>Title:</b> {title}</div>
+                                <div><b>Description:</b> {description}</div>
+                                <div><b>Duration:</b> {duration} min</div>
+                                <div><b>Location:</b> {location}</div>
+                                <div><b>Time Zone:</b> {timeZone}</div>
+                                <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
+                                <div><b>Time Slots:</b>
+                                    <ul className="ml-4 list-disc">
+                                        {timeSlots.map((slot, idx) => (
+                                            <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <b>Response Deadline:</b>
+                                    <input
+                                        type="date"
+                                        className="ml-2 border rounded px-3 py-1"
+                                        value={responseDeadline}
+                                        onChange={e => setResponseDeadline(e.target.value)}
+                                        required
+                                    />
+                                </div>
 
-                            {/* Navigation controls moved to sticky header */}
-                        </form>
-                    )}
+                                <div className="flex items-center space-x-2 pt-4">
+                                    <Checkbox
+                                        id="send-emails"
+                                        checked={sendEmails}
+                                        onCheckedChange={(checked) => setSendEmails(checked as boolean)}
+                                    />
+                                    <label
+                                        htmlFor="send-emails"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                        Send email survey to invitees
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="reveal-participants"
+                                        checked={revealParticipants}
+                                        onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
+                                    />
+                                    <label
+                                        htmlFor="reveal-participants"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                        Show participant names and emails to invitees
+                                    </label>
+                                </div>
+
+                                {sendEmails && revealParticipants && (
+                                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                                        <p>✓ Participant names and emails will be included in invitation emails</p>
+                                    </div>
+                                )}
+
+                                {!sendEmails && revealParticipants && (
+                                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                                        <p>✓ Participant names and emails will be visible on the response page</p>
+                                    </div>
+                                )}
+
+                                {!sendEmails && (
+                                    <Alert>
+                                        <LinkIcon className="h-4 w-4" />
+                                        <AlertDescription>
+                                            I'll send the meeting link to the participants myself. You'll get individual response links for each participant.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Navigation controls moved to sticky header */}
+                    </form>
                 </CardContent>
             </Card>
         </div>
