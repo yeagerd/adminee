@@ -119,7 +119,21 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     onCancel,
     onFinish,
 }) => {
-    const [text, setText] = useState<string>(String(valueMinutes || ""));
+    const formatNormalizedText = (minutes: number): string => {
+        if (!minutes || minutes <= 0) return "";
+        if (minutes < 60) {
+            return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+        }
+        const hours = minutes / 60;
+        const hoursStr = (Math.round(hours * 100) / 100)
+            .toFixed(2)
+            .replace(/\.00$/, "")
+            .replace(/(\.\d)0$/, "$1");
+        const unit = Number(hoursStr) === 1 ? "hour" : "hours";
+        return `${hoursStr} ${unit}`;
+    };
+
+    const [text, setText] = useState<string>(formatNormalizedText(valueMinutes));
     const isFocusedRef = useRef(false);
     const [showError, setShowError] = useState(false);
     const suppressBlurCommitRef = useRef(false);
@@ -127,7 +141,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     // Keep internal text in sync when external value changes and input isn't focused
     useEffect(() => {
         if (!isFocusedRef.current) {
-            setText(String(valueMinutes || ""));
+            setText(formatNormalizedText(valueMinutes));
         }
     }, [valueMinutes]);
 
@@ -138,6 +152,8 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
         const minutes = parseDurationInput(text);
         if (minutes && minutes > 0) {
             setShowError(false);
+            // Coerce input text to normalized display regardless of change
+            setText(formatNormalizedText(minutes));
             if (minutes !== valueMinutes) {
                 onChangeMinutes(minutes);
             }
