@@ -122,6 +122,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     const [text, setText] = useState<string>(String(valueMinutes || ""));
     const isFocusedRef = useRef(false);
     const [showError, setShowError] = useState(false);
+    const suppressBlurCommitRef = useRef(false);
 
     // Keep internal text in sync when external value changes and input isn't focused
     useEffect(() => {
@@ -131,7 +132,11 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     }, [valueMinutes]);
 
     const parsedMinutes = useMemo(() => parseDurationInput(text), [text]);
-    const hint = useMemo(() => formatParsedHint(parsedMinutes), [parsedMinutes]);
+    const showHint = useMemo(() => {
+        const s = text.trim().toLowerCase();
+        return /^\d+(?:\.\d+)?$/.test(s); // ambiguous numeric input only
+    }, [text]);
+    const hint = useMemo(() => (showHint ? formatParsedHint(parsedMinutes) : null), [showHint, parsedMinutes]);
 
     const commitIfValid = () => {
         const minutes = parseDurationInput(text);
@@ -158,6 +163,10 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
                 }}
                 onBlur={() => {
                     isFocusedRef.current = false;
+                    if (suppressBlurCommitRef.current) {
+                        suppressBlurCommitRef.current = false;
+                        return;
+                    }
                     const ok = commitIfValid();
                     if (!ok) setShowError(true);
                 }}
@@ -165,6 +174,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
                     if (e.key === "Enter") {
                         const ok = commitIfValid();
                         if (!ok) setShowError(true);
+                        suppressBlurCommitRef.current = true;
                         (e.target as HTMLInputElement).blur();
                     } else if (e.key === "Escape") {
                         onCancel?.();
