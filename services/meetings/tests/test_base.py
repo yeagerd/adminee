@@ -98,10 +98,43 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         self._original_get_session = models.get_session
         models.get_session = test_get_session
 
+        # Import all models to ensure they're registered with metadata
         from services.meetings.models.base import Base
 
-        # Skip drop_all since tables might not exist yet
+        # Debug: Check what tables are in the metadata
+        print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
+
+        # Create all tables in the database
         Base.metadata.create_all(models._test_engine)
+
+        # Verify tables were created
+        from sqlalchemy import text
+
+        with models._test_engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            )
+            tables = [row[0] for row in result]
+            print(f"Tables in database: {tables}")
+
+        # Ensure the get_engine function is properly overridden
+        # This is crucial for the API to use the test engine
+        import services.meetings.models
+
+        services.meetings.models.get_engine = lambda: models._test_engine
+
+        # Reload API modules so their imported get_session binds to the fresh test session
+        import services.meetings.api.email as api_email
+        import services.meetings.api.invitations as api_invitations
+        import services.meetings.api.polls as api_polls
+        import services.meetings.api.public as api_public
+        import services.meetings.api.slots as api_slots
+
+        importlib.reload(api_polls)
+        importlib.reload(api_public)
+        importlib.reload(api_slots)
+        importlib.reload(api_invitations)
+        importlib.reload(api_email)
 
         # Create a new FastAPI app instance to avoid reloading the main module
         # This ensures the app uses the updated settings without breaking mocks

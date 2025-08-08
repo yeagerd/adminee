@@ -72,7 +72,9 @@ class MeetingPoll(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    scheduled_slot_id = Column(UUID(as_uuid=True), ForeignKey("time_slots.id"))
+    scheduled_slot_id = Column(
+        UUID(as_uuid=True), ForeignKey("time_slots.id"), nullable=True
+    )
     poll_token = Column(String(64), unique=True, nullable=False)
 
     time_slots = relationship(
@@ -94,7 +96,7 @@ class TimeSlot(Base):
     poll_id = Column(
         UUID(as_uuid=True),
         ForeignKey("meeting_polls.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
