@@ -47,6 +47,13 @@ export class GatewayClient {
         return headers;
     }
 
+    private toIsoIfDateOnly(value?: string): string | undefined {
+        if (value === undefined) return undefined;
+        if (value.includes('T')) return value;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
+    }
+
     public async request<T>(endpoint: string, options: GatewayClientOptions = {}): Promise<T> {
         const { method = 'GET', body, headers: customHeaders } = options;
 
@@ -436,16 +443,24 @@ export class GatewayClient {
     }
 
     async createMeetingPoll(pollData: MeetingPollCreate): Promise<MeetingPoll> {
+        const normalized: MeetingPollCreate = {
+            ...pollData,
+            response_deadline: this.toIsoIfDateOnly(pollData.response_deadline),
+        };
         return this.request<MeetingPoll>('/api/v1/meetings/polls', {
             method: 'POST',
-            body: pollData,
+            body: normalized,
         });
     }
 
     async updateMeetingPoll(pollId: string, pollData: MeetingPollUpdate): Promise<MeetingPoll> {
+        const normalized: MeetingPollUpdate = {
+            ...pollData,
+            response_deadline: this.toIsoIfDateOnly(pollData.response_deadline),
+        };
         return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`, {
             method: 'PUT',
-            body: pollData,
+            body: normalized,
         });
     }
 
