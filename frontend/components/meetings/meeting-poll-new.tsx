@@ -10,7 +10,7 @@ import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
 
@@ -53,6 +53,8 @@ export function MeetingPollNew() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const isNavigatingRef = useRef(false);
+
     // Validation helpers
     const isStep1Valid = title && duration > 0 && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
@@ -61,8 +63,13 @@ export function MeetingPollNew() {
     // Update URL when step changes
     const updateStepInURL = useCallback((newStep: number) => {
         const url = new URL(window.location.href);
+        const currentStepParam = url.searchParams.get('step');
         url.searchParams.set('step', newStep.toString());
-        window.history.pushState({ step: newStep }, '', url.toString());
+        if (currentStepParam === newStep.toString()) {
+            window.history.replaceState({ step: newStep }, '', url.toString());
+        } else {
+            window.history.pushState({ step: newStep }, '', url.toString());
+        }
     }, []);
 
     // Handle browser navigation (back/forward buttons)
@@ -71,6 +78,7 @@ export function MeetingPollNew() {
             const url = new URL(window.location.href);
             const stepParam = url.searchParams.get('step');
             const newStep = stepParam ? parseInt(stepParam, 10) : 1;
+            isNavigatingRef.current = true;
             setStep(Math.max(1, Math.min(4, newStep)));
         };
 
@@ -80,6 +88,10 @@ export function MeetingPollNew() {
 
     // Update URL when step changes internally
     useEffect(() => {
+        if (isNavigatingRef.current) {
+            isNavigatingRef.current = false;
+            return;
+        }
         updateStepInURL(step);
     }, [step, updateStepInURL]);
 
