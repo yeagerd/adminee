@@ -223,15 +223,6 @@ export function MeetingPollNew() {
         }
     };
 
-    const handleCancel = () => {
-        // Clean up URL by removing step and view parameters
-        const url = new URL(window.location.href);
-        url.searchParams.delete('step');
-        url.searchParams.delete('view');
-        window.history.replaceState({}, '', url.toString());
-        setMeetingSubView('list');
-    };
-
     const copyToClipboard = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -264,21 +255,70 @@ export function MeetingPollNew() {
     };
 
     return (
-        <div className="p-8">
-            <div className="flex items-center gap-4 mb-6">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancel}
-                    className="flex items-center gap-2"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to List
-                </Button>
-                <h1 className="text-2xl font-bold">Create New Meeting Poll</h1>
+        <div className="px-8 pb-8">
+            {/* Sticky header bar */}
+            <div className="sticky top-0 z-20 -mx-8 px-8 py-2 bg-white/95 backdrop-blur border-b">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                                if (window.confirm('Delete this poll draft? This action cannot be undone.')) {
+                                    const url = new URL(window.location.href);
+                                    url.searchParams.delete('step');
+                                    url.searchParams.delete('view');
+                                    window.history.replaceState({}, '', url.toString());
+                                    setMeetingSubView('list');
+                                }
+                            }}
+                        >
+                            Delete Poll
+                        </Button>
+                        {step > 1 && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={prevStep}
+                                className="flex items-center gap-2"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Back
+                            </Button>
+                        )}
+                    </div>
+                    <h1 className="text-lg sm:text-xl font-semibold leading-none">Create New Meeting Poll</h1>
+                    <div className="flex items-center gap-2">
+                        {step < 4 ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={nextStep}
+                                disabled={
+                                    (step === 1 && !isStep1Valid) ||
+                                    (step === 2 && !isStep2Valid) ||
+                                    (step === 3 && !isStep3Valid)
+                                }
+                            >
+                                Next
+                            </Button>
+                        ) : (
+                            <Button
+                                type="submit"
+                                size="sm"
+                                form="new-poll-form"
+                                disabled={loading}
+                            >
+                                {loading ? "Creating..." : (sendEmails ? "Create & Send" : "Generate Poll")}
+                            </Button>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            <Card>
+            <Card className="mt-6">
                 <CardContent className="pt-6">
                     {error && (
                         <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-red-700">
@@ -333,7 +373,7 @@ export function MeetingPollNew() {
                             </div>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form id="new-poll-form" onSubmit={handleSubmit} className="space-y-6">
                             {step === 1 && (
                                 <div className="space-y-4">
                                     <div>
@@ -488,17 +528,7 @@ export function MeetingPollNew() {
                                 </div>
                             )}
 
-                            <div className="flex gap-2 justify-between">
-                                {step > 1 && <Button type="button" variant="outline" onClick={prevStep}>Back</Button>}
-                                {step < 4 && <Button type="button" onClick={nextStep} disabled={
-                                    (step === 1 && !isStep1Valid) ||
-                                    (step === 2 && !isStep2Valid) ||
-                                    (step === 3 && !isStep3Valid)
-                                }>Next</Button>}
-                                {step === 4 && <Button type="submit" disabled={loading}>
-                                    {loading ? "Creating..." : (sendEmails ? "Create & Send" : "Generate Poll")}
-                                </Button>}
-                            </div>
+                            {/* Navigation controls moved to sticky header */}
                         </form>
                     )}
                 </CardContent>
