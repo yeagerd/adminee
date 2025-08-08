@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from services.meetings.models.meeting import ParticipantStatus, ResponseType
-from services.meetings.tests.test_base import BaseMeetingsTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsTest
 
 API_KEY = "test-email-sync-key"
 

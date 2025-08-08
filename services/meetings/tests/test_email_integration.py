@@ -10,7 +10,7 @@ from services.meetings.services.email_integration import (
     get_user_email_providers,
     send_invitation_email,
 )
-from services.meetings.tests.test_base import BaseMeetingsTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsTest
 
 
 class TestEmailIntegration(BaseMeetingsTest):
