@@ -341,7 +341,13 @@ export function MeetingPollNew() {
                             </Button>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div
+                        className={
+                            isEditingTitle
+                                ? "flex items-center gap-2 flex-1 min-w-0 px-4"
+                                : "flex items-center justify-center flex-1"
+                        }
+                    >
                         {isEditingTitle ? (
                             <div className="flex items-center gap-2 w-full min-w-0">
                                 <input
@@ -368,7 +374,7 @@ export function MeetingPollNew() {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 w-auto">
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -380,7 +386,7 @@ export function MeetingPollNew() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </Button>
-                                <h1 className="text-lg sm:text-xl font-semibold leading-none">
+                                <h1 className="text-lg sm:text-xl font-semibold leading-none inline-block">
                                     {title || "Create New Meeting Poll"}
                                 </h1>
                             </div>
