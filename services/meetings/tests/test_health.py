@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
-from services.meetings.tests.test_base import BaseMeetingsTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsTest
 
 client = TestClient(app)
 
