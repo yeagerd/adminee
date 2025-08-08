@@ -143,6 +143,18 @@ export function TimeSlotCalendar({
     const [isEditingDuration, setIsEditingDuration] = useState(false);
     const [tempDuration, setTempDuration] = useState<string>(String(duration));
 
+    const formatHeaderDuration = (minutes: number): string => {
+        if (minutes >= 60) {
+            const hours = minutes / 60;
+            // Show up to two decimals, strip trailing zeros
+            const hoursStr = (Math.round(hours * 100) / 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+            const unit = Number(hoursStr) === 1 ? 'hour' : 'hours';
+            return `${hoursStr} ${unit}`;
+        }
+        const unit = minutes === 1 ? 'minute' : 'minutes';
+        return `${minutes}-${unit}`;
+    };
+
     // Business hours (configurable)
     const [businessHours, setBusinessHours] = useState({
         start: 9, // 9 AM
@@ -744,7 +756,7 @@ export function TimeSlotCalendar({
                                 Select start time options for your{' '}
                                 {!isEditingDuration ? (
                                     <span className="text-teal-600 font-medium underline inline-flex items-center">
-                                        {duration}-minute
+                                        {formatHeaderDuration(duration)}
                                         <button
                                             type="button"
                                             className="ml-1 text-teal-700 hover:text-teal-800"

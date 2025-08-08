@@ -98,29 +98,12 @@ export function parseDurationInput(raw: string): number | null {
     return null;
 }
 
-function hasExplicitUnit(raw: string): boolean {
-    const s = raw.trim().toLowerCase();
-    if (!s) return false;
-    // obvious token suffixes like 1h, 10m
-    if (/(\d+(?:\.\d+)?)\s*[hm]\b/.test(s)) return true;
-    // unit words like "hour", "hours", "min", "minutes"
-    const wordUnits = s.match(/\b([a-zA-Z]+)\b/g);
-    if (wordUnits) {
-        return wordUnits.some((tok) => tok[0] === 'h' || tok[0] === 'm');
-    }
-    return false;
-}
-
-function formatAutoDetectHint(raw: string, minutes: number | null): string | null {
-    if (!raw.trim()) return null;
-    if (hasExplicitUnit(raw)) return null; // user already specified units
+function formatParsedHint(minutes: number | null): string | null {
     if (minutes == null) return null;
-
-    // Prefer simple phrasing: hours if >= 60 and minutes divisible by 30, else minutes
     if (minutes >= 60) {
         const hours = minutes / 60;
         const roundedHalf = Math.round(hours * 2) / 2;
-        return `${roundedHalf} hour${roundedHalf === 1 ? "" : "s"}`;
+        return `${roundedHalf} hour${roundedHalf === 1 ? "" : "s"} (${minutes} minute${minutes === 1 ? "" : "s"})`;
     }
     return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
@@ -146,7 +129,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     }, [valueMinutes]);
 
     const parsedMinutes = useMemo(() => parseDurationInput(text), [text]);
-    const hint = useMemo(() => formatAutoDetectHint(text, parsedMinutes), [text, parsedMinutes]);
+    const hint = useMemo(() => formatParsedHint(parsedMinutes), [parsedMinutes]);
 
     const commitIfValid = () => {
         const minutes = parseDurationInput(text);
