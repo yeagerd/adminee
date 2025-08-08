@@ -268,7 +268,7 @@ export function MeetingPollNew() {
             {/* Sticky header bar */}
             <div className="sticky top-0 z-20 -mx-8 px-8 py-2 bg-white/95 backdrop-blur border-b">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         <Button
                             type="button"
                             variant="destructive"
@@ -298,9 +298,9 @@ export function MeetingPollNew() {
                             </Button>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                         {isEditingTitle ? (
-                            <div className="flex items-center gap-2 flex-1">
+                            <div className="flex items-center gap-2 w-full min-w-0">
                                 <input
                                     ref={headerTitleInputRef}
                                     type="text"
@@ -308,15 +308,16 @@ export function MeetingPollNew() {
                                     onChange={(e) => setTitle(e.target.value)}
                                     onBlur={handleTitleBlur}
                                     onKeyDown={handleTitleKeyDown}
-                                    className="text-lg sm:text-xl font-semibold bg-transparent border-b border-gray-300 focus:border-teal-500 focus:outline-none px-1 py-0 flex-1"
+                                    className="text-lg sm:text-xl font-semibold bg-transparent border-b border-gray-300 focus:border-teal-500 focus:outline-none px-1 py-0 flex-1 w-full min-w-0"
                                     placeholder="Enter meeting title..."
                                 />
                                 <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={handleTitleBlur}
-                                    className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
+                                    className="p-1 text-green-600 border-green-500 hover:bg-green-50"
+                                    aria-label="Save title"
                                 >
                                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -342,7 +343,7 @@ export function MeetingPollNew() {
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         {step < 4 ? (
                             <Button
                                 type="button"
