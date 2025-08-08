@@ -17,8 +17,8 @@ def patch_settings_and_engine():
 
     import services.shipments.settings as shipments_settings
 
-    # Use file-based SQLite URI for shared access across async connections
-    shared_db_url = "sqlite+aiosqlite:///./test_shipments.db"
+    # Use in-memory SQLite URI for shared access across async connections
+    shared_db_url = "sqlite+aiosqlite:///:memory:"
     test_settings = shipments_settings.Settings(
         db_url_shipments=shared_db_url,
         api_frontend_shipments_key="test-frontend-shipments-key",
