@@ -9,7 +9,8 @@ import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-clien
 import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from './time-slot-calendar';
 
@@ -20,7 +21,17 @@ export function MeetingPollNew() {
     const { setMeetingSubView } = useToolStateUtils();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
-    const [step, setStep] = useState(1);
+    const searchParams = useSearchParams();
+
+    // Get initial step from URL or default to 1
+    const clampStep = (value: number): number => {
+        const numeric = Number.isFinite(value) ? value : 1;
+        return Math.max(1, Math.min(4, numeric));
+    };
+    const stepParamInitial = searchParams.get('step');
+    const parsedInitialStep = stepParamInitial !== null ? parseInt(stepParamInitial, 10) : 1;
+    const [step, setStep] = useState<number>(clampStep(parsedInitialStep));
+
     // Step 1: Basic Info
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -46,10 +57,56 @@ export function MeetingPollNew() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const isNavigatingRef = useRef(false);
+
     // Validation helpers
     const isStep1Valid = title && duration > 0 && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
     const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+
+    // Update URL when step changes
+    const updateStepInURL = useCallback((newStep: number) => {
+        const url = new URL(window.location.href);
+        const currentStepParam = url.searchParams.get('step');
+        url.searchParams.set('step', newStep.toString());
+        if (currentStepParam === newStep.toString()) {
+            window.history.replaceState({ step: newStep }, '', url.toString());
+        } else {
+            window.history.pushState({ step: newStep }, '', url.toString());
+        }
+    }, []);
+
+    // Handle browser navigation (back/forward buttons)
+    useEffect(() => {
+        const handlePopState = () => {
+            const url = new URL(window.location.href);
+            const stepParam = url.searchParams.get('step');
+            const parsed = stepParam !== null ? parseInt(stepParam, 10) : 1;
+            isNavigatingRef.current = true;
+            setStep(clampStep(parsed));
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // Update URL when step changes internally
+    useEffect(() => {
+        if (isNavigatingRef.current) {
+            isNavigatingRef.current = false;
+            return;
+        }
+        updateStepInURL(step);
+    }, [step, updateStepInURL]);
+
+    // Validate and clamp step to bounds, also handle NaN
+    // Do NOT mark as navigating here; we want the URL-sync effect to update the URL to the corrected step
+    useEffect(() => {
+        const clamped = clampStep(step);
+        if (clamped !== step) {
+            setStep(clamped);
+        }
+    }, [step]);
 
     // Stable callback for time slot changes
     const handleTimeSlotsChange = useCallback((newSlots: { start: string; end: string }[]) => {
@@ -57,8 +114,8 @@ export function MeetingPollNew() {
     }, []);
 
     // Step navigation
-    const nextStep = () => setStep((s) => s + 1);
-    const prevStep = () => setStep((s) => s - 1);
+    const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
+    const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
 
     // Add participant
     const addParticipant = () => {
@@ -145,6 +202,11 @@ export function MeetingPollNew() {
             if (sendEmails) {
                 // Send invitations via email
                 await gatewayClient.sendMeetingInvitations(createdPollData.id);
+                // Clean up URL by removing step and view parameters
+                const url = new URL(window.location.href);
+                url.searchParams.delete('step');
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url.toString());
                 setMeetingSubView('list');
             } else {
                 // Show individual response links
@@ -162,6 +224,11 @@ export function MeetingPollNew() {
     };
 
     const handleCancel = () => {
+        // Clean up URL by removing step and view parameters
+        const url = new URL(window.location.href);
+        url.searchParams.delete('step');
+        url.searchParams.delete('view');
+        window.history.replaceState({}, '', url.toString());
         setMeetingSubView('list');
     };
 
@@ -253,7 +320,14 @@ export function MeetingPollNew() {
                             </div>
 
                             <div className="flex gap-2">
-                                <Button onClick={() => setMeetingSubView('list')}>
+                                <Button onClick={() => {
+                                    // Clean up URL by removing step and view parameters
+                                    const url = new URL(window.location.href);
+                                    url.searchParams.delete('step');
+                                    url.searchParams.delete('view');
+                                    window.history.replaceState({}, '', url.toString());
+                                    setMeetingSubView('list');
+                                }}>
                                     Back to Polls
                                 </Button>
                             </div>
