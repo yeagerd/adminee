@@ -58,6 +58,14 @@ export function MeetingPollNew() {
     const [error, setError] = useState<string | null>(null);
 
     const isNavigatingRef = useRef(false);
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-focus title input when component mounts
+    useEffect(() => {
+        if (titleInputRef.current && step === 1) {
+            titleInputRef.current.focus();
+        }
+    }, [step]);
 
     // Validation helpers
     const isStep1Valid = title && duration > 0 && timeZone;
@@ -378,7 +386,14 @@ export function MeetingPollNew() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block font-semibold mb-1">Title</label>
-                                        <input className="w-full border rounded px-3 py-2" value={title} onChange={e => setTitle(e.target.value)} required />
+                                        <input
+                                            className="w-full border rounded px-3 py-2"
+                                            value={title}
+                                            onChange={e => setTitle(e.target.value)}
+                                            required
+                                            ref={titleInputRef}
+                                            placeholder="e.g., Weekly Team Sync"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block font-semibold mb-1">Description</label>
