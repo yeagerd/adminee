@@ -48,7 +48,7 @@ export class GatewayClient {
     }
 
     private toIsoIfDateOnly(value?: string): string | undefined {
-        if (!value) return undefined;
+        if (value === undefined) return undefined;
         if (value.includes('T')) return value;
         const parsed = new Date(value);
         return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
