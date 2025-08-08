@@ -122,10 +122,10 @@ describe('SmartTimeDurationInput UI behavior', () => {
         expect(screen.getByText(/1\.5 hours/i)).toBeInTheDocument();
     });
 
-    test('does not show hint when explicit unit provided', () => {
+    test('shows hint when explicit unit provided', () => {
         const { input } = setup(60);
         fireEvent.change(input, { target: { value: '1.5h' } });
-        expect(screen.queryByText(/hours?|minutes?/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/hours?|minutes?/i)).toBeInTheDocument();
     });
 
     test('escape triggers onCancel without committing', () => {

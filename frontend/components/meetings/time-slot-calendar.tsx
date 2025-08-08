@@ -141,7 +141,6 @@ export function TimeSlotCalendar({
     const [granularity, setGranularity] = useState<'15' | '30' | '60'>('30');
     const [showCalendarEvents, setShowCalendarEvents] = useState(true);
     const [isEditingDuration, setIsEditingDuration] = useState(false);
-    const [tempDuration, setTempDuration] = useState<string>(String(duration));
 
     const formatHeaderDuration = (minutes: number): string => {
         if (minutes >= 60) {
@@ -761,7 +760,6 @@ export function TimeSlotCalendar({
                                             type="button"
                                             className="ml-1 text-teal-700 hover:text-teal-800"
                                             onClick={() => {
-                                                setTempDuration(String(duration));
                                                 setIsEditingDuration(true);
                                             }}
                                             title="Edit duration"
@@ -770,17 +768,21 @@ export function TimeSlotCalendar({
                                         </button>
                                     </span>
                                 ) : (
-                                    <SmartTimeDurationInput
-                                        valueMinutes={duration}
-                                        onChangeMinutes={(mins) => {
-                                            onDurationChange && onDurationChange(mins);
-                                            setIsEditingDuration(false);
-                                        }}
-                                        onCancel={() => setIsEditingDuration(false)}
-                                        onFinish={() => setIsEditingDuration(false)}
-                                        inputClassName="h-7 text-sm w-[100px]"
-                                        autoFocus
-                                    />
+                                                                            <SmartTimeDurationInput
+                                            valueMinutes={duration}
+                                            onChangeMinutes={(mins) => {
+                                                if (onDurationChange) {
+                                                    onDurationChange(mins);
+                                                }
+                                                // Reconcile previously selected slots: clear selection to avoid stale end times
+                                                onTimeSlotsChange([]);
+                                                setIsEditingDuration(false);
+                                            }}
+                                            onCancel={() => setIsEditingDuration(false)}
+                                            onFinish={() => setIsEditingDuration(false)}
+                                            inputClassName="h-7 text-sm w-[100px]"
+                                            autoFocus
+                                        />
                                 )}{' '}
                                 meeting
                             </div>

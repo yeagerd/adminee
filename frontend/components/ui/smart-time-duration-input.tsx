@@ -132,11 +132,7 @@ export const SmartTimeDurationInput: React.FC<SmartTimeDurationInputProps> = ({
     }, [valueMinutes]);
 
     const parsedMinutes = useMemo(() => parseDurationInput(text), [text]);
-    const showHint = useMemo(() => {
-        const s = text.trim().toLowerCase();
-        return /^\d+(?:\.\d+)?$/.test(s); // ambiguous numeric input only
-    }, [text]);
-    const hint = useMemo(() => (showHint ? formatParsedHint(parsedMinutes) : null), [showHint, parsedMinutes]);
+    const hint = useMemo(() => formatParsedHint(parsedMinutes), [parsedMinutes]);
 
     const commitIfValid = () => {
         const minutes = parseDurationInput(text);
