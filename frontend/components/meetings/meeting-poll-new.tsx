@@ -685,13 +685,13 @@ export function MeetingPollNew() {
                                             htmlFor="reveal-participants"
                                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                         >
-                                            Show participant names and emails to invitees
+                                            Show list of all participant names and emails to invitees
                                         </label>
                                     </div>
 
                                     {sendEmails && revealParticipants && (
                                         <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                                            <p>✓ Participant names and emails will be included in invitation emails</p>
+                                            <p>✓ The list of all participant names and emails will be included in invitation emails</p>
                                         </div>
                                     )}
 
