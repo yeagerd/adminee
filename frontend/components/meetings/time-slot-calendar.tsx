@@ -768,21 +768,20 @@ export function TimeSlotCalendar({
                                         </button>
                                     </span>
                                 ) : (
-                                                                            <SmartTimeDurationInput
-                                            valueMinutes={duration}
-                                            onChangeMinutes={(mins) => {
-                                                if (onDurationChange) {
-                                                    onDurationChange(mins);
-                                                }
-                                                // Reconcile previously selected slots: clear selection to avoid stale end times
-                                                onTimeSlotsChange([]);
-                                                setIsEditingDuration(false);
-                                            }}
-                                            onCancel={() => setIsEditingDuration(false)}
-                                            onFinish={() => setIsEditingDuration(false)}
-                                            inputClassName="h-7 text-sm w-[100px]"
-                                            autoFocus
-                                        />
+                                    <SmartTimeDurationInput
+                                        valueMinutes={duration}
+                                        onChangeMinutes={(mins) => {
+                                            if (onDurationChange) {
+                                                onDurationChange(mins);
+                                            }
+                                            // Do not clear selected slots; parent recomputes end times for selected starts
+                                            setIsEditingDuration(false);
+                                        }}
+                                        onCancel={() => setIsEditingDuration(false)}
+                                        onFinish={() => setIsEditingDuration(false)}
+                                        inputClassName="h-7 text-sm w-[100px]"
+                                        autoFocus
+                                    />
                                 )}{' '}
                                 meeting
                             </div>
