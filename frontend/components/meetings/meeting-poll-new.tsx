@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToolState } from "@/contexts/tool-context";
 import type { MeetingPoll, PollParticipant } from "@/lib/gateway-client";
 import { gatewayClient } from "@/lib/gateway-client";
@@ -50,6 +51,47 @@ export function MeetingPollNew() {
     const [personQuery, setPersonQuery] = useState("");
     const [suggestions, setSuggestions] = useState<Array<{ email: string; name?: string }>>([]);
     const [highlightIndex, setHighlightIndex] = useState<number>(-1);
+    const [editing, setEditing] = useState<{ id: string; field: 'name' | 'email' } | null>(null);
+    const [frozenOrder, setFrozenOrder] = useState<string[] | null>(null);
+
+    const currentSortedOrderIds = (() => {
+        const sorted = [...participants].sort((a, b) => {
+            const an = (a.name || "").trim().toLowerCase();
+            const bn = (b.name || "").trim().toLowerCase();
+            if (an !== bn) return an.localeCompare(bn);
+            const ae = (a.email || "").trim().toLowerCase();
+            const be = (b.email || "").trim().toLowerCase();
+            return ae.localeCompare(be);
+        });
+        return sorted.map(p => p.id);
+    })();
+
+    const getRenderedParticipants = (): Array<{ id: string; email: string; name: string }> => {
+        if (editing && frozenOrder) {
+            const byId = new Map(participants.map(p => [p.id, p] as const));
+            const frozenList = frozenOrder.map(id => byId.get(id)).filter((p): p is { id: string; email: string; name: string } => Boolean(p));
+            // Append any new participants not in frozen order, keeping their relative sorted order
+            const missing = participants.filter(p => !frozenOrder.includes(p.id)).sort((a, b) => {
+                const an = (a.name || "").trim().toLowerCase();
+                const bn = (b.name || "").trim().toLowerCase();
+                if (an !== bn) return an.localeCompare(bn);
+                const ae = (a.email || "").trim().toLowerCase();
+                const be = (b.email || "").trim().toLowerCase();
+                return ae.localeCompare(be);
+            });
+            return [...frozenList, ...missing];
+        }
+        // Default: sorted order
+        const sorted = [...participants].sort((a, b) => {
+            const an = (a.name || "").trim().toLowerCase();
+            const bn = (b.name || "").trim().toLowerCase();
+            if (an !== bn) return an.localeCompare(bn);
+            const ae = (a.email || "").trim().toLowerCase();
+            const be = (b.email || "").trim().toLowerCase();
+            return ae.localeCompare(be);
+        });
+        return sorted;
+    };
     // Step 4: Review & Submit
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
@@ -805,44 +847,108 @@ export function MeetingPollNew() {
                                             )}
                                         </div>
 
-                                        {/* Participant editor grid */}
-                                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {participants.map((p, idx) => (
-                                                <div key={p.id} className="border rounded-lg p-3">
-                                                    <div className="flex items-start gap-2">
-                                                        <div className="flex-1 space-y-2">
-                                                            <input
-                                                                className="w-full border rounded px-2 py-1"
-                                                                value={p.name}
-                                                                onChange={(e) => {
-                                                                    const value = e.target.value;
-                                                                    setParticipants(prev => prev.map((item, i) => i === idx ? { ...item, name: value } : item));
-                                                                }}
-                                                                placeholder="Name (optional)"
-                                                type="text"
-                                            />
-                                            <input
-                                                                className="w-full border rounded px-2 py-1"
-                                                                value={p.email}
-                                                                onChange={(e) => {
-                                                                    const value = e.target.value;
-                                                                    setParticipants(prev => prev.map((item, i) => i === idx ? { ...item, email: value } : item));
-                                                                }}
-                                                                placeholder="email@domain.com"
-                                                type="email"
-                                            />
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            className="shrink-0 text-red-600 hover:text-red-700 p-1"
-                                                            aria-label="Remove participant"
-                                                            onClick={() => removeParticipant(p.id)}
-                                                        >
-                                                            <XCircle className="w-6 h-6" />
-                                                        </button>
-                                                    </div>
-                                        </div>
-                                            ))}
+                                        {/* Participant table (tight grid), sorted by Name then Email */}
+                                        <div className="mt-3">
+                                            <Table className="text-sm">
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-1/3 py-2">Name</TableHead>
+                                                        <TableHead className="w-1/2 py-2">Email Address</TableHead>
+                                                        <TableHead className="w-[60px] text-right py-2">Remove</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {getRenderedParticipants().map((p) => (
+                                                        <TableRow key={p.id}>
+                                                            <TableCell className="py-1.5">
+                                                                {editing && editing.id === p.id && editing.field === 'name' ? (
+                                                                    <input
+                                                                        className="w-full border rounded px-2 py-1"
+                                                                        value={p.name}
+                                                                        autoFocus
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value;
+                                                                            setParticipants(prev => prev.map((item) => item.id === p.id ? { ...item, name: value } : item));
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            setEditing(null);
+                                                                            setFrozenOrder(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.currentTarget.blur();
+                                                                            } else if (e.key === 'Escape') {
+                                                                                setEditing(null);
+                                                                                setFrozenOrder(null);
+                                                                            }
+                                                                        }}
+                                                                        placeholder="Name (optional)"
+                                                                        type="text"
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        className="cursor-text hover:underline underline-offset-2"
+                                                                        onClick={() => {
+                                                                            setEditing({ id: p.id, field: 'name' });
+                                                                            setFrozenOrder(currentSortedOrderIds);
+                                                                        }}
+                                                                    >
+                                                                        {p.name || <span className="text-muted-foreground">Click to add name</span>}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-1.5">
+                                                                {editing && editing.id === p.id && editing.field === 'email' ? (
+                                                                    <input
+                                                                        className="w-full border rounded px-2 py-1"
+                                                                        value={p.email}
+                                                                        autoFocus
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value;
+                                                                            setParticipants(prev => prev.map((item) => item.id === p.id ? { ...item, email: value } : item));
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            setEditing(null);
+                                                                            setFrozenOrder(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.currentTarget.blur();
+                                                                            } else if (e.key === 'Escape') {
+                                                                                setEditing(null);
+                                                                                setFrozenOrder(null);
+                                                                            }
+                                                                        }}
+                                                                        placeholder="email@domain.com"
+                                                                        type="email"
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        className="cursor-text hover:underline underline-offset-2 truncate"
+                                                                        onClick={() => {
+                                                                            setEditing({ id: p.id, field: 'email' });
+                                                                            setFrozenOrder(currentSortedOrderIds);
+                                                                        }}
+                                                                        title={p.email}
+                                                                    >
+                                                                        {p.email || <span className="text-muted-foreground">Click to add email</span>}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-1.5 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    className="inline-flex items-center text-red-600 hover:text-red-700 p-1"
+                                                                    aria-label="Remove participant"
+                                                                    onClick={() => removeParticipant(p.id)}
+                                                                >
+                                                                    <XCircle className="w-5 h-5" />
+                                                                </button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
                                         </div>
                                     </div>
                                 </div>
