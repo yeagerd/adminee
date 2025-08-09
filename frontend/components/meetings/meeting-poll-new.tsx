@@ -106,6 +106,9 @@ export function MeetingPollNew() {
     const [showLinks, setShowLinks] = useState(false);
 
     const isNavigatingRef = useRef(false);
+    const navLockRef = useRef(false);
+    const [submitGuardActive, setSubmitGuardActive] = useState(false);
+    const submitGuardTimeoutRef = useRef<number | null>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const headerTitleInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,6 +170,7 @@ export function MeetingPollNew() {
     // Submit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitGuardActive) return;
 
         // Validate required fields
         if (!title.trim()) {
@@ -295,8 +299,58 @@ export function MeetingPollNew() {
     };
 
     // Step navigation
-    const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
-    const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
+    const nextStep = (e?: React.MouseEvent<HTMLButtonElement>) => {
+        if (e) e.preventDefault();
+        if (navLockRef.current) return;
+        navLockRef.current = true;
+
+        setStep((s) => {
+            const current = Number.isFinite(s) ? s : 1;
+            const next = clampStep(current + 1);
+
+            // If transitioning to step 4, activate submit guard immediately
+            if (next === 4 && current !== 4) {
+                setSubmitGuardActive(true);
+                if (submitGuardTimeoutRef.current) {
+                    window.clearTimeout(submitGuardTimeoutRef.current);
+                }
+                submitGuardTimeoutRef.current = window.setTimeout(() => {
+                    setSubmitGuardActive(false);
+                    submitGuardTimeoutRef.current = null;
+                }, 300);
+            }
+
+            return next;
+        });
+
+        // Always release lock after a brief delay, regardless of whether step actually changes
+        setTimeout(() => {
+            navLockRef.current = false;
+        }, 0);
+    };
+
+    const prevStep = (e?: React.MouseEvent<HTMLButtonElement>) => {
+        if (e) e.preventDefault();
+        if (navLockRef.current) return;
+        navLockRef.current = true;
+
+        setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
+
+        // Always release lock after a brief delay, regardless of whether step actually changes
+        setTimeout(() => {
+            navLockRef.current = false;
+        }, 0);
+    };
+
+    // Cleanup submit guard timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (submitGuardTimeoutRef.current) {
+                window.clearTimeout(submitGuardTimeoutRef.current);
+                submitGuardTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     // Remove participant by stable id
     const removeParticipant = (id: string) =>
@@ -593,7 +647,7 @@ export function MeetingPollNew() {
                                 type="submit"
                                 size="sm"
                                 form="new-poll-form"
-                                disabled={loading}
+                                disabled={loading || submitGuardActive}
                             >
                                 {loading ? "Creating..." : (sendEmails ? "Create & Send" : "Generate Poll")}
                             </Button>
