@@ -237,6 +237,18 @@ export function MeetingPollNew() {
         setTimeSlots(newSlots);
     };
 
+    // Preserve selected starts when duration changes by recomputing ends
+    const handleDurationChange = (newDuration: number) => {
+        setDuration(newDuration);
+        setTimeSlots(prev =>
+            (prev || []).map(slot => {
+                const startDate = new Date(slot.start);
+                const newEnd = new Date(startDate.getTime() + newDuration * 60 * 1000).toISOString();
+                return { start: slot.start, end: newEnd };
+            })
+        );
+    };
+
     // Step navigation
     const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
     const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
@@ -607,7 +619,7 @@ export function MeetingPollNew() {
                                         <div className="flex items-center gap-2">
                                             <SmartTimeDurationInput
                                                 valueMinutes={duration ?? undefined}
-                                                onChangeMinutes={(m) => setDuration(m)}
+                                                onChangeMinutes={handleDurationChange}
                                                 className="flex-1"
                                                 inputClassName="w-full"
                                                 showHintWhileEditingOnly
@@ -655,7 +667,7 @@ export function MeetingPollNew() {
                                             <div className="flex items-center gap-2">
                                                 <SmartTimeDurationInput
                                                     valueMinutes={undefined}
-                                                    onChangeMinutes={(m) => setDuration(m)}
+                                                    onChangeMinutes={handleDurationChange}
                                                     className="flex-1"
                                                     inputClassName="w-full"
                                                     showHintWhileEditingOnly
@@ -694,7 +706,7 @@ export function MeetingPollNew() {
                                                 onTimeSlotsChange={handleTimeSlotsChange}
                                                 selectedTimeSlots={timeSlots}
                                                 calendarEvents={calendarEvents}
-                                                onDurationChange={(d) => setDuration(d)}
+                                                onDurationChange={handleDurationChange}
                                             />
                                         </>
                                     )}
