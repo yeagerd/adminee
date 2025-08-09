@@ -9,7 +9,7 @@ import { useToolState } from "@/contexts/tool-context";
 import type { MeetingPoll, PollParticipant } from "@/lib/gateway-client";
 import { gatewayClient } from "@/lib/gateway-client";
 import { CalendarEvent } from "@/types/office-service";
-import { ArrowLeft, LinkIcon } from "lucide-react";
+import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from "react";
@@ -47,8 +47,9 @@ export function MeetingPollNew() {
     const [calendarLoading, setCalendarLoading] = useState(false);
     // Step 3: Participants
     const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
-    const [participantEmailInput, setParticipantEmailInput] = useState("");
-    const [participantNameInput, setParticipantNameInput] = useState("");
+    const [personQuery, setPersonQuery] = useState("");
+    const [suggestions, setSuggestions] = useState<Array<{ email: string; name?: string }>>([]);
+    const [highlightIndex, setHighlightIndex] = useState<number>(-1);
     // Step 4: Review & Submit
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
@@ -155,8 +156,8 @@ export function MeetingPollNew() {
                     timezone: timeZone
                 })),
                 participants: participants.map(p => ({
-                    name: p.name.trim(),
-                    email: p.email.trim()
+                    email: p.email.trim(),
+                    name: p.name.trim() || undefined,
                 })),
                 response_deadline: responseDeadline,
                 send_emails: sendEmails,
@@ -240,21 +241,130 @@ export function MeetingPollNew() {
     const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
     const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
 
-    // Add participant
-    const addParticipant = () => {
-        if (
-            participantEmailInput &&
-            /.+@.+\..+/.test(participantEmailInput) &&
-            participantNameInput.trim().length > 0 &&
-            !participants.some(p => p.email === participantEmailInput)
-        ) {
-            setParticipants([...participants, { email: participantEmailInput, name: participantNameInput }]);
-            setParticipantEmailInput("");
-            setParticipantNameInput("");
+    // Remove participant by email
+    const removeParticipant = (email: string) =>
+        setParticipants(prev => prev.filter(p => p.email !== email));
+
+    // ---- Step 3 helpers: parsing and adding people ----
+    const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+    const parsePeopleFromText = (text: string): Array<{ email: string; name?: string }> => {
+        const results: Array<{ email: string; name?: string }> = [];
+        if (!text) return results;
+
+        let remaining = text;
+
+        // 1) Extract patterns like: First Last <email@domain.com>
+        const nameEmailPattern = /\s*([^<>,;\n\r\t]+?)?\s*<\s*([^<>@\s,;]+@[^<>@\s,;]+)\s*>\s*/g;
+        let match: RegExpExecArray | null;
+        const consumedRanges: Array<{ start: number; end: number }> = [];
+        while ((match = nameEmailPattern.exec(text)) !== null) {
+            const nameRaw = (match[1] || "").trim();
+            const emailRaw = (match[2] || "").trim();
+            if (EMAIL_REGEX.test(emailRaw)) {
+                results.push({ email: emailRaw, name: nameRaw || undefined });
+                consumedRanges.push({ start: match.index, end: match.index + match[0].length });
+            }
+        }
+
+        // Remove consumed ranges from remaining
+        if (consumedRanges.length > 0) {
+            let cursor = 0;
+            let reduced = "";
+            for (const r of consumedRanges) {
+                reduced += text.slice(cursor, r.start);
+                cursor = r.end;
+            }
+            reduced += text.slice(cursor);
+            remaining = reduced;
+        }
+
+        // 2) Extract bare emails from remaining text
+        const bareEmailPattern = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi;
+        let m: RegExpExecArray | null;
+        while ((m = bareEmailPattern.exec(remaining)) !== null) {
+            const email = (m[1] || m[0]).trim();
+            if (EMAIL_REGEX.test(email)) {
+                results.push({ email });
+            }
+        }
+
+        // 3) Also split on common delimiters and try to parse unit segments
+        const segments = remaining
+            .split(/[\n\r,;]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+        for (const seg of segments) {
+            if (EMAIL_REGEX.test(seg)) {
+                const emailMatch = seg.match(bareEmailPattern);
+                if (emailMatch && emailMatch[0]) {
+                    results.push({ email: emailMatch[0].trim() });
+                }
+            }
+        }
+
+        // Dedupe by lowercased email
+        const seen = new Set<string>();
+        const deduped: Array<{ email: string; name?: string }> = [];
+        for (const r of results) {
+            const key = r.email.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            deduped.push(r);
+        }
+        return deduped;
+    };
+
+    const addPeople = (people: Array<{ email: string; name?: string }>) => {
+        if (!people || people.length === 0) return;
+        setParticipants(prev => {
+            const existing = new Set(prev.map(p => p.email.toLowerCase()));
+            const toAdd: { email: string; name: string }[] = [];
+            for (const person of people) {
+                const emailKey = person.email.toLowerCase();
+                if (existing.has(emailKey)) continue;
+                toAdd.push({ email: person.email.trim(), name: (person.name || "").trim() });
+                existing.add(emailKey);
+            }
+            return [...prev, ...toAdd];
+        });
+    };
+
+    const confirmPersonQuery = () => {
+        const text = personQuery.trim();
+        if (!text) return;
+
+        // If there is a highlighted suggestion, prefer that
+        if (suggestions.length > 0 && highlightIndex >= 0 && highlightIndex < suggestions.length) {
+            const selected = suggestions[highlightIndex];
+            addPeople([{ email: selected.email, name: selected.name }]);
+            setPersonQuery("");
+            setSuggestions([]);
+            setHighlightIndex(-1);
+            return;
+        }
+
+        // Otherwise, parse emails from the text
+        const parsed = parsePeopleFromText(text);
+        if (parsed.length > 0) {
+            addPeople(parsed);
+            setPersonQuery("");
+            setSuggestions([]);
+            setHighlightIndex(-1);
         }
     };
 
-    const removeParticipant = (email: string) => setParticipants(participants.filter(p => p.email !== email));
+    // Suggestions stub (to be replaced with contacts provider)
+    useEffect(() => {
+        if (!personQuery.trim()) {
+            setSuggestions([]);
+            setHighlightIndex(-1);
+            return;
+        }
+        // TODO: integrate contacts search; for now, no results
+        setSuggestions([]);
+        setHighlightIndex(-1);
+    }, [personQuery]);
 
     // Fetch calendar events for conflict detection
     useEffect(() => {
@@ -305,7 +415,7 @@ export function MeetingPollNew() {
     // Validation helpers
     const isStep1Valid = title && (typeof duration === 'number' && duration > 0) && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
-    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email));
 
     return (
         <div className="px-8 pb-8">
@@ -594,31 +704,120 @@ export function MeetingPollNew() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block font-semibold mb-1">Participants</label>
-                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                                        <div className="relative">
                                             <input
-                                                className="border rounded px-3 py-2"
-                                                value={participantNameInput}
-                                                onChange={e => setParticipantNameInput(e.target.value)}
-                                                placeholder="Name"
+                                                className="w-full border rounded px-3 py-2"
+                                                value={personQuery}
+                                                onChange={(e) => setPersonQuery(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        confirmPersonQuery();
+                                                    } else if (e.key === 'ArrowDown') {
+                                                        e.preventDefault();
+                                                        if (suggestions.length > 0) {
+                                                            setHighlightIndex((prev) => {
+                                                                const next = prev + 1;
+                                                                return next >= suggestions.length ? suggestions.length - 1 : next;
+                                                            });
+                                                        }
+                                                    } else if (e.key === 'ArrowUp') {
+                                                        e.preventDefault();
+                                                        if (suggestions.length > 0) {
+                                                            setHighlightIndex((prev) => {
+                                                                const next = prev - 1;
+                                                                return next < 0 ? 0 : next;
+                                                            });
+                                                        }
+                                                    } else if (e.key === 'Escape') {
+                                                        setSuggestions([]);
+                                                        setHighlightIndex(-1);
+                                                    }
+                                                }}
+                                                onPaste={(e) => {
+                                                    const text = e.clipboardData.getData('text');
+                                                    const parsed = parsePeopleFromText(text);
+                                                    if (parsed.length > 0) {
+                                                        e.preventDefault();
+                                                        addPeople(parsed);
+                                                        setPersonQuery("");
+                                                        setSuggestions([]);
+                                                        setHighlightIndex(-1);
+                                                    }
+                                                }}
+                                                placeholder="Type a name or paste emails (e.g., First Last <email@domain.com>)"
                                                 type="text"
                                             />
-                                            <input
-                                                className="border rounded px-3 py-2"
-                                                value={participantEmailInput}
-                                                onChange={e => setParticipantEmailInput(e.target.value)}
-                                                placeholder="Email"
-                                                type="email"
-                                            />
-                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
+                                            {suggestions.length > 0 && (
+                                                <ul className="absolute z-10 mt-1 w-full bg-white border rounded shadow max-h-60 overflow-auto">
+                                                    {suggestions.map((s, idx) => (
+                                                        <li
+                                                            key={`${s.email}-${idx}`}
+                                                            className={
+                                                                "px-3 py-2 cursor-pointer flex items-center justify-between " +
+                                                                (idx === highlightIndex ? "bg-teal-50" : "hover:bg-gray-50")
+                                                            }
+                                                            onMouseEnter={() => setHighlightIndex(idx)}
+                                                            onMouseDown={(e) => {
+                                                                // Prevent input blur before click
+                                                                e.preventDefault();
+                                                            }}
+                                                            onClick={() => {
+                                                                addPeople([{ email: s.email, name: s.name }]);
+                                                                setPersonQuery("");
+                                                                setSuggestions([]);
+                                                                setHighlightIndex(-1);
+                                                            }}
+                                                        >
+                                                            <span className="truncate">{s.name || s.email}</span>
+                                                            {s.name && (
+                                                                <span className="ml-2 text-sm text-gray-600 truncate">{s.email}</span>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
                                         </div>
-                                        <ul className="flex flex-wrap gap-2">
-                                            {participants.map(p => (
-                                                <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
-                                                    <span>{p.name} ({p.email})</span>
-                                                    <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
-                                                </li>
+
+                                        {/* Participant editor grid */}
+                                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {participants.map((p, idx) => (
+                                                <div key={`${p.email}-${idx}`} className="border rounded-lg p-3">
+                                                    <div className="flex items-start gap-2">
+                                                        <div className="flex-1 space-y-2">
+                                                            <input
+                                                                className="w-full border rounded px-2 py-1"
+                                                                value={p.name}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value;
+                                                                    setParticipants(prev => prev.map((item, i) => i === idx ? { ...item, name: value } : item));
+                                                                }}
+                                                                placeholder="Name (optional)"
+                                                                type="text"
+                                                            />
+                                                            <input
+                                                                className="w-full border rounded px-2 py-1"
+                                                                value={p.email}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value;
+                                                                    setParticipants(prev => prev.map((item, i) => i === idx ? { ...item, email: value } : item));
+                                                                }}
+                                                                placeholder="email@domain.com"
+                                                                type="email"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="shrink-0 text-red-600 hover:text-red-700 p-1"
+                                                            aria-label="Remove participant"
+                                                            onClick={() => removeParticipant(p.email)}
+                                                        >
+                                                            <XCircle className="w-6 h-6" />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             ))}
-                                        </ul>
+                                        </div>
                                     </div>
                                 </div>
                             )}
