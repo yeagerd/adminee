@@ -60,6 +60,7 @@ export function MeetingPollNew() {
     const [showLinks, setShowLinks] = useState(false);
 
     const isNavigatingRef = useRef(false);
+    const navLockRef = useRef(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const headerTitleInputRef = useRef<HTMLInputElement>(null);
 
@@ -249,15 +250,23 @@ export function MeetingPollNew() {
     };
 
     // Step navigation
-    const nextStep = () => {
-        // Defer the step change so the original click event completes
-        // This prevents the newly rendered submit button (step 4)
-        // from accidentally receiving the same click and submitting the form
-        setTimeout(() => {
-            setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
-        }, 0);
+    const nextStep = (e?: React.MouseEvent<HTMLButtonElement>) => {
+        if (e) e.preventDefault();
+        if (navLockRef.current) return;
+        navLockRef.current = true;
+        setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
     };
-    const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
+    const prevStep = (e?: React.MouseEvent<HTMLButtonElement>) => {
+        if (e) e.preventDefault();
+        if (navLockRef.current) return;
+        navLockRef.current = true;
+        setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
+    };
+
+    // Release navigation lock after each step change render
+    useEffect(() => {
+        navLockRef.current = false;
+    }, [step]);
 
     // Add participant
     const addParticipant = () => {
@@ -353,7 +362,7 @@ export function MeetingPollNew() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={prevStep}
+                                onMouseDown={prevStep}
                                 className="flex items-center gap-2"
                             >
                                 <ArrowLeft className="h-4 w-4" />
@@ -417,7 +426,7 @@ export function MeetingPollNew() {
                             <Button
                                 type="button"
                                 size="sm"
-                                onClick={nextStep}
+                                onMouseDown={nextStep}
                                 disabled={
                                     (step === 1 && !isStep1Valid) ||
                                     (step === 2 && !isStep2Valid) ||
