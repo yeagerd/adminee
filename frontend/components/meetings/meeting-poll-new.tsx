@@ -52,6 +52,9 @@ export function MeetingPollNew() {
     const [suggestions, setSuggestions] = useState<Array<{ email: string; name?: string }>>([]);
     const [highlightIndex, setHighlightIndex] = useState<number>(-1);
     const [editing, setEditing] = useState<{ id: string; field: 'name' | 'email' } | null>(null);
+    const [editingDraft, setEditingDraft] = useState<
+        { id: string; field: 'name' | 'email'; initialValue: string; value: string } | null
+    >(null);
     const [frozenOrder, setFrozenOrder] = useState<string[] | null>(null);
 
     const currentSortedOrderIds = (() => {
@@ -864,21 +867,36 @@ export function MeetingPollNew() {
                                                                 {editing && editing.id === p.id && editing.field === 'name' ? (
                                                                     <input
                                                                         className="w-full border rounded px-2 py-1"
-                                                                        value={p.name}
+                                                                        value={editingDraft?.id === p.id && editingDraft.field === 'name' ? editingDraft.value : p.name}
                                                                         autoFocus
                                                                         onChange={(e) => {
                                                                             const value = e.target.value;
-                                                                            setParticipants(prev => prev.map((item) => item.id === p.id ? { ...item, name: value } : item));
+                                                                            setEditingDraft(prev => prev && prev.id === p.id && prev.field === 'name' ? { ...prev, value } : prev);
                                                                         }}
                                                                         onBlur={() => {
+                                                                            // Commit on blur
+                                                                            if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'name') {
+                                                                                const commitValue = editingDraft.value;
+                                                                                setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, name: commitValue } : item));
+                                                                            }
                                                                             setEditing(null);
+                                                                            setEditingDraft(null);
                                                                             setFrozenOrder(null);
                                                                         }}
                                                                         onKeyDown={(e) => {
                                                                             if (e.key === 'Enter') {
-                                                                                e.currentTarget.blur();
-                                                                            } else if (e.key === 'Escape') {
+                                                                                // Commit on Enter
+                                                                                if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'name') {
+                                                                                    const commitValue = editingDraft.value;
+                                                                                    setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, name: commitValue } : item));
+                                                                                }
                                                                                 setEditing(null);
+                                                                                setEditingDraft(null);
+                                                                                setFrozenOrder(null);
+                                                                            } else if (e.key === 'Escape') {
+                                                                                // Cancel without saving (revert)
+                                                                                setEditing(null);
+                                                                                setEditingDraft(null);
                                                                                 setFrozenOrder(null);
                                                                             }
                                                                         }}
@@ -890,6 +908,7 @@ export function MeetingPollNew() {
                                                                         className="cursor-text hover:underline underline-offset-2"
                                                                         onClick={() => {
                                                                             setEditing({ id: p.id, field: 'name' });
+                                                                            setEditingDraft({ id: p.id, field: 'name', initialValue: p.name || '', value: p.name || '' });
                                                                             setFrozenOrder(currentSortedOrderIds);
                                                                         }}
                                                                     >
@@ -901,21 +920,36 @@ export function MeetingPollNew() {
                                                                 {editing && editing.id === p.id && editing.field === 'email' ? (
                                                                     <input
                                                                         className="w-full border rounded px-2 py-1"
-                                                                        value={p.email}
+                                                                        value={editingDraft?.id === p.id && editingDraft.field === 'email' ? editingDraft.value : p.email}
                                                                         autoFocus
                                                                         onChange={(e) => {
                                                                             const value = e.target.value;
-                                                                            setParticipants(prev => prev.map((item) => item.id === p.id ? { ...item, email: value } : item));
+                                                                            setEditingDraft(prev => prev && prev.id === p.id && prev.field === 'email' ? { ...prev, value } : prev);
                                                                         }}
                                                                         onBlur={() => {
+                                                                            // Commit on blur
+                                                                            if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'email') {
+                                                                                const commitValue = editingDraft.value;
+                                                                                setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, email: commitValue } : item));
+                                                                            }
                                                                             setEditing(null);
+                                                                            setEditingDraft(null);
                                                                             setFrozenOrder(null);
                                                                         }}
                                                                         onKeyDown={(e) => {
                                                                             if (e.key === 'Enter') {
-                                                                                e.currentTarget.blur();
-                                                                            } else if (e.key === 'Escape') {
+                                                                                // Commit on Enter
+                                                                                if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'email') {
+                                                                                    const commitValue = editingDraft.value;
+                                                                                    setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, email: commitValue } : item));
+                                                                                }
                                                                                 setEditing(null);
+                                                                                setEditingDraft(null);
+                                                                                setFrozenOrder(null);
+                                                                            } else if (e.key === 'Escape') {
+                                                                                // Cancel without saving (revert)
+                                                                                setEditing(null);
+                                                                                setEditingDraft(null);
                                                                                 setFrozenOrder(null);
                                                                             }
                                                                         }}
@@ -927,6 +961,7 @@ export function MeetingPollNew() {
                                                                         className="cursor-text hover:underline underline-offset-2 truncate"
                                                                         onClick={() => {
                                                                             setEditing({ id: p.id, field: 'email' });
+                                                                            setEditingDraft({ id: p.id, field: 'email', initialValue: p.email || '', value: p.email || '' });
                                                                             setFrozenOrder(currentSortedOrderIds);
                                                                         }}
                                                                         title={p.email}
