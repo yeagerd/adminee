@@ -46,7 +46,7 @@ export function MeetingPollNew() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     // Step 3: Participants
-    const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
+    const [participants, setParticipants] = useState<Array<{ id: string; email: string; name: string }>>([]);
     const [personQuery, setPersonQuery] = useState("");
     const [suggestions, setSuggestions] = useState<Array<{ email: string; name?: string }>>([]);
     const [highlightIndex, setHighlightIndex] = useState<number>(-1);
@@ -253,9 +253,23 @@ export function MeetingPollNew() {
     const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
     const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
 
-    // Remove participant by email
-    const removeParticipant = (email: string) =>
-        setParticipants(prev => prev.filter(p => p.email !== email));
+    // Remove participant by stable id
+    const removeParticipant = (id: string) =>
+        setParticipants(prev => prev.filter(p => p.id !== id));
+
+    const generateTempId = (): string => {
+        try {
+            // Prefer stable UUID when available
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const anyCrypto: any = (globalThis as unknown as { crypto?: Crypto }).crypto;
+            if (anyCrypto && typeof anyCrypto.randomUUID === 'function') {
+                return anyCrypto.randomUUID();
+            }
+        } catch {
+            // ignore
+        }
+        return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    };
 
     // ---- Step 3 helpers: parsing and adding people ----
     const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
@@ -331,11 +345,11 @@ export function MeetingPollNew() {
         if (!people || people.length === 0) return;
         setParticipants(prev => {
             const existing = new Set(prev.map(p => p.email.toLowerCase()));
-            const toAdd: { email: string; name: string }[] = [];
+            const toAdd: { id: string; email: string; name: string }[] = [];
             for (const person of people) {
                 const emailKey = person.email.toLowerCase();
                 if (existing.has(emailKey)) continue;
-                toAdd.push({ email: person.email.trim(), name: (person.name || "").trim() });
+                toAdd.push({ id: generateTempId(), email: person.email.trim(), name: (person.name || "").trim() });
                 existing.add(emailKey);
             }
             return [...prev, ...toAdd];
@@ -794,7 +808,7 @@ export function MeetingPollNew() {
                                         {/* Participant editor grid */}
                                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {participants.map((p, idx) => (
-                                                <div key={`${p.email}-${idx}`} className="border rounded-lg p-3">
+                                                <div key={p.id} className="border rounded-lg p-3">
                                                     <div className="flex items-start gap-2">
                                                         <div className="flex-1 space-y-2">
                                                             <input
@@ -805,9 +819,9 @@ export function MeetingPollNew() {
                                                                     setParticipants(prev => prev.map((item, i) => i === idx ? { ...item, name: value } : item));
                                                                 }}
                                                                 placeholder="Name (optional)"
-                                                                type="text"
-                                                            />
-                                                            <input
+                                                type="text"
+                                            />
+                                            <input
                                                                 className="w-full border rounded px-2 py-1"
                                                                 value={p.email}
                                                                 onChange={(e) => {
@@ -815,19 +829,19 @@ export function MeetingPollNew() {
                                                                     setParticipants(prev => prev.map((item, i) => i === idx ? { ...item, email: value } : item));
                                                                 }}
                                                                 placeholder="email@domain.com"
-                                                                type="email"
-                                                            />
+                                                type="email"
+                                            />
                                                         </div>
                                                         <button
                                                             type="button"
                                                             className="shrink-0 text-red-600 hover:text-red-700 p-1"
                                                             aria-label="Remove participant"
-                                                            onClick={() => removeParticipant(p.email)}
+                                                            onClick={() => removeParticipant(p.id)}
                                                         >
                                                             <XCircle className="w-6 h-6" />
                                                         </button>
                                                     </div>
-                                                </div>
+                                        </div>
                                             ))}
                                         </div>
                                     </div>
