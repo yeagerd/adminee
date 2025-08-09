@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToolState } from "@/contexts/tool-context";
 import type { MeetingPoll, PollParticipant } from "@/lib/gateway-client";
 import { gatewayClient } from "@/lib/gateway-client";
 import { CalendarEvent } from "@/types/office-service";
-import { ArrowLeft, LinkIcon } from "lucide-react";
+import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from "react";
@@ -46,9 +47,54 @@ export function MeetingPollNew() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     // Step 3: Participants
-    const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
-    const [participantEmailInput, setParticipantEmailInput] = useState("");
-    const [participantNameInput, setParticipantNameInput] = useState("");
+    const [participants, setParticipants] = useState<Array<{ id: string; email: string; name: string }>>([]);
+    const [personQuery, setPersonQuery] = useState("");
+    const [suggestions, setSuggestions] = useState<Array<{ email: string; name?: string }>>([]);
+    const [highlightIndex, setHighlightIndex] = useState<number>(-1);
+    const [editing, setEditing] = useState<{ id: string; field: 'name' | 'email' } | null>(null);
+    const [editingDraft, setEditingDraft] = useState<
+        { id: string; field: 'name' | 'email'; initialValue: string; value: string } | null
+    >(null);
+    const [frozenOrder, setFrozenOrder] = useState<string[] | null>(null);
+
+    const currentSortedOrderIds = (() => {
+        const sorted = [...participants].sort((a, b) => {
+            const an = (a.name || "").trim().toLowerCase();
+            const bn = (b.name || "").trim().toLowerCase();
+            if (an !== bn) return an.localeCompare(bn);
+            const ae = (a.email || "").trim().toLowerCase();
+            const be = (b.email || "").trim().toLowerCase();
+            return ae.localeCompare(be);
+        });
+        return sorted.map(p => p.id);
+    })();
+
+    const getRenderedParticipants = (): Array<{ id: string; email: string; name: string }> => {
+        if (editing && frozenOrder) {
+            const byId = new Map(participants.map(p => [p.id, p] as const));
+            const frozenList = frozenOrder.map(id => byId.get(id)).filter((p): p is { id: string; email: string; name: string } => Boolean(p));
+            // Append any new participants not in frozen order, keeping their relative sorted order
+            const missing = participants.filter(p => !frozenOrder.includes(p.id)).sort((a, b) => {
+                const an = (a.name || "").trim().toLowerCase();
+                const bn = (b.name || "").trim().toLowerCase();
+                if (an !== bn) return an.localeCompare(bn);
+                const ae = (a.email || "").trim().toLowerCase();
+                const be = (b.email || "").trim().toLowerCase();
+                return ae.localeCompare(be);
+            });
+            return [...frozenList, ...missing];
+        }
+        // Default: sorted order
+        const sorted = [...participants].sort((a, b) => {
+            const an = (a.name || "").trim().toLowerCase();
+            const bn = (b.name || "").trim().toLowerCase();
+            if (an !== bn) return an.localeCompare(bn);
+            const ae = (a.email || "").trim().toLowerCase();
+            const be = (b.email || "").trim().toLowerCase();
+            return ae.localeCompare(be);
+        });
+        return sorted;
+    };
     // Step 4: Review & Submit
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
@@ -155,8 +201,8 @@ export function MeetingPollNew() {
                     timezone: timeZone
                 })),
                 participants: participants.map(p => ({
-                    name: p.name.trim(),
-                    email: p.email.trim()
+                    email: p.email.trim(),
+                    name: p.name.trim() || undefined,
                 })),
                 response_deadline: responseDeadline,
                 send_emails: sendEmails,
@@ -252,21 +298,144 @@ export function MeetingPollNew() {
     const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
     const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
 
-    // Add participant
-    const addParticipant = () => {
-        if (
-            participantEmailInput &&
-            /.+@.+\..+/.test(participantEmailInput) &&
-            participantNameInput.trim().length > 0 &&
-            !participants.some(p => p.email === participantEmailInput)
-        ) {
-            setParticipants([...participants, { email: participantEmailInput, name: participantNameInput }]);
-            setParticipantEmailInput("");
-            setParticipantNameInput("");
+    // Remove participant by stable id
+    const removeParticipant = (id: string) =>
+        setParticipants(prev => prev.filter(p => p.id !== id));
+
+    const generateTempId = (): string => {
+        try {
+            // Prefer stable UUID when available
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const anyCrypto: any = (globalThis as unknown as { crypto?: Crypto }).crypto;
+            if (anyCrypto && typeof anyCrypto.randomUUID === 'function') {
+                return anyCrypto.randomUUID();
+            }
+        } catch {
+            // ignore
+        }
+        return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    };
+
+    // ---- Step 3 helpers: parsing and adding people ----
+    const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+    const parsePeopleFromText = (text: string): Array<{ email: string; name?: string }> => {
+        const results: Array<{ email: string; name?: string }> = [];
+        if (!text) return results;
+
+        let remaining = text;
+
+        // 1) Extract patterns like: First Last <email@domain.com>
+        const nameEmailPattern = /\s*([^<>,;\n\r\t]+?)?\s*<\s*([^<>@\s,;]+@[^<>@\s,;]+)\s*>\s*/g;
+        let match: RegExpExecArray | null;
+        const consumedRanges: Array<{ start: number; end: number }> = [];
+        while ((match = nameEmailPattern.exec(text)) !== null) {
+            const nameRaw = (match[1] || "").trim();
+            const emailRaw = (match[2] || "").trim();
+            if (EMAIL_REGEX.test(emailRaw)) {
+                results.push({ email: emailRaw, name: nameRaw || undefined });
+                consumedRanges.push({ start: match.index, end: match.index + match[0].length });
+            }
+        }
+
+        // Remove consumed ranges from remaining
+        if (consumedRanges.length > 0) {
+            let cursor = 0;
+            let reduced = "";
+            for (const r of consumedRanges) {
+                reduced += text.slice(cursor, r.start);
+                cursor = r.end;
+            }
+            reduced += text.slice(cursor);
+            remaining = reduced;
+        }
+
+        // 2) Extract bare emails from remaining text
+        const bareEmailPattern = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi;
+        let m: RegExpExecArray | null;
+        while ((m = bareEmailPattern.exec(remaining)) !== null) {
+            const email = (m[1] || m[0]).trim();
+            if (EMAIL_REGEX.test(email)) {
+                results.push({ email });
+            }
+        }
+
+        // 3) Also split on common delimiters and try to parse unit segments
+        const segments = remaining
+            .split(/[\n\r,;]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+        for (const seg of segments) {
+            if (EMAIL_REGEX.test(seg)) {
+                const emailMatch = seg.match(bareEmailPattern);
+                if (emailMatch && emailMatch[0]) {
+                    results.push({ email: emailMatch[0].trim() });
+                }
+            }
+        }
+
+        // Dedupe by lowercased email
+        const seen = new Set<string>();
+        const deduped: Array<{ email: string; name?: string }> = [];
+        for (const r of results) {
+            const key = r.email.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            deduped.push(r);
+        }
+        return deduped;
+    };
+
+    const addPeople = (people: Array<{ email: string; name?: string }>) => {
+        if (!people || people.length === 0) return;
+        setParticipants(prev => {
+            const existing = new Set(prev.map(p => p.email.toLowerCase()));
+            const toAdd: { id: string; email: string; name: string }[] = [];
+            for (const person of people) {
+                const emailKey = person.email.toLowerCase();
+                if (existing.has(emailKey)) continue;
+                toAdd.push({ id: generateTempId(), email: person.email.trim(), name: (person.name || "").trim() });
+                existing.add(emailKey);
+            }
+            return [...prev, ...toAdd];
+        });
+    };
+
+    const confirmPersonQuery = () => {
+        const text = personQuery.trim();
+        if (!text) return;
+
+        // If there is a highlighted suggestion, prefer that
+        if (suggestions.length > 0 && highlightIndex >= 0 && highlightIndex < suggestions.length) {
+            const selected = suggestions[highlightIndex];
+            addPeople([{ email: selected.email, name: selected.name }]);
+            setPersonQuery("");
+            setSuggestions([]);
+            setHighlightIndex(-1);
+            return;
+        }
+
+        // Otherwise, parse emails from the text
+        const parsed = parsePeopleFromText(text);
+        if (parsed.length > 0) {
+            addPeople(parsed);
+            setPersonQuery("");
+            setSuggestions([]);
+            setHighlightIndex(-1);
         }
     };
 
-    const removeParticipant = (email: string) => setParticipants(participants.filter(p => p.email !== email));
+    // Suggestions stub (to be replaced with contacts provider)
+    useEffect(() => {
+        if (!personQuery.trim()) {
+            setSuggestions([]);
+            setHighlightIndex(-1);
+            return;
+        }
+        // TODO: integrate contacts search; for now, no results
+        setSuggestions([]);
+        setHighlightIndex(-1);
+    }, [personQuery]);
 
     // Fetch calendar events for conflict detection
     useEffect(() => {
@@ -317,7 +486,7 @@ export function MeetingPollNew() {
     // Validation helpers
     const isStep1Valid = title && (typeof duration === 'number' && duration > 0) && timeZone;
     const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
-    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
+    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email));
 
     return (
         <div className="px-8 pb-8">
@@ -606,31 +775,216 @@ export function MeetingPollNew() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block font-semibold mb-1">Participants</label>
-                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                                        <div className="relative">
                                             <input
-                                                className="border rounded px-3 py-2"
-                                                value={participantNameInput}
-                                                onChange={e => setParticipantNameInput(e.target.value)}
-                                                placeholder="Name"
+                                                className="w-full border rounded px-3 py-2"
+                                                value={personQuery}
+                                                onChange={(e) => setPersonQuery(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        confirmPersonQuery();
+                                                    } else if (e.key === 'ArrowDown') {
+                                                        e.preventDefault();
+                                                        if (suggestions.length > 0) {
+                                                            setHighlightIndex((prev) => {
+                                                                const next = prev + 1;
+                                                                return next >= suggestions.length ? suggestions.length - 1 : next;
+                                                            });
+                                                        }
+                                                    } else if (e.key === 'ArrowUp') {
+                                                        e.preventDefault();
+                                                        if (suggestions.length > 0) {
+                                                            setHighlightIndex((prev) => {
+                                                                const next = prev - 1;
+                                                                return next < 0 ? 0 : next;
+                                                            });
+                                                        }
+                                                    } else if (e.key === 'Escape') {
+                                                        setSuggestions([]);
+                                                        setHighlightIndex(-1);
+                                                    }
+                                                }}
+                                                onPaste={(e) => {
+                                                    const text = e.clipboardData.getData('text');
+                                                    const parsed = parsePeopleFromText(text);
+                                                    if (parsed.length > 0) {
+                                                        e.preventDefault();
+                                                        addPeople(parsed);
+                                                        setPersonQuery("");
+                                                        setSuggestions([]);
+                                                        setHighlightIndex(-1);
+                                                    }
+                                                }}
+                                                placeholder="Type a name or paste emails (e.g., First Last <email@domain.com>)"
                                                 type="text"
                                             />
-                                            <input
-                                                className="border rounded px-3 py-2"
-                                                value={participantEmailInput}
-                                                onChange={e => setParticipantEmailInput(e.target.value)}
-                                                placeholder="Email"
-                                                type="email"
-                                            />
-                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
+                                            {suggestions.length > 0 && (
+                                                <ul className="absolute z-10 mt-1 w-full bg-white border rounded shadow max-h-60 overflow-auto">
+                                                    {suggestions.map((s, idx) => (
+                                                        <li
+                                                            key={`${s.email}-${idx}`}
+                                                            className={
+                                                                "px-3 py-2 cursor-pointer flex items-center justify-between " +
+                                                                (idx === highlightIndex ? "bg-teal-50" : "hover:bg-gray-50")
+                                                            }
+                                                            onMouseEnter={() => setHighlightIndex(idx)}
+                                                            onMouseDown={(e) => {
+                                                                // Prevent input blur before click
+                                                                e.preventDefault();
+                                                            }}
+                                                            onClick={() => {
+                                                                addPeople([{ email: s.email, name: s.name }]);
+                                                                setPersonQuery("");
+                                                                setSuggestions([]);
+                                                                setHighlightIndex(-1);
+                                                            }}
+                                                        >
+                                                            <span className="truncate">{s.name || s.email}</span>
+                                                            {s.name && (
+                                                                <span className="ml-2 text-sm text-gray-600 truncate">{s.email}</span>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
                                         </div>
-                                        <ul className="flex flex-wrap gap-2">
-                                            {participants.map(p => (
-                                                <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
-                                                    <span>{p.name} ({p.email})</span>
-                                                    <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
-                                                </li>
-                                            ))}
-                                        </ul>
+
+                                        {/* Participant table (tight grid), sorted by Name then Email */}
+                                        <div className="mt-3">
+                                            <Table className="text-sm">
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-1/3 py-2">Name</TableHead>
+                                                        <TableHead className="w-1/2 py-2">Email Address</TableHead>
+                                                        <TableHead className="w-[60px] text-right py-2">Remove</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {getRenderedParticipants().map((p) => (
+                                                        <TableRow key={p.id}>
+                                                            <TableCell className="py-1.5">
+                                                                {editing && editing.id === p.id && editing.field === 'name' ? (
+                                                                    <input
+                                                                        className="w-full border rounded px-2 py-1"
+                                                                        value={editingDraft?.id === p.id && editingDraft.field === 'name' ? editingDraft.value : p.name}
+                                                                        autoFocus
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value;
+                                                                            setEditingDraft(prev => prev && prev.id === p.id && prev.field === 'name' ? { ...prev, value } : prev);
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            // Commit on blur
+                                                                            if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'name') {
+                                                                                const commitValue = editingDraft.value;
+                                                                                setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, name: commitValue } : item));
+                                                                            }
+                                                                            setEditing(null);
+                                                                            setEditingDraft(null);
+                                                                            setFrozenOrder(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                // Commit on Enter
+                                                                                if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'name') {
+                                                                                    const commitValue = editingDraft.value;
+                                                                                    setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, name: commitValue } : item));
+                                                                                }
+                                                                                setEditing(null);
+                                                                                setEditingDraft(null);
+                                                                                setFrozenOrder(null);
+                                                                            } else if (e.key === 'Escape') {
+                                                                                // Cancel without saving (revert)
+                                                                                setEditing(null);
+                                                                                setEditingDraft(null);
+                                                                                setFrozenOrder(null);
+                                                                            }
+                                                                        }}
+                                                                        placeholder="Name (optional)"
+                                                                        type="text"
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        className="cursor-text hover:underline underline-offset-2"
+                                                                        onClick={() => {
+                                                                            setEditing({ id: p.id, field: 'name' });
+                                                                            setEditingDraft({ id: p.id, field: 'name', initialValue: p.name || '', value: p.name || '' });
+                                                                            setFrozenOrder(currentSortedOrderIds);
+                                                                        }}
+                                                                    >
+                                                                        {p.name || <span className="text-muted-foreground">Click to add name</span>}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-1.5">
+                                                                {editing && editing.id === p.id && editing.field === 'email' ? (
+                                                                    <input
+                                                                        className="w-full border rounded px-2 py-1"
+                                                                        value={editingDraft?.id === p.id && editingDraft.field === 'email' ? editingDraft.value : p.email}
+                                                                        autoFocus
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value;
+                                                                            setEditingDraft(prev => prev && prev.id === p.id && prev.field === 'email' ? { ...prev, value } : prev);
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            // Commit on blur
+                                                                            if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'email') {
+                                                                                const commitValue = editingDraft.value;
+                                                                                setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, email: commitValue } : item));
+                                                                            }
+                                                                            setEditing(null);
+                                                                            setEditingDraft(null);
+                                                                            setFrozenOrder(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                // Commit on Enter
+                                                                                if (editingDraft && editingDraft.id === p.id && editingDraft.field === 'email') {
+                                                                                    const commitValue = editingDraft.value;
+                                                                                    setParticipants(prev => prev.map(item => item.id === p.id ? { ...item, email: commitValue } : item));
+                                                                                }
+                                                                                setEditing(null);
+                                                                                setEditingDraft(null);
+                                                                                setFrozenOrder(null);
+                                                                            } else if (e.key === 'Escape') {
+                                                                                // Cancel without saving (revert)
+                                                                                setEditing(null);
+                                                                                setEditingDraft(null);
+                                                                                setFrozenOrder(null);
+                                                                            }
+                                                                        }}
+                                                                        placeholder="email@domain.com"
+                                                                        type="email"
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        className="cursor-text hover:underline underline-offset-2 truncate"
+                                                                        onClick={() => {
+                                                                            setEditing({ id: p.id, field: 'email' });
+                                                                            setEditingDraft({ id: p.id, field: 'email', initialValue: p.email || '', value: p.email || '' });
+                                                                            setFrozenOrder(currentSortedOrderIds);
+                                                                        }}
+                                                                        title={p.email}
+                                                                    >
+                                                                        {p.email || <span className="text-muted-foreground">Click to add email</span>}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-1.5 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    className="inline-flex items-center text-red-600 hover:text-red-700 p-1"
+                                                                    aria-label="Remove participant"
+                                                                    onClick={() => removeParticipant(p.id)}
+                                                                >
+                                                                    <XCircle className="w-5 h-5" />
+                                                                </button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     </div>
                                 </div>
                             )}
