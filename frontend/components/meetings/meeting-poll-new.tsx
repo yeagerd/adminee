@@ -257,45 +257,54 @@ export function MeetingPollNew() {
         if (e) e.preventDefault();
         if (navLockRef.current) return;
         navLockRef.current = true;
-        setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
+
+        setStep((s) => {
+            const current = Number.isFinite(s) ? s : 1;
+            const next = clampStep(current + 1);
+
+            // If transitioning to step 4, activate submit guard immediately
+            if (next === 4 && current !== 4) {
+                setSubmitGuardActive(true);
+                if (submitGuardTimeoutRef.current) {
+                    window.clearTimeout(submitGuardTimeoutRef.current);
+                }
+                submitGuardTimeoutRef.current = window.setTimeout(() => {
+                    setSubmitGuardActive(false);
+                    submitGuardTimeoutRef.current = null;
+                }, 300);
+            }
+
+            return next;
+        });
+
+        // Always release lock after a brief delay, regardless of whether step actually changes
+        setTimeout(() => {
+            navLockRef.current = false;
+        }, 0);
     };
+
     const prevStep = (e?: React.MouseEvent<HTMLButtonElement>) => {
         if (e) e.preventDefault();
         if (navLockRef.current) return;
         navLockRef.current = true;
+
         setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
+
+        // Always release lock after a brief delay, regardless of whether step actually changes
+        setTimeout(() => {
+            navLockRef.current = false;
+        }, 0);
     };
 
-    // Release navigation lock after each step change render
+    // Cleanup submit guard timeout on unmount
     useEffect(() => {
-        navLockRef.current = false;
-    }, [step]);
-
-    // Temporarily disable submit immediately after entering step 4 to prevent click-through
-    useEffect(() => {
-        if (step === 4) {
-            setSubmitGuardActive(true);
-            if (submitGuardTimeoutRef.current) {
-                window.clearTimeout(submitGuardTimeoutRef.current);
-            }
-            submitGuardTimeoutRef.current = window.setTimeout(() => {
-                setSubmitGuardActive(false);
-                submitGuardTimeoutRef.current = null;
-            }, 300);
-        } else {
-            setSubmitGuardActive(false);
-            if (submitGuardTimeoutRef.current) {
-                window.clearTimeout(submitGuardTimeoutRef.current);
-                submitGuardTimeoutRef.current = null;
-            }
-        }
         return () => {
             if (submitGuardTimeoutRef.current) {
                 window.clearTimeout(submitGuardTimeoutRef.current);
                 submitGuardTimeoutRef.current = null;
             }
         };
-    }, [step]);
+    }, []);
 
     // Add participant
     const addParticipant = () => {
