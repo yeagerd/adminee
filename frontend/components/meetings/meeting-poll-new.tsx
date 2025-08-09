@@ -249,7 +249,14 @@ export function MeetingPollNew() {
     };
 
     // Step navigation
-    const nextStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
+    const nextStep = () => {
+        // Defer the step change so the original click event completes
+        // This prevents the newly rendered submit button (step 4)
+        // from accidentally receiving the same click and submitting the form
+        setTimeout(() => {
+            setStep((s) => clampStep((Number.isFinite(s) ? s : 1) + 1));
+        }, 0);
+    };
     const prevStep = () => setStep((s) => clampStep((Number.isFinite(s) ? s : 1) - 1));
 
     // Add participant
