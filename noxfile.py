@@ -66,7 +66,13 @@ def test(session: nox.Session) -> None:
     """Run tests for all services."""
     # Install test dependencies
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "pytest-xdist", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "pytest-xdist",
+        "respx",
     )
 
     # Use UV to sync workspace packages (this ensures they're installed in editable mode)
@@ -80,7 +86,12 @@ def test(session: nox.Session) -> None:
 def test_fast(session: nox.Session) -> None:
     """Run fast tests only."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "respx",
     )
     
     # Use UV to sync workspace packages
@@ -95,13 +106,21 @@ def test_fast(session: nox.Session) -> None:
     session.run(
         "python", "-m", "pytest", "services/office/tests/", "-v", "-k", "not slow"
     )
+    session.run(
+        "python", "-m", "pytest", "services/email_sync/", "-v", "-k", "not slow"
+    )
 
 
 @nox.session(python="3.12")
 def test_cov(session: nox.Session) -> None:
     """Run tests with coverage."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "respx",
     )
     
     # Use UV to sync workspace packages
@@ -134,13 +153,27 @@ def test_cov(session: nox.Session) -> None:
         "--cov-report=xml:coverage-office-service.xml",
         "-v",
     )
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/email_sync/",
+        "--cov=services/email_sync",
+        "--cov-report=xml:coverage-email-sync.xml",
+        "-v",
+    )
 
 
 @nox.session(python="3.12")
 def test_serial(session: nox.Session) -> None:
     """Run tests serially (not in parallel)."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "respx",
     )
     
     # Use UV to sync workspace packages
@@ -149,3 +182,4 @@ def test_serial(session: nox.Session) -> None:
     session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
     session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
     session.run("python", "-m", "pytest", "services/office/tests/", "-v", "--tb=short")
+    session.run("python", "-m", "pytest", "services/email_sync/", "-v", "--tb=short")

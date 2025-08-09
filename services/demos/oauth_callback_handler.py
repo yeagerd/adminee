@@ -93,8 +93,8 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
             <h3>Captured OAuth Data:</h3>
             <div class="code">
                 <strong>Authorization Code:</strong> {code[:20]}...
-                <br><strong>State:</strong> {state or 'None'}
-                <br><strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                <br><strong>State:</strong> {state or "None"}
+                <br><strong>Timestamp:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             </div>
             
             <div class="note">
@@ -136,7 +136,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
             <h1>❌ OAuth Authorization Failed</h1>
             <div class="error">
                 <p><strong>Error:</strong> {error}</p>
-                {f'<p><strong>Description:</strong> {error_description}</p>' if error_description else ''}
+                {f"<p><strong>Description:</strong> {error_description}</p>" if error_description else ""}
             </div>
             
             <h3>Common Reasons:</h3>
