@@ -61,6 +61,8 @@ export function MeetingPollNew() {
 
     const isNavigatingRef = useRef(false);
     const navLockRef = useRef(false);
+    const [submitGuardActive, setSubmitGuardActive] = useState(false);
+    const submitGuardTimeoutRef = useRef<number | null>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const headerTitleInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,6 +124,7 @@ export function MeetingPollNew() {
     // Submit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitGuardActive) return;
 
         // Validate required fields
         if (!title.trim()) {
@@ -268,6 +271,32 @@ export function MeetingPollNew() {
         navLockRef.current = false;
     }, [step]);
 
+    // Temporarily disable submit immediately after entering step 4 to prevent click-through
+    useEffect(() => {
+        if (step === 4) {
+            setSubmitGuardActive(true);
+            if (submitGuardTimeoutRef.current) {
+                window.clearTimeout(submitGuardTimeoutRef.current);
+            }
+            submitGuardTimeoutRef.current = window.setTimeout(() => {
+                setSubmitGuardActive(false);
+                submitGuardTimeoutRef.current = null;
+            }, 300);
+        } else {
+            setSubmitGuardActive(false);
+            if (submitGuardTimeoutRef.current) {
+                window.clearTimeout(submitGuardTimeoutRef.current);
+                submitGuardTimeoutRef.current = null;
+            }
+        }
+        return () => {
+            if (submitGuardTimeoutRef.current) {
+                window.clearTimeout(submitGuardTimeoutRef.current);
+                submitGuardTimeoutRef.current = null;
+            }
+        };
+    }, [step]);
+
     // Add participant
     const addParticipant = () => {
         if (
@@ -362,7 +391,7 @@ export function MeetingPollNew() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onMouseDown={prevStep}
+                                onClick={prevStep}
                                 className="flex items-center gap-2"
                             >
                                 <ArrowLeft className="h-4 w-4" />
@@ -426,7 +455,7 @@ export function MeetingPollNew() {
                             <Button
                                 type="button"
                                 size="sm"
-                                onMouseDown={nextStep}
+                                onClick={nextStep}
                                 disabled={
                                     (step === 1 && !isStep1Valid) ||
                                     (step === 2 && !isStep2Valid) ||
@@ -440,7 +469,7 @@ export function MeetingPollNew() {
                                 type="submit"
                                 size="sm"
                                 form="new-poll-form"
-                                disabled={loading}
+                                disabled={loading || submitGuardActive}
                             >
                                 {loading ? "Creating..." : (sendEmails ? "Create & Send" : "Generate Poll")}
                             </Button>
