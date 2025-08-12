@@ -70,7 +70,9 @@ async def create_calendar_event(
     )
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(url, headers=headers, json=event_data.model_dump())
+        resp = await client.post(
+            url, headers=headers, json=event_data.model_dump(mode="json")
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -119,7 +121,10 @@ async def update_calendar_event(
     params = {"user_id": user_id}
     async with httpx.AsyncClient() as client:
         resp = await client.put(
-            url, headers=headers, params=params, json=event_data.model_dump()
+            url,
+            headers=headers,
+            params=params,
+            json=event_data.model_dump(mode="json"),
         )
         resp.raise_for_status()
         return resp.json()
