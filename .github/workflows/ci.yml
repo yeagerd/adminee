@@ -59,8 +59,15 @@ jobs:
 
     - name: Check for conftest.py files
       run: |
-        if find . -type f -name "conftest.py" | grep -q .; then
-          echo "Error: conftest.py files are not allowed. Please remove them."
+        set -euo pipefail
+        # Find conftest.py in the repository while excluding tool and virtual environment directories
+        mapfile -t conftest_files < <(find . \
+          -type d \( -name .venv -o -name .nox -o -name .git -o -name node_modules -o -name dist -o -name build \) -prune \
+          -o -type f -name "conftest.py" -print)
+
+        if (( ${#conftest_files[@]} > 0 )); then
+          echo "Error: conftest.py files are not allowed. Found the following files:"
+          printf '%s\n' "${conftest_files[@]}"
           exit 1
         fi
 
