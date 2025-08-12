@@ -57,6 +57,13 @@ jobs:
         source .venv/bin/activate
         nox -s format lint
 
+    - name: Check for conftest.py files
+      run: |
+        if find . -type f -name "conftest.py" | grep -q .; then
+          echo "Error: conftest.py files are not allowed. Please remove them."
+          exit 1
+        fi
+
   typecheck:
     name: Python Type Checking
     runs-on: ubuntu-latest
