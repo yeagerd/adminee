@@ -5,7 +5,7 @@ Provides NextAuth JWT validation, service-to-service authentication,
 and user authorization helpers.
 """
 
-from .nextauth import (
+from services.user.auth.nextauth import (
     get_current_user,
     get_current_user_flexible,
     get_current_user_from_gateway_headers,
@@ -14,7 +14,7 @@ from .nextauth import (
     verify_jwt_token,
     verify_user_ownership,
 )
-from .service_auth import (
+from services.user.auth.service_auth import (
     client_has_permission,
     get_client_permissions,
     service_permission_required,
