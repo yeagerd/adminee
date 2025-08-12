@@ -32,10 +32,13 @@ const nextConfig = {
         // Only add upgrade-insecure-requests in production
         if (isProduction) {
             cspDirectives.push("upgrade-insecure-requests");
-            // In production, also add HTTPS version of gateway URL
+            // In production, also add HTTPS version of gateway URL by appending to existing connect-src
             if (gatewayUrl.startsWith('http://')) {
                 const httpsGatewayUrl = gatewayUrl.replace('http://', 'https://');
-                cspDirectives.push(`connect-src 'self' ${gatewayUrl} ${httpsGatewayUrl} https://login.microsoftonline.com https://graph.microsoft.com https://accounts.google.com https://www.googleapis.com`);
+                const connectSrcIndex = cspDirectives.findIndex((directive) => directive.startsWith("connect-src "));
+                if (connectSrcIndex !== -1 && !cspDirectives[connectSrcIndex].includes(httpsGatewayUrl)) {
+                    cspDirectives[connectSrcIndex] = `${cspDirectives[connectSrcIndex]} ${httpsGatewayUrl}`;
+                }
             }
         }
 
