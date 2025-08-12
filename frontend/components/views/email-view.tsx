@@ -107,7 +107,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
     const { toast } = useToast();
-    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata, createNewDraft } = useDraftState();
+    const { setCurrentDraft, updateDraft, createNewDraft } = useDraftState();
 
     // Bulk action states
     const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
@@ -401,7 +401,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         const provider = response.data.provider_used as 'google' | 'microsoft' | undefined;
                         const session = await getSession();
                         const local = createNewDraft('email', session?.user?.id || '');
-                        const subject = latest?.message?.payload?.headers?.find?.((h: any) => h.name === 'Subject')?.value || latest?.subject || '';
+                        const subject = (
+                            (latest?.message?.payload?.headers as Array<{ name?: string; value?: string }> | undefined)?.find?.(
+                                (h) => h?.name === 'Subject'
+                            )?.value
+                        ) || latest?.subject || '';
                         const body = latest?.message?.snippet || latest?.body?.content || '';
                         updateDraft({
                             id: local.id,
@@ -431,7 +435,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         } finally {
             setLoadingThread(false);
         }
-    }, []);
+    }, [createNewDraft, setCurrentDraft, updateDraft]);
 
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);

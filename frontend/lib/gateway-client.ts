@@ -324,7 +324,7 @@ export class GatewayClient {
         thread_id?: string;
         reply_to_message_id?: string;
         provider?: 'google' | 'microsoft';
-    }): Promise<{ success: boolean; data?: any; error?: any; request_id: string }> {
+    }): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; draft?: Record<string, unknown> } | { deleted?: boolean } | { drafts?: unknown[] }; error?: { message?: string }; request_id: string }> {
         return this.request(`/api/v1/email/drafts`, {
             method: 'POST',
             body: {
@@ -348,7 +348,7 @@ export class GatewayClient {
         subject?: string;
         body?: string;
         provider: 'google' | 'microsoft';
-    }): Promise<{ success: boolean; data?: any; error?: any; request_id: string }> {
+    }): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; draft?: Record<string, unknown> }; error?: { message?: string }; request_id: string }> {
         return this.request(`/api/v1/email/drafts/${draftId}`, {
             method: 'PUT',
             body: {
@@ -368,7 +368,7 @@ export class GatewayClient {
         return this.request(`/api/v1/email/drafts/${draftId}?${params.toString()}`, { method: 'DELETE' });
     }
 
-    async listThreadDrafts(threadId: string): Promise<{ success: boolean; data?: any; error?: any; request_id: string }> {
+    async listThreadDrafts(threadId: string): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; drafts?: unknown[] }; error?: { message?: string }; request_id: string }> {
         return this.request(`/api/v1/email/threads/${threadId}/drafts`);
     }
 
