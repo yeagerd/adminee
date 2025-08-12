@@ -35,7 +35,6 @@ from services.office.core.normalizer import (
 from services.office.core.settings import get_settings
 from services.office.models import Provider
 from services.office.schemas import (
-    EmailAddress,
     EmailDraftCreateRequest,
     EmailDraftResponse,
     EmailDraftUpdateRequest,
@@ -2049,7 +2048,9 @@ async def create_email_draft(
     user_id = await get_user_id_from_gateway(request)
 
     try:
-        provider = (draft_request.provider or "").lower() if draft_request.provider else None
+        provider = (
+            (draft_request.provider or "").lower() if draft_request.provider else None
+        )
         # Infer provider from thread_id prefix if not explicitly provided
         if not provider and draft_request.thread_id:
             if draft_request.thread_id.startswith("gmail_"):
@@ -2061,12 +2062,22 @@ async def create_email_draft(
             providers = await get_user_email_providers(user_id)
             provider = providers[0] if providers else None
         if provider not in ["google", "microsoft"]:
-            return EmailDraftResponse(success=False, error={"message": "No provider available"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={"message": "No provider available"},
+                request_id=request_id,
+            )
 
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
         if client is None:
-            return EmailDraftResponse(success=False, error={"message": f"Failed to create API client for provider {provider}"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={
+                    "message": f"Failed to create API client for provider {provider}"
+                },
+                request_id=request_id,
+            )
 
         async with client:
             if provider == "google":
@@ -2078,45 +2089,134 @@ async def create_email_draft(
                 subject = draft_request.subject or ""
                 body = draft_request.body or ""
                 # threadId for gmail if provided
-                thread_id = draft_request.thread_id.split("gmail_", 1)[1] if draft_request.thread_id and draft_request.thread_id.startswith("gmail_") else None
+                thread_id = (
+                    draft_request.thread_id.split("gmail_", 1)[1]
+                    if draft_request.thread_id
+                    and draft_request.thread_id.startswith("gmail_")
+                    else None
+                )
                 raw = _build_gmail_raw_message(to, cc, bcc, subject, body)
                 draft = await google_client.create_draft(raw, thread_id)
-                return EmailDraftResponse(success=True, data={"provider": provider, "draft": draft}, request_id=request_id)
+                return EmailDraftResponse(
+                    success=True,
+                    data={"provider": provider, "draft": draft},
+                    request_id=request_id,
+                )
             else:
                 microsoft_client = cast(MicrosoftAPIClient, client)
                 action = (draft_request.action or "new").lower()
                 created: Dict[str, Any]
-                if action in ("reply", "reply_all") and draft_request.reply_to_message_id:
-                    created = await microsoft_client.create_reply_draft(draft_request.reply_to_message_id, reply_all=(action == "reply_all"))
+                if (
+                    action in ("reply", "reply_all")
+                    and draft_request.reply_to_message_id
+                ):
+                    created = await microsoft_client.create_reply_draft(
+                        draft_request.reply_to_message_id,
+                        reply_all=(action == "reply_all"),
+                    )
                 elif action == "forward" and draft_request.reply_to_message_id:
-                    created = await microsoft_client.create_forward_draft(draft_request.reply_to_message_id)
+                    created = await microsoft_client.create_forward_draft(
+                        draft_request.reply_to_message_id
+                    )
                 else:
                     # New draft
-                    created = await microsoft_client.create_draft_message({
-                        "subject": draft_request.subject or "",
-                        "body": {"contentType": "Text", "content": draft_request.body or ""},
-                        "toRecipients": [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in (draft_request.to or [])],
-                        "ccRecipients": [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in (draft_request.cc or [])],
-                        "bccRecipients": [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in (draft_request.bcc or [])],
-                    })
+                    created = await microsoft_client.create_draft_message(
+                        {
+                            "subject": draft_request.subject or "",
+                            "body": {
+                                "contentType": "Text",
+                                "content": draft_request.body or "",
+                            },
+                            "toRecipients": [
+                                {
+                                    "emailAddress": {
+                                        "address": a.email,
+                                        "name": a.name or a.email,
+                                    }
+                                }
+                                for a in (draft_request.to or [])
+                            ],
+                            "ccRecipients": [
+                                {
+                                    "emailAddress": {
+                                        "address": a.email,
+                                        "name": a.name or a.email,
+                                    }
+                                }
+                                for a in (draft_request.cc or [])
+                            ],
+                            "bccRecipients": [
+                                {
+                                    "emailAddress": {
+                                        "address": a.email,
+                                        "name": a.name or a.email,
+                                    }
+                                }
+                                for a in (draft_request.bcc or [])
+                            ],
+                        }
+                    )
                 # Patch recipients/body if provided (for reply/forward templates)
                 patch: Dict[str, Any] = {}
                 if draft_request.subject is not None:
                     patch["subject"] = draft_request.subject
                 if draft_request.body is not None:
-                    patch["body"] = {"contentType": "Text", "content": draft_request.body}
+                    patch["body"] = {
+                        "contentType": "Text",
+                        "content": draft_request.body,
+                    }
                 if draft_request.to is not None:
-                    patch["toRecipients"] = [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in draft_request.to]
+                    patch["toRecipients"] = [
+                        {
+                            "emailAddress": {
+                                "address": a.email,
+                                "name": a.name or a.email,
+                            }
+                        }
+                        for a in draft_request.to
+                    ]
                 if draft_request.cc is not None:
-                    patch["ccRecipients"] = [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in draft_request.cc]
+                    patch["ccRecipients"] = [
+                        {
+                            "emailAddress": {
+                                "address": a.email,
+                                "name": a.name or a.email,
+                            }
+                        }
+                        for a in draft_request.cc
+                    ]
                 if draft_request.bcc is not None:
-                    patch["bccRecipients"] = [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in draft_request.bcc]
+                    patch["bccRecipients"] = [
+                        {
+                            "emailAddress": {
+                                "address": a.email,
+                                "name": a.name or a.email,
+                            }
+                        }
+                        for a in draft_request.bcc
+                    ]
                 if patch:
-                    created = await microsoft_client.update_draft_message(created.get("id"), patch)
-                return EmailDraftResponse(success=True, data={"provider": provider, "draft": created}, request_id=request_id)
+                    draft_id_value = (
+                        created.get("id") if isinstance(created, dict) else None
+                    )
+                    if not isinstance(draft_id_value, str) or not draft_id_value:
+                        raise ValidationError(
+                            message="Failed to obtain draft id from provider response",
+                            field="draft_id",
+                        )
+                    created = await microsoft_client.update_draft_message(
+                        draft_id_value, patch
+                    )
+                return EmailDraftResponse(
+                    success=True,
+                    data={"provider": provider, "draft": created},
+                    request_id=request_id,
+                )
     except Exception as e:
         logger.error(f"Failed to create email draft: {e}")
-        return EmailDraftResponse(success=False, error={"message": str(e)}, request_id=request_id)
+        return EmailDraftResponse(
+            success=False, error={"message": str(e)}, request_id=request_id
+        )
 
 
 @router.put("/drafts/{draft_id}", response_model=EmailDraftResponse)
@@ -2129,13 +2229,25 @@ async def update_email_draft(
     request_id = get_request_id()
     user_id = await get_user_id_from_gateway(request)
     try:
-        provider = (draft_request.provider or "").lower() if draft_request.provider else None
+        provider = (
+            (draft_request.provider or "").lower() if draft_request.provider else None
+        )
         if provider not in ["google", "microsoft"]:
-            return EmailDraftResponse(success=False, error={"message": "provider is required"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={"message": "provider is required"},
+                request_id=request_id,
+            )
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
         if client is None:
-            return EmailDraftResponse(success=False, error={"message": f"Failed to create API client for provider {provider}"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={
+                    "message": f"Failed to create API client for provider {provider}"
+                },
+                request_id=request_id,
+            )
         async with client:
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
@@ -2146,25 +2258,62 @@ async def update_email_draft(
                 body = draft_request.body or ""
                 raw = _build_gmail_raw_message(to, cc, bcc, subject, body)
                 updated = await google_client.update_draft(draft_id, raw)
-                return EmailDraftResponse(success=True, data={"provider": provider, "draft": updated}, request_id=request_id)
+                return EmailDraftResponse(
+                    success=True,
+                    data={"provider": provider, "draft": updated},
+                    request_id=request_id,
+                )
             else:
                 microsoft_client = cast(MicrosoftAPIClient, client)
                 patch: Dict[str, Any] = {}
                 if draft_request.subject is not None:
                     patch["subject"] = draft_request.subject
                 if draft_request.body is not None:
-                    patch["body"] = {"contentType": "Text", "content": draft_request.body}
+                    patch["body"] = {
+                        "contentType": "Text",
+                        "content": draft_request.body,
+                    }
                 if draft_request.to is not None:
-                    patch["toRecipients"] = [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in draft_request.to]
+                    patch["toRecipients"] = [
+                        {
+                            "emailAddress": {
+                                "address": a.email,
+                                "name": a.name or a.email,
+                            }
+                        }
+                        for a in draft_request.to
+                    ]
                 if draft_request.cc is not None:
-                    patch["ccRecipients"] = [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in draft_request.cc]
+                    patch["ccRecipients"] = [
+                        {
+                            "emailAddress": {
+                                "address": a.email,
+                                "name": a.name or a.email,
+                            }
+                        }
+                        for a in draft_request.cc
+                    ]
                 if draft_request.bcc is not None:
-                    patch["bccRecipients"] = [{"emailAddress": {"address": a.email, "name": a.name or a.email}} for a in draft_request.bcc]
+                    patch["bccRecipients"] = [
+                        {
+                            "emailAddress": {
+                                "address": a.email,
+                                "name": a.name or a.email,
+                            }
+                        }
+                        for a in draft_request.bcc
+                    ]
                 updated = await microsoft_client.update_draft_message(draft_id, patch)
-                return EmailDraftResponse(success=True, data={"provider": provider, "draft": updated}, request_id=request_id)
+                return EmailDraftResponse(
+                    success=True,
+                    data={"provider": provider, "draft": updated},
+                    request_id=request_id,
+                )
     except Exception as e:
         logger.error(f"Failed to update email draft: {e}")
-        return EmailDraftResponse(success=False, error={"message": str(e)}, request_id=request_id)
+        return EmailDraftResponse(
+            success=False, error={"message": str(e)}, request_id=request_id
+        )
 
 
 @router.delete("/drafts/{draft_id}", response_model=EmailDraftResponse)
@@ -2179,11 +2328,21 @@ async def delete_email_draft(
     try:
         provider = (provider or "").lower()
         if provider not in ["google", "microsoft"]:
-            return EmailDraftResponse(success=False, error={"message": "Unsupported provider"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={"message": "Unsupported provider"},
+                request_id=request_id,
+            )
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
         if client is None:
-            return EmailDraftResponse(success=False, error={"message": f"Failed to create API client for provider {provider}"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={
+                    "message": f"Failed to create API client for provider {provider}"
+                },
+                request_id=request_id,
+            )
         async with client:
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
@@ -2191,10 +2350,14 @@ async def delete_email_draft(
             else:
                 microsoft_client = cast(MicrosoftAPIClient, client)
                 await microsoft_client.delete_draft_message(draft_id)
-        return EmailDraftResponse(success=True, data={"deleted": True}, request_id=request_id)
+        return EmailDraftResponse(
+            success=True, data={"deleted": True}, request_id=request_id
+        )
     except Exception as e:
         logger.error(f"Failed to delete email draft: {e}")
-        return EmailDraftResponse(success=False, error={"message": str(e)}, request_id=request_id)
+        return EmailDraftResponse(
+            success=False, error={"message": str(e)}, request_id=request_id
+        )
 
 
 @router.get("/threads/{thread_id}/drafts", response_model=EmailDraftResponse)
@@ -2216,12 +2379,20 @@ async def list_thread_drafts(
             provider = "microsoft"
             provider_thread_id = thread_id.split("outlook_", 1)[1]
         else:
-            return EmailDraftResponse(success=True, data={"drafts": []}, request_id=request_id)
+            return EmailDraftResponse(
+                success=True, data={"drafts": []}, request_id=request_id
+            )
 
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
         if client is None:
-            return EmailDraftResponse(success=False, error={"message": f"Failed to create API client for provider {provider}"}, request_id=request_id)
+            return EmailDraftResponse(
+                success=False,
+                error={
+                    "message": f"Failed to create API client for provider {provider}"
+                },
+                request_id=request_id,
+            )
 
         drafts: List[Dict[str, Any]] = []
         async with client:
@@ -2235,11 +2406,19 @@ async def list_thread_drafts(
                         drafts.append(detail)
             else:
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                raw_list = await microsoft_client.list_drafts_by_conversation(provider_thread_id)
+                raw_list = await microsoft_client.list_drafts_by_conversation(
+                    provider_thread_id
+                )
                 for msg in raw_list.get("value", []) or []:
                     drafts.append(msg)
 
-        return EmailDraftResponse(success=True, data={"provider": provider, "drafts": drafts}, request_id=request_id)
+        return EmailDraftResponse(
+            success=True,
+            data={"provider": provider, "drafts": drafts},
+            request_id=request_id,
+        )
     except Exception as e:
         logger.error(f"Failed to list thread drafts: {e}")
-        return EmailDraftResponse(success=False, error={"message": str(e)}, request_id=request_id)
+        return EmailDraftResponse(
+            success=False, error={"message": str(e)}, request_id=request_id
+        )
