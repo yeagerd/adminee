@@ -394,19 +394,19 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 // Auto-load provider drafts for this thread
                 try {
                     const draftsResp = await draftService.listProviderDraftsForThread(threadId);
-                    const providerDrafts = draftsResp?.data?.drafts || [];
+                    const providerDrafts = (draftsResp?.data?.drafts as unknown[]) || [];
                     if (providerDrafts.length > 0) {
                         // Take the latest provider draft and reflect into local draft editor for continuity
-                        const latest = providerDrafts[0];
+                        const latest = providerDrafts[0] as Record<string, unknown> | undefined;
                         const provider = response.data.provider_used as 'google' | 'microsoft' | undefined;
                         const session = await getSession();
                         const local = createNewDraft('email', session?.user?.id || '');
-                        const subject = (
-                            (latest?.message?.payload?.headers as Array<{ name?: string; value?: string }> | undefined)?.find?.(
-                                (h) => h?.name === 'Subject'
-                            )?.value
-                        ) || latest?.subject || '';
-                        const body = latest?.message?.snippet || latest?.body?.content || '';
+                        const headers = (latest?.message as Record<string, unknown> | undefined)?.payload as Record<string, unknown> | undefined;
+                        const headerArr = (headers?.headers as Array<{ name?: string; value?: string }>) || [];
+                        const subject = headerArr.find((h) => h?.name === 'Subject')?.value || (latest?.subject as string | undefined) || '';
+                        const body = ((latest?.message as Record<string, unknown> | undefined)?.snippet as string | undefined) ||
+                                     ((latest?.body as Record<string, unknown> | undefined)?.content as string | undefined) || '';
+                        const latestId = (latest?.id as string | undefined) || '';
                         updateDraft({
                             id: local.id,
                             content: body,
@@ -416,11 +416,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                 cc: [],
                                 bcc: [],
                                 provider,
-                                providerDraftId: latest?.id,
+                                providerDraftId: latestId,
                             },
                             threadId,
                         });
-                        setCurrentDraft({ ...local, content: body, metadata: { ...local.metadata, subject, provider, providerDraftId: latest?.id } });
+                        setCurrentDraft({ ...local, content: body, metadata: { ...local.metadata, subject, provider, providerDraftId: latestId } });
                     }
                 } catch (e) {
                     console.warn('No provider drafts for thread or failed to load:', e);

@@ -206,7 +206,14 @@ export class DraftService {
                     if (!resp.success) {
                         return { success: false, error: resp.error?.message || 'Failed to create provider draft', draftId: draft.id };
                     }
-                    const providerDraftId = resp.data?.draft?.id || resp.data?.id;
+                    let providerDraftId: string | undefined;
+                    const dataObj = resp.data as { draft?: Record<string, unknown> } | { deleted?: boolean } | { drafts?: unknown[] } | undefined;
+                    if (dataObj && 'draft' in dataObj) {
+                        const draftObj = (dataObj as { draft?: Record<string, unknown> }).draft;
+                        if (draftObj && typeof draftObj.id === 'string') {
+                            providerDraftId = draftObj.id as string;
+                        }
+                    }
                     if (providerDraftId) {
                         await this.updateDraft(draft.id, { metadata: { ...draft.metadata, providerDraftId } });
                     }

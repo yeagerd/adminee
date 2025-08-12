@@ -136,8 +136,8 @@ const EmailThread: React.FC<EmailThreadProps> = ({
         });
     };
 
-    const handleReply = (emailId?: string) => {
-        const srcId = emailId || thread.messages[thread.messages.length - 1].id;
+    const handleReplyClick = () => {
+        const srcId = thread.messages[thread.messages.length - 1].id;
         startEmailDraft('reply', srcId);
     };
 
@@ -221,7 +221,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={handleReply}>
+                                    <DropdownMenuItem onClick={handleReplyClick}>
                                         <Reply className="h-4 w-4 mr-2" />
                                         Reply
                                     </DropdownMenuItem>
