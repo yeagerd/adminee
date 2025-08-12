@@ -7,10 +7,13 @@ import { safeFormatDateAndTime } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
+import EmailThreadDraft from './email-thread-draft';
+import { Draft } from '@/types/draft';
+import { getSession } from 'next-auth/react';
 
 // Configure DOMPurify for email content
 const emailSanitizeConfig = {
@@ -141,17 +144,66 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
     const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
+    const [showInlineDraft, setShowInlineDraft] = useState(false);
+    const [inlineDraft, setInlineDraft] = useState<Draft | null>(null);
+
+    const buildInlineDraft = async (mode: 'reply' | 'reply_all' | 'forward') => {
+        const session = await getSession();
+        const userId = session?.user?.id || '';
+        const toSet = new Set<string>();
+        const ccSet = new Set<string>();
+        const from = email.from_address?.email || '';
+        const userEmail = session?.user?.email || '';
+        if (mode === 'reply') {
+            if (from) toSet.add(from);
+        } else if (mode === 'reply_all') {
+            if (from) toSet.add(from);
+            email.to_addresses.forEach(a => { if (a.email && a.email !== userEmail) toSet.add(a.email); });
+            email.cc_addresses.forEach(a => { if (a.email && a.email !== userEmail) ccSet.add(a.email); });
+        }
+        const subjectBase = email.subject || '';
+        const subject = mode === 'forward'
+            ? (subjectBase?.startsWith('Fwd:') ? subjectBase : `Fwd: ${subjectBase || ''}`)
+            : (subjectBase?.startsWith('Re:') ? subjectBase : `Re: ${subjectBase || ''}`);
+        const quotedBody = email.body_html || email.body_text || '';
+        const bodyPrefix = mode === 'forward' ? '\n\n---------- Forwarded message ----------\n' : '\n\n';
+        const content = `${bodyPrefix}${quotedBody}`;
+        const newDraft: Draft = {
+            id: `local_${Date.now()}`,
+            type: 'email',
+            status: 'draft',
+            content,
+            metadata: {
+                subject: subject.trim(),
+                recipients: Array.from(toSet),
+                cc: Array.from(ccSet),
+                bcc: [],
+                provider: email.provider,
+                replyToMessageId: email.provider_message_id,
+            },
+            isAIGenerated: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            userId,
+            threadId: email.thread_id,
+        };
+        setInlineDraft(newDraft);
+        setShowInlineDraft(true);
+    };
 
     const handleReply = () => {
         onReply?.(email);
+        buildInlineDraft('reply');
     };
 
     const handleReplyAll = () => {
         onReplyAll?.(email);
+        buildInlineDraft('reply_all');
     };
 
     const handleForward = () => {
         onForward?.(email);
+        buildInlineDraft('forward');
     };
 
     const handleTrackShipment = () => {
@@ -339,6 +391,16 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                 <div className="mt-3">
                     <AISummary email={email} />
                 </div>
+
+                {showInlineDraft && inlineDraft && (
+                    <EmailThreadDraft
+                        initialDraft={inlineDraft}
+                        onClose={() => {
+                            setShowInlineDraft(false);
+                            setInlineDraft(null);
+                        }}
+                    />
+                )}
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 mt-3">

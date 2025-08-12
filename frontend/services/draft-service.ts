@@ -147,7 +147,9 @@ export class DraftService {
 
             if (result.success) {
                 // Update draft status to 'sent'
-                await this.updateDraft(draft.id, { status: 'sent' });
+                if (/^\d+$/.test(draft.id)) {
+                    await this.updateDraft(draft.id, { status: 'sent' });
+                }
             }
 
             return {
@@ -215,11 +217,18 @@ export class DraftService {
                         }
                     }
                     if (providerDraftId) {
-                        await this.updateDraft(draft.id, { metadata: { ...draft.metadata, providerDraftId } });
+                        if (/^\d+$/.test(draft.id)) {
+                            await this.updateDraft(draft.id, { metadata: { ...draft.metadata, providerDraftId } });
+                        } else {
+                            // Local draft: update in-place
+                            draft.metadata = { ...draft.metadata, providerDraftId };
+                        }
                     }
                 }
                 // Update chat draft status too
-                await this.updateDraft(draft.id, { status: 'ready' });
+                if (/^\d+$/.test(draft.id)) {
+                    await this.updateDraft(draft.id, { status: 'ready' });
+                }
                 return { success: true, draftId: draft.id };
             }
 
@@ -231,7 +240,9 @@ export class DraftService {
                     type: 'document',
                 });
                 if (result.success) {
-                    await this.updateDraft(draft.id, { status: 'ready' });
+                    if (/^\d+$/.test(draft.id)) {
+                        await this.updateDraft(draft.id, { status: 'ready' });
+                    }
                 }
                 return {
                     success: result.success,
@@ -241,7 +252,9 @@ export class DraftService {
                 };
             }
 
-            await this.updateDraft(draft.id, { status: 'ready' });
+            if (/^\d+$/.test(draft.id)) {
+                await this.updateDraft(draft.id, { status: 'ready' });
+            }
             return {
                 success: true,
                 draftId: draft.id,
