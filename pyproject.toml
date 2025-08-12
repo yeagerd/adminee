@@ -170,3 +170,10 @@ reportOptionalIterable = false
 reportOperatorIssue = false
 reportOptionalMemberAccess = false
 reportFunctionMemberAccess = false
+
+[tool.ruff]
+src = ["src"]  # Tells Ruff where absolute imports should start
+select = ["TID252"]  # Ban relative imports
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
