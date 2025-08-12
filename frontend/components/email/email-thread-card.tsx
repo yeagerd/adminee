@@ -79,6 +79,9 @@ interface EmailThreadCardProps {
     onSelect?: (emailId: string) => void;
     showReadingPane?: boolean;
     inlineAvatar?: boolean;
+    onReply?: (email: EmailMessage) => void;
+    onReplyAll?: (email: EmailMessage) => void;
+    onForward?: (email: EmailMessage) => void;
 }
 
 // Use the safe email date formatting function with detailed format
@@ -130,25 +133,25 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     email,
     isSelected = false,
     onSelect,
-    inlineAvatar = false
+    inlineAvatar = false,
+    onReply,
+    onReplyAll,
+    onForward,
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
     const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
 
     const handleReply = () => {
-        // TODO: Implement reply functionality
-        console.log('Reply to email:', email.id);
+        onReply?.(email);
     };
 
     const handleReplyAll = () => {
-        // TODO: Implement reply all functionality
-        console.log('Reply all to email:', email.id);
+        onReplyAll?.(email);
     };
 
     const handleForward = () => {
-        // TODO: Implement forward functionality
-        console.log('Forward email:', email.id);
+        onForward?.(email);
     };
 
     const handleTrackShipment = () => {

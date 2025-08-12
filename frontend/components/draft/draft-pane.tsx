@@ -7,6 +7,8 @@ import { Calendar, FileText, Mail } from 'lucide-react';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
+import { draftService } from '@/services/draft-service';
+import { useEffect } from 'react';
 
 interface DraftPaneProps {
     className?: string;
@@ -69,10 +71,37 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
     const handleAutoSave = (content: string) => {
         if (draft) {
             onUpdate({ content });
-            // TODO: Implement actual auto-save to backend
-            console.log('Auto-saving draft:', content);
+            if (draft.type === 'email') {
+                // Best-effort autosave to provider
+                draftService.saveDraft({ ...draft, content });
+            }
         }
     };
+
+    // Best-effort auto-save on tab close or visibility change
+    useEffect(() => {
+        if (!draft) return;
+        const handleBeforeUnload = () => {
+            if (draft.type === 'email') {
+                draftService.saveDraft(draft);
+            }
+        };
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden' && draft.type === 'email') {
+                draftService.saveDraft(draft);
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            // Also try to save on unmount
+            if (draft.type === 'email') {
+                draftService.saveDraft(draft);
+            }
+        };
+    }, [draft]);
 
     if (!draft) {
         return (

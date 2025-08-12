@@ -5,6 +5,8 @@ import { EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import EmailThreadCard from './email-thread-card';
+import { useDraftState } from '@/hooks/use-draft-state';
+import { getSession } from 'next-auth/react';
 
 interface EmailThreadProps {
     thread: EmailThreadType;
@@ -18,6 +20,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
     selectedMessageId
 }) => {
     const [isStarred, setIsStarred] = useState(false);
+    const { setCurrentDraft, createNewDraft, updateDraft } = useDraftState();
 
     // Handle null/undefined thread or messages
     if (!thread || !thread.messages || thread.messages.length === 0) {
@@ -72,9 +75,70 @@ const EmailThread: React.FC<EmailThreadProps> = ({
         // TODO: Implement actual star functionality
     };
 
-    const handleReply = () => {
-        // TODO: Implement reply functionality
-        console.log('Reply to thread:', thread.id);
+    const startEmailDraft = async (
+        mode: 'reply' | 'reply_all' | 'forward',
+        sourceMessageId: string
+    ) => {
+        const source = thread.messages.find(m => m.id === sourceMessageId) || thread.messages[thread.messages.length - 1];
+        const provider = source.provider;
+        const session = await getSession();
+        const userEmail = session?.user?.email || '';
+
+        // Build recipients per mode
+        const from = source.from_address?.email || '';
+        const toSet = new Set<string>();
+        const ccSet = new Set<string>();
+
+        if (mode === 'reply') {
+            if (from) toSet.add(from);
+        } else if (mode === 'reply_all') {
+            if (from) toSet.add(from);
+            source.to_addresses.forEach(a => { if (a.email && a.email !== userEmail) toSet.add(a.email); });
+            source.cc_addresses.forEach(a => { if (a.email && a.email !== userEmail) ccSet.add(a.email); });
+        }
+        // For forward, no default recipients
+
+        const subjectBase = source.subject || thread.subject || '';
+        const subject = mode === 'forward'
+            ? (subjectBase?.startsWith('Fwd:') ? subjectBase : `Fwd: ${subjectBase || ''}`)
+            : (subjectBase?.startsWith('Re:') ? subjectBase : `Re: ${subjectBase || ''}`);
+
+        const quotedBody = source.body_html || source.body_text || '';
+        const bodyPrefix = mode === 'forward' ? '\n\n---------- Forwarded message ----------\n' : '\n\n';
+        const content = `${bodyPrefix}${quotedBody}`;
+
+        const draft = createNewDraft('email', session?.user?.id || '');
+        updateDraft({
+            id: draft.id,
+            type: 'email',
+            content,
+            metadata: {
+                subject: subject?.trim(),
+                recipients: Array.from(toSet),
+                cc: Array.from(ccSet),
+                bcc: [],
+                provider,
+                replyToMessageId: source.provider_message_id,
+            },
+            threadId: thread.id,
+        });
+        setCurrentDraft({
+            ...draft,
+            content,
+            metadata: {
+                subject: subject?.trim(),
+                recipients: Array.from(toSet),
+                cc: Array.from(ccSet),
+                bcc: [],
+                provider,
+                replyToMessageId: source.provider_message_id,
+            }
+        });
+    };
+
+    const handleReply = (emailId?: string) => {
+        const srcId = emailId || thread.messages[thread.messages.length - 1].id;
+        startEmailDraft('reply', srcId);
     };
 
     const handleArchive = () => {
@@ -161,6 +225,14 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                         <Reply className="h-4 w-4 mr-2" />
                                         Reply
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => startEmailDraft('reply_all', thread.messages[thread.messages.length - 1].id)}>
+                                        <Reply className="h-4 w-4 mr-2" />
+                                        Reply All
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => startEmailDraft('forward', thread.messages[thread.messages.length - 1].id)}>
+                                        <Reply className="h-4 w-4 mr-2" />
+                                        Forward
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={handleArchive}>
                                         <Archive className="h-4 w-4 mr-2" />
                                         Archive
@@ -182,6 +254,9 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                         email={message}
                         isSelected={selectedMessageId === message.id}
                         onSelect={onSelectMessage}
+                        onReply={(email) => startEmailDraft('reply', email.id)}
+                        onReplyAll={(email) => startEmailDraft('reply_all', email.id)}
+                        onForward={(email) => startEmailDraft('forward', email.id)}
                     />
                 ))}
             </div>

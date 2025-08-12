@@ -105,7 +105,12 @@ export function DraftActions({ draft, onActionComplete }: DraftActionsProps) {
                     </AlertDialogContent>
                 </AlertDialog>
 
-                {draft.type === 'email' && getActionButton('send')}
+                {draft.type === 'email' && (
+                    <>
+                        {getActionButton('save')}
+                        {getActionButton('send')}
+                    </>
+                )}
                 {draft.type === 'document' && getActionButton('save')}
                 {draft.type === 'calendar' && getActionButton('save')}
             </div>

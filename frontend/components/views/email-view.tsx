@@ -14,6 +14,8 @@ import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/typ
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
+import { draftService } from '@/services/draft-service';
+import { useDraftState } from '@/hooks/use-draft-state';
 
 interface EmailViewProps {
     toolDataLoading?: boolean;
@@ -105,6 +107,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
     const { toast } = useToast();
+    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata, createNewDraft } = useDraftState();
 
     // Bulk action states
     const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
@@ -388,6 +391,36 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             const response = await gatewayClient.getThread(threadId, true); // include body
             if (response.data?.thread) {
                 setFullThread(response.data.thread);
+                // Auto-load provider drafts for this thread
+                try {
+                    const draftsResp = await draftService.listProviderDraftsForThread(threadId);
+                    const providerDrafts = draftsResp?.data?.drafts || [];
+                    if (providerDrafts.length > 0) {
+                        // Take the latest provider draft and reflect into local draft editor for continuity
+                        const latest = providerDrafts[0];
+                        const provider = response.data.provider_used as 'google' | 'microsoft' | undefined;
+                        const session = await getSession();
+                        const local = createNewDraft('email', session?.user?.id || '');
+                        const subject = latest?.message?.payload?.headers?.find?.((h: any) => h.name === 'Subject')?.value || latest?.subject || '';
+                        const body = latest?.message?.snippet || latest?.body?.content || '';
+                        updateDraft({
+                            id: local.id,
+                            content: body,
+                            metadata: {
+                                subject,
+                                recipients: [],
+                                cc: [],
+                                bcc: [],
+                                provider,
+                                providerDraftId: latest?.id,
+                            },
+                            threadId,
+                        });
+                        setCurrentDraft({ ...local, content: body, metadata: { ...local.metadata, subject, provider, providerDraftId: latest?.id } });
+                    }
+                } catch (e) {
+                    console.warn('No provider drafts for thread or failed to load:', e);
+                }
             } else {
                 throw new Error('No thread data received from API');
             }
