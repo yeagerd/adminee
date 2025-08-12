@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import List, Optional
 
 import httpx
@@ -48,7 +48,8 @@ async def create_calendar_event(
     from services.office.schemas import EmailAddress
 
     attendee_list = [
-        EmailAddress(email=email, name=email.split("@")[0]) for email in attendees_emails
+        EmailAddress(email=email, name=email.split("@")[0])
+        for email in attendees_emails
     ]
 
     # Create event data using the existing CreateCalendarEventRequest schema
@@ -94,10 +95,11 @@ async def update_calendar_event(
         headers["X-Request-Id"] = request_id
 
     # Convert participants to EmailAddress format
-    from services.office.schemas import EmailAddress, CreateCalendarEventRequest
+    from services.office.schemas import CreateCalendarEventRequest, EmailAddress
 
     attendee_list = [
-        EmailAddress(email=email, name=email.split("@")[0]) for email in attendees_emails
+        EmailAddress(email=email, name=email.split("@")[0])
+        for email in attendees_emails
     ]
 
     event_data = CreateCalendarEventRequest(

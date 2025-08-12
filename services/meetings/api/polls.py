@@ -423,7 +423,9 @@ async def schedule_meeting(
         from uuid import UUID as _UUID
 
         selected_slot_uuid = (
-            selected_slot_id if isinstance(selected_slot_id, _UUID) else _UUID(str(selected_slot_id))
+            selected_slot_id
+            if isinstance(selected_slot_id, _UUID)
+            else _UUID(str(selected_slot_id))
         )
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid selectedSlotId")

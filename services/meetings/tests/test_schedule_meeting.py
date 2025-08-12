@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 from unittest.mock import patch
 
 from services.meetings.tests.meetings_test_base import BaseMeetingsTest
@@ -14,16 +13,24 @@ class TestScheduleMeeting(BaseMeetingsTest):
             "duration_minutes": 60,
             "location": "Zoom",
             "meeting_type": "virtual",
-            "response_deadline": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "response_deadline": (
+                datetime.now(timezone.utc) + timedelta(days=7)
+            ).isoformat(),
             "time_slots": [
                 {
                     "start_time": datetime.now(timezone.utc).isoformat(),
-                    "end_time": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+                    "end_time": (
+                        datetime.now(timezone.utc) + timedelta(hours=1)
+                    ).isoformat(),
                     "timezone": "UTC",
                 },
                 {
-                    "start_time": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
-                    "end_time": (datetime.now(timezone.utc) + timedelta(days=1, hours=1)).isoformat(),
+                    "start_time": (
+                        datetime.now(timezone.utc) + timedelta(days=1)
+                    ).isoformat(),
+                    "end_time": (
+                        datetime.now(timezone.utc) + timedelta(days=1, hours=1)
+                    ).isoformat(),
                     "timezone": "UTC",
                 },
             ],
@@ -47,7 +54,14 @@ class TestScheduleMeeting(BaseMeetingsTest):
 
         with patch(
             "services.meetings.services.calendar_integration.create_calendar_event",
-            return_value={"success": True, "data": {"event_id": "google_abc123", "status": "created", "provider": "google"}},
+            return_value={
+                "success": True,
+                "data": {
+                    "event_id": "google_abc123",
+                    "status": "created",
+                    "provider": "google",
+                },
+            },
         ) as mock_create:
             headers = {
                 "X-User-Id": "owner@example.com",
@@ -81,7 +95,14 @@ class TestScheduleMeeting(BaseMeetingsTest):
         # First schedule to create an event
         with patch(
             "services.meetings.services.calendar_integration.create_calendar_event",
-            return_value={"success": True, "data": {"event_id": "google_abc123", "status": "created", "provider": "google"}},
+            return_value={
+                "success": True,
+                "data": {
+                    "event_id": "google_abc123",
+                    "status": "created",
+                    "provider": "google",
+                },
+            },
         ):
             headers = {
                 "X-User-Id": "owner@example.com",
@@ -97,7 +118,14 @@ class TestScheduleMeeting(BaseMeetingsTest):
         # Now reschedule to second slot; should call update
         with patch(
             "services.meetings.services.calendar_integration.update_calendar_event",
-            return_value={"success": True, "data": {"event_id": "google_abc123", "status": "updated", "provider": "google"}},
+            return_value={
+                "success": True,
+                "data": {
+                    "event_id": "google_abc123",
+                    "status": "updated",
+                    "provider": "google",
+                },
+            },
         ) as mock_update:
             headers = {
                 "X-User-Id": "owner@example.com",
