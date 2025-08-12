@@ -2,7 +2,7 @@
 Utilities for the shipments service
 """
 
-from .tracking_utils import (
+from services.shipments.utils.tracking_utils import (
     get_unique_constraint_key,
     normalize_tracking_number,
     validate_tracking_number_format,

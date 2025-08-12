@@ -5,7 +5,7 @@ Provides JWT token validation, user extraction, and user ownership validation.
 Follows the same patterns as the user service authentication.
 """
 
-from .nextauth import (
+from services.shipments.auth.nextauth import (
     get_current_user,
     get_current_user_flexible,
     get_current_user_from_gateway_headers,
