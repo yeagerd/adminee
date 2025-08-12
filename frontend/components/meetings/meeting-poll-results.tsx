@@ -344,6 +344,73 @@ function ParticipantResponseItem({ participant, response, comment, respondedAt }
     );
 }
 
+// Time Slot Row Component
+interface TimeSlotRowProps {
+    slot: TimeSlot;
+    stats: { available: number; maybe: number; unavailable: number };
+    isExpanded: boolean;
+    isScheduled: boolean;
+    poll: Poll;
+    participantResponses: Array<{
+        participant: Participant;
+        response: string;
+        comment?: string;
+        respondedAt: string;
+    }>;
+    onToggleExpansion: () => void;
+}
+
+function TimeSlotRow({ slot, stats, isExpanded, isScheduled, poll, participantResponses, onToggleExpansion }: TimeSlotRowProps) {
+    return (
+        <>
+            <tr className={`${isScheduled ? 'bg-green-50' : 'hover:bg-gray-50'} transition-colors`}>
+                <td className="px-3 py-2 border cursor-pointer" onClick={onToggleExpansion}>
+                    <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4 text-gray-500" />
+                        )}
+                        <span className="font-medium">{formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}</span>
+                        {isScheduled && (
+                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 border border-green-300">Scheduled</span>
+                        )}
+                    </div>
+                </td>
+                <td className="px-3 py-2 border text-center">{stats.available || 0}</td>
+                <td className="px-3 py-2 border text-center">{stats.maybe || 0}</td>
+                <td className="px-3 py-2 border text-center">{stats.unavailable || 0}</td>
+                <td className="px-3 py-2 border text-center">
+                    <ScheduleActionButton slotId={slot.id} poll={poll} isScheduled={isScheduled} />
+                </td>
+            </tr>
+            {isExpanded && (
+                <tr>
+                    <td colSpan={5} className="px-3 py-2 border bg-gray-50">
+                        <div className="space-y-3">
+                            {participantResponses.length > 0 ? (
+                                <div className="space-y-2">
+                                    {participantResponses.map((item, index) => (
+                                        <ParticipantResponseItem
+                                            key={index}
+                                            participant={item.participant}
+                                            response={item.response}
+                                            comment={item.comment}
+                                            respondedAt={item.respondedAt}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 text-sm">No responses yet for this time slot.</p>
+                            )}
+                        </div>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
 // Time Slots Table Component
 interface TimeSlotsTableProps {
     poll: Poll;
@@ -495,52 +562,16 @@ function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRo
                             const isScheduled = poll?.scheduled_slot_id === slot.id;
 
                             return (
-                                <React.Fragment key={slot.id}>
-                                    <tr className={`${isScheduled ? 'bg-green-50' : 'hover:bg-gray-50'} transition-colors`}>
-                                        <td className="px-3 py-2 border cursor-pointer" onClick={() => onToggleExpansion(slot.id)}>
-                                            <div className="flex items-center gap-2">
-                                                {isExpanded ? (
-                                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                                ) : (
-                                                    <ChevronRight className="h-4 w-4 text-gray-500" />
-                                                )}
-                                                <span className="font-medium">{formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}</span>
-                                                {isScheduled && (
-                                                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 border border-green-300">Scheduled</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2 border text-center">{slotStats[slot.id]?.available || 0}</td>
-                                        <td className="px-3 py-2 border text-center">{slotStats[slot.id]?.maybe || 0}</td>
-                                        <td className="px-3 py-2 border text-center">{slotStats[slot.id]?.unavailable || 0}</td>
-                                        <td className="px-3 py-2 border text-center">
-                                            <ScheduleActionButton slotId={slot.id} poll={poll} isScheduled={isScheduled} />
-                                        </td>
-                                    </tr>
-                                    {isExpanded && (
-                                        <tr>
-                                            <td colSpan={5} className="px-3 py-2 border bg-gray-50">
-                                                <div className="space-y-3">
-                                                    {participantResponses.length > 0 ? (
-                                                        <div className="space-y-2">
-                                                            {participantResponses.map((item, index) => (
-                                                                <ParticipantResponseItem
-                                                                    key={index}
-                                                                    participant={item.participant}
-                                                                    response={item.response}
-                                                                    comment={item.comment}
-                                                                    respondedAt={item.respondedAt}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-gray-500 text-sm">No responses yet for this time slot.</p>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
+                                <TimeSlotRow
+                                    key={slot.id}
+                                    slot={slot}
+                                    stats={slotStats[slot.id] || { available: 0, maybe: 0, unavailable: 0 }}
+                                    isExpanded={isExpanded}
+                                    isScheduled={!!isScheduled}
+                                    poll={poll}
+                                    participantResponses={participantResponses}
+                                    onToggleExpansion={() => onToggleExpansion(slot.id)}
+                                />
                             );
                         })}
                     </tbody>
