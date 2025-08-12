@@ -33,6 +33,7 @@ interface Poll {
     participants: Participant[];
     time_slots: TimeSlot[];
     responses?: PollResponse[];
+    scheduled_slot_id?: string;
 }
 
 type SortColumn = 'time_slot' | 'available' | 'maybe' | 'unavailable' | null;
@@ -343,74 +344,6 @@ function ParticipantResponseItem({ participant, response, comment, respondedAt }
     );
 }
 
-// Time Slot Row Component
-interface TimeSlotRowProps {
-    slot: TimeSlot;
-    stats: { available: number; maybe: number; unavailable: number };
-    isExpanded: boolean;
-    participantResponses: Array<{
-        participant: Participant;
-        response: string;
-        comment?: string;
-        respondedAt: string;
-    }>;
-    onToggleExpansion: () => void;
-}
-
-function TimeSlotRow({ slot, stats, isExpanded, participantResponses, onToggleExpansion }: TimeSlotRowProps) {
-    return (
-        <React.Fragment>
-            <tr
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={onToggleExpansion}
-            >
-                <td className="px-3 py-2 border">
-                    <div className="flex items-center gap-2">
-                        {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-gray-500" />
-                        ) : (
-                            <ChevronRight className="h-4 w-4 text-gray-500" />
-                        )}
-                        {formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}
-                    </div>
-                </td>
-                <td className="px-3 py-2 border text-center">
-                    {stats.available || 0}
-                </td>
-                <td className="px-3 py-2 border text-center">
-                    {stats.maybe || 0}
-                </td>
-                <td className="px-3 py-2 border text-center">
-                    {stats.unavailable || 0}
-                </td>
-            </tr>
-            {isExpanded && (
-                <tr>
-                    <td colSpan={4} className="px-3 py-2 border bg-gray-50">
-                        <div className="space-y-3">
-                            {participantResponses.length > 0 ? (
-                                <div className="space-y-2">
-                                    {participantResponses.map((item, index) => (
-                                        <ParticipantResponseItem
-                                            key={index}
-                                            participant={item.participant}
-                                            response={item.response}
-                                            comment={item.comment}
-                                            respondedAt={item.respondedAt}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-gray-500 text-sm">No responses yet for this time slot.</p>
-                            )}
-                        </div>
-                    </td>
-                </tr>
-            )}
-        </React.Fragment>
-    );
-}
-
 // Time Slots Table Component
 interface TimeSlotsTableProps {
     poll: Poll;
@@ -552,28 +485,134 @@ function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRo
                             >
                                 Unavailable
                             </SortableHeader>
+                            <th className="px-3 py-2 border text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {sortTimeSlotsByColumn(poll?.time_slots || [], slotStats).map((slot) => {
                             const participantResponses = getParticipantResponsesForSlot(slot.id);
                             const isExpanded = expandedRows.has(slot.id);
+                            const isScheduled = poll?.scheduled_slot_id === slot.id;
 
                             return (
-                                <TimeSlotRow
-                                    key={slot.id}
-                                    slot={slot}
-                                    stats={slotStats[slot.id] || { available: 0, maybe: 0, unavailable: 0 }}
-                                    isExpanded={isExpanded}
-                                    participantResponses={participantResponses}
-                                    onToggleExpansion={() => onToggleExpansion(slot.id)}
-                                />
+                                <React.Fragment key={slot.id}>
+                                    <tr className={`${isScheduled ? 'bg-green-50' : 'hover:bg-gray-50'} transition-colors`}>
+                                        <td className="px-3 py-2 border cursor-pointer" onClick={() => onToggleExpansion(slot.id)}>
+                                            <div className="flex items-center gap-2">
+                                                {isExpanded ? (
+                                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                                ) : (
+                                                    <ChevronRight className="h-4 w-4 text-gray-500" />
+                                                )}
+                                                <span className="font-medium">{formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}</span>
+                                                {isScheduled && (
+                                                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 border border-green-300">Scheduled</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2 border text-center">{slotStats[slot.id]?.available || 0}</td>
+                                        <td className="px-3 py-2 border text-center">{slotStats[slot.id]?.maybe || 0}</td>
+                                        <td className="px-3 py-2 border text-center">{slotStats[slot.id]?.unavailable || 0}</td>
+                                        <td className="px-3 py-2 border text-center">
+                                            <ScheduleActionButton slotId={slot.id} poll={poll} isScheduled={isScheduled} />
+                                        </td>
+                                    </tr>
+                                    {isExpanded && (
+                                        <tr>
+                                            <td colSpan={5} className="px-3 py-2 border bg-gray-50">
+                                                <div className="space-y-3">
+                                                    {participantResponses.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {participantResponses.map((item, index) => (
+                                                                <ParticipantResponseItem
+                                                                    key={index}
+                                                                    participant={item.participant}
+                                                                    response={item.response}
+                                                                    comment={item.comment}
+                                                                    respondedAt={item.respondedAt}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-gray-500 text-sm">No responses yet for this time slot.</p>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
                 </table>
             </div>
         </div>
+    );
+}
+
+interface ScheduleActionButtonProps {
+    poll: Poll;
+    slotId: string;
+    isScheduled: boolean;
+}
+
+function ScheduleActionButton({ poll, slotId, isScheduled }: ScheduleActionButtonProps) {
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const actionLabel = poll?.scheduled_slot_id ? (isScheduled ? 'Scheduled' : 'Reschedule') : 'Send Invite';
+
+    const handleConfirm = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await gatewayClient.scheduleMeeting(poll.id, slotId);
+            // After scheduling, refresh current view by reloading the poll via a custom event
+            window.dispatchEvent(new CustomEvent('meeting-poll-refresh', { detail: { pollId: poll.id } }));
+            setOpen(false);
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                setError((e as { message?: string }).message || 'Failed to schedule');
+            } else {
+                setError('Failed to schedule');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <>
+            <Button
+                variant={isScheduled ? 'outline' : 'default'}
+                size="sm"
+                disabled={isScheduled && !!poll?.scheduled_slot_id}
+                onClick={() => {
+                    if (isScheduled) return;
+                    setOpen(true);
+                }}
+            >
+                {actionLabel}
+            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>{poll?.scheduled_slot_id ? 'Change meeting time?' : 'Send calendar invites for this time?'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="text-sm text-gray-700">
+                        {poll?.scheduled_slot_id
+                            ? 'This will update the existing calendar event to the new time and notify participants.'
+                            : 'This will create a calendar event and send invites to all participants.'}
+                    </div>
+                    {error && <div className="text-red-600 text-sm">{error}</div>}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
+                        <Button onClick={handleConfirm} disabled={loading}>{loading ? 'Working...' : 'Confirm'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 
@@ -824,17 +863,25 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     const [modalLoading, setModalLoading] = useState(false);
 
     useEffect(() => {
+        const listener = (e: CustomEvent<{ pollId: string }>) => {
+            if (e?.detail?.pollId === pollId) {
+                gatewayClient.getMeetingPoll(pollId)
+                    .then((data) => setPoll(data as Poll))
+                    .catch((e) => setError(e.message || 'Failed to refresh poll'));
+            }
+        };
+        // Cast to EventListener to satisfy TS
+        const handler = listener as unknown as EventListener;
+        window.addEventListener('meeting-poll-refresh', handler);
+        return () => window.removeEventListener('meeting-poll-refresh', handler);
+    }, [pollId]);
+
+    useEffect(() => {
         if (!pollId) return;
         setLoading(true);
         gatewayClient.getMeetingPoll(pollId)
             .then((data) => setPoll(data as Poll))
-            .catch((e: unknown) => {
-                if (e && typeof e === 'object' && 'message' in e) {
-                    setError((e as { message?: string }).message || "Failed to load poll");
-                } else {
-                    setError("Failed to load poll");
-                }
-            })
+            .catch((e) => setError(e.message || 'Failed to load poll'))
             .finally(() => setLoading(false));
     }, [pollId]);
 
