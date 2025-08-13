@@ -65,6 +65,8 @@ export default function CalendarGridView({
     const [formAllDay, setFormAllDay] = useState(false);
     const [formStartTime, setFormStartTime] = useState<Date | null>(null);
     const [formEndTime, setFormEndTime] = useState<Date | null>(null);
+    const [formAttendees, setFormAttendees] = useState<Array<{ id: string; email: string; name: string }>>([]);
+    const [attendeeQuery, setAttendeeQuery] = useState('');
 
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
     const { effectiveTimezone } = useUserPreferences();
@@ -113,12 +115,51 @@ export default function CalendarGridView({
         setFormEndTime(newEndTime);
     }, [formStartTime, formEndTime]);
 
-    const handleEndTimeChange = useCallback((newEndTime: Date) => {
+        const handleEndTimeChange = useCallback((newEndTime: Date) => {
         if (!formStartTime) return;
-
+        
         // Set new end time (this changes the duration)
         setFormEndTime(newEndTime);
     }, [formStartTime]);
+
+    const addAttendee = useCallback((email: string, name?: string) => {
+        const newAttendee = {
+            id: Math.random().toString(36).substr(2, 9),
+            email: email.trim(),
+            name: name?.trim() || ''
+        };
+        setFormAttendees(prev => [...prev, newAttendee]);
+        setAttendeeQuery('');
+    }, []);
+
+    const removeAttendee = useCallback((id: string) => {
+        setFormAttendees(prev => prev.filter(attendee => attendee.id !== id));
+    }, []);
+
+    const parseAttendeeFromText = useCallback((text: string): Array<{ email: string; name?: string }> => {
+        const results: Array<{ email: string; name?: string }> = [];
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            
+            // Try to parse "Name <email@domain.com>" format
+            const emailMatch = trimmed.match(/<(.+?)>/);
+            if (emailMatch) {
+                const email = emailMatch[1].trim();
+                const name = trimmed.replace(/<.+?>/, '').trim();
+                if (email && email.includes('@')) {
+                    results.push({ email, name: name || undefined });
+                }
+            } else if (trimmed.includes('@')) {
+                // Just an email address
+                results.push({ email: trimmed });
+            }
+        }
+        
+        return results;
+    }, []);
 
     // Use external props if provided, otherwise use internal state
     // For list view, always use internal events to support navigation
@@ -824,13 +865,15 @@ export default function CalendarGridView({
             {/* Create Event Modal */}
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
                 setIsCreateOpen(open);
-                if (!open) {
+                                if (!open) {
                     setFormTitle('');
                     setFormDescription('');
                     setFormLocation('');
                     setFormAllDay(false);
                     setFormStartTime(null);
                     setFormEndTime(null);
+                    setFormAttendees([]);
+                    setAttendeeQuery('');
                     clearSelection();
                 }
             }}>
@@ -889,6 +932,59 @@ export default function CalendarGridView({
                             <Input id="location" value={formLocation} onChange={(e) => setFormLocation(e.target.value)} placeholder="Location or conferencing" />
                         </div>
                         <div>
+                            <Label htmlFor="attendees">Attendees</Label>
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <Input
+                                        id="attendees"
+                                        value={attendeeQuery}
+                                        onChange={(e) => setAttendeeQuery(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                if (attendeeQuery.trim() && attendeeQuery.includes('@')) {
+                                                    addAttendee(attendeeQuery);
+                                                }
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            const parsed = parseAttendeeFromText(text);
+                                            if (parsed.length > 0) {
+                                                e.preventDefault();
+                                                parsed.forEach(person => addAttendee(person.email, person.name));
+                                            }
+                                        }}
+                                        placeholder="Type email or paste multiple (e.g., First Last <email@domain.com>)"
+                                        className="text-sm"
+                                    />
+                                </div>
+                                {formAttendees.length > 0 && (
+                                    <div className="space-y-1">
+                                        {formAttendees.map((attendee) => (
+                                            <div key={attendee.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                                <div className="flex-1 min-w-0">
+                                                    {attendee.name && (
+                                                        <div className="font-medium truncate">{attendee.name}</div>
+                                                    )}
+                                                    <div className="text-gray-600 truncate">{attendee.email}</div>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeAttendee(attendee.id)}
+                                                    className="ml-2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                                >
+                                                    ×
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div>
                             <Label htmlFor="description">Description</Label>
                             <Textarea id="description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Add details" />
                         </div>
@@ -919,6 +1015,7 @@ export default function CalendarGridView({
                                             end_time: endUtc.toISO()!,
                                             all_day: formAllDay || false,
                                             location: formLocation || undefined,
+                                            attendees: formAttendees.length > 0 ? formAttendees.map(a => ({ email: a.email, name: a.name || undefined })) : undefined,
                                         });
                                         setIsCreateOpen(false);
                                         clearSelection();
