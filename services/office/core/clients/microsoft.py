@@ -529,3 +529,6 @@ class MicrosoftAPIClient(BaseAPIClient):
         }
         response = await self.get("/me/messages", params=params)
         return response.json()
+
+    async def send_draft_message(self, draft_id: str) -> None:
+        await self.post(f"/me/messages/{draft_id}/send", json_data={})

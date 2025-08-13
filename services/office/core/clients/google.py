@@ -96,6 +96,12 @@ class GoogleAPIClient(BaseAPIClient):
         )
         return response.json()
 
+    async def send_draft(self, draft_id: str) -> Dict[str, Any]:
+        response = await self.post(
+            f"/gmail/v1/users/me/drafts/{draft_id}/send", json_data={}
+        )
+        return response.json()
+
     async def get_labels(self) -> Dict[str, Any]:
         """
         Get list of Gmail labels.
@@ -128,9 +134,9 @@ class GoogleAPIClient(BaseAPIClient):
             params["pageToken"] = page_token
 
         # Use the label query parameter to filter messages by label
-        params["q"] = f"label:{label_id}"
-
-        response = await self.get("/gmail/v1/users/me/messages", params=params)
+        response = await self.get(
+            f"/gmail/v1/users/me/messages", params={"labelIds": label_id, **params}
+        )
         return response.json()
 
     # Google Calendar API methods

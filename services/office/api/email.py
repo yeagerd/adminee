@@ -1038,27 +1038,27 @@ async def send_gmail_message(
     """
     Send an email via Gmail API.
 
-    Args:
-        request_id: Request tracking ID
-        client: Google API client
-        email_data: Email content and configuration
-
-    Returns:
-        Dictionary containing sent message details
+    If reply_to_message_id is provided, attempt to send within the same thread by
+    creating a draft tied to the thread or specifying the threadId in the raw message,
+    then sending it. This preserves threading for recipients.
     """
     try:
-        # Build Gmail message data
-        # For simplicity in MVP, we'll create a basic message structure
-        # In production, this would handle HTML formatting, attachments, etc.
-
-        # Convert to Gmail API format
         to_addresses = [addr.email for addr in email_data.to]
         cc_addresses = [addr.email for addr in email_data.cc] if email_data.cc else []
         bcc_addresses = (
             [addr.email for addr in email_data.bcc] if email_data.bcc else []
         )
 
-        # Build basic email content (simplified for MVP)
+        # If replying, use the original message's threadId so Gmail threads correctly
+        thread_id: Optional[str] = None
+        if email_data.reply_to_message_id:
+            try:
+                original = await client.get_message(email_data.reply_to_message_id, format="metadata")
+                thread_id = original.get("threadId")
+            except Exception:
+                thread_id = None
+
+        # Build RFC822 raw
         message_content = {
             "raw": _build_gmail_raw_message(
                 to_addresses=to_addresses,
@@ -1069,10 +1069,11 @@ async def send_gmail_message(
             )
         }
 
-        # Send the message
-        result = await client.send_message(message_content)
+        # If we have a threadId from the original, send with thread context
+        if thread_id:
+            message_content["threadId"] = thread_id
 
-        logger.info(f"Gmail message sent successfully: {result.get('id')}")
+        result = await client.send_message(message_content)
         return result
 
     except Exception as e:
@@ -1086,21 +1087,16 @@ async def send_outlook_message(
     """
     Send an email via Microsoft Graph API.
 
-    Args:
-        request_id: Request tracking ID
-        client: Microsoft API client
-        email_data: Email content and configuration
-
-    Returns:
-        Dictionary containing sent message details
+    If reply_to_message_id is provided, create a reply/reply-all draft from that
+    message, update recipients/body as provided, then send the draft. This ensures
+    Outlook threads the message in the original conversation.
     """
     try:
-        # Build Microsoft Graph message data
+        # Build recipients
         to_recipients = [
             {"emailAddress": {"address": addr.email, "name": addr.name or addr.email}}
             for addr in email_data.to
         ]
-
         cc_recipients = []
         if email_data.cc:
             cc_recipients = [
@@ -1112,7 +1108,6 @@ async def send_outlook_message(
                 }
                 for addr in email_data.cc
             ]
-
         bcc_recipients = []
         if email_data.bcc:
             bcc_recipients = [
@@ -1125,11 +1120,39 @@ async def send_outlook_message(
                 for addr in email_data.bcc
             ]
 
+        # If reply_to_message_id is provided, create a reply draft and send
+        if email_data.reply_to_message_id:
+            # Heuristic: reply_all if any cc present or more than one recipient
+            reply_all = bool(email_data.cc and len(email_data.cc) > 0) or (
+                len(email_data.to) > 1
+            )
+            draft_created = await client.create_reply_draft(
+                email_data.reply_to_message_id, reply_all=reply_all
+            )
+            draft_id = draft_created.get("id")
+            if not draft_id:
+                raise ServiceError(message="Failed to create Outlook reply draft")
+
+            # Apply subject/body/recipients overrides
+            patch: Dict[str, Any] = {
+                "subject": email_data.subject,
+                "body": {"contentType": "Text", "content": email_data.body},
+                "toRecipients": to_recipients,
+                "ccRecipients": cc_recipients,
+                "bccRecipients": bcc_recipients,
+            }
+            await client.update_draft_message(draft_id, patch)
+
+            # Send the draft
+            await client.send_draft_message(draft_id)
+            return {"id": f"outlook_sent_{request_id}", "status": "sent"}
+
+        # Otherwise, send as a new message
         message_data = {
             "message": {
                 "subject": email_data.subject,
                 "body": {
-                    "contentType": "Text",  # Could be "HTML" for rich content
+                    "contentType": "Text",
                     "content": email_data.body,
                 },
                 "toRecipients": to_recipients,
@@ -1138,23 +1161,8 @@ async def send_outlook_message(
             }
         }
 
-        # Add importance if specified
-        if email_data.importance:
-            importance_map = {"low": "low", "normal": "normal", "high": "high"}
-            if email_data.importance.lower() in importance_map:
-                message_data["message"]["importance"] = importance_map[
-                    email_data.importance.lower()
-                ]
-
-        # Send the message
         await client.send_message(message_data)
-
-        # Microsoft Graph sendMail doesn't return the sent message details
-        # We'll return a simple confirmation
-        result = {"id": f"outlook_sent_{request_id}", "status": "sent"}
-
-        logger.info("Outlook message sent successfully")
-        return result
+        return {"id": f"outlook_sent_{request_id}", "status": "sent"}
 
     except Exception as e:
         logger.error(f"Failed to send Outlook message: {e}")
