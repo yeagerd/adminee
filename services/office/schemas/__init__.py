@@ -111,6 +111,49 @@ class SendEmailResponse(BaseModel):
     request_id: str
 
 
+class EmailDraftCreateRequest(BaseModel):
+    """Request model for creating email drafts in providers (Google/Microsoft)."""
+
+    # Action describes how the draft is created relative to an existing message
+    action: str = Field(
+        default="new",
+        description="Draft action: new, reply, reply_all, forward",
+    )
+    to: Optional[List[EmailAddress]] = None
+    cc: Optional[List[EmailAddress]] = None
+    bcc: Optional[List[EmailAddress]] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+
+    # For threading: unified thread_id like gmail_xxx or outlook_xxx
+    thread_id: Optional[str] = None
+    # To create a reply/forward on providers that require message reference
+    reply_to_message_id: Optional[str] = None
+
+    # Explicit provider override; otherwise inferred from thread/message context
+    provider: Optional[str] = None
+
+
+class EmailDraftUpdateRequest(BaseModel):
+    """Request model for updating email drafts in providers."""
+
+    to: Optional[List[EmailAddress]] = None
+    cc: Optional[List[EmailAddress]] = None
+    bcc: Optional[List[EmailAddress]] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    provider: Optional[str] = None
+
+
+class EmailDraftResponse(BaseModel):
+    """Response model for email draft operations."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
 class EmailMessageList(BaseModel):
     """Response model for email message lists."""
 
