@@ -313,6 +313,65 @@ export class GatewayClient {
         return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/threads/${threadId}?${params.toString()}`);
     }
 
+    // Provider Email Drafts (Office Service)
+    async createEmailDraft(payload: {
+        action?: 'new' | 'reply' | 'reply_all' | 'forward';
+        to?: { email: string; name?: string }[];
+        cc?: { email: string; name?: string }[];
+        bcc?: { email: string; name?: string }[];
+        subject?: string;
+        body?: string;
+        thread_id?: string;
+        reply_to_message_id?: string;
+        provider?: 'google' | 'microsoft';
+    }): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; draft?: Record<string, unknown> } | { deleted?: boolean } | { drafts?: unknown[] }; error?: { message?: string }; request_id: string }> {
+        return this.request(`/api/v1/email/drafts`, {
+            method: 'POST',
+            body: {
+                action: payload.action || 'new',
+                to: payload.to,
+                cc: payload.cc,
+                bcc: payload.bcc,
+                subject: payload.subject,
+                body: payload.body,
+                thread_id: payload.thread_id,
+                reply_to_message_id: payload.reply_to_message_id,
+                provider: payload.provider,
+            },
+        });
+    }
+
+    async updateEmailDraft(draftId: string, payload: {
+        to?: { email: string; name?: string }[];
+        cc?: { email: string; name?: string }[];
+        bcc?: { email: string; name?: string }[];
+        subject?: string;
+        body?: string;
+        provider: 'google' | 'microsoft';
+    }): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; draft?: Record<string, unknown> }; error?: { message?: string }; request_id: string }> {
+        return this.request(`/api/v1/email/drafts/${draftId}`, {
+            method: 'PUT',
+            body: {
+                to: payload.to,
+                cc: payload.cc,
+                bcc: payload.bcc,
+                subject: payload.subject,
+                body: payload.body,
+                provider: payload.provider,
+            },
+        });
+    }
+
+    async deleteEmailDraft(draftId: string, provider: 'google' | 'microsoft') {
+        const params = new URLSearchParams();
+        params.append('provider', provider);
+        return this.request(`/api/v1/email/drafts/${draftId}?${params.toString()}`, { method: 'DELETE' });
+    }
+
+    async listThreadDrafts(threadId: string): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; drafts?: unknown[] }; error?: { message?: string }; request_id: string }> {
+        return this.request(`/api/v1/email/threads/${threadId}/drafts`);
+    }
+
     async getMessageThread(
         messageId: string,
         includeBody?: boolean,

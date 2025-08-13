@@ -9,6 +9,29 @@ export interface CreateDraftRequest {
     threadId?: string;
 }
 
+// Provider email draft helpers
+export interface CreateEmailProviderDraftArgs {
+    action?: 'new' | 'reply' | 'reply_all' | 'forward';
+    provider: 'google' | 'microsoft';
+    threadId?: string;
+    replyToMessageId?: string;
+    to?: { email: string; name?: string }[];
+    cc?: { email: string; name?: string }[];
+    bcc?: { email: string; name?: string }[];
+    subject?: string;
+    body?: string;
+}
+
+export interface UpdateEmailProviderDraftArgs {
+    provider: 'google' | 'microsoft';
+    draftId: string;
+    to?: { email: string; name?: string }[];
+    cc?: { email: string; name?: string }[];
+    bcc?: { email: string; name?: string }[];
+    subject?: string;
+    body?: string;
+}
+
 export interface UpdateDraftRequest {
     content?: string;
     metadata?: any;
@@ -32,6 +55,41 @@ export class DraftService {
         });
 
         return this.mapDraftFromApi(data);
+    }
+
+    async createEmailProviderDraft(args: CreateEmailProviderDraftArgs) {
+        const resp = await gatewayClient.createEmailDraft({
+            action: args.action,
+            to: args.to,
+            cc: args.cc,
+            bcc: args.bcc,
+            subject: args.subject,
+            body: args.body,
+            thread_id: args.threadId,
+            reply_to_message_id: args.replyToMessageId,
+            provider: args.provider,
+        });
+        return resp;
+    }
+
+    async updateEmailProviderDraft(args: UpdateEmailProviderDraftArgs) {
+        const resp = await gatewayClient.updateEmailDraft(args.draftId, {
+            to: args.to,
+            cc: args.cc,
+            bcc: args.bcc,
+            subject: args.subject,
+            body: args.body,
+            provider: args.provider,
+        });
+        return resp;
+    }
+
+    async deleteEmailProviderDraft(draftId: string, provider: 'google' | 'microsoft') {
+        return gatewayClient.deleteEmailDraft(draftId, provider);
+    }
+
+    async listProviderDraftsForThread(threadId: string) {
+        return gatewayClient.listThreadDrafts(threadId);
     }
 
     async updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
@@ -89,7 +147,9 @@ export class DraftService {
 
             if (result.success) {
                 // Update draft status to 'sent'
-                await this.updateDraft(draft.id, { status: 'sent' });
+                if (/^\d+$/.test(draft.id)) {
+                    await this.updateDraft(draft.id, { status: 'sent' });
+                }
             }
 
             return {
@@ -109,19 +169,81 @@ export class DraftService {
 
     async saveDraft(draft: Draft): Promise<DraftActionResult> {
         try {
-            // For documents, save to cloud storage
+            if (draft.type === 'email') {
+                const provider = draft.metadata.provider as 'google' | 'microsoft' | undefined;
+                if (!provider) {
+                    return { success: false, error: 'Missing provider', draftId: draft.id };
+                }
+                const to = (draft.metadata.recipients || []).map((email: string) => ({ email }));
+                const cc = (draft.metadata.cc || []).map((email: string) => ({ email }));
+                const bcc = (draft.metadata.bcc || []).map((email: string) => ({ email }));
+                const subject = draft.metadata.subject || '';
+                const body = draft.content || '';
+
+                if (draft.metadata.providerDraftId) {
+                    const resp = await this.updateEmailProviderDraft({
+                        provider,
+                        draftId: draft.metadata.providerDraftId,
+                        to,
+                        cc,
+                        bcc,
+                        subject,
+                        body,
+                    });
+                    if (!resp.success) {
+                        return { success: false, error: resp.error?.message || 'Failed to update provider draft', draftId: draft.id };
+                    }
+                } else {
+                    const resp = await this.createEmailProviderDraft({
+                        action: 'new',
+                        provider,
+                        threadId: draft.threadId,
+                        replyToMessageId: draft.metadata.replyToMessageId,
+                        to,
+                        cc,
+                        bcc,
+                        subject,
+                        body,
+                    });
+                    if (!resp.success) {
+                        return { success: false, error: resp.error?.message || 'Failed to create provider draft', draftId: draft.id };
+                    }
+                    let providerDraftId: string | undefined;
+                    const dataObj = resp.data as { draft?: Record<string, unknown> } | { deleted?: boolean } | { drafts?: unknown[] } | undefined;
+                    if (dataObj && 'draft' in dataObj) {
+                        const draftObj = (dataObj as { draft?: Record<string, unknown> }).draft;
+                        if (draftObj && typeof draftObj.id === 'string') {
+                            providerDraftId = draftObj.id as string;
+                        }
+                    }
+                    if (providerDraftId) {
+                        if (/^\d+$/.test(draft.id)) {
+                            await this.updateDraft(draft.id, { metadata: { ...draft.metadata, providerDraftId } });
+                        } else {
+                            // Local draft: update in-place
+                            draft.metadata = { ...draft.metadata, providerDraftId };
+                        }
+                    }
+                }
+                // Update chat draft status too
+                if (/^\d+$/.test(draft.id)) {
+                    await this.updateDraft(draft.id, { status: 'ready' });
+                }
+                return { success: true, draftId: draft.id };
+            }
+
+            // For documents and calendar, use previous logic
             if (draft.type === 'document') {
                 const result = await officeIntegration.saveDocument({
                     title: draft.metadata.title || 'Untitled Document',
                     content: draft.content,
                     type: 'document',
                 });
-
                 if (result.success) {
-                    // Update draft status to 'ready'
-                    await this.updateDraft(draft.id, { status: 'ready' });
+                    if (/^\d+$/.test(draft.id)) {
+                        await this.updateDraft(draft.id, { status: 'ready' });
+                    }
                 }
-
                 return {
                     success: result.success,
                     result: result.documentId,
@@ -130,8 +252,9 @@ export class DraftService {
                 };
             }
 
-            // For other types, just update the draft
-            await this.updateDraft(draft.id, { status: 'ready' });
+            if (/^\d+$/.test(draft.id)) {
+                await this.updateDraft(draft.id, { status: 'ready' });
+            }
             return {
                 success: true,
                 draftId: draft.id,
@@ -145,8 +268,15 @@ export class DraftService {
         }
     }
 
-    async discardDraft(draftId: string): Promise<boolean> {
+    async discardDraft(draftId: string, provider?: 'google' | 'microsoft', providerDraftId?: string): Promise<boolean> {
         try {
+            if (provider && providerDraftId) {
+                try {
+                    await this.deleteEmailProviderDraft(providerDraftId, provider);
+                } catch (e) {
+                    console.warn('Failed to delete provider draft:', e);
+                }
+            }
             await this.deleteDraft(draftId);
             return true;
         } catch (error) {

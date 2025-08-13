@@ -388,3 +388,40 @@ class GoogleAPIClient(BaseAPIClient):
 
         response = await self.get("/gmail/v1/users/me/messages", params=params)
         return response.json()
+
+    async def create_draft(
+        self, raw_message_b64: str, thread_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Create a Gmail draft from a base64-encoded raw RFC822 message."""
+        payload: Dict[str, Any] = {"message": {"raw": raw_message_b64}}
+        if thread_id:
+            payload["message"]["threadId"] = thread_id
+        response = await self.post("/gmail/v1/users/me/drafts", json_data=payload)
+        return response.json()
+
+    async def get_draft(self, draft_id: str) -> Dict[str, Any]:
+        response = await self.get(f"/gmail/v1/users/me/drafts/{draft_id}")
+        return response.json()
+
+    async def update_draft(
+        self, draft_id: str, raw_message_b64: str, thread_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"message": {"raw": raw_message_b64}}
+        if thread_id:
+            payload["message"]["threadId"] = thread_id
+        response = await self.put(
+            f"/gmail/v1/users/me/drafts/{draft_id}", json_data=payload
+        )
+        return response.json()
+
+    async def delete_draft(self, draft_id: str) -> None:
+        await self.delete(f"/gmail/v1/users/me/drafts/{draft_id}")
+
+    async def list_drafts(
+        self, max_results: int = 50, page_token: Optional[str] = None
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"maxResults": max_results}
+        if page_token:
+            params["pageToken"] = page_token
+        response = await self.get("/gmail/v1/users/me/drafts", params=params)
+        return response.json()

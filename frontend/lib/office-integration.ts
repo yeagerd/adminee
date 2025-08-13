@@ -12,6 +12,7 @@ export interface EmailSendRequest {
     bcc?: string[];
     subject: string;
     body: string;
+    reply_to_message_id?: string;
 }
 
 export interface CalendarEventRequest {
@@ -101,6 +102,7 @@ export class OfficeIntegrationService {
                     bcc: Array.isArray(draft.metadata.bcc) ? draft.metadata.bcc : (draft.metadata.bcc ? [draft.metadata.bcc] : []),
                     subject: draft.metadata.subject || 'No Subject',
                     body: draft.content,
+                    reply_to_message_id: draft.metadata.replyToMessageId,
                 });
 
             case 'calendar':
