@@ -8,7 +8,7 @@ import { SmartTimeDurationInput } from '@/components/ui/smart-time-duration-inpu
 import { CalendarEvent } from '@/types/office-service';
 import { Check, CheckCheck, Clock, Eye, EyeOff, Pencil, X } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface TimeSlotCalendarProps {
     duration: number;
@@ -63,18 +63,20 @@ interface TimeSlotCellProps {
     slot: TimeSlot;
     slotIndex: number;
     isSelected: boolean;
-    onSlotClick: (slot: TimeSlot) => void;
+    onSlotMouseDown?: (slot: TimeSlot, slotIndex: number, isSelected: boolean) => void;
+    onSlotMouseEnter?: (slot: TimeSlot, slotIndex: number) => void;
 }
 
-const TimeSlotCell = memo<TimeSlotCellProps>(({ slot, slotIndex, isSelected, onSlotClick }) => {
+const TimeSlotCell = memo<TimeSlotCellProps>(({ slot, slotIndex, isSelected, onSlotMouseDown, onSlotMouseEnter }) => {
 
     return (
         <button
             key={`${slot.start}-${slot.end}`}
             type="button"
-            onClick={() => onSlotClick(slot)}
+            onMouseDown={(e) => { e.preventDefault(); onSlotMouseDown?.(slot, slotIndex, isSelected); }}
+            onMouseEnter={() => { onSlotMouseEnter?.(slot, slotIndex); }}
             className={`
-                absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm
+                absolute left-0 right-0 h-8 text-xs transition-colors z-10 rounded-sm select-none
                 ${isSelected
                     ? slot.isConflict
                         ? 'bg-orange-500/50 border border-orange-600 text-orange-800 hover:bg-orange-500/70'
@@ -107,6 +109,34 @@ export function TimeSlotCalendar({
     // Use ref to track current selected slots without dependencies
     const selectedSlotsRef = useRef(selectedTimeSlots);
     selectedSlotsRef.current = selectedTimeSlots;
+
+    // Drag selection state
+    const [isDragging, setIsDragging] = useState(false);
+    const dragInfoRef = useRef<{
+        dateKey: string;
+        startIndex: number;
+        currentIndex: number;
+        mode: 'add' | 'remove';
+        initialSelected: { start: string; end: string }[];
+    } | null>(null);
+
+
+
+    const handleGlobalMouseUp = useCallback(() => {
+        setIsDragging(false);
+        dragInfoRef.current = null;
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+    }, []);
+
+
+
+    // Cleanup mouseup listener on unmount just in case
+    useEffect(() => {
+        return () => {
+            document.removeEventListener('mouseup', handleGlobalMouseUp);
+        };
+    }, [handleGlobalMouseUp]);
+
     // Date range selection
     const [dateRangeType, setDateRangeType] = useState<'target' | 'range'>('target');
     const [targetDate, setTargetDate] = useState(() => {
@@ -320,17 +350,65 @@ export function TimeSlotCalendar({
         return grouped;
     }, [timeSlots]);
 
-    // Handle slot selection - use ref to avoid dependencies
-    const handleSlotClick = useCallback((slot: TimeSlot) => {
-        // Use ref to get current state without dependencies
-        const currentSlots = selectedSlotsRef.current;
-        const isCurrentlySelected = currentSlots.some(s => s.start === slot.start && s.end === slot.end);
+    // Apply drag selection to time slots
+    const applyDragSelection = useCallback((dateKey: string, startIndex: number, currentIndex: number, mode: 'add' | 'remove') => {
+        const daySlots = slotsByDate[dateKey] || [];
+        const rangeStart = Math.max(0, Math.min(startIndex, currentIndex));
+        const rangeEnd = Math.min(daySlots.length - 1, Math.max(startIndex, currentIndex));
 
-        const newSelectedSlots = isCurrentlySelected
-            ? currentSlots.filter(s => !(s.start === slot.start && s.end === slot.end))
-            : [...currentSlots, { start: slot.start, end: slot.end }];
-        onTimeSlotsChange(newSelectedSlots);
-    }, [onTimeSlotsChange]);
+        const currentDragInfo = dragInfoRef.current;
+        const initialSelected = (currentDragInfo?.initialSelected || []).slice();
+
+        const rangeIds = new Set<string>();
+        for (let i = rangeStart; i <= rangeEnd; i++) {
+            const s = daySlots[i];
+            if (!s) continue;
+            rangeIds.add(`${s.start}-${s.end}`);
+        }
+
+        if (mode === 'add') {
+            const existingIds = new Set(initialSelected.map(s => `${s.start}-${s.end}`));
+            const newSelected = initialSelected.slice();
+            for (let i = rangeStart; i <= rangeEnd; i++) {
+                const s = daySlots[i];
+                if (!s) continue;
+                const id = `${s.start}-${s.end}`;
+                if (!existingIds.has(id)) {
+                    newSelected.push({ start: s.start, end: s.end });
+                    existingIds.add(id);
+                }
+            }
+            onTimeSlotsChange(newSelected);
+        } else {
+            // remove
+            const newSelected = initialSelected.filter(s => !rangeIds.has(`${s.start}-${s.end}`));
+            onTimeSlotsChange(newSelected);
+        }
+    }, [onTimeSlotsChange, slotsByDate]);
+
+    // Handle slot mouse down for drag selection
+    const handleSlotMouseDownFactory = useCallback((dateKey: string) => (slot: TimeSlot, slotIndex: number, isSelected: boolean) => {
+        setIsDragging(true);
+        dragInfoRef.current = {
+            dateKey,
+            startIndex: slotIndex,
+            currentIndex: slotIndex,
+            mode: isSelected ? 'remove' : 'add',
+            initialSelected: selectedTimeSlots.slice()
+        };
+        applyDragSelection(dateKey, slotIndex, slotIndex, isSelected ? 'remove' : 'add');
+        document.addEventListener('mouseup', handleGlobalMouseUp);
+    }, [applyDragSelection, handleGlobalMouseUp, selectedTimeSlots]);
+
+    // Handle slot mouse enter for drag selection
+    const handleSlotMouseEnterFactory = useCallback((dateKey: string) => (_slot: TimeSlot, slotIndex: number) => {
+        const info = dragInfoRef.current;
+        if (!isDragging || !info) return;
+        if (info.dateKey !== dateKey) return; // restrict to a single day
+        if (info.currentIndex === slotIndex) return;
+        info.currentIndex = slotIndex;
+        applyDragSelection(info.dateKey, info.startIndex, slotIndex, info.mode);
+    }, [applyDragSelection, isDragging]);
 
     // Handle day-level selection
     const handleDaySelection = useCallback((dateKey: string, action: 'all' | 'all_times' | 'none') => {
@@ -574,7 +652,8 @@ export function TimeSlotCalendar({
                                                     slot={slot}
                                                     slotIndex={slotIndex}
                                                     isSelected={isSelected}
-                                                    onSlotClick={handleSlotClick}
+                                                    onSlotMouseDown={handleSlotMouseDownFactory(dateKey)}
+                                                    onSlotMouseEnter={handleSlotMouseEnterFactory(dateKey)}
                                                 />
                                             );
                                         })}
