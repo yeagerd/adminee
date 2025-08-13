@@ -15,13 +15,11 @@ Conventions
   - Acceptance criteria:
     - Routing works for `/bookings` (authed) and `/public/bookings/[token]` (unauth)
 
-- [ ] Prepare backend routes in meetings service
+ - [x] Prepare backend routes in meetings service
   - Add router module: `services/meetings/api/bookings.py`
   - Wire router in service startup (if using FastAPI include router under `/bookings`)
   - Acceptance criteria:
     - Health check route under `/bookings/health` returns 200
-    
-- [x] Prepare backend routes in meetings service
 
 ---
 
