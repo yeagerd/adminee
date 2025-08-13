@@ -184,6 +184,33 @@ class TestContactsApi:
             assert data["data"]["contact"]["id"].startswith("outlook_")
 
     @pytest.mark.asyncio
+    async def test_update_contact_google_with_slash(self, client, auth_headers):
+        with (
+            patch(
+                "services.office.api.contacts.get_api_client_factory"
+            ) as mock_factory,
+            patch("services.office.api.contacts.cache_manager") as mock_cache,
+        ):
+            mock_cache.invalidate_user_cache = AsyncMock()
+
+            class FakeGoogle:
+                async def update_contact(self, resource_name, payload):
+                    return {"resourceName": resource_name, **payload}
+
+            class FakeFactory:
+                async def create_client(self, user_id, provider, scopes=None):
+                    return FakeGoogle()
+
+            mock_factory.return_value = FakeFactory()
+            resp = client.put(
+                "/v1/contacts/google_people%2Fxyz?full_name=Alice%20Updated", headers=auth_headers
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["success"] is True
+            assert data["data"]["contact"]["id"].startswith("google_")
+
+    @pytest.mark.asyncio
     async def test_delete_contact_google(self, client, auth_headers):
         with (
             patch(

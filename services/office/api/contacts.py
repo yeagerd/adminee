@@ -433,7 +433,7 @@ async def create_contact(
         raise ServiceError(message=f"Failed to create contact: {str(e)}")
 
 
-@router.put("/{contact_id}", response_model=Dict[str, Any])
+@router.put("/{contact_id:path}", response_model=Dict[str, Any])
 async def update_contact(
     request: Request,
     contact_id: str = Path(
