@@ -142,17 +142,17 @@ Conventions
 ---
 
 ### 8. API Endpoints (Server)
-- [ ] POST `/bookings/links` — create evergreen link
-- [ ] GET `/bookings/links` — list owner links
-- [ ] GET `/bookings/links/{id}` — get link
-- [ ] PATCH `/bookings/links/{id}` — update link settings
-- [ ] POST `/bookings/links/{id}:duplicate` — duplicate link
-- [ ] POST `/bookings/links/{id}:toggle` — enable/disable
-- [ ] POST `/bookings/links/{id}/one-time` — create one-time link
-- [ ] GET `/bookings/public/{token}` — public link metadata
-- [ ] GET `/bookings/public/{token}/availability` — available slots
-- [ ] POST `/bookings/public/{token}/book` — create booking
-- [ ] GET `/bookings/links/{id}/analytics` — views/bookings
+- [x] POST `/bookings/links` — create evergreen link
+- [x] GET `/bookings/links` — list owner links
+- [x] GET `/bookings/links/{id}` — get link
+- [x] PATCH `/bookings/links/{id}` — update link settings
+- [x] POST `/bookings/links/{id}:duplicate` — duplicate link
+- [x] POST `/bookings/links/{id}:toggle` — enable/disable
+- [x] POST `/bookings/links/{id}/one-time` — create one-time link
+- [x] GET `/bookings/public/{token}` — public link metadata
+- [x] GET `/bookings/public/{token}/availability` — available slots
+- [x] POST `/bookings/public/{token}/book` — create booking
+- [x] GET `/bookings/links/{id}/analytics` — views/bookings
   - Acceptance criteria:
     - All endpoints return 2xx on success, validate inputs, and return errors with standard format
 
