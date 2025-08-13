@@ -1,8 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, Request
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
 
+from services.common.http_errors import (
+    ValidationError,
+    NotFoundError,
+    AuthError,
+    RateLimitError,
+    ServiceError,
+    BrieflyAPIError
+)
 from services.meetings.models.bookings import (
     BookingLink,
     OneTimeLink,
@@ -26,6 +34,26 @@ from services.meetings.services.audit_logger import (
     AuditEventType
 )
 from services.meetings.api.auth import verify_api_key_auth, get_user_id_from_request
+from services.meetings.schemas.bookings import (
+    PublicLinkResponse,
+    AvailabilityResponse,
+    CreatePublicBookingRequest,
+    BookingLinkResponse,
+    OneTimeLinkResponse,
+    BookingResponse,
+    TemplateResponse,
+    AnalyticsResponse,
+    CreateBookingLinkRequest,
+    UpdateBookingLinkRequest,
+    CreateOneTimeLinkRequest,
+    CreateTemplateRequest,
+    UpdateTemplateRequest,
+    BookingLinksListResponse,
+    OneTimeLinksListResponse,
+    TemplatesListResponse,
+    PaginationParams,
+    BookingLinkFilters
+)
 
 router = APIRouter()
 
@@ -39,7 +67,7 @@ def get_client_key(request: Request) -> str:
 async def health_check():
     return {"status": "healthy", "service": "bookings"}
 
-@router.get("/public/{token}")
+@router.get("/public/{token}", response_model=PublicLinkResponse)
 async def get_public_link(token: str, request: Request):
     """Get public link metadata including template questions"""
     # Rate limiting for public endpoints
@@ -51,7 +79,7 @@ async def get_public_link(token: str, request: Request):
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Validate token format
     if not SecurityUtils.validate_token_format(token):
@@ -61,7 +89,7 @@ async def get_public_link(token: str, request: Request):
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=404, detail="Invalid token format")
+        raise ValidationError(message="Invalid token format")
     
     # Database lookup for the link
     with get_session() as session:
@@ -70,19 +98,19 @@ async def get_public_link(token: str, request: Request):
         if one_time_link is not None:
             # Check if expired or used
             if one_time_link.expires_at is not None and one_time_link.expires_at < datetime.now():
-                raise HTTPException(status_code=404, detail="Link has expired")
+                raise NotFoundError(message="Link has expired")
             if one_time_link.status != "active":
-                raise HTTPException(status_code=404, detail="Link has already been used")
+                raise NotFoundError(message="Link has already been used")
             
             # Get the parent booking link
             booking_link = session.query(BookingLink).filter_by(id=one_time_link.booking_link_id).first()
             if not booking_link or not booking_link.is_active:
-                raise HTTPException(status_code=404, detail="Booking link not found or inactive")
+                raise NotFoundError(message="Booking link not found or inactive")
         else:
             # Check if it's an evergreen link
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
             if not booking_link or not booking_link.is_active:
-                raise HTTPException(status_code=404, detail="Booking link not found or inactive")
+                raise NotFoundError(message="Booking link not found or inactive")
         
         # Get template questions if available
         template_questions = []
@@ -102,7 +130,7 @@ async def get_public_link(token: str, request: Request):
         
         # Get duration from settings
         duration_options = [15, 30, 60, 120]
-        if booking_link.settings and "duration" in booking_link.settings:
+        if booking_link.settings is not None and "duration" in booking_link.settings:
             duration_options = [booking_link.settings["duration"]] + [d for d in duration_options if d != booking_link.settings["duration"]]
         
         # Track view analytics event
@@ -124,7 +152,7 @@ async def get_public_link(token: str, request: Request):
             }
         }
 
-@router.get("/public/{token}/availability")
+@router.get("/public/{token}/availability", response_model=AvailabilityResponse)
 async def get_public_availability(token: str, duration: int = 30, request: Request = None):
     """Get available time slots for a public link"""
     # Rate limiting for public endpoints
@@ -137,7 +165,7 @@ async def get_public_availability(token: str, duration: int = 30, request: Reque
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Validate token format
     if not SecurityUtils.validate_token_format(token):
@@ -148,7 +176,7 @@ async def get_public_availability(token: str, duration: int = 30, request: Reque
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-        raise HTTPException(status_code=404, detail="Invalid token format")
+        raise ValidationError(message="Invalid token format")
     
     # Database lookup for the link
     with get_session() as session:
@@ -156,16 +184,16 @@ async def get_public_availability(token: str, duration: int = 30, request: Reque
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if one_time_link is not None:
             if one_time_link.expires_at is not None and one_time_link.expires_at < datetime.now():
-                raise HTTPException(status_code=404, detail="Link has expired")
+                raise NotFoundError(message="Link has expired")
             if one_time_link.status != "active":
-                raise HTTPException(status_code=404, detail="Link has already been used")
+                raise NotFoundError(message="Link has already been used")
             
             booking_link = session.query(BookingLink).filter_by(id=one_time_link.booking_link_id).first()
         else:
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
         
         if not booking_link or not booking_link.is_active:
-            raise HTTPException(status_code=404, detail="Booking link not found or inactive")
+            raise NotFoundError(message="Booking link not found or inactive")
         
         # Use the enhanced availability calculation service
         from services.meetings.services.booking_availability import compute_available_slots
@@ -201,8 +229,8 @@ async def get_public_availability(token: str, duration: int = 30, request: Reque
             }
         }
 
-@router.post("/public/{token}/book")
-async def create_public_booking(token: str, booking_data: dict, request: Request):
+@router.post("/public/{token}/book", response_model=SuccessResponse)
+async def create_public_booking(token: str, booking_data: CreatePublicBookingRequest, request: Request):
     """Create a booking from a public link"""
     # Rate limiting for public endpoints
     client_key = get_client_key(request)
@@ -213,7 +241,7 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Validate token format
     if not SecurityUtils.validate_token_format(token):
@@ -223,17 +251,17 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=404, detail="Invalid token format")
+        raise ValidationError(message="Invalid token format")
     
     # Validate required fields
-    required_fields = ["start", "end", "attendeeEmail"]
+    required_fields = ["start", "end", "attendee_email"]
     for field in required_fields:
-        if field not in booking_data:
-            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        if not hasattr(booking_data, field) or getattr(booking_data, field) is None:
+            raise ValidationError(message=f"Missing required field: {field}")
     
     # Sanitize input
-    attendee_email = SecurityUtils.sanitize_input(booking_data["attendeeEmail"])
-    answers = {k: SecurityUtils.sanitize_input(str(v)) for k, v in booking_data.get("answers", {}).items()}
+    attendee_email = SecurityUtils.sanitize_input(booking_data.attendee_email)
+    answers = {k: SecurityUtils.sanitize_input(str(v)) for k, v in booking_data.answers.items()}
     
     # Database operations
     with get_session() as session:
@@ -241,9 +269,9 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if one_time_link is not None:
             if one_time_link.expires_at is not None and one_time_link.expires_at < datetime.now():
-                raise HTTPException(status_code=404, detail="Link has expired")
+                raise NotFoundError(message="Link has expired")
             if one_time_link.status != "active":
-                raise HTTPException(status_code=404, detail="Link has already been used")
+                raise NotFoundError(message="Link has already been used")
             
             booking_link = session.query(BookingLink).filter_by(id=one_time_link.booking_link_id).first()
             link_id = one_time_link.booking_link_id
@@ -255,7 +283,7 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
         else:
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
             if not booking_link or not booking_link.is_active:
-                raise HTTPException(status_code=404, detail="Booking link not found or inactive")
+                raise NotFoundError(message="Booking link not found or inactive")
             
             link_id = booking_link.id
             one_time_link_id = None
@@ -264,8 +292,8 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
         booking = Booking(
             link_id=link_id,
             one_time_link_id=one_time_link_id,
-            start_at=datetime.fromisoformat(booking_data["start"]),
-            end_at=datetime.fromisoformat(booking_data["end"]),
+            start_at=booking_data.start,
+            end_at=booking_data.end,
             attendee_email=attendee_email,
             answers=answers,
         )
@@ -294,19 +322,20 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
             link_id=token,
             booking_id=str(booking.id),
             attendee_email=attendee_email,
-            start_time=booking_data["start"],
-            end_time=booking_data["end"],
+            start_time=booking_data.start.isoformat(),
+            end_time=booking_data.end.isoformat(),
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
         
-        return {
-            "data": {
+        return SuccessResponse(
+            data={
                 "id": str(booking.id),
                 "message": "Booking created successfully",
                 "calendar_event_id": calendar_event_id,
-            }
-        }
+            },
+            message="Booking created successfully"
+        )
 
 # Owner API endpoints
 @router.post("/links")
@@ -325,7 +354,7 @@ async def create_booking_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -422,7 +451,7 @@ async def list_booking_links(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -485,7 +514,7 @@ async def get_booking_link(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -494,7 +523,7 @@ async def get_booking_link(
     with get_session() as session:
         link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not link:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         return {"data": {
             "id": str(link.id),
@@ -524,7 +553,7 @@ async def update_booking_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -533,7 +562,7 @@ async def update_booking_link(
     with get_session() as session:
         link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not link:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         # Sanitize updates
         sanitized_updates = {}
@@ -601,7 +630,7 @@ async def duplicate_booking_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -610,7 +639,7 @@ async def duplicate_booking_link(
     with get_session() as session:
         original = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not original:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         # Generate unique slug
         new_slug = f"{original.slug}_copy_{TokenGenerator.generate_slug()[:4]}"
@@ -668,7 +697,7 @@ async def toggle_booking_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -677,7 +706,7 @@ async def toggle_booking_link(
     with get_session() as session:
         link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not link:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         old_status = link.is_active
         link.is_active = not link.is_active
@@ -718,7 +747,7 @@ async def create_one_time_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -727,7 +756,7 @@ async def create_one_time_link(
     with get_session() as session:
         link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not link:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         token = TokenGenerator.generate_one_time_token()
         expires_at = datetime.now() + timedelta(days=one_time_data.get("expires_in_days", 7))
@@ -790,7 +819,7 @@ async def get_link_analytics(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -799,7 +828,7 @@ async def get_link_analytics(
     with get_session() as session:
         link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not link:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         # Get analytics data
         views = session.query(AnalyticsEvent).filter_by(
@@ -872,7 +901,7 @@ async def create_booking_template(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -883,7 +912,7 @@ async def create_booking_template(
     
     # Validate required fields
     if not name:
-        raise HTTPException(status_code=400, detail="Template name is required")
+        raise ValidationError(message="Template name is required")
     
     # Database creation
     with get_session() as session:
@@ -936,7 +965,7 @@ async def list_booking_templates(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -983,7 +1012,7 @@ async def get_booking_template(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -992,7 +1021,7 @@ async def get_booking_template(
     with get_session() as session:
         template = session.query(BookingTemplate).filter_by(id=template_id, owner_user_id=owner_user_id).first()
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise NotFoundError(message="Template not found")
         
         return {"data": {
             "id": str(template.id),
@@ -1021,7 +1050,7 @@ async def update_booking_template(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -1030,7 +1059,7 @@ async def update_booking_template(
     with get_session() as session:
         template = session.query(BookingTemplate).filter_by(id=template_id, owner_user_id=owner_user_id).first()
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise NotFoundError(message="Template not found")
         
         # Track changes for audit logging
         changes = {}
@@ -1091,7 +1120,7 @@ async def delete_booking_template(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -1100,15 +1129,12 @@ async def delete_booking_template(
     with get_session() as session:
         template = session.query(BookingTemplate).filter_by(id=template_id, owner_user_id=owner_user_id).first()
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise NotFoundError(message="Template not found")
         
         # Check if template is being used by any links
         links_using_template = session.query(BookingLink).filter_by(template_id=template_id).count()
         if links_using_template > 0:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Cannot delete template: {links_using_template} booking link(s) are using it"
-            )
+            raise ServiceError(message=f"Cannot delete template: {links_using_template} booking link(s) are using it")
         
         # Store template info for audit logging
         template_name = template.name
@@ -1147,7 +1173,7 @@ async def list_one_time_links(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -1157,7 +1183,7 @@ async def list_one_time_links(
         # Verify the user owns the booking link
         link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
         if not link:
-            raise HTTPException(status_code=404, detail="Booking link not found")
+            raise NotFoundError(message="Booking link not found")
         
         # Get all one-time links for this booking link
         one_time_links = session.query(OneTimeLink).filter_by(booking_link_id=link_id).all()
@@ -1202,7 +1228,7 @@ async def get_one_time_link_details(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -1211,7 +1237,7 @@ async def get_one_time_link_details(
     with get_session() as session:
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if not one_time_link:
-            raise HTTPException(status_code=404, detail="One-time link not found")
+            raise NotFoundError(message="One-time link not found")
         
         # Verify the user owns the parent booking link
         booking_link = session.query(BookingLink).filter_by(
@@ -1219,7 +1245,7 @@ async def get_one_time_link_details(
             owner_user_id=owner_user_id
         ).first()
         if not booking_link:
-            raise HTTPException(status_code=403, detail="Not authorized to view this one-time link")
+            raise AuthError(message="Not authorized to view this one-time link")
         
         # Check if expired
         is_expired = one_time_link.expires_at and one_time_link.expires_at < datetime.now()
@@ -1255,7 +1281,7 @@ async def update_one_time_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -1264,7 +1290,7 @@ async def update_one_time_link(
     with get_session() as session:
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if not one_time_link:
-            raise HTTPException(status_code=404, detail="One-time link not found")
+            raise NotFoundError(message="One-time link not found")
         
         # Verify the user owns the parent booking link
         booking_link = session.query(BookingLink).filter_by(
@@ -1272,7 +1298,7 @@ async def update_one_time_link(
             owner_user_id=owner_user_id
         ).first()
         if not booking_link:
-            raise HTTPException(status_code=403, detail="Not authorized to update this one-time link")
+            raise AuthError(message="Not authorized to update this one-time link")
         
         # Track changes for audit logging
         changes = {}
@@ -1340,7 +1366,7 @@ async def delete_one_time_link(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        raise RateLimitError(message="Rate limit exceeded")
     
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
@@ -1349,7 +1375,7 @@ async def delete_one_time_link(
     with get_session() as session:
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if not one_time_link:
-            raise HTTPException(status_code=404, detail="One-time link not found")
+            raise NotFoundError(message="One-time link not found")
         
         # Verify the user owns the parent booking link
         booking_link = session.query(BookingLink).filter_by(
@@ -1357,7 +1383,7 @@ async def delete_one_time_link(
             owner_user_id=owner_user_id
         ).first()
         if not booking_link:
-            raise HTTPException(status_code=403, detail="Not authorized to delete this one-time link")
+            raise AuthError(message="Not authorized to delete this one-time link")
         
         # Store info for audit logging
         recipient_email = one_time_link.recipient_email
