@@ -8,7 +8,8 @@ const mockUseIntegrations = useIntegrations as jest.MockedFunction<typeof useInt
 
 // Mock the gateway client
 jest.mock('@/lib/gateway-client', () => ({
-    gatewayClient: {
+    __esModule: true,
+    default: {
         getEmailFolders: jest.fn(),
     },
 }));
