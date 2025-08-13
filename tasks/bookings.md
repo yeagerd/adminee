@@ -204,11 +204,11 @@ Conventions
 ---
 
 ### 12. Documentation and Tests
-- [ ] API docs
+- [x] API docs
   - Describe endpoints, auth, params, and examples
-- [ ] Owner guide
+- [x] Owner guide
   - Short README on creating links and sharing URLs
-- [ ] Unit tests (server)
+- [x] Unit tests (server)
   - Models, availability util, booking creation, token utils
 - [ ] Component tests (frontend)
   - Wizard steps render; public form validates; booking submit happy-path
