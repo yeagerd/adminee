@@ -46,7 +46,7 @@ Conventions
 ---
 
 ### 2. Calendar Integration (Use existing integrations)
-- [ ] Availability check service
+- [x] Availability check service
   - Service util to fetch busy/available blocks using existing Microsoft/Google clients
   - Inputs: user_id, date range, duration, buffers, business hours, limits
   - Acceptance criteria:
