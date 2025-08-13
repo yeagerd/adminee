@@ -68,12 +68,15 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
         }
     };
 
-    const handleAutoSave = (content: string) => {
+    const handleAutoSave = async (content: string) => {
         if (draft) {
             onUpdate({ content });
             if (draft.type === 'email') {
-                // Best-effort autosave to provider
-                draftService.saveDraft({ ...draft, content });
+                try {
+                    await draftService.saveDraft({ ...draft, content });
+                } catch (err) {
+                    console.error('Autosave failed:', err);
+                }
             }
         }
     };
@@ -82,13 +85,22 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
     useEffect(() => {
         if (!draft) return;
         const handleBeforeUnload = () => {
-            if (draft.type === 'email') {
-                draftService.saveDraft(draft);
+            if (draft.type !== 'email') return;
+            try {
+                // Try synchronous hint to the browser that we need to persist
+                // Note: sendBeacon would require an endpoint; here we trigger best-effort async without blocking
+                void draftService.saveDraft(draft);
+            } catch (err) {
+                console.error('beforeunload save failed:', err);
             }
         };
-        const handleVisibility = () => {
+        const handleVisibility = async () => {
             if (document.visibilityState === 'hidden' && draft.type === 'email') {
-                draftService.saveDraft(draft);
+                try {
+                    await draftService.saveDraft(draft);
+                } catch (err) {
+                    console.error('visibilitychange save failed:', err);
+                }
             }
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -98,7 +110,9 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             document.removeEventListener('visibilitychange', handleVisibility);
             // Also try to save on unmount
             if (draft.type === 'email') {
-                draftService.saveDraft(draft);
+                void draftService.saveDraft(draft).catch(err => {
+                    console.error('unmount save failed:', err);
+                });
             }
         };
     }, [draft]);

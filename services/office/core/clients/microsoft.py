@@ -520,10 +520,11 @@ class MicrosoftAPIClient(BaseAPIClient):
     async def list_drafts_by_conversation(
         self, conversation_id: str, top: int = 50, skip: int = 0
     ) -> Dict[str, Any]:
+        escaped_conversation_id = escape_odata_string_literal(conversation_id)
         params: Dict[str, Any] = {
             "$top": top,
             "$skip": skip,
-            "$filter": f"conversationId eq '{conversation_id}' and isDraft eq true",
+            "$filter": f"conversationId eq '{escaped_conversation_id}' and isDraft eq true",
             "$orderby": "receivedDateTime desc",
         }
         response = await self.get("/me/messages", params=params)
