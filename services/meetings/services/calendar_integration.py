@@ -128,3 +128,19 @@ async def update_calendar_event(
         )
         resp.raise_for_status()
         return resp.json()
+
+
+async def delete_calendar_event(user_id: str, event_id: str) -> dict:
+    settings = get_settings()
+    url = f"{settings.office_service_url}/v1/calendar/events/{event_id}"
+    headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(url, headers=headers)
+        resp.raise_for_status()
+        return resp.json()

@@ -592,21 +592,25 @@ function ScheduleActionButton({ poll, slotId, isScheduled }: ScheduleActionButto
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const actionLabel = poll?.scheduled_slot_id ? (isScheduled ? 'Scheduled' : 'Reschedule') : 'Send Invite';
+    const actionLabel = isScheduled ? 'Unschedule' : (poll?.scheduled_slot_id ? 'Reschedule' : 'Send Invite');
 
     const handleConfirm = async () => {
         setLoading(true);
         setError(null);
         try {
-            await gatewayClient.scheduleMeeting(poll.id, slotId);
-            // After scheduling, refresh current view by reloading the poll via a custom event
+            if (isScheduled) {
+                await gatewayClient.unscheduleMeeting(poll.id);
+            } else {
+                await gatewayClient.scheduleMeeting(poll.id, slotId);
+            }
+            // After action, refresh current view by reloading the poll via a custom event
             window.dispatchEvent(new CustomEvent('meeting-poll-refresh', { detail: { pollId: poll.id } }));
             setOpen(false);
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
-                setError((e as { message?: string }).message || 'Failed to schedule');
+                setError((e as { message?: string }).message || (isScheduled ? 'Failed to unschedule' : 'Failed to schedule'));
             } else {
-                setError('Failed to schedule');
+                setError(isScheduled ? 'Failed to unschedule' : 'Failed to schedule');
             }
         } finally {
             setLoading(false);
@@ -616,30 +620,28 @@ function ScheduleActionButton({ poll, slotId, isScheduled }: ScheduleActionButto
     return (
         <>
             <Button
-                variant={isScheduled ? 'outline' : 'default'}
+                variant={isScheduled ? 'destructive' : 'default'}
                 size="sm"
-                disabled={isScheduled && !!poll?.scheduled_slot_id}
-                onClick={() => {
-                    if (isScheduled) return;
-                    setOpen(true);
-                }}
+                onClick={() => setOpen(true)}
             >
                 {actionLabel}
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>{poll?.scheduled_slot_id ? 'Change meeting time?' : 'Send calendar invites for this time?'}</DialogTitle>
+                        <DialogTitle>{isScheduled ? 'Unschedule this meeting?' : (poll?.scheduled_slot_id ? 'Change meeting time?' : 'Send calendar invites for this time?')}</DialogTitle>
                     </DialogHeader>
                     <div className="text-sm text-gray-700">
-                        {poll?.scheduled_slot_id
-                            ? 'This will update the existing calendar event to the new time and notify participants.'
-                            : 'This will create a calendar event and send invites to all participants.'}
+                        {isScheduled
+                            ? 'This will remove the scheduled time and cancel the calendar event for all participants.'
+                            : (poll?.scheduled_slot_id
+                                ? 'This will update the existing calendar event to the new time and notify participants.'
+                                : 'This will create a calendar event and send invites to all participants.')}
                     </div>
                     {error && <div className="text-red-600 text-sm">{error}</div>}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-                        <Button onClick={handleConfirm} disabled={loading}>{loading ? 'Working...' : 'Confirm'}</Button>
+                        <Button onClick={handleConfirm} disabled={loading}>{loading ? 'Working...' : (isScheduled ? 'Unschedule' : 'Confirm')}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
