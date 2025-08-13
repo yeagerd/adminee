@@ -1,8 +1,8 @@
 import { EmailMessage } from '@/types/office-service';
 import { render, screen } from '@testing-library/react';
+import { useRouter } from 'next/navigation';
 import React from 'react';
 import EmailThreadCard from './email-thread-card';
-import { useRouter } from 'next/navigation';
 
 // Mock Next.js navigation
 jest.mock('next/navigation', () => ({
