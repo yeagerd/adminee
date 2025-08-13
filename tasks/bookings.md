@@ -217,6 +217,81 @@ Conventions
 
 ---
 
+### 13. Follow-up Tasks (Incomplete Work)
+
+The following items were marked as complete but contain significant incomplete work that needs to be addressed:
+
+#### 13.1 Database Integration (Critical)
+- [ ] Replace mock data structures with actual database operations
+  - **Current state**: All endpoints use `mock_booking_links`, `mock_bookings`, etc.
+  - **Required**: Implement proper SQLAlchemy database operations
+  - **Files**: `services/meetings/api/bookings.py` (lines 69, 233, 293, 314, 335, 388, 440, 480)
+  - **Acceptance criteria**: All CRUD operations persist to database; no more mock data
+
+#### 13.2 Authentication Integration (Critical)
+- [ ] Implement proper user authentication and authorization
+  - **Current state**: All endpoints use `"mock_user_id"` hardcoded
+  - **Required**: Integrate with existing auth system (JWT, session, etc.)
+  - **Files**: `services/meetings/api/bookings.py` (lines 239, 262, 365, 411, 451, 508, 566)
+  - **Acceptance criteria**: User ID extracted from auth token; proper permission checks
+
+#### 13.3 Calendar Event Creation (High Priority)
+- [ ] Implement actual calendar event creation
+  - **Current state**: `# TODO: Create calendar event` with mock response
+  - **Required**: Call Office Service to create real calendar events
+  - **Files**: `services/meetings/api/bookings.py` (line 197)
+  - **Acceptance criteria**: Real calendar events created and visible in user's calendar
+
+#### 13.4 Email Service Integration (High Priority)
+- [ ] Implement actual email sending
+  - **Current state**: `# TODO: Send confirmation emails` with no implementation
+  - **Required**: Call email service to send real confirmation emails
+  - **Files**: `services/meetings/api/bookings.py` (line 200)
+  - **Acceptance criteria**: Real emails sent to both parties with meeting details
+
+#### 13.5 Analytics Tracking (Medium Priority)
+- [ ] Implement actual analytics event tracking
+  - **Current state**: `# TODO: Track analytics` with no implementation
+  - **Required**: Store analytics events in database for real tracking
+  - **Files**: `services/meetings/api/bookings.py` (line 203)
+  - **Acceptance criteria**: View and booking events properly tracked and queryable
+
+#### 13.6 Availability Calculation (Medium Priority)
+- [ ] Implement business hours, buffers, and limits enforcement
+  - **Current state**: `# TODO: post-process availability to enforce buffers, business hours, limits`
+  - **Required**: Apply configuration settings to filter available slots
+  - **Files**: `services/meetings/services/booking_availability.py` (line 32)
+  - **Acceptance criteria**: Available slots respect all owner configuration settings
+
+#### 13.7 Frontend API Integration (High Priority)
+- [ ] Replace alert() calls with actual API calls
+  - **Current state**: All actions show alerts instead of calling backend
+  - **Required**: Implement proper API calls for all CRUD operations
+  - **Files**: `frontend/app/bookings/page.tsx` (lines 532, 571, 576, 581, 586, 759, 768)
+  - **Acceptance criteria**: All frontend actions properly communicate with backend
+
+#### 13.8 Template Management (Medium Priority)
+- [ ] Implement booking template creation and management
+  - **Current state**: `# TODO: Create template if provided` with no implementation
+  - **Required**: Full CRUD operations for booking templates
+  - **Files**: `services/meetings/api/bookings.py` (line 253)
+  - **Acceptance criteria**: Templates can be created, updated, and applied to booking links
+
+#### 13.9 One-time Link Storage (Medium Priority)
+- [ ] Implement one-time link persistence
+  - **Current state**: `# TODO: Store in database` with no implementation
+  - **Required**: Store one-time links in database with proper expiration handling
+  - **Files**: `services/meetings/api/bookings.py` (line 503)
+  - **Acceptance criteria**: One-time links properly stored and can be retrieved/validated
+
+#### 13.10 Error Handling and Validation (Medium Priority)
+- [ ] Implement comprehensive input validation and error handling
+  - **Current state**: Basic validation only; many edge cases not handled
+  - **Required**: Proper Pydantic models, validation, and error responses
+  - **Acceptance criteria**: All endpoints properly validate input and return meaningful errors
+
+---
+
 ### Nice-to-have (still within MVP if time allows)
 - [ ] Calendar overlay (multiple calendars) in availability
 - [ ] Template library (starter templates)
