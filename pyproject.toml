@@ -173,7 +173,9 @@ reportFunctionMemberAccess = false
 
 [tool.ruff]
 src = ["src"]  # Tells Ruff where absolute imports should start
+
+[tool.ruff.lint]
 select = ["TID252"]  # Ban relative imports
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
