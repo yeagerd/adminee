@@ -898,7 +898,13 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
             if (e?.detail?.pollId === pollId) {
                 gatewayClient.getMeetingPoll(pollId)
                     .then((data) => setPoll(data as Poll))
-                    .catch((e) => setError(e.message || 'Failed to refresh poll'));
+                    .catch((e: unknown) => {
+                        if (e && typeof e === 'object' && 'message' in e) {
+                            setError((e as { message?: string }).message || 'Failed to refresh poll');
+                        } else {
+                            setError('Failed to refresh poll');
+                        }
+                    });
             }
         };
         // Cast to EventListener to satisfy TS
@@ -912,7 +918,13 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         setLoading(true);
         gatewayClient.getMeetingPoll(pollId)
             .then((data) => setPoll(data as Poll))
-            .catch((e) => setError(e.message || 'Failed to load poll'))
+            .catch((e: unknown) => {
+                if (e && typeof e === 'object' && 'message' in e) {
+                    setError((e as { message?: string }).message || 'Failed to load poll');
+                } else {
+                    setError('Failed to load poll');
+                }
+            })
             .finally(() => setLoading(false));
     }, [pollId]);
 
