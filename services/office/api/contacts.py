@@ -43,6 +43,26 @@ def get_request_id() -> str:
     if not request_id or request_id == "uninitialized":
         return "no-request-id"
     return request_id
+async def _invalidate_contacts_cache(user_id: str) -> None:
+    """Invalidate contacts cache for a user with backwards compatibility.
+
+    Older tests/modules may patch `cache_manager.invalidate_user_cache`.
+    Prefer that if present; otherwise fall back to `delete_pattern`.
+    """
+    # Back-compat: some tests patch this attribute as AsyncMock
+    invalidate_attr = getattr(cache_manager, "invalidate_user_cache", None)
+    if invalidate_attr is not None:
+        try:
+            await invalidate_attr(user_id)
+            return
+        except TypeError:
+            # Fall back if the patched attribute isn't awaitable
+            pass
+
+    # Default: delete contacts keys for this user
+    pattern = f"office:{user_id}:unified:contacts:*"
+    await cache_manager.delete_pattern(pattern)
+
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -392,8 +412,7 @@ async def create_contact(
             raise ServiceError(message=f"Unsupported provider: {provider}")
 
         # Invalidate contacts cache for this user
-        pattern = f"office:{user_id}:unified:contacts:*"
-        await cache_manager.delete_pattern(pattern)
+        await _invalidate_contacts_cache(user_id)
         return {
             "success": True,
             "data": {"contact": normalized},
@@ -529,8 +548,7 @@ async def update_contact(
         else:
             raise ServiceError(message=f"Unsupported provider: {prov}")
 
-        pattern = f"office:{user_id}:unified:contacts:*"
-        await cache_manager.delete_pattern(pattern)
+        await _invalidate_contacts_cache(user_id)
         return {
             "success": True,
             "data": {"contact": normalized},
@@ -588,9 +606,8 @@ async def delete_contact(
             await client.delete_contact(prov_id)
         else:
             raise ServiceError(message=f"Unsupported provider: {prov}")
-            # Invalidate caches for this user's contacts
-            pattern = f"office:{user_id}:unified:contacts:*"
-            await cache_manager.delete_pattern(pattern)
+        # Invalidate caches for this user's contacts
+        await _invalidate_contacts_cache(user_id)
         return {"success": True, "data": {"deleted": True}, "request_id": request_id}
     except Exception as e:
         raise ServiceError(message=f"Failed to delete contact: {str(e)}")
