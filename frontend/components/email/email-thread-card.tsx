@@ -11,7 +11,6 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
-// inline draft removed; thread-level draft card is handled by parent
 
 // Configure DOMPurify for email content
 const emailSanitizeConfig = {
@@ -80,9 +79,6 @@ interface EmailThreadCardProps {
     onSelect?: (emailId: string) => void;
     showReadingPane?: boolean;
     inlineAvatar?: boolean;
-    onReply?: (email: EmailMessage) => void;
-    onReplyAll?: (email: EmailMessage) => void;
-    onForward?: (email: EmailMessage) => void;
 }
 
 // Use the safe email date formatting function with detailed format
@@ -134,26 +130,25 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     email,
     isSelected = false,
     onSelect,
-    inlineAvatar = false,
-    onReply,
-    onReplyAll,
-    onForward,
+    inlineAvatar = false
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
     const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
-    // inline draft removed; thread-level draft card will be shown by parent
 
     const handleReply = () => {
-        onReply?.(email);
+        // TODO: Implement reply functionality
+        console.log('Reply to email:', email.id);
     };
 
     const handleReplyAll = () => {
-        onReplyAll?.(email);
+        // TODO: Implement reply all functionality
+        console.log('Reply all to email:', email.id);
     };
 
     const handleForward = () => {
-        onForward?.(email);
+        // TODO: Implement forward functionality
+        console.log('Forward email:', email.id);
     };
 
     const handleTrackShipment = () => {
@@ -341,8 +336,6 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                 <div className="mt-3">
                     <AISummary email={email} />
                 </div>
-
-                {/* Inline draft removed; thread-level draft card will be shown by parent */}
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 mt-3">

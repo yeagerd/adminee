@@ -14,10 +14,6 @@ export interface DraftMetadata {
     title?: string;
     tags?: string[];
     priority?: 'low' | 'medium' | 'high';
-    // Provider-specific email draft metadata
-    provider?: 'google' | 'microsoft';
-    providerDraftId?: string; // ID of the draft in the provider (Gmail/Outlook)
-    replyToMessageId?: string; // Provider message id when replying/forwarding
 }
 
 export interface Draft {

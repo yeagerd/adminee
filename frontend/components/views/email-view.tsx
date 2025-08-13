@@ -14,8 +14,6 @@ import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/typ
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
-import { draftService } from '@/services/draft-service';
-import { useDraftState } from '@/hooks/use-draft-state';
 
 interface EmailViewProps {
     toolDataLoading?: boolean;
@@ -107,7 +105,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
     const { toast } = useToast();
-    const { setCurrentDraft, updateDraft, createNewDraft } = useDraftState();
 
     // Bulk action states
     const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
@@ -391,40 +388,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             const response = await gatewayClient.getThread(threadId, true); // include body
             if (response.data?.thread) {
                 setFullThread(response.data.thread);
-                // Auto-load provider drafts for this thread
-                try {
-                    const draftsResp = await draftService.listProviderDraftsForThread(threadId);
-                    const providerDrafts = (draftsResp?.data?.drafts as unknown[]) || [];
-                    if (providerDrafts.length > 0) {
-                        // Take the latest provider draft and reflect into local draft editor for continuity
-                        const latest = providerDrafts[0] as Record<string, unknown> | undefined;
-                        const provider = response.data.provider_used as 'google' | 'microsoft' | undefined;
-                        const session = await getSession();
-                        const local = createNewDraft('email', session?.user?.id || '');
-                        const headers = (latest?.message as Record<string, unknown> | undefined)?.payload as Record<string, unknown> | undefined;
-                        const headerArr = (headers?.headers as Array<{ name?: string; value?: string }>) || [];
-                        const subject = headerArr.find((h) => h?.name === 'Subject')?.value || (latest?.subject as string | undefined) || '';
-                        const body = ((latest?.message as Record<string, unknown> | undefined)?.snippet as string | undefined) ||
-                                     ((latest?.body as Record<string, unknown> | undefined)?.content as string | undefined) || '';
-                        const latestId = (latest?.id as string | undefined) || '';
-                        updateDraft({
-                            id: local.id,
-                            content: body,
-                            metadata: {
-                                subject,
-                                recipients: [],
-                                cc: [],
-                                bcc: [],
-                                provider,
-                                providerDraftId: latestId,
-                            },
-                            threadId,
-                        });
-                        setCurrentDraft({ ...local, content: body, metadata: { ...local.metadata, subject, provider, providerDraftId: latestId } });
-                    }
-                } catch (e) {
-                    console.warn('No provider drafts for thread or failed to load:', e);
-                }
             } else {
                 throw new Error('No thread data received from API');
             }
@@ -435,7 +398,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         } finally {
             setLoadingThread(false);
         }
-    }, [createNewDraft, setCurrentDraft, updateDraft]);
+    }, []);
 
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);

@@ -6,16 +6,12 @@ import { EmailFolderSelector } from './email-folder-selector';
 jest.mock('@/contexts/integrations-context');
 const mockUseIntegrations = useIntegrations as jest.MockedFunction<typeof useIntegrations>;
 
-// Mock the gateway client with default and named exports
-jest.mock('@/lib/gateway-client', () => {
-    const mockGetEmailFolders = jest.fn().mockResolvedValue({ success: true, data: { folders: [] } });
-    return {
-        __esModule: true,
-        default: { getEmailFolders: mockGetEmailFolders },
-        gatewayClient: { getEmailFolders: mockGetEmailFolders },
-        GatewayClient: class {},
-    };
-});
+// Mock the gateway client
+jest.mock('@/lib/gateway-client', () => ({
+    gatewayClient: {
+        getEmailFolders: jest.fn(),
+    },
+}));
 
 describe('EmailFolderSelector', () => {
     beforeEach(() => {
@@ -34,6 +30,7 @@ describe('EmailFolderSelector', () => {
         const mockOnFolderSelect = jest.fn();
         render(<EmailFolderSelector onFolderSelect={mockOnFolderSelect} />);
 
+        // Check that the hamburger menu button is rendered
         const button = screen.getByRole('button');
         expect(button).toBeInTheDocument();
     });
@@ -52,6 +49,7 @@ describe('EmailFolderSelector', () => {
         const mockOnFolderSelect = jest.fn();
         render(<EmailFolderSelector onFolderSelect={mockOnFolderSelect} />);
 
+        // Should still render the button
         const button = screen.getByRole('button');
         expect(button).toBeInTheDocument();
     });

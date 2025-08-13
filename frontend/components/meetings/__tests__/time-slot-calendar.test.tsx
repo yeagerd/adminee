@@ -31,15 +31,6 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
         calendarEvents: []
     };
 
-    beforeAll(() => {
-        jest.useFakeTimers();
-        jest.setSystemTime(new Date('2025-08-01T00:00:00Z'));
-    });
-
-    afterAll(() => {
-        jest.useRealTimers();
-    });
-
     beforeEach(() => {
         jest.clearAllMocks();
     });
@@ -243,15 +234,6 @@ describe('TimeSlotCalendar Business Day Integration', () => {
         selectedTimeSlots: [],
         calendarEvents: []
     };
-
-    beforeAll(() => {
-        jest.useFakeTimers();
-        jest.setSystemTime(new Date('2025-08-01T00:00:00Z'));
-    });
-
-    afterAll(() => {
-        jest.useRealTimers();
-    });
 
     beforeEach(() => {
         jest.clearAllMocks();

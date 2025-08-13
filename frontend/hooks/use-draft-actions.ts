@@ -28,9 +28,7 @@ export function useDraftActions(): UseDraftActionsReturn {
                     result = await draftService.saveDraft(draft);
                     break;
                 case 'discard':
-                    const provider = draft.metadata?.provider as 'google' | 'microsoft' | undefined;
-                    const providerDraftId = draft.metadata?.providerDraftId as string | undefined;
-                    const success = await draftService.discardDraft(draft.id, provider, providerDraftId);
+                    const success = await draftService.discardDraft(draft.id);
                     result = { success, draftId: draft.id };
                     break;
                 default:
