@@ -158,7 +158,7 @@ def get_poll(
 
 @router.post("/", response_model=MeetingPoll)
 @router.post("", response_model=MeetingPoll)
-def create_poll(
+async def create_poll(
     poll: MeetingPollCreate,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
@@ -212,6 +212,101 @@ def create_poll(
             session.add(db_part)
         session.commit()
         session.refresh(db_poll)
+
+        # Send emails if requested
+        if poll.send_emails:
+            try:
+                frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+                # Send emails to all participants
+                for participant in db_poll.participants:
+                    response_url = f"{frontend_url}/public/meetings/respond/{participant.response_token}"
+                    subject = f"You're invited: {db_poll.title}"
+                    description = getattr(db_poll, "description", "") or ""
+
+                    # Build email body with location and time slots
+                    body_lines = [
+                        "You have been invited to respond to a meeting poll!",
+                        "",
+                        f"Event: {db_poll.title}",
+                        "",
+                    ]
+
+                    if description:
+                        body_lines.extend([f"Description: {description}", ""])
+
+                    # Add location if available
+                    location = getattr(db_poll, "location", "") or ""
+                    if location:
+                        body_lines.extend([f"Location: {location}", ""])
+
+                    body_lines.extend(
+                        [
+                            "",
+                            "To respond via web:",
+                            f"{response_url}",
+                            "",
+                            "To respond via email, reply to this message by moving the time slots under the appropriate headings:",
+                            "",
+                            "=== EMAIL RESPONSE ===",
+                            "Copy the headings below and move the time slots under the appropriate category:",
+                            "",
+                            "I'm AVAILABLE:",
+                            "",
+                            "I'm UNAVAILABLE:",
+                            "",
+                            "I'm MAYBE:",
+                            "",
+                            "",
+                            "Proposed Meeting Times:",
+                        ]
+                    )
+
+                    # Add time slots for users to move under headings
+                    for i, slot in enumerate(db_poll.time_slots, 1):
+                        start_time = slot.start_time.strftime(
+                            "%A, %B %d, %Y at %I:%M %p"
+                        )
+                        end_time = slot.end_time.strftime("%I:%M %p")
+                        slot_timezone = slot.timezone
+                        body_lines.append(
+                            f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})"
+                        )
+
+                    body_lines.extend(
+                        [
+                            "",
+                            "=== END EMAIL RESPONSE ===",
+                            "",
+                            "Please respond by the deadline to help us find the best meeting time!",
+                        ]
+                    )
+
+                    body = "\n".join(body_lines)
+
+                    await email_integration.send_invitation_email(
+                        str(participant.email), subject, body, user_id
+                    )
+
+                    # Update participant status to indicate invitation was sent
+                    participant.status = "pending"
+                    participant.invited_at = datetime.now(timezone.utc)
+
+                session.commit()
+                logger.info(
+                    "Emails sent successfully for new poll",
+                    poll_id=str(db_poll.id),
+                    participant_count=len(db_poll.participants),
+                )
+
+            except Exception as e:
+                logger.error(
+                    "Failed to send emails for new poll",
+                    poll_id=str(db_poll.id),
+                    error=str(e),
+                )
+                # Don't fail the poll creation if email sending fails
+                # The user can resend emails later
 
         logger.info(
             "Poll created successfully",
@@ -513,8 +608,8 @@ async def resend_invitation(
         for i, slot in enumerate(poll.time_slots, 1):
             start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
             end_time = slot.end_time.strftime("%I:%M %p")
-            timezone = slot.timezone
-            body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({timezone})")
+            slot_timezone = slot.timezone
+            body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})")
 
         body_lines.extend(
             [

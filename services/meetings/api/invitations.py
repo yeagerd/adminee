@@ -114,11 +114,11 @@ async def send_invitations(
             )
 
             # Add time slots for users to move under headings
-            for i, slot in enumerate(poll.time_slots, 1):
-                start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
-                end_time = slot.end_time.strftime("%I:%M %p")
-                timezone = slot.timezone
-                body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({timezone})")
+        for i, slot in enumerate(poll.time_slots, 1):
+            start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
+            end_time = slot.end_time.strftime("%I:%M %p")
+            slot_timezone = slot.timezone
+            body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})")
 
             body_lines.extend(
                 [
