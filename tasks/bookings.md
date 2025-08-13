@@ -124,7 +124,7 @@ Conventions
 ---
 
 ### 7. Management Dashboard (Owner)
-- [ ] Links list
+- [x] Links list
   - List all active/inactive links with quick actions (enable/disable, duplicate, edit)
   - Acceptance criteria:
     - Toggling active state reflects immediately in API and UI

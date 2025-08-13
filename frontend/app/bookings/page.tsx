@@ -7,6 +7,7 @@ type Step = "basics" | "availability" | "duration" | "limits" | "template" | "re
 export default function BookingsPage() {
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [showOneTimeForm, setShowOneTimeForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"create" | "manage">("create");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -27,6 +28,28 @@ export default function BookingsPage() {
     recipientName: "",
     expiresInDays: 7,
   });
+
+  // Mock data for existing links
+  const [existingLinks] = useState([
+    {
+      id: "1",
+      title: "Coffee Chat",
+      slug: "coffee-chat",
+      isActive: true,
+      createdAt: "2024-01-15",
+      totalBookings: 12,
+      conversionRate: "8.5%",
+    },
+    {
+      id: "2", 
+      title: "Consultation",
+      slug: "consultation",
+      isActive: false,
+      createdAt: "2024-01-10",
+      totalBookings: 5,
+      conversionRate: "12.3%",
+    },
+  ]);
 
   const steps: { key: Step; label: string }[] = [
     { key: "basics", label: "Basics" },
@@ -256,9 +279,120 @@ export default function BookingsPage() {
     alert(`One-time link created!\n\nURL: ${mockUrl}\n\nThis link will expire in ${oneTimeData.expiresInDays} days or after first use.`);
   };
 
+  const toggleLinkStatus = (linkId: string) => {
+    // TODO: Implement API call to toggle link status
+    alert(`Toggling link ${linkId} status... (API integration pending)`);
+  };
+
+  const duplicateLink = (linkId: string) => {
+    // TODO: Implement API call to duplicate link
+    alert(`Duplicating link ${linkId}... (API integration pending)`);
+  };
+
+  const editLink = (linkId: string) => {
+    // TODO: Navigate to edit mode
+    alert(`Editing link ${linkId}... (edit mode pending)`);
+  };
+
+  if (activeTab === "manage") {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Manage Booking Links</h1>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => setActiveTab("create")}
+          >
+            Create New Link
+          </button>
+        </div>
+
+        {/* Links list */}
+        <div className="bg-white border rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50">
+            <h2 className="font-medium">Your Booking Links</h2>
+          </div>
+          
+          <div className="divide-y">
+            {existingLinks.map((link) => (
+              <div key={link.id} className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-medium">{link.title}</h3>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        link.isActive 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                        {link.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Slug: {link.slug} • Created: {link.createdAt}
+                    </p>
+                    <div className="flex items-center gap-4 mt-2 text-sm">
+                      <span>Total bookings: {link.totalBookings}</span>
+                      <span>Conversion: {link.conversionRate}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                      onClick={() => toggleLinkStatus(link.id)}
+                    >
+                      {link.isActive ? "Disable" : "Enable"}
+                    </button>
+                    <button
+                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                      onClick={() => duplicateLink(link.id)}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                      onClick={() => editLink(link.id)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick stats */}
+        <div className="mt-6 grid grid-cols-3 gap-4">
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
+            <p className="text-2xl font-semibold">{existingLinks.length}</p>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
+            <p className="text-2xl font-semibold">{existingLinks.filter(l => l.isActive).length}</p>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+            <p className="text-2xl font-semibold">{existingLinks.reduce((sum, l) => sum + l.totalBookings, 0)}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">Create Booking Link</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Create Booking Link</h1>
+        <button
+          className="px-4 py-2 border rounded hover:bg-gray-50"
+          onClick={() => setActiveTab("manage")}
+        >
+          Manage Links
+        </button>
+      </div>
       
       {/* Step indicator */}
       <div className="flex items-center justify-between mb-8">
