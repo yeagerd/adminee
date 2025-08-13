@@ -16,7 +16,7 @@ interface UseDraftsReturn {
     totalCount: number;
     hasMore: boolean;
     refetch: () => Promise<void>;
-    createDraft: (draft: { type: DraftType; content: string; metadata?: any }) => Promise<Draft>;
+    createDraft: (draft: { type: DraftType; content: string; metadata?: Record<string, unknown> }) => Promise<Draft>;
     updateDraft: (id: string, updates: Partial<Draft>) => Promise<Draft>;
     deleteDraft: (id: string) => Promise<boolean>;
 }
@@ -57,7 +57,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
                 search: options.search,
             });
 
-            const mappedDrafts = data.drafts.map((draft: any) => ({
+            const mappedDrafts = data.drafts.map((draft) => ({
                 id: draft.id,
                 type: draft.type as DraftType,
                 status: draft.status as DraftStatus,
@@ -80,7 +80,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
         }
     }, [options.type, options.status, options.search, options.limit]);
 
-    const createDraft = useCallback(async (draft: { type: DraftType; content: string; metadata?: any }): Promise<Draft> => {
+    const createDraft = useCallback(async (draft: { type: DraftType; content: string; metadata?: Record<string, unknown> }): Promise<Draft> => {
         try {
             const data = await gatewayClient.createDraft({
                 type: draft.type,

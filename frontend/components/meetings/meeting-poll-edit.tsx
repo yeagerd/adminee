@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient, MeetingPoll, MeetingPollUpdate } from '@/lib/gateway-client';
+import { gatewayClient, MeetingPollUpdate } from '@/lib/gateway-client';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -26,13 +26,19 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
         if (!pollId) return;
         setLoading(true);
         gatewayClient.getMeetingPoll(pollId)
-            .then((poll: MeetingPoll) => {
+            .then((poll) => {
                 setTitle(poll.title || "");
                 setDescription(poll.description || "");
                 setDuration(poll.duration_minutes || 60);
                 setLocation(poll.location || "");
             })
-            .catch((e) => setError(e.message || "Failed to load poll"))
+            .catch((e: unknown) => {
+                if (e && typeof e === 'object' && 'message' in e) {
+                    setError((e as { message?: string }).message || "Failed to load poll");
+                } else {
+                    setError("Failed to load poll");
+                }
+            })
             .finally(() => setLoading(false));
     }, [pollId]);
 

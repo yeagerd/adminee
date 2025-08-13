@@ -36,7 +36,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
-    const [options, setOptions] = useState<UseThreadsOptions>({
+    const [options] = useState<UseThreadsOptions>({
         providers: ['google', 'microsoft'],
         limit: 50,
         includeBody: false,

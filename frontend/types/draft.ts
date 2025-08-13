@@ -44,7 +44,7 @@ export interface DraftState {
 
 export interface DraftAction {
     type: 'SET_CURRENT_DRAFT' | 'UPDATE_DRAFT' | 'CLEAR_DRAFT' | 'SET_LOADING' | 'SET_ERROR' | 'SET_DRAFT_LIST' | 'ADD_DRAFT' | 'REMOVE_DRAFT';
-    payload?: any;
+    payload?: unknown;
 }
 
 export interface DraftEditorProps {

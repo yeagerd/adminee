@@ -21,7 +21,7 @@ export interface UsePaginationReturn {
 }
 
 export function usePagination(options: UsePaginationOptions = {}): UsePaginationReturn {
-    const { initialLimit = 20, onPageChange } = options;
+    const { onPageChange } = options;
 
     const [paginationState, setPaginationState] = useState<PaginationState>({
         hasNext: false,
