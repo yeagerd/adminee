@@ -70,17 +70,17 @@ export default function CalendarGridView({
     const selectedStartEnd = useMemo(() => {
         if (!selection) return null;
         const gridStartHour = 6;
-        const slotMinutes = 30;
+        const slotMinutes = 15;
         const startSlot = Math.min(selection.startIndex, selection.endIndex);
         const endSlot = Math.max(selection.startIndex, selection.endIndex) + 1; // inclusive end slot -> add 1
 
         // Build start/end as Zoned DateTimes in effectiveTimezone, then output JS Dates representing the same instant
         const selectionDay = DateTime.fromJSDate(selection.day).setZone(effectiveTimezone);
-        const startHours = gridStartHour + Math.floor(startSlot / 2);
-        const startMinutes = (startSlot % 2) * slotMinutes;
+        const startHours = gridStartHour + Math.floor(startSlot / 4);
+        const startMinutes = (startSlot % 4) * slotMinutes;
         const startZoned = selectionDay.set({ hour: startHours, minute: startMinutes, second: 0, millisecond: 0 });
-        const endHours = gridStartHour + Math.floor(endSlot / 2);
-        const endMinutes = (endSlot % 2) * slotMinutes;
+        const endHours = gridStartHour + Math.floor(endSlot / 4);
+        const endMinutes = (endSlot % 4) * slotMinutes;
         const endZoned = selectionDay.set({ hour: endHours, minute: endMinutes, second: 0, millisecond: 0 });
 
         // Convert to JS Dates preserving the actual instant in time
@@ -164,11 +164,11 @@ export default function CalendarGridView({
         return result;
     }, [currentDate, viewType]);
 
-    // Generate time slots (6 AM to 10 PM)
+    // Generate time slots (6 AM to 10 PM) - 15 minute increments
     const timeSlots = useMemo(() => {
         const slots: TimeSlot[] = [];
         for (let hour = 6; hour <= 22; hour++) {
-            for (let minute = 0; minute < 60; minute += 30) {
+            for (let minute = 0; minute < 60; minute += 15) {
                 // Create a simple time string in the user's timezone
                 const timeString = `${hour}:${minute.toString().padStart(2, '0')}`;
                 const time = DateTime.fromFormat(timeString, 'H:mm', { zone: effectiveTimezone });
@@ -342,6 +342,86 @@ export default function CalendarGridView({
         })();
         return () => { isMounted = false; };
     }, [dateRange, viewType, externalEvents, toolDataLoading, integrationsLoading, activeProviders, activeTool, fetchCalendarEvents]);
+
+    // Global mouse event handlers for drag selection
+    useEffect(() => {
+                const handleMouseMove = (e: MouseEvent) => {
+            if (!isSelecting || !selectionStartRef.current) return;
+
+            // Try to find the time slot element under the mouse
+            const target = e.target as HTMLElement;
+            const timeSlot = target.closest('[data-slot-index]');
+            let dayElement = null;
+            let slotIndex = 0;
+            let day = null;
+
+            // If closest() doesn't work, try to find by mouse position
+            if (!timeSlot) {
+                // Find the calendar grid container
+                const calendarGrid = document.querySelector('[data-calendar-grid]');
+                if (calendarGrid) {
+                    const rect = calendarGrid.getBoundingClientRect();
+                    const mouseY = e.clientY - rect.top;
+                    
+                    // Calculate slot index based on mouse Y position
+                    // Each slot is 24px (h-6), grid starts at 6 AM
+                    const gridStartY = 0; // Assuming grid starts at top
+                    const slotHeight = 24;
+                    const calculatedSlotIndex = Math.floor((mouseY - gridStartY) / slotHeight);
+                    
+                    if (calculatedSlotIndex >= 0 && calculatedSlotIndex < 64) { // 6 AM to 10 PM = 16 hours * 4 slots per hour
+                        slotIndex = calculatedSlotIndex;
+                        
+                        // Find the day column by mouse X position
+                        const mouseX = e.clientX - rect.left;
+                        const dayWidth = rect.width / (days.length + 1); // +1 for time labels column
+                        const dayIndex = Math.floor((mouseX - 60) / dayWidth); // 60px for time labels
+                        
+                        if (dayIndex >= 0 && dayIndex < days.length) {
+                            day = days[dayIndex];
+                        }
+                    }
+                }
+            } else {
+                // Use the original closest() approach
+                slotIndex = parseInt(timeSlot.getAttribute('data-slot-index') || '0');
+                dayElement = timeSlot.closest('[data-day]');
+                
+                if (!dayElement) return;
+
+                const dayString = dayElement.getAttribute('data-day');
+                if (!dayString) return;
+                day = new Date(dayString);
+            }
+
+            if (day && day.toDateString() === selectionStartRef.current.day.toDateString()) {
+                setSelection({
+                    day,
+                    startIndex: selectionStartRef.current.slotIndex,
+                    endIndex: slotIndex
+                });
+            }
+        };
+
+        const handleMouseUp = () => {
+            if (isSelecting && selectionStartRef.current) {
+                setIsSelecting(false);
+                if (selection) {
+                    setIsCreateOpen(true);
+                }
+            }
+        };
+
+        if (isSelecting) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isSelecting, selection, days]);
 
     // Format date for display
     const formatDate = (date: Date) => {
@@ -538,6 +618,7 @@ export default function CalendarGridView({
                         <div className="relative">
                             <div
                                 className="grid select-none"
+                                data-calendar-grid
                                 style={{
                                     gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
                                     minWidth: `${60 + (days.length * 120)}px`
@@ -548,7 +629,7 @@ export default function CalendarGridView({
                                     {timeSlots.map((slot, index) => (
                                         <div
                                             key={index}
-                                            className="h-8 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
+                                            className="h-6 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
                                         >
                                             {slot.minute === 0 ? slot.time : ''}
                                         </div>
@@ -560,11 +641,7 @@ export default function CalendarGridView({
                                     <div
                                         key={dayIndex}
                                         className="border-r relative"
-                                        onMouseLeave={() => {
-                                            if (isSelecting) {
-                                                setIsSelecting(false);
-                                            }
-                                        }}
+                                        data-day={day.toISOString()}
                                     >
                                         {/* Current time indicator */}
                                         {(() => {
@@ -578,7 +655,7 @@ export default function CalendarGridView({
                                                 const gridEndHour = 22;
                                                 if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
                                                     const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 32; // 32px per 30-min slot (h-8)
+                                                    const totalHeight = (gridEndHour - gridStartHour) * 4 * 24; // 24px per 15-min slot (h-6)
                                                     const topPixels = (topPercent / 100) * totalHeight;
 
                                                     return (
@@ -597,45 +674,46 @@ export default function CalendarGridView({
                                             return null;
                                         })()}
 
-                                        {/* Selection overlay (drag) */}
-                                        {selection && selection.day.toDateString() === day.toDateString() && (
-                                            <div className="absolute left-0 right-0 pointer-events-none z-10"
-                                                style={{
-                                                    top: `${Math.min(selection.startIndex, selection.endIndex) * 32}px`,
-                                                    height: `${(Math.abs(selection.endIndex - selection.startIndex) + 1) * 32}px`,
-                                                }}
-                                            >
-                                                <div className="mx-1 rounded bg-blue-200/60 border border-blue-400"></div>
-                                            </div>
-                                        )}
+                                                                                {/* Selection overlay (drag) */}
+                                        {selection && selection.day.toDateString() === day.toDateString() && (() => {
+                                            const topPos = Math.min(selection.startIndex, selection.endIndex) * 24;
+                                            const height = (Math.abs(selection.endIndex - selection.startIndex) + 1) * 24;
+                                            
+                                            return (
+                                                <div 
+                                                    key={`selection-${selection.startIndex}-${selection.endIndex}`}
+                                                    className="absolute left-0 right-0 pointer-events-none z-20"
+                                                    style={{
+                                                        top: `${topPos}px`,
+                                                        height: `${height}px`,
+                                                    }}
+                                                >
+                                                    <div 
+                                                        className="mx-1 rounded-md bg-blue-500/70 border border-blue-600 shadow-lg" 
+                                                        style={{ 
+                                                            height: '100%',
+                                                            transition: 'all 0.1s ease-out'
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })()}
+                                        
 
                                         {/* Time slots */}
                                         {timeSlots.map((slot, slotIndex) => (
                                             <div
                                                 key={slotIndex}
-                                                className="h-8 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                className="h-6 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                data-slot-index={slotIndex}
                                                 onMouseDown={() => {
                                                     setIsSelecting(true);
                                                     selectionStartRef.current = { day, slotIndex };
                                                     setSelection({ day, startIndex: slotIndex, endIndex: slotIndex });
                                                 }}
-                                                onMouseEnter={() => {
-                                                    if (!isSelecting || !selectionStartRef.current) return;
-                                                    if (selectionStartRef.current.day.toDateString() !== day.toDateString()) return;
-                                                    setSelection({ day, startIndex: selectionStartRef.current.slotIndex, endIndex: slotIndex });
-                                                }}
-                                                onMouseUp={() => {
-                                                    if (!selectionStartRef.current) return;
-                                                    if (selectionStartRef.current.day.toDateString() !== day.toDateString()) {
-                                                        clearSelection();
-                                                        return;
-                                                    }
-                                                    setIsSelecting(false);
-                                                    setIsCreateOpen(true);
-                                                }}
                                                 onClick={() => {
-                                                    // Single click create (30 min slot)
-                                                    setSelection({ day, startIndex: slotIndex, endIndex: slotIndex });
+                                                    // Single click create (30 min slot - 2 slots)
+                                                    setSelection({ day, startIndex: slotIndex, endIndex: slotIndex + 1 });
                                                     setIsCreateOpen(true);
                                                 }}
                                             />
