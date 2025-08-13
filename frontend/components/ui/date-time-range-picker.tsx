@@ -84,25 +84,43 @@ export function DateTimeRangePicker({
     }, [startTime, endTime, onStartTimeChange, onEndTimeChange]);
 
     const handleStartTimeSelect = useCallback((time: Date) => {
-        onStartTimeChange(time);
+        // Preserve the date from startTime, only update the time
+        let newStartTime: Date;
+        if (startTime) {
+            newStartTime = new Date(startTime);
+            newStartTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
+        } else {
+            newStartTime = time;
+        }
+
+        onStartTimeChange(newStartTime);
         setShowStartTimePicker(false);
 
         // Adjust end time to maintain duration
         if (endTime) {
             const duration = endTime.getTime() - startTime!.getTime();
-            const newEndTime = new Date(time.getTime() + duration);
+            const newEndTime = new Date(newStartTime.getTime() + duration);
             onEndTimeChange(newEndTime);
         } else {
             // Set default 1-hour duration
-            const newEndTime = new Date(time.getTime() + 60 * 60 * 1000);
+            const newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000);
             onEndTimeChange(newEndTime);
         }
     }, [startTime, endTime, onStartTimeChange, onEndTimeChange]);
 
     const handleEndTimeSelect = useCallback((time: Date) => {
-        onEndTimeChange(time);
+        // Preserve the date from endTime, only update the time
+        let newEndTime: Date;
+        if (endTime) {
+            newEndTime = new Date(endTime);
+            newEndTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
+        } else {
+            newEndTime = time;
+        }
+
+        onEndTimeChange(newEndTime);
         setShowEndTimePicker(false);
-    }, [onEndTimeChange]);
+    }, [endTime, onEndTimeChange]);
 
     // Close pickers when clicking outside
     useEffect(() => {
@@ -200,9 +218,11 @@ export function DateTimeRangePicker({
                         <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-1 min-w-[120px] max-h-60 overflow-y-auto" data-picker>
                             {(() => {
                                 const options = [];
+                                // Use the selected date if available, otherwise use today
+                                const baseDate = startTime ? new Date(startTime) : new Date();
                                 for (let hour = 0; hour < 24; hour++) {
                                     for (let minute = 0; minute < 60; minute += 15) {
-                                        const time = new Date();
+                                        const time = new Date(baseDate);
                                         time.setHours(hour, minute, 0, 0);
                                         options.push(time);
                                     }
