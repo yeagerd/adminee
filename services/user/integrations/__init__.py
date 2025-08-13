@@ -5,7 +5,7 @@ This package contains OAuth integration configurations and utilities
 for connecting to external providers like Google, Microsoft, and Slack.
 """
 
-from .oauth_config import (
+from services.user.integrations.oauth_config import (
     OAuthConfig,
     OAuthProviderConfig,
     OAuthScope,
