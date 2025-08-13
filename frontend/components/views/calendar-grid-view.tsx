@@ -712,7 +712,7 @@ export default function CalendarGridView({
                         </div>
                     </div>
                     <DialogFooter>
-                        <div className="flex w-full justify-between gap-2">
+                        <div className="flex w-full justify-end gap-2">
                             <Button
                                 variant="ghost"
                                 onClick={() => {
@@ -722,47 +722,36 @@ export default function CalendarGridView({
                             >
                                 Cancel
                             </Button>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="destructive"
-                                    onClick={() => {
+                            <Button
+                                onClick={async () => {
+                                    if (!selectedStartEnd) return;
+                                    const title = formTitle.trim() || 'New meeting';
+                                    try {
+                                        const startUtc = DateTime.fromJSDate(selectedStartEnd.start).toUTC();
+                                        const endUtc = DateTime.fromJSDate(selectedStartEnd.end).toUTC();
+                                        await gatewayClient.createCalendarEvent({
+                                            title,
+                                            description: formDescription || undefined,
+                                            start_time: startUtc.toISO()!,
+                                            end_time: endUtc.toISO()!,
+                                            all_day: formAllDay || false,
+                                            location: formLocation || undefined,
+                                        });
                                         setIsCreateOpen(false);
                                         clearSelection();
-                                    }}
-                                >
-                                    Delete
-                                </Button>
-                                <Button
-                                    onClick={async () => {
-                                        if (!selectedStartEnd) return;
-                                        const title = formTitle.trim() || 'New meeting';
-                                        try {
-                                            const startUtc = DateTime.fromJSDate(selectedStartEnd.start).toUTC();
-                                            const endUtc = DateTime.fromJSDate(selectedStartEnd.end).toUTC();
-                                            await gatewayClient.createCalendarEvent({
-                                                title,
-                                                description: formDescription || undefined,
-                                                start_time: startUtc.toISO()!,
-                                                end_time: endUtc.toISO()!,
-                                                all_day: formAllDay || false,
-                                                location: formLocation || undefined,
-                                            });
-                                            setIsCreateOpen(false);
-                                            clearSelection();
-                                            setFormTitle('');
-                                            setFormDescription('');
-                                            setFormLocation('');
-                                            setFormAllDay(false);
-                                            await (onRefresh ? onRefresh() : handleRefresh());
-                                            toast({ description: 'Meeting created' });
-                                        } catch (e) {
-                                            toast({ description: e instanceof Error ? e.message : 'Failed to create meeting' });
-                                        }
-                                    }}
-                                >
-                                    Save
-                                </Button>
-                            </div>
+                                        setFormTitle('');
+                                        setFormDescription('');
+                                        setFormLocation('');
+                                        setFormAllDay(false);
+                                        await (onRefresh ? onRefresh() : handleRefresh());
+                                        toast({ description: 'Meeting created' });
+                                    } catch (e) {
+                                        toast({ description: e instanceof Error ? e.message : 'Failed to create meeting' });
+                                    }
+                                }}
+                            >
+                                Save
+                            </Button>
                         </div>
                     </DialogFooter>
                 </DialogContent>
