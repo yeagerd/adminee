@@ -16,7 +16,7 @@ from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
-from services.meetings.models.meeting import PollStatus
+from services.meetings.models.meeting import PollStatus, ParticipantStatus
 from services.meetings.schemas import (
     MeetingPoll,
     MeetingPollCreate,
@@ -289,7 +289,7 @@ async def create_poll(
                     )
 
                     # Update participant status to indicate invitation was sent
-                    participant.status = "pending"
+                    participant.status = ParticipantStatus.pending
                     participant.invited_at = datetime.now(timezone.utc)
 
                 session.commit()
