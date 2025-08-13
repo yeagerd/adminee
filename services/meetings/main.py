@@ -13,6 +13,7 @@ from services.common.logging_config import (
     setup_service_logging,
 )
 from services.meetings.api import (
+    bookings_router,
     email_router,
     invitations_router,
     polls_router,
@@ -81,6 +82,7 @@ app.include_router(public_router, prefix="/api/v1/public/polls", tags=["public"]
 app.include_router(
     email_router, prefix="/api/v1/meetings/process-email-response", tags=["email"]
 )
+app.include_router(bookings_router, prefix="/api/v1/bookings", tags=["bookings"])
 
 
 @app.get("/")
