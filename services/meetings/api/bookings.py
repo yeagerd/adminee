@@ -284,8 +284,8 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
         session.add(analytics_event)
         session.commit()
         
-        # TODO: Create calendar event
-        # calendar_event_id = await create_booking_calendar_event(booking)
+        # Create calendar event
+        calendar_event_id = await create_booking_calendar_event(booking)
         
         # TODO: Send confirmation emails
         # await send_confirmation_email(booking)
@@ -305,7 +305,7 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
             "data": {
                 "id": str(booking.id),
                 "message": "Booking created successfully",
-                "calendar_event_id": None,  # TODO: Replace with actual event ID
+                "calendar_event_id": calendar_event_id,
             }
         }
 

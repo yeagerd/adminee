@@ -236,7 +236,7 @@ The following items were marked as complete but contain significant incomplete w
   - **Acceptance criteria**: User ID extracted from auth token; proper permission checks
 
 #### 13.3 Calendar Event Creation (High Priority)
-- [ ] Implement actual calendar event creation
+- [x] Implement actual calendar event creation
   - **Current state**: `# TODO: Create calendar event` with mock response
   - **Required**: Call Office Service to create real calendar events
   - **Files**: `services/meetings/api/bookings.py` (line 197)
