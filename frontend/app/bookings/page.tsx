@@ -8,7 +8,7 @@ export default function BookingsPage() {
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [showOneTimeForm, setShowOneTimeForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"create" | "manage">("create");
-  const [manageView, setManageView] = useState<"links" | "bookings">("links");
+  const [manageView, setManageView] = useState<"links" | "bookings" | "analytics">("links");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -83,6 +83,28 @@ export default function BookingsPage() {
       attendeeName: "Bob Wilson",
       linkTitle: "Coffee Chat",
       status: "pending",
+    },
+  ]);
+
+  // Mock analytics data
+  const [analyticsData] = useState([
+    {
+      linkId: "1",
+      linkTitle: "Coffee Chat",
+      views: 142,
+      bookings: 12,
+      conversionRate: "8.5%",
+      lastViewed: "2024-01-19T15:30:00Z",
+      topReferrers: ["Direct", "Email", "LinkedIn"],
+    },
+    {
+      linkId: "2",
+      linkTitle: "Consultation",
+      views: 41,
+      bookings: 5,
+      conversionRate: "12.3%",
+      lastViewed: "2024-01-18T11:20:00Z",
+      topReferrers: ["Direct", "Twitter"],
     },
   ]);
 
@@ -376,6 +398,16 @@ export default function BookingsPage() {
           >
             Bookings
           </button>
+          <button
+            className={`px-4 py-2 border-b-2 font-medium ${
+              manageView === "analytics"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setManageView("analytics")}
+          >
+            Analytics
+          </button>
         </div>
 
         {manageView === "links" ? (
@@ -452,7 +484,7 @@ export default function BookingsPage() {
               </div>
             </div>
           </>
-        ) : (
+        ) : manageView === "bookings" ? (
           <>
             {/* Bookings list */}
             <div className="bg-white border rounded-lg overflow-hidden">
@@ -526,6 +558,80 @@ export default function BookingsPage() {
               </div>
             </div>
           </>
+        ) : (
+          <>
+            {/* Analytics view */}
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b bg-gray-50">
+                <h2 className="font-medium">Link Performance Analytics</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Track views, bookings, and conversion rates for each link
+                </p>
+              </div>
+              
+              <div className="divide-y">
+                {analyticsData.map((item) => (
+                  <div key={item.linkId} className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium">{item.linkTitle}</h3>
+                        <div className="grid grid-cols-4 gap-4 mt-3">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Views</p>
+                            <p className="text-lg font-semibold">{item.views}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Bookings</p>
+                            <p className="text-lg font-semibold">{item.bookings}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Conversion</p>
+                            <p className="text-lg font-semibold text-green-600">{item.conversionRate}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Last Viewed</p>
+                            <p className="text-sm">{formatDateTime(item.lastViewed)}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-sm text-muted-foreground">Top Referrers</p>
+                          <div className="flex gap-2 mt-1">
+                            {item.topReferrers.map((referrer, idx) => (
+                              <span key={idx} className="px-2 py-1 bg-gray-100 text-xs rounded">
+                                {referrer}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Analytics summary */}
+            <div className="mt-6 grid grid-cols-4 gap-4">
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Total Views</h3>
+                <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.views, 0)}</p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+                <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.bookings, 0)}</p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Avg Conversion</h3>
+                <p className="text-2xl font-semibold text-green-600">
+                  {((analyticsData.reduce((sum, item) => sum + parseFloat(item.conversionRate), 0) / analyticsData.length)).toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
+                <p className="text-2xl font-semibold">{analyticsData.length}</p>
+              </div>
+            </div>
+          </>
         )}
       </div>
     );
@@ -582,8 +688,8 @@ export default function BookingsPage() {
         </button>
         <button
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          disabled={!canGoNext()}
           onClick={goNext}
+          disabled={!canGoNext()}
         >
           {currentStep === "review" ? "Create" : "Next"}
         </button>

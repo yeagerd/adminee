@@ -134,7 +134,7 @@ Conventions
   - Acceptance criteria:
     - Bookings appear after creation; links to open calendar event
 
-- [ ] Basic analytics
+- [x] Basic analytics
   - Track views and bookings per link; show simple counts and conversion rate
   - Acceptance criteria:
     - Visiting public page increments view count; successful booking increments bookings count; conversion displayed
