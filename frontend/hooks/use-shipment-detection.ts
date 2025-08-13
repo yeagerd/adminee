@@ -44,17 +44,17 @@ const GENERIC_TRACKING_PATTERNS = [
     /[0-9]{3}-[0-9]{3}-[0-9]{4}/g, // XXX-XXX-XXXX format
 ];
 
-// Shipment-related keywords
-const SHIPMENT_KEYWORDS = [
-    'shipment', 'package', 'order', 'delivery', 'tracking',
-    'shipped', 'out for delivery', 'arriving', 'on the way'
-];
+// Shipment-related keywords (currently unused but kept for future logic)
+// const SHIPMENT_KEYWORDS = [
+//     'shipment', 'package', 'order', 'delivery', 'tracking',
+//     'shipped', 'out for delivery', 'arriving', 'on the way'
+// ];
 
-// Amazon-specific domains for special casing
-const AMAZON_DOMAINS = [
-    'amazon.com', 'amazon.ca', 'amazon.co.uk', 'amazon.de',
-    'amazon.fr', 'amazon.it', 'amazon.es', 'amazon.co.jp'
-];
+// Amazon-specific domains for special casing (not directly referenced but kept for completeness)
+// const AMAZON_DOMAINS = [
+//     'amazon.com', 'amazon.ca', 'amazon.co.uk', 'amazon.de',
+//     'amazon.fr', 'amazon.it', 'amazon.es', 'amazon.co.jp'
+// ];
 
 /**
  * Extracts tracking numbers from text, prioritizing carrier-specific patterns
@@ -224,7 +224,7 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
         const senderEmail = email.from_address?.email?.toLowerCase() || '';
         const subject = email.subject?.toLowerCase() || '';
         const body = (email.body_text || email.body_html || '').toLowerCase();
-        const allText = `${subject} ${body}`;
+        // const allText = `${subject} ${body}`;
 
         // Extract tracking numbers from original case text
         const originalSubject = email.subject || '';

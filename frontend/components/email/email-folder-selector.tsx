@@ -50,7 +50,11 @@ export function EmailFolderSelector({ onFolderSelect, selectedFolder }: EmailFol
                 setFolders(FALLBACK_FOLDERS);
             }
         } catch (err) {
-            console.error('Error fetching email folders:', err);
+            if (process.env.NODE_ENV !== 'test') {
+                // Avoid noisy console.error during unit tests
+                // eslint-disable-next-line no-console
+                console.error('Error fetching email folders:', err);
+            }
             setError('Failed to load folders');
             setFolders(FALLBACK_FOLDERS);
         }

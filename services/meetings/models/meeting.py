@@ -74,6 +74,7 @@ class MeetingPoll(Base):
     )
     scheduled_slot_id = Column(UUID(as_uuid=True), ForeignKey("time_slots.id"))
     poll_token = Column(String(64), unique=True, nullable=False)
+    calendar_event_id = Column(String(255))
 
     time_slots = relationship(
         "TimeSlot",

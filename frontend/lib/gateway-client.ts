@@ -98,7 +98,10 @@ export class GatewayClient {
 
             return response.text() as T;
         } catch (error) {
-            console.error('Gateway Client Error:', error);
+            if (process.env.NODE_ENV !== 'test') {
+                // eslint-disable-next-line no-console
+                console.error('Gateway Client Error:', error);
+            }
             throw error;
         }
     }
@@ -541,6 +544,13 @@ export class GatewayClient {
         });
     }
 
+    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<ApiResponse<{ event_id?: string; status: string; provider: string }>> {
+        return this.request<ApiResponse<{ event_id?: string; status: string; provider: string }>>(`/api/v1/meetings/polls/${pollId}/schedule`, {
+            method: 'POST',
+            body: { selectedSlotId },
+        });
+    }
+
     async addMeetingParticipant(pollId: string, email: string, name: string): Promise<PollParticipant> {
         return this.request<PollParticipant>(`/api/v1/meetings/polls/${pollId}/participants`, {
             method: 'POST',
@@ -915,6 +925,8 @@ export interface MeetingPoll {
     time_slots: TimeSlot[];
     participants: PollParticipant[];
     responses?: PollResponse[];
+    scheduled_slot_id?: string;
+    calendar_event_id?: string;
 }
 
 export interface PollResponse {

@@ -60,7 +60,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, []);
 
     // Helper to determine if an integration is expired but refreshable
-    function isExpiredButRefreshableIntegration(i: Integration): boolean {
+    const isExpiredButRefreshableIntegration = useCallback((i: Integration): boolean => {
         return (
             (i.status === INTEGRATION_STATUS.EXPIRED ||
                 (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at))
@@ -68,7 +68,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             (i.provider === 'google' || i.provider === 'microsoft') &&
             i.has_refresh_token
         );
-    }
+    }, [isTokenExpired]);
 
     // Memoized active providers array
     const activeProviders = useMemo(() => {
@@ -83,7 +83,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const hasExpiredButRefreshableTokens = useMemo(() => {
         return integrations.some(isExpiredButRefreshableIntegration);
-    }, [integrations, isTokenExpired]);
+    }, [integrations, isExpiredButRefreshableIntegration]);
 
     const triggerAutoRefreshIfNeeded = useCallback(() => {
         const expiredIntegrations = integrations.filter(isExpiredButRefreshableIntegration);
@@ -115,7 +115,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         await gatewayClient.refreshIntegrationTokens(integration.provider);
                         // Reset attempt counter on success
                         refreshAttemptsRef.current[integration.provider] = 0;
-                    } catch (error) {
+                    } catch {
                         // Increment attempt counter on failure
                         refreshAttemptsRef.current[integration.provider] =
                             (refreshAttemptsRef.current[integration.provider] || 0) + 1;
@@ -123,13 +123,13 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 }
                 // Refresh the integrations list to get updated token data
                 await fetchIntegrations();
-            } catch (error) {
+            } catch {
             } finally {
                 isRefreshingRef.current = false;
             }
         };
         refreshExpiredTokens();
-    }, [integrations, isTokenExpired, loading, hasExpiredButRefreshableTokens, activeProviders, fetchIntegrations]);
+    }, [integrations, isExpiredButRefreshableIntegration, loading, hasExpiredButRefreshableTokens, activeProviders, fetchIntegrations]);
 
     // Remove the auto-refresh useEffect (now handled by triggerAutoRefreshIfNeeded)
 
