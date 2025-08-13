@@ -848,13 +848,13 @@ async def create_one_time_link(
 
     # Database creation
     with get_session() as session:
-            link = (
-                session.query(BookingLink)
-                .filter_by(id=link_id, owner_user_id=owner_user_id)
-                .first()
-            )
-            if not link:
-                raise NotFoundError("Booking link", "not found")
+        link = (
+            session.query(BookingLink)
+            .filter_by(id=link_id, owner_user_id=owner_user_id)
+            .first()
+        )
+        if not link:
+            raise NotFoundError("Booking link", "not found")
 
         token = TokenGenerator.generate_one_time_token()
         expires_at = datetime.now() + timedelta(
@@ -912,7 +912,7 @@ async def get_link_analytics(
     link_id: str,
     request: Request = None,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Get analytics for a specific booking link"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -929,15 +929,15 @@ async def get_link_analytics(
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
 
-    # Database analytics calculation
-    with get_session() as session:
-        link = (
-            session.query(BookingLink)
-            .filter_by(id=link_id, owner_user_id=owner_user_id)
-            .first()
-        )
-        if not link:
-            raise NotFoundError(message="Booking link not found")
+            # Database analytics calculation
+        with get_session() as session:
+            link = (
+                session.query(BookingLink)
+                .filter_by(id=link_id, owner_user_id=owner_user_id)
+                .first()
+            )
+            if not link:
+                raise NotFoundError("Booking link", "not found")
 
         # Get analytics data
         views = (
