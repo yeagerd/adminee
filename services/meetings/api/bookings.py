@@ -193,7 +193,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
 @router.get("/public/{token}/availability", response_model=AvailabilityResponse)
 async def get_public_availability(
     token: str, duration: int = 30, request: Request = None
-):
+) -> AvailabilityResponse:
     """Get available time slots for a public link"""
     # Rate limiting for public endpoints
     client_key = get_client_key(request) if request else "unknown"
@@ -227,9 +227,9 @@ async def get_public_availability(
                 one_time_link.expires_at is not None
                 and one_time_link.expires_at < datetime.now()
             ):
-                raise NotFoundError(message="Link has expired")
+                raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":
-                raise NotFoundError(message="Link has already been used")
+                raise NotFoundError("Link", "already used")
 
             booking_link = (
                 session.query(BookingLink)
