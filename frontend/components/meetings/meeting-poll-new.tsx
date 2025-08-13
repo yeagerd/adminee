@@ -480,33 +480,44 @@ export function MeetingPollNew() {
     };
 
     // Prefill participants from URL param if provided (e.g., "Name <email>, another@example.com")
+    const participantsParam = searchParams.get('participants');
     useEffect(() => {
         try {
-            const prefill = searchParams.get('participants');
-            if (prefill && typeof prefill === 'string') {
-                const parsed = parsePeopleFromText(prefill);
+            if (participantsParam && typeof participantsParam === 'string') {
+                const parsed = parsePeopleFromText(participantsParam);
                 if (parsed && parsed.length > 0) {
-                    addPeople(parsed);
+                    setParticipants(parsed.map(person => ({
+                        id: generateTempId(),
+                        email: person.email.trim(),
+                        name: (person.name || "").trim(),
+                    })));
+                } else {
+                    setParticipants([]);
                 }
             }
-        } catch {
-            // ignore parse errors
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Prefill title from URL param if provided
-    useEffect(() => {
-        try {
-            const t = searchParams.get('title');
-            if (t && typeof t === 'string' && t.trim()) {
-                setTitle(t);
+            else {
+                setParticipants([]);
             }
         } catch {
             // ignore parse errors
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [participantsParam]);
+
+    // Prefill title from URL param if provided
+    const titleParam = searchParams.get('title');
+    useEffect(() => {
+        try {
+            if (titleParam && typeof titleParam === 'string' && titleParam.trim()) {
+                setTitle(titleParam);
+            } else {
+                setTitle("");
+            }
+        } catch {
+            // ignore parse errors
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [titleParam]);
 
     // Suggestions stub (to be replaced with contacts provider)
     useEffect(() => {
