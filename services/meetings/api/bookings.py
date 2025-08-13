@@ -240,7 +240,7 @@ async def get_public_availability(
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
 
         if not booking_link or not booking_link.is_active:
-            raise NotFoundError(message="Booking link not found or inactive")
+            raise NotFoundError("Booking link", "not found or inactive")
 
         # Use the enhanced availability calculation service
         from services.meetings.services.booking_availability import (
@@ -255,7 +255,7 @@ async def get_public_availability(
         end_date = start_date + timedelta(days=30)
 
         # Get settings for filtering
-        settings = booking_link.settings or {}
+        settings: Dict[str, Any] = booking_link.settings or {}  # type: ignore[assignment]
         buffer_before = settings.get("buffer_before", 0)
         buffer_after = settings.get("buffer_after", 0)
 
@@ -282,7 +282,7 @@ async def get_public_availability(
 @router.post("/public/{token}/book", response_model=SuccessResponse)
 async def create_public_booking(
     token: str, booking_data: CreatePublicBookingRequest, request: Request
-):
+) -> SuccessResponse:
     """Create a booking from a public link"""
     # Rate limiting for public endpoints
     client_key = get_client_key(request)
