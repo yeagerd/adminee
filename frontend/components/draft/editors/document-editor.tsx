@@ -4,6 +4,7 @@ import { useEditor } from '@/hooks/use-editor';
 import { cn } from '@/lib/utils';
 import { EditorContent } from '@tiptap/react';
 import { useEffect, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { EditorToolbar } from '../editor-toolbar';
 
 interface DocumentEditorProps {
@@ -48,13 +49,23 @@ export function DocumentEditor({
     const characterCount = getCharacterCount(content);
     const showErrors = hasInteracted && errors.length > 0;
 
+    const handleContainerMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+        if (!editor || disabled) return;
+        const target = e.target as HTMLElement;
+        const isInsideProseMirror = !!target.closest('.ProseMirror');
+        if (!isInsideProseMirror) {
+            e.preventDefault();
+            editor.commands.focus('end');
+        }
+    };
+
     return (
         <div className={cn('flex flex-col h-full', className)}>
             {/* Toolbar */}
             <EditorToolbar editor={editor} />
 
             {/* Editor Content */}
-            <div className="flex-1 min-h-0 p-4">
+            <div className="flex-1 min-h-0 p-4 cursor-text" onMouseDown={handleContainerMouseDown}>
                 <EditorContent
                     editor={editor}
                     className={cn(
