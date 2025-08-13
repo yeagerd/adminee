@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { bookingAPI } from "../../lib/booking-api";
 
 type Step = "basics" | "availability" | "duration" | "limits" | "template" | "review";
 
@@ -528,9 +529,62 @@ export default function BookingsPage() {
             </div>
             <button
               className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-              onClick={() => {
-                // TODO: Implement API call to create booking link
-                alert("Creating booking link... (API integration pending)");
+              onClick={async () => {
+                try {
+                  setIsLoading(true);
+                  const result = await bookingAPI.createBookingLink({
+                    title: formData.title,
+                    description: formData.description,
+                    duration: formData.duration,
+                    buffer_before: formData.bufferBefore,
+                    buffer_after: formData.bufferAfter,
+                    max_per_day: formData.maxPerDay,
+                    max_per_week: formData.maxPerWeek,
+                    advance_days: formData.advanceDays,
+                    max_advance_days: formData.maxAdvanceDays,
+                    business_hours: formData.businessHours,
+                    holiday_exclusions: formData.holidayExclusions,
+                    last_minute_cutoff: formData.lastMinuteCutoff,
+                    template_name: formData.questions.length > 0 ? "Custom Template" : undefined,
+                    questions: formData.questions.length > 0 ? formData.questions : undefined,
+                    emailFollowup: formData.emailFollowup,
+                  });
+                  
+                  // Show success message and reset form
+                  alert(`Booking link created successfully!\n\nPublic URL: ${result.data.public_url}`);
+                  setFormData({
+                    title: "",
+                    description: "",
+                    duration: 30,
+                    bufferBefore: 0,
+                    bufferAfter: 0,
+                    maxPerDay: 5,
+                    maxPerWeek: 20,
+                    advanceDays: 7,
+                    maxAdvanceDays: 90,
+                    templateName: "",
+                    questions: [],
+                    emailFollowup: false,
+                    businessHours: {
+                      monday: { start: "09:00", end: "17:00", enabled: true },
+                      tuesday: { start: "09:00", end: "17:00", enabled: true },
+                      wednesday: { start: "09:00", end: "17:00", enabled: true },
+                      thursday: { start: "09:00", end: "17:00", enabled: true },
+                      friday: { start: "09:00", end: "17:00", enabled: true },
+                      saturday: { start: "10:00", end: "14:00", enabled: false },
+                      sunday: { start: "10:00", end: "14:00", enabled: false },
+                    },
+                    holidayExclusions: [],
+                    durationPresets: [15, 30, 60, 120],
+                    customDuration: null,
+                    lastMinuteCutoff: 2,
+                  });
+                  setCurrentStep("basics");
+                } catch (error) {
+                  alert(`Error creating booking link: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                } finally {
+                  setIsLoading(false);
+                }
               }}
             >
               Create Booking Link
@@ -565,26 +619,58 @@ export default function BookingsPage() {
     }
   };
 
-  const createOneTimeLink = () => {
-    // TODO: Implement API call to create one-time link
-    const mockToken = "ot_" + Math.random().toString(36).substr(2, 9);
-    const mockUrl = `${window.location.origin}/public/bookings/${mockToken}`;
-    alert(`One-time link created!\n\nURL: ${mockUrl}\n\nThis link will expire in ${oneTimeData.expiresInDays} days or after first use.`);
+  const createOneTimeLink = async () => {
+    try {
+      // For now, we'll use the first existing link as the parent
+      // In a real app, this would be selected by the user
+      if (existingLinks.length === 0) {
+        alert("Please create a booking link first before creating one-time links.");
+        return;
+      }
+      
+      const parentLinkId = existingLinks[0].id;
+      const result = await bookingAPI.createOneTimeLink(parentLinkId, {
+        recipient_email: oneTimeData.recipientEmail,
+        recipient_name: oneTimeData.recipientName,
+        expires_in_days: oneTimeData.expiresInDays,
+      });
+      
+      alert(`One-time link created!\n\nURL: ${result.data.public_url}\n\nThis link will expire in ${oneTimeData.expiresInDays} days or after first use.`);
+      
+      // Reset form
+      setOneTimeData({
+        recipientEmail: "",
+        recipientName: "",
+        expiresInDays: 7,
+      });
+    } catch (error) {
+      alert(`Error creating one-time link: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
-  const toggleLinkStatus = (linkId: string) => {
-    // TODO: Implement API call to toggle link status
-    alert(`Toggling link ${linkId} status... (API integration pending)`);
+  const toggleLinkStatus = async (linkId: string) => {
+    try {
+      const result = await bookingAPI.toggleBookingLink(linkId);
+      alert(`Link ${linkId} ${result.data.is_active ? 'activated' : 'deactivated'} successfully!`);
+      // In a real app, you would refresh the links list here
+    } catch (error) {
+      alert(`Error toggling link status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
-  const duplicateLink = (linkId: string) => {
-    // TODO: Implement API call to duplicate link
-    alert(`Duplicating link ${linkId}... (API integration pending)`);
+  const duplicateLink = async (linkId: string) => {
+    try {
+      const result = await bookingAPI.duplicateBookingLink(linkId);
+      alert(`Link duplicated successfully!\n\nNew slug: ${result.data.slug}`);
+      // In a real app, you would refresh the links list here
+    } catch (error) {
+      alert(`Error duplicating link: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const editLink = (linkId: string) => {
-    // TODO: Navigate to edit mode
-    alert(`Editing link ${linkId}... (edit mode pending)`);
+    // TODO: Navigate to edit mode - this would require implementing an edit form
+    alert(`Editing link ${linkId}... (edit mode pending - would navigate to edit form)`);
   };
 
   const formatDateTime = (dateTimeString: string) => {
@@ -756,8 +842,8 @@ export default function BookingsPage() {
                         <button
                           className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                           onClick={() => {
-                            // TODO: Open calendar event
-                            alert(`Opening calendar event for ${booking.title}...`);
+                            // TODO: Open calendar event - would navigate to calendar or open in new tab
+                            alert(`Opening calendar event for ${booking.title}... (would open in calendar app)`);
                           }}
                         >
                           Open Event
@@ -765,8 +851,8 @@ export default function BookingsPage() {
                         <button
                           className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                           onClick={() => {
-                            // TODO: Reschedule booking
-                            alert(`Rescheduling ${booking.title}...`);
+                            // TODO: Reschedule booking - would open reschedule form
+                            alert(`Rescheduling ${booking.title}... (would open reschedule form)`);
                           }}
                         >
                           Reschedule

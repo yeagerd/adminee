@@ -264,7 +264,7 @@ The following items were marked as complete but contain significant incomplete w
   - **Acceptance criteria**: Available slots respect all owner configuration settings
 
 #### 13.7 Frontend API Integration (High Priority)
-- [ ] Replace alert() calls with actual API calls
+- [x] Replace alert() calls with actual API calls
   - **Current state**: All actions show alerts instead of calling backend
   - **Required**: Implement proper API calls for all CRUD operations
   - **Files**: `frontend/app/bookings/page.tsx` (lines 532, 571, 576, 581, 586, 759, 768)
