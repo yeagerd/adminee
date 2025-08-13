@@ -713,6 +713,60 @@ async def schedule_meeting(
         return result
 
 
+@router.post("/{poll_id}/unschedule")
+async def unschedule_meeting(
+    poll_id: UUID,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> dict:
+    user_id = get_user_id_from_request(request)
+
+    with get_session() as session:
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Ownership check
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403, detail="Not authorized to unschedule this poll"
+            )
+
+        existing_event_id = getattr(poll, "calendar_event_id", None)
+        delete_result: Optional[dict] = None
+        if existing_event_id:
+            # Verify existing event id has required provider-prefixed format
+            if not (isinstance(existing_event_id, str) and "_" in existing_event_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Invalid calendar_event_id format: {existing_event_id}. Expected format: "
+                        "'provider_originalId' (e.g., 'google_abc123' or 'microsoft_xyz789')"
+                    ),
+                )
+
+            try:
+                delete_result = await calendar_integration.delete_calendar_event(
+                    str(user_id), existing_event_id
+                )
+            except Exception as e:
+                # Log and continue clearing local state even if remote delete fails
+                logger.warning(
+                    "Failed to delete calendar event during unschedule",
+                    error=str(e),
+                    poll_id=str(poll_id),
+                    event_id=existing_event_id,
+                )
+
+        # Clear scheduled state regardless of delete result
+        setattr(poll, "scheduled_slot_id", None)
+        setattr(poll, "calendar_event_id", None)
+        setattr(poll, "status", PollStatus.active)
+        session.commit()
+
+        return delete_result or {"success": True, "data": {"status": "unscheduled"}}
+
+
 @router.post("/{poll_id}/participants/{participant_id}/resend-invitation")
 async def resend_invitation(
     poll_id: UUID,
