@@ -12,7 +12,7 @@ import {
 import { useToolStateUtils } from "@/hooks/use-tool-state";
 import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
 import { NavigationItem, Tool } from "@/types/navigation";
-import { BarChart3, BookOpen, Calendar, Copy, FileText, ListChecks, Mail, Package, TrendingUp, Users } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, CalendarRange, Copy, FileText, ListChecks, Mail, Package, TrendingUp } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
@@ -21,7 +21,7 @@ const navigationItems: NavigationItem[] = [
     { id: "documents", title: "Documents", icon: FileText, path: "/dashboard?tool=documents", enabled: false },
     { id: "tasks", title: "Tasks", icon: ListChecks, path: "/dashboard?tool=tasks", enabled: false },
     { id: "drafts", title: "Drafts", icon: Copy, path: "/dashboard?tool=drafts", enabled: true },
-    { id: "meetings", title: "Meeting Polls", icon: Users, path: "/dashboard?tool=meetings", enabled: true },
+    { id: "meetings", title: "Meeting Polls", icon: CalendarRange, path: "/dashboard?tool=meetings", enabled: true },
     { id: "packages", title: "Package Tracker", icon: Package, path: "/dashboard?tool=packages", enabled: true },
     { id: "research", title: "Research", icon: BookOpen, path: "/dashboard?tool=research", enabled: false },
     { id: "pulse", title: "Pulse", icon: TrendingUp, path: "/dashboard?tool=pulse", enabled: false },
