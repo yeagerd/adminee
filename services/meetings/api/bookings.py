@@ -287,8 +287,8 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
         # Create calendar event
         calendar_event_id = await create_booking_calendar_event(booking)
         
-        # TODO: Send confirmation emails
-        # await send_confirmation_email(booking)
+        # Send confirmation emails
+        await send_confirmation_email(booking)
         
         # Audit logging
         audit_logger.log_booking_creation(
