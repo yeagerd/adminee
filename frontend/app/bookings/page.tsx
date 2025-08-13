@@ -15,6 +15,7 @@ export default function BookingsPage() {
   const [showOneTimeForm, setShowOneTimeForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"create" | "manage">("create");
   const [manageView, setManageView] = useState<"links" | "bookings" | "analytics">("links");
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -600,11 +601,11 @@ export default function BookingsPage() {
 
   if (activeTab === "manage") {
     return (
-      <div className="p-6 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Manage Booking Links</h1>
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold">Manage Booking Links</h1>
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             onClick={() => setActiveTab("create")}
           >
             Create New Link
@@ -612,9 +613,9 @@ export default function BookingsPage() {
         </div>
 
         {/* Tab navigation */}
-        <div className="flex border-b mb-6">
+        <div className="flex border-b mb-6 overflow-x-auto">
           <button
-            className={`px-4 py-2 border-b-2 font-medium ${
+            className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${
               manageView === "links"
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700"
@@ -624,7 +625,7 @@ export default function BookingsPage() {
             Links
           </button>
           <button
-            className={`px-4 py-2 border-b-2 font-medium ${
+            className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${
               manageView === "bookings"
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700"
@@ -634,7 +635,7 @@ export default function BookingsPage() {
             Bookings
           </button>
           <button
-            className={`px-4 py-2 border-b-2 font-medium ${
+            className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${
               manageView === "analytics"
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700"
@@ -649,18 +650,18 @@ export default function BookingsPage() {
           <>
             {/* Links list */}
             <div className="bg-white border rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b bg-gray-50">
+              <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
                 <h2 className="font-medium">Your Booking Links</h2>
               </div>
               
               <div className="divide-y">
                 {existingLinks.map((link) => (
-                  <div key={link.id} className="px-6 py-4">
-                    <div className="flex items-center justify-between">
+                  <div key={link.id} className="px-4 sm:px-6 py-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                           <h3 className="font-medium">{link.title}</h3>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                          <span className={`px-2 py-1 text-xs rounded-full w-fit ${
                             link.isActive 
                               ? "bg-green-100 text-green-800" 
                               : "bg-gray-100 text-gray-800"
@@ -671,13 +672,13 @@ export default function BookingsPage() {
                         <p className="text-sm text-muted-foreground mt-1">
                           Slug: {link.slug} • Created: {link.createdAt}
                         </p>
-                        <div className="flex items-center gap-4 mt-2 text-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
                           <span>Total bookings: {link.totalBookings}</span>
                           <span>Conversion: {link.conversionRate}</span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                           onClick={() => toggleLinkStatus(link.id)}
@@ -704,7 +705,7 @@ export default function BookingsPage() {
             </div>
 
             {/* Quick stats */}
-            <div className="mt-6 grid grid-cols-3 gap-4">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white border rounded-lg p-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
                 <p className="text-2xl font-semibold">{existingLinks.length}</p>
@@ -723,18 +724,18 @@ export default function BookingsPage() {
           <>
             {/* Bookings list */}
             <div className="bg-white border rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b bg-gray-50">
+              <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
                 <h2 className="font-medium">Upcoming & Recent Bookings</h2>
               </div>
               
               <div className="divide-y">
                 {bookings.map((booking) => (
-                  <div key={booking.id} className="px-6 py-4">
-                    <div className="flex items-center justify-between">
+                  <div key={booking.id} className="px-4 sm:px-6 py-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                           <h3 className="font-medium">{booking.title}</h3>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                          <span className={`px-2 py-1 text-xs rounded-full w-fit ${
                             booking.status === "confirmed"
                               ? "bg-green-100 text-green-800" 
                               : "bg-yellow-100 text-yellow-800"
@@ -745,13 +746,13 @@ export default function BookingsPage() {
                         <p className="text-sm text-muted-foreground mt-1">
                           {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
                         </p>
-                        <div className="flex items-center gap-4 mt-2 text-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
                           <span>Attendee: {booking.attendeeName} ({booking.attendeeEmail})</span>
                           <span>Link: {booking.linkTitle}</span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                           onClick={() => {
@@ -778,7 +779,7 @@ export default function BookingsPage() {
             </div>
 
             {/* Bookings stats */}
-            <div className="mt-6 grid grid-cols-3 gap-4">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white border rounded-lg p-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
                 <p className="text-2xl font-semibold">{bookings.length}</p>
@@ -797,7 +798,7 @@ export default function BookingsPage() {
           <>
             {/* Analytics view */}
             <div className="bg-white border rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b bg-gray-50">
+              <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
                 <h2 className="font-medium">Link Performance Analytics</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Track views, bookings, and conversion rates for each link
@@ -806,11 +807,11 @@ export default function BookingsPage() {
               
               <div className="divide-y">
                 {analyticsData.map((item) => (
-                  <div key={item.linkId} className="px-6 py-4">
+                  <div key={item.linkId} className="px-4 sm:px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <h3 className="font-medium">{item.linkTitle}</h3>
-                        <div className="grid grid-cols-4 gap-4 mt-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
                           <div>
                             <p className="text-sm text-muted-foreground">Views</p>
                             <p className="text-lg font-semibold">{item.views}</p>
@@ -830,7 +831,7 @@ export default function BookingsPage() {
                         </div>
                         <div className="mt-3">
                           <p className="text-sm text-muted-foreground">Top Referrers</p>
-                          <div className="flex gap-2 mt-1">
+                          <div className="flex flex-wrap gap-2 mt-1">
                             {item.topReferrers.map((referrer, idx) => (
                               <span key={idx} className="px-2 py-1 bg-gray-100 text-xs rounded">
                                 {referrer}
@@ -846,7 +847,7 @@ export default function BookingsPage() {
             </div>
 
             {/* Analytics summary */}
-            <div className="mt-6 grid grid-cols-4 gap-4">
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-white border rounded-lg p-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Total Views</h3>
                 <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.views, 0)}</p>
@@ -873,11 +874,11 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Create Booking Link</h1>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold">Create Booking Link</h1>
         <button
-          className="px-4 py-2 border rounded hover:bg-gray-50"
+          className="w-full sm:w-auto px-4 py-2 border rounded hover:bg-gray-50"
           onClick={() => setActiveTab("manage")}
         >
           Manage Links
@@ -885,11 +886,11 @@ export default function BookingsPage() {
       </div>
       
       {/* Step indicator */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 overflow-x-auto">
         {steps.map((step, index) => (
-          <div key={step.key} className="flex items-center">
+          <div key={step.key} className="flex items-center flex-shrink-0">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              className={`w-6 sm:w-8 h-6 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
                 currentStep === step.key
                   ? "bg-blue-600 text-white"
                   : index < steps.findIndex(s => s.key === currentStep)
@@ -899,43 +900,53 @@ export default function BookingsPage() {
             >
               {index < steps.findIndex(s => s.key === currentStep) ? "✓" : index + 1}
             </div>
-            <span className="ml-2 text-sm font-medium">{step.label}</span>
+            <span className="ml-2 text-xs sm:text-sm font-medium">{step.label}</span>
             {index < steps.length - 1 && (
-              <div className="w-16 h-0.5 bg-gray-200 mx-4" />
+              <div className="w-8 sm:w-16 h-0.5 bg-gray-200 mx-2 sm:mx-4" />
             )}
           </div>
         ))}
       </div>
 
       {/* Step content */}
-      <div className="bg-white border rounded-lg p-6">
+      <div className="bg-white border rounded-lg p-4 sm:p-6">
         {renderStep()}
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between mt-6">
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
         <button
-          className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
           disabled={!canGoBack()}
           onClick={goBack}
         >
           Back
         </button>
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           onClick={goNext}
-          disabled={!canGoNext()}
+          disabled={!canGoNext() || isLoading}
         >
-          {currentStep === "review" ? "Create" : "Next"}
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            currentStep === "review" ? "Create" : "Next"
+          )}
         </button>
       </div>
 
       {/* One-time link creation */}
       <div className="mt-12 border-t pt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">One-Time Link</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">One-Time Link</h2>
           <button
-            className="text-blue-600 hover:text-blue-700 text-sm"
+            className="w-full sm:w-auto text-blue-600 hover:text-blue-700 text-sm"
             onClick={() => setShowOneTimeForm(!showOneTimeForm)}
           >
             {showOneTimeForm ? "Hide" : "Create One-Time Link"}
@@ -943,7 +954,7 @@ export default function BookingsPage() {
         </div>
         
         {showOneTimeForm && (
-          <div className="bg-white border rounded-lg p-6">
+          <div className="bg-white border rounded-lg p-4 sm:p-6">
             <p className="text-sm text-muted-foreground mb-4">
               Create a single-use link for a specific recipient. This link will expire after use or after a set time.
             </p>

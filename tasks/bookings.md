@@ -195,9 +195,9 @@ Conventions
 ---
 
 ### 11. UX/Polish
-- [ ] Mobile-responsive public booking page
-- [ ] Friendly error screens (expired link, no availability)
-- [ ] Loading/skeleton states for availability fetches
+- [x] Mobile-responsive public booking page
+- [x] Friendly error screens (expired link, no availability)
+- [x] Loading/skeleton states for availability fetches
   - Acceptance criteria:
     - Lighthouse/ basic responsive checks pass; no layout shift on load
 
