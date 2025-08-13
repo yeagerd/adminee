@@ -63,6 +63,9 @@ export default function CalendarGridView({
     const [formLocation, setFormLocation] = useState('');
     const [formAllDay, setFormAllDay] = useState(false);
 
+    const { loading: integrationsLoading, activeProviders } = useIntegrations();
+    const { effectiveTimezone } = useUserPreferences();
+
     // Derived start/end from current selection
     const selectedStartEnd = useMemo(() => {
         if (!selection) return null;
@@ -70,16 +73,21 @@ export default function CalendarGridView({
         const slotMinutes = 30;
         const startSlot = Math.min(selection.startIndex, selection.endIndex);
         const endSlot = Math.max(selection.startIndex, selection.endIndex) + 1; // inclusive end slot -> add 1
-        const start = new Date(selection.day);
+
+        // Build start/end as Zoned DateTimes in effectiveTimezone, then output JS Dates representing the same instant
+        const selectionDay = DateTime.fromJSDate(selection.day).setZone(effectiveTimezone);
         const startHours = gridStartHour + Math.floor(startSlot / 2);
         const startMinutes = (startSlot % 2) * slotMinutes;
-        start.setHours(startHours, startMinutes, 0, 0);
-        const end = new Date(selection.day);
+        const startZoned = selectionDay.set({ hour: startHours, minute: startMinutes, second: 0, millisecond: 0 });
         const endHours = gridStartHour + Math.floor(endSlot / 2);
         const endMinutes = (endSlot % 2) * slotMinutes;
-        end.setHours(endHours, endMinutes, 0, 0);
+        const endZoned = selectionDay.set({ hour: endHours, minute: endMinutes, second: 0, millisecond: 0 });
+
+        // Convert to JS Dates preserving the actual instant in time
+        const start = new Date(startZoned.toMillis());
+        const end = new Date(endZoned.toMillis());
         return { start, end };
-    }, [selection]);
+    }, [selection, effectiveTimezone]);
 
     const clearSelection = useCallback(() => {
         setIsSelecting(false);
@@ -93,9 +101,6 @@ export default function CalendarGridView({
     const finalLoading = viewType === 'list' ? loading : (externalLoading !== undefined ? externalLoading : loading);
     const finalRefreshing = viewType === 'list' ? refreshing : (externalRefreshing !== undefined ? externalRefreshing : refreshing);
     const finalError = viewType === 'list' ? error : (externalError !== undefined ? externalError : error);
-
-    const { loading: integrationsLoading, activeProviders } = useIntegrations();
-    const { effectiveTimezone } = useUserPreferences();
 
     // Calculate date range based on view type
     const dateRange = useMemo(() => {
@@ -732,8 +737,8 @@ export default function CalendarGridView({
                                         if (!selectedStartEnd) return;
                                         const title = formTitle.trim() || 'New meeting';
                                         try {
-                                            const startUtc = DateTime.fromJSDate(selectedStartEnd.start).setZone(effectiveTimezone).toUTC();
-                                            const endUtc = DateTime.fromJSDate(selectedStartEnd.end).setZone(effectiveTimezone).toUTC();
+                                            const startUtc = DateTime.fromJSDate(selectedStartEnd.start).toUTC();
+                                            const endUtc = DateTime.fromJSDate(selectedStartEnd.end).toUTC();
                                             await gatewayClient.createCalendarEvent({
                                                 title,
                                                 description: formDescription || undefined,
