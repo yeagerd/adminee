@@ -12,7 +12,7 @@ import {
 import { useToolStateUtils } from "@/hooks/use-tool-state";
 import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
 import { NavigationItem, Tool } from "@/types/navigation";
-import { BarChart3, BookOpen, Calendar, CalendarRange, Copy, FileText, ListChecks, Mail, Package, TrendingUp } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, CalendarRange, Copy, FileText, ListChecks, Mail, Package, TrendingUp, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
