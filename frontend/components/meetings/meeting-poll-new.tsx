@@ -479,6 +479,24 @@ export function MeetingPollNew() {
         }
     };
 
+    // Prefill participants from URL param if provided (e.g., "Name <email>, another@example.com")
+    useEffect(() => {
+        try {
+            const prefill = searchParams.get('participants');
+            if (prefill && typeof prefill === 'string') {
+                const parsed = parsePeopleFromText(prefill);
+                if (parsed && parsed.length > 0) {
+                    addPeople(parsed);
+                    // If participants were prefilled, and we are at step 1, advance to step 3 for convenience
+                    setStep((s) => (s < 3 ? 3 : s));
+                }
+            }
+        } catch {
+            // ignore parse errors
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Suggestions stub (to be replaced with contacts provider)
     useEffect(() => {
         if (!personQuery.trim()) {

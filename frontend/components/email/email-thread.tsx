@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { safeParseDate } from '@/lib/utils';
 import { EmailThread as EmailThreadType } from '@/types/office-service';
-import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
+import { Archive, CalendarRange, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import EmailThreadCard from './email-thread-card';
 // removed global draft pane wiring for thread-level drafts
@@ -240,6 +240,39 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                     <DropdownMenuItem onClick={handleDownload}>
                                         <Download className="h-4 w-4 mr-2" />
                                         Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                        try {
+                                            const latest = thread.messages[thread.messages.length - 1];
+                                            const parts: string[] = [];
+                                            const seenEmails = new Set<string>();
+                                            const addAddr = (addr?: { email?: string; name?: string } | null) => {
+                                                if (!addr || !addr.email) return;
+                                                const emailLower = addr.email.toLowerCase().trim();
+                                                if (seenEmails.has(emailLower)) return;
+                                                seenEmails.add(emailLower);
+                                                const name = (addr.name || '').trim();
+                                                if (name) {
+                                                    parts.push(`${name} <${addr.email}>`);
+                                                } else {
+                                                    parts.push(addr.email);
+                                                }
+                                            };
+                                            latest.to_addresses.forEach(a => addAddr(a));
+                                            latest.cc_addresses.forEach(a => addAddr(a));
+                                            const participantsParam = parts.join(', ');
+                                            const url = new URL(window.location.href);
+                                            url.searchParams.set('tool', 'meetings');
+                                            url.searchParams.set('view', 'new');
+                                            url.searchParams.set('step', '3');
+                                            url.searchParams.set('participants', participantsParam);
+                                            window.history.pushState({ step: 3 }, '', url.toString());
+                                        } catch (err) {
+                                            console.error('Failed to navigate to meeting poll creator:', err);
+                                        }
+                                    }}>
+                                        <CalendarRange className="h-4 w-4 mr-2" />
+                                        Create Meeting Poll
                                     </DropdownMenuItem>
 
                                 </DropdownMenuContent>
