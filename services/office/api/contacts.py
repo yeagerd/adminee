@@ -14,6 +14,7 @@ from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import normalize_google_contact, normalize_microsoft_contact
 from services.office.models import Provider
 from services.office.schemas import ContactsListApiResponse, Contact
+from services.office.api.email import get_user_account_info, get_provider_enum
 
 logger = get_logger(__name__)
 
@@ -175,3 +176,187 @@ async def list_contacts(
     except Exception as e:
         logger.error(f"Contacts list failed: {e}")
         raise ServiceError(message=f"Failed to fetch contacts: {str(e)}")
+
+
+@router.post("/", response_model=Dict[str, Any])
+async def create_contact(
+    request: Request,
+    service_name: str = Depends(service_permission_required(["write_contacts"])),
+    provider: str = Query(..., description="Provider to create contact in (google, microsoft)"),
+    full_name: Optional[str] = None,
+    given_name: Optional[str] = None,
+    family_name: Optional[str] = None,
+    emails: Optional[List[str]] = Query(None),
+    company: Optional[str] = None,
+    job_title: Optional[str] = None,
+    phones: Optional[List[str]] = Query(None),
+) -> Dict[str, Any]:
+    user_id = await get_user_id_from_gateway(request)
+    request_id = get_request_id()
+    prov_enum = get_provider_enum(provider)
+    if prov_enum is None:
+        raise ValidationError(message="Invalid provider", field="provider")
+
+    factory = await get_api_client_factory()
+    scopes = _get_contact_scopes(provider, write=True)
+    client = await factory.create_client(user_id, provider, scopes=scopes)
+    if client is None:
+        raise ServiceError(message=f"No client for provider {provider}")
+
+    account_email, account_name = get_user_account_info(user_id, provider)
+
+    try:
+        if isinstance(client, GoogleAPIClient):
+            person: Dict[str, Any] = {}
+            if full_name or given_name or family_name:
+                person["names"] = [{k: v for k, v in {"displayName": full_name, "givenName": given_name, "familyName": family_name}.items() if v}]
+            if emails:
+                person["emailAddresses"] = [{"value": e} for e in emails]
+            if company or job_title:
+                person["organizations"] = [{k: v for k, v in {"name": company, "title": job_title}.items() if v}]
+            if phones:
+                person["phoneNumbers"] = [{"value": p} for p in phones]
+            created = await client.create_contact(person)
+            normalized = normalize_google_contact(created, account_email, account_name)
+        elif isinstance(client, MicrosoftAPIClient):
+            payload: Dict[str, Any] = {}
+            if full_name:
+                payload["displayName"] = full_name
+            if given_name:
+                payload["givenName"] = given_name
+            if family_name:
+                payload["surname"] = family_name
+            if emails:
+                payload["emailAddresses"] = [{"address": e} for e in emails]
+            if company:
+                payload["companyName"] = company
+            if job_title:
+                payload["jobTitle"] = job_title
+            if phones:
+                payload["businessPhones"] = phones
+            created = await client.create_contact(payload)
+            normalized = normalize_microsoft_contact(created, account_email, account_name)
+        else:
+            raise ServiceError(message=f"Unsupported provider: {provider}")
+
+        # Invalidate cache for this user
+        await cache_manager.invalidate_user_cache(user_id)
+        return {"success": True, "data": {"contact": normalized}, "request_id": request_id}
+    except Exception as e:
+        raise ServiceError(message=f"Failed to create contact: {str(e)}")
+
+
+@router.put("/{contact_id}", response_model=Dict[str, Any])
+async def update_contact(
+    contact_id: str = Path(..., description="Unified contact id (provider_originalId) or provider id for write-through"),
+    request: Request = None,
+    service_name: str = Depends(service_permission_required(["write_contacts"])),
+    provider: Optional[str] = Query(None, description="Provider to update in (if unified id not used)"),
+    full_name: Optional[str] = None,
+    given_name: Optional[str] = None,
+    family_name: Optional[str] = None,
+    company: Optional[str] = None,
+    job_title: Optional[str] = None,
+    emails: Optional[List[str]] = Query(None),
+    phones: Optional[List[str]] = Query(None),
+) -> Dict[str, Any]:
+    user_id = await get_user_id_from_gateway(request)
+    request_id = get_request_id()
+
+    prov = provider
+    prov_id = contact_id
+    if "_" in contact_id and not provider:
+        prov, prov_id = contact_id.split("_", 1)
+    if prov is None:
+        raise ValidationError(message="Provider required when contact_id is provider-native id", field="provider")
+
+    prov_enum = get_provider_enum(prov)
+    if prov_enum is None:
+        raise ValidationError(message="Invalid provider", field="provider")
+
+    factory = await get_api_client_factory()
+    scopes = _get_contact_scopes(prov, write=True)
+    client = await factory.create_client(user_id, prov, scopes=scopes)
+    if client is None:
+        raise ServiceError(message=f"No client for provider {prov}")
+
+    account_email, account_name = get_user_account_info(user_id, prov)
+
+    try:
+        if isinstance(client, GoogleAPIClient):
+            person: Dict[str, Any] = {}
+            if full_name or given_name or family_name:
+                person["names"] = [{k: v for k, v in {"displayName": full_name, "givenName": given_name, "familyName": family_name}.items() if v}]
+            if emails is not None:
+                person["emailAddresses"] = [{"value": e} for e in emails]
+            if company is not None or job_title is not None:
+                person["organizations"] = [{k: v for k, v in {"name": company, "title": job_title}.items() if v}]
+            if phones is not None:
+                person["phoneNumbers"] = [{"value": p} for p in phones]
+            updated = await client.update_contact(f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id, person)
+            normalized = normalize_google_contact(updated, account_email, account_name)
+        elif isinstance(client, MicrosoftAPIClient):
+            payload: Dict[str, Any] = {}
+            if full_name is not None:
+                payload["displayName"] = full_name
+            if given_name is not None:
+                payload["givenName"] = given_name
+            if family_name is not None:
+                payload["surname"] = family_name
+            if company is not None:
+                payload["companyName"] = company
+            if job_title is not None:
+                payload["jobTitle"] = job_title
+            if emails is not None:
+                payload["emailAddresses"] = [{"address": e} for e in emails]
+            if phones is not None:
+                payload["businessPhones"] = phones
+            updated = await client.update_contact(prov_id, payload)
+            normalized = normalize_microsoft_contact(updated, account_email, account_name)
+        else:
+            raise ServiceError(message=f"Unsupported provider: {prov}")
+
+        await cache_manager.invalidate_user_cache(user_id)
+        return {"success": True, "data": {"contact": normalized}, "request_id": request_id}
+    except Exception as e:
+        raise ServiceError(message=f"Failed to update contact: {str(e)}")
+
+
+@router.delete("/{contact_id}", response_model=Dict[str, Any])
+async def delete_contact(
+    contact_id: str,
+    request: Request,
+    service_name: str = Depends(service_permission_required(["write_contacts"])),
+    provider: Optional[str] = Query(None, description="Provider to delete in (if unified id not used)"),
+) -> Dict[str, Any]:
+    user_id = await get_user_id_from_gateway(request)
+    request_id = get_request_id()
+
+    prov = provider
+    prov_id = contact_id
+    if "_" in contact_id and not provider:
+        prov, prov_id = contact_id.split("_", 1)
+    if prov is None:
+        raise ValidationError(message="Provider required when contact_id is provider-native id", field="provider")
+
+    prov_enum = get_provider_enum(prov)
+    if prov_enum is None:
+        raise ValidationError(message="Invalid provider", field="provider")
+
+    factory = await get_api_client_factory()
+    scopes = _get_contact_scopes(prov, write=True)
+    client = await factory.create_client(user_id, prov, scopes=scopes)
+    if client is None:
+        raise ServiceError(message=f"No client for provider {prov}")
+
+    try:
+        if isinstance(client, GoogleAPIClient):
+            await client.delete_contact(f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id)
+        elif isinstance(client, MicrosoftAPIClient):
+            await client.delete_contact(prov_id)
+        else:
+            raise ServiceError(message=f"Unsupported provider: {prov}")
+        await cache_manager.invalidate_user_cache(user_id)
+        return {"success": True, "data": {"deleted": True}, "request_id": request_id}
+    except Exception as e:
+        raise ServiceError(message=f"Failed to delete contact: {str(e)}")

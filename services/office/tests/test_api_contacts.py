@@ -78,3 +78,57 @@ class TestContactsApi:
         headers = {"X-API-Key": "test-frontend-office-key"}
         resp = client.get("/v1/contacts", headers=headers)
         assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_contact_google(self, client, auth_headers):
+        with patch("services.office.api.contacts.get_api_client_factory") as mock_factory, \
+             patch("services.office.api.contacts.cache_manager") as mock_cache:
+            mock_cache.invalidate_user_cache = AsyncMock()
+            class FakeGoogle:
+                async def create_contact(self, person):
+                    # echo with an id
+                    return {"resourceName": "people/xyz", **person}
+            class FakeFactory:
+                async def create_client(self, user_id, provider, scopes=None):
+                    return FakeGoogle()
+            mock_factory.return_value = FakeFactory()
+            resp = client.post("/v1/contacts?provider=google&full_name=Alice%20A&emails=alice@example.com", headers=auth_headers)
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["success"] is True
+            assert data["data"]["contact"]["id"].startswith("google_")
+
+    @pytest.mark.asyncio
+    async def test_update_contact_microsoft(self, client, auth_headers):
+        with patch("services.office.api.contacts.get_api_client_factory") as mock_factory, \
+             patch("services.office.api.contacts.cache_manager") as mock_cache:
+            mock_cache.invalidate_user_cache = AsyncMock()
+            class FakeMS:
+                async def update_contact(self, cid, payload):
+                    return {"id": cid, **payload}
+            class FakeFactory:
+                async def create_client(self, user_id, provider, scopes=None):
+                    return FakeMS()
+            mock_factory.return_value = FakeFactory()
+            resp = client.put("/v1/contacts/outlook_abc?full_name=Bob%20B", headers=auth_headers)
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["success"] is True
+            assert data["data"]["contact"]["id"].startswith("outlook_")
+
+    @pytest.mark.asyncio
+    async def test_delete_contact_google(self, client, auth_headers):
+        with patch("services.office.api.contacts.get_api_client_factory") as mock_factory, \
+             patch("services.office.api.contacts.cache_manager") as mock_cache:
+            mock_cache.invalidate_user_cache = AsyncMock()
+            class FakeGoogle:
+                async def delete_contact(self, resource_name):
+                    return None
+            class FakeFactory:
+                async def create_client(self, user_id, provider, scopes=None):
+                    return FakeGoogle()
+            mock_factory.return_value = FakeFactory()
+            resp = client.delete("/v1/contacts/google_people%2Fxyz", headers=auth_headers)
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["data"]["deleted"] is True
