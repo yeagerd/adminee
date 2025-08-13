@@ -592,13 +592,13 @@ async def get_booking_link(
 
     # Database lookup
     with get_session() as session:
-            link = (
-                session.query(BookingLink)
-                .filter_by(id=link_id, owner_user_id=owner_user_id)
-                .first()
-            )
-            if not link:
-                raise NotFoundError("Booking link", "not found")
+        link = (
+            session.query(BookingLink)
+            .filter_by(id=link_id, owner_user_id=owner_user_id)
+            .first()
+        )
+        if not link:
+            raise NotFoundError("Booking link", "not found")
 
         return {
             "data": {
@@ -703,7 +703,7 @@ async def update_booking_link(
 @router.post("/links/{link_id}:duplicate")
 async def duplicate_booking_link(
     link_id: str, request: Request, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, Any]:
     """Duplicate an existing booking link"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -727,7 +727,7 @@ async def duplicate_booking_link(
             .first()
         )
         if not original:
-            raise NotFoundError(message="Booking link not found")
+            raise NotFoundError("Booking link", "not found")
 
         # Generate unique slug
         new_slug = f"{original.slug}_copy_{TokenGenerator.generate_slug()[:4]}"
@@ -775,7 +775,7 @@ async def duplicate_booking_link(
 @router.post("/links/{link_id}:toggle")
 async def toggle_booking_link(
     link_id: str, request: Request, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, Any]:
     """Toggle a booking link's active status"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -791,15 +791,15 @@ async def toggle_booking_link(
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
 
-    # Database toggle
-    with get_session() as session:
-        link = (
-            session.query(BookingLink)
-            .filter_by(id=link_id, owner_user_id=owner_user_id)
-            .first()
-        )
-        if not link:
-            raise NotFoundError(message="Booking link not found")
+            # Database toggle
+        with get_session() as session:
+            link = (
+                session.query(BookingLink)
+                .filter_by(id=link_id, owner_user_id=owner_user_id)
+                .first()
+            )
+            if not link:
+                raise NotFoundError("Booking link", "not found")
 
         old_status = link.is_active
         link.is_active = not link.is_active
