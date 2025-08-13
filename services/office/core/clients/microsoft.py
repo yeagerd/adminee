@@ -502,7 +502,11 @@ class MicrosoftAPIClient(BaseAPIClient):
             return response.json()
         except Exception:
             draft_id: Optional[str] = None
-            location = response.headers.get("Location") if hasattr(response, "headers") else None
+            location = (
+                response.headers.get("Location")
+                if hasattr(response, "headers")
+                else None
+            )
             if location and "/me/messages/" in location:
                 draft_id = location.rsplit("/", 1)[-1]
             return {"id": draft_id} if draft_id else {}
@@ -516,7 +520,11 @@ class MicrosoftAPIClient(BaseAPIClient):
             return response.json()
         except Exception:
             draft_id: Optional[str] = None
-            location = response.headers.get("Location") if hasattr(response, "headers") else None
+            location = (
+                response.headers.get("Location")
+                if hasattr(response, "headers")
+                else None
+            )
             if location and "/me/messages/" in location:
                 draft_id = location.rsplit("/", 1)[-1]
             return {"id": draft_id} if draft_id else {}

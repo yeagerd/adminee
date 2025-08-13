@@ -135,7 +135,7 @@ class GoogleAPIClient(BaseAPIClient):
 
         # Use the label query parameter to filter messages by label
         response = await self.get(
-            f"/gmail/v1/users/me/messages", params={"labelIds": label_id, **params}
+            "/gmail/v1/users/me/messages", params={"labelIds": label_id, **params}
         )
         return response.json()
 

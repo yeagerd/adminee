@@ -1053,7 +1053,9 @@ async def send_gmail_message(
         thread_id: Optional[str] = None
         if email_data.reply_to_message_id:
             try:
-                original = await client.get_message(email_data.reply_to_message_id, format="metadata")
+                original = await client.get_message(
+                    email_data.reply_to_message_id, format="metadata"
+                )
                 thread_id = original.get("threadId")
             except Exception:
                 thread_id = None
