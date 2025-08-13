@@ -20,6 +20,20 @@ jest.mock('luxon', () => {
     };
 });
 
+// Helpers to pick future dates so ranges are never in the past
+const getFutureWeekday = (weekdayIndex: number, minDaysAhead: number): string => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + minDaysAhead);
+    while (d.getDay() !== weekdayIndex) {
+        d.setDate(d.getDate() + 1);
+    }
+    return d.toISOString().split('T')[0];
+};
+
+const FUTURE_TUESDAY = getFutureWeekday(2, 10);
+const FUTURE_FRIDAY = getFutureWeekday(5, 10);
+
 describe('TimeSlotCalendar Business Day Calculation', () => {
     const mockOnTimeSlotsChange = jest.fn();
 
@@ -43,9 +57,9 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
                 />
             );
 
-            // Set the target date to Tuesday  
+            // Set the target date to Tuesday
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } }); // Tuesday
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_TUESDAY } }); // Tuesday
 
             // Verify component renders successfully with business day calculations
             expect(screen.getByText(/Select Time Slots/)).toBeInTheDocument();
@@ -65,7 +79,7 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
 
             // Set target date to Friday
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-15' } });
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_FRIDAY } });
 
             // Enable weekends
             const weekendsCheckbox = screen.getByLabelText(/Include Weekends/);
@@ -88,7 +102,7 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
 
             // Set target date
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } }); // Tuesday
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_TUESDAY } }); // Tuesday
 
             // Get initial count of date headers (business days mode)
             const weekendsCheckbox = screen.getByLabelText(/Include Weekends/);
@@ -119,7 +133,7 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
 
             // Set target to Friday
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-15' } });
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_FRIDAY } });
 
             // Set range to 3 days (meaning +/- 3 days around Friday Aug 15)
             const rangeSlider = screen.getByRole('slider');
@@ -143,10 +157,40 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
 
             // Set a specific date
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } });
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_TUESDAY } });
 
             // Verify the date is displayed correctly regardless of timezone
-            expect(screen.getAllByText(/Tue Aug 12/).length).toBeGreaterThan(0);
+            const dt = new Date(FUTURE_TUESDAY + 'T00:00:00');
+            const weekdayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dt.getDay()];
+            const monthShort = dt.toLocaleString('en-US', { month: 'short' });
+            const day = dt.getDate();
+            const expected = new RegExp(`${weekdayShort} ${monthShort} ${day}`);
+            expect(screen.getAllByText(expected).length).toBeGreaterThan(0);
+        });
+
+        test('should clamp start date to today when computed business range partially falls in the past', () => {
+            // Freeze time to a known date to make clamping deterministic
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date('2025-08-01T00:00:00Z'));
+
+            render(
+                <TimeSlotCalendar
+                    {...defaultProps}
+                />
+            );
+
+            // Set target to the previous day (Thu Jul 31) relative to mocked today (Fri Aug 1)
+            const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
+            fireEvent.change(targetDateInput, { target: { value: '2025-07-31' } });
+
+            // Set range to 1 business day so end remains >= today after clamping
+            const rangeSlider = screen.getByRole('slider');
+            fireEvent.change(rangeSlider, { target: { value: '1' } });
+
+            // We expect the earliest header to include the mocked today (Fri Aug 1)
+            expect(screen.getAllByText(/Fri Aug 1/).length).toBeGreaterThan(0);
+
+            jest.useRealTimers();
         });
     });
 
@@ -163,7 +207,7 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
 
             // Set target to a Tuesday to ensure we have business days
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } }); // Tuesday
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_TUESDAY } }); // Tuesday
 
             // Find and click the "Select all available slots" button for the target day
             const selectAllButtons = screen.getAllByTitle(/Select all available slots/);
@@ -191,8 +235,8 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
                     id: 'test-event',
                     calendar_id: 'test-calendar-id',
                     title: 'Test Meeting',
-                    start_time: '2025-08-12T10:00:00Z', // Tuesday 10 AM UTC
-                    end_time: '2025-08-12T11:00:00Z',   // Tuesday 11 AM UTC
+                    start_time: `${FUTURE_TUESDAY}T10:00:00Z`, // Tuesday 10 AM UTC
+                    end_time: `${FUTURE_TUESDAY}T11:00:00Z`,   // Tuesday 11 AM UTC
                     all_day: false,
                     attendees: [],
                     status: 'confirmed',
@@ -201,8 +245,8 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
                     provider_event_id: 'test-provider-event-id',
                     account_email: 'test@example.com',
                     calendar_name: 'Test Calendar',
-                    created_at: '2025-08-01T00:00:00Z',
-                    updated_at: '2025-08-01T00:00:00Z'
+                    created_at: `${FUTURE_TUESDAY}T00:00:00Z`,
+                    updated_at: `${FUTURE_TUESDAY}T00:00:00Z`
                 }
             ];
 
@@ -215,7 +259,7 @@ describe('TimeSlotCalendar Business Day Calculation', () => {
 
             // Set target to Tuesday when the event occurs
             const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-            fireEvent.change(targetDateInput, { target: { value: '2025-08-12' } });
+            fireEvent.change(targetDateInput, { target: { value: FUTURE_TUESDAY } });
 
             // Verify the calendar event is displayed
             expect(screen.getByText('Test Meeting')).toBeInTheDocument();
@@ -248,7 +292,7 @@ describe('TimeSlotCalendar Business Day Integration', () => {
 
         // Test the complete flow: set target date, verify business days, select slots
         const targetDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/);
-        fireEvent.change(targetDateInput, { target: { value: '2025-08-15' } }); // Friday
+        fireEvent.change(targetDateInput, { target: { value: FUTURE_FRIDAY } }); // Friday
 
         // Should automatically calculate and display surrounding business days
         // This tests the internal business day calculation logic
