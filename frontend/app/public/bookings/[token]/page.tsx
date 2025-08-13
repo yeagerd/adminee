@@ -2,25 +2,44 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type PageProps = {
-    params: { token: string };
-};
+interface BookingMeta {
+    title: string;
+    description: string;
+    template_questions: QuestionField[];
+    duration_options: number[];
+    is_active: boolean;
+}
 
-export default function PublicBookingPage({ params }: PageProps) {
+interface QuestionField {
+    id: string;
+    label: string;
+    required: boolean;
+    type: string;
+    options?: string[];
+    placeholder?: string;
+    validation?: string;
+}
+
+interface TimeSlot {
+    start: string;
+    end: string;
+    available: boolean;
+}
+
+
+
+export default function PublicBookingPage({ params }: { params: { token: string } }) {
     const { token } = params;
-    const [timezone, setTimezone] = useState<string>(
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
-    );
-
+    const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
     const durationOptions = useMemo(() => [15, 30, 60, 120], []);
     const [duration, setDuration] = useState<number>(30);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [meta, setMeta] = useState<any | null>(null);
+    const [meta, setMeta] = useState<BookingMeta | null>(null);
     const [slotLoading, setSlotLoading] = useState<boolean>(false);
-    const [slots, setSlots] = useState<any[]>([]);
+    const [slots, setSlots] = useState<TimeSlot[]>([]);
     const [answers, setAnswers] = useState<Record<string, string>>({});
-    const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
+    const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -136,7 +155,7 @@ export default function PublicBookingPage({ params }: PageProps) {
                     <div>
                         <label className="block text-sm font-medium mb-1">Questions</label>
                         <div className="space-y-2">
-                            {meta.template_questions.map((q: any, idx: number) => {
+                            {meta.template_questions.map((q: QuestionField, idx: number) => {
                                 const key = q?.id || q?.name || `q_${idx}`;
                                 const label = q?.label || q?.name || `Question ${idx + 1}`;
                                 const required = Boolean(q?.required);
@@ -180,7 +199,8 @@ export default function PublicBookingPage({ params }: PageProps) {
                                 if (!res.ok) throw new Error("Failed to book");
                                 alert("Booked! Check your email for confirmation.");
                             } catch (e) {
-                                alert((e as any)?.message || "Booking failed");
+                                const errorMessage = e instanceof Error ? e.message : "Booking failed";
+                                alert(errorMessage);
                             } finally {
                                 setSubmitting(false);
                             }

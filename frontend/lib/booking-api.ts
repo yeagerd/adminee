@@ -30,7 +30,7 @@ export interface BookingLink {
   owner_user_id: string;
   slug: string;
   is_active: boolean;
-  settings: any;
+  settings: Record<string, unknown>;
   template_id: string | null;
   created_at: string;
   updated_at: string;
@@ -145,7 +145,7 @@ class BookingAPI {
   }
 
   // Get public link metadata
-  async getPublicLink(token: string): Promise<{ data: { title: string; description: string; template_questions: any[]; duration_options: number[]; is_active: boolean } }> {
+  async getPublicLink(token: string): Promise<{ data: { title: string; description: string; template_questions: Array<{ id: string; label: string; required: boolean; type: string; options?: string[]; placeholder?: string; validation?: string }>; duration_options: number[]; is_active: boolean } }> {
     return this.request(`/public/${token}`);
   }
 
