@@ -13,6 +13,7 @@ export interface EmailSendRequest {
     subject: string;
     body: string;
     reply_to_message_id?: string;
+    provider?: 'google' | 'microsoft';
 }
 
 export interface CalendarEventRequest {
@@ -47,7 +48,7 @@ export class OfficeIntegrationService {
                     method: 'POST',
                     body: {
                         ...request,
-                        provider: this.config.provider,
+                        provider: request.provider ?? this.config.provider,
                     },
                 }
             );
@@ -103,6 +104,7 @@ export class OfficeIntegrationService {
                     subject: draft.metadata.subject || 'No Subject',
                     body: draft.content,
                     reply_to_message_id: draft.metadata.replyToMessageId,
+                    provider: draft.metadata.provider,
                 });
 
             case 'calendar':
