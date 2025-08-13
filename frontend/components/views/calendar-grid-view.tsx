@@ -101,13 +101,13 @@ export default function CalendarGridView({
 
     const handleStartTimeChange = useCallback((newStartTime: Date) => {
         if (!formEndTime) return;
-        
+
         // Calculate duration in milliseconds
         const duration = formEndTime.getTime() - formStartTime!.getTime();
-        
+
         // Set new start time
         setFormStartTime(newStartTime);
-        
+
         // Adjust end time to maintain duration
         const newEndTime = new Date(newStartTime.getTime() + duration);
         setFormEndTime(newEndTime);
@@ -115,7 +115,7 @@ export default function CalendarGridView({
 
     const handleEndTimeChange = useCallback((newEndTime: Date) => {
         if (!formStartTime) return;
-        
+
         // Set new end time (this changes the duration)
         setFormEndTime(newEndTime);
     }, [formStartTime]);
@@ -824,15 +824,15 @@ export default function CalendarGridView({
             {/* Create Event Modal */}
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
                 setIsCreateOpen(open);
-                            if (!open) {
-                setFormTitle('');
-                setFormDescription('');
-                setFormLocation('');
-                setFormAllDay(false);
-                setFormStartTime(null);
-                setFormEndTime(null);
-                clearSelection();
-            }
+                if (!open) {
+                    setFormTitle('');
+                    setFormDescription('');
+                    setFormLocation('');
+                    setFormAllDay(false);
+                    setFormStartTime(null);
+                    setFormEndTime(null);
+                    clearSelection();
+                }
             }}>
                 <DialogContent>
                     <DialogHeader>
@@ -873,8 +873,8 @@ export default function CalendarGridView({
                                     className="text-sm"
                                 />
                                 <div className="text-xs text-muted-foreground mt-1">
-                                    {formStartTime && formEndTime ? 
-                                        `Duration: ${Math.round((formEndTime.getTime() - formStartTime.getTime()) / (1000 * 60))} minutes` : 
+                                    {formStartTime && formEndTime ?
+                                        `Duration: ${Math.round((formEndTime.getTime() - formStartTime.getTime()) / (1000 * 60))} minutes` :
                                         '—'
                                     }
                                 </div>
