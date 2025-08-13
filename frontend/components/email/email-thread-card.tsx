@@ -98,6 +98,14 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
             if (found) { quoteNode = found as Element; break; }
         }
 
+        // Consider a horizontal rule as a common boundary between new and quoted content
+        if (!quoteNode) {
+            const hrBoundary = container.querySelector('hr');
+            if (hrBoundary) {
+                quoteNode = hrBoundary as Element;
+            }
+        }
+
         // If not found, search for textual markers within the DOM
         if (!quoteNode) {
             const textContent = container.textContent || '';
@@ -106,7 +114,7 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
                 /Begin forwarded message:/i,
                 /Forwarded message:/i,
                 /On .{0,200}?wrote:/i,
-                /From:\s.+\n(?:(?:.*\n){0,4})?Sent:\s.+\n/i, // From: ... Sent: ... within a few lines
+                /From:\s[\s\S]{0,500}?Sent:\s/i, // Outlook-style headers: From: ... Sent: ...
             ];
             let matchIndex = -1;
             for (const re of patterns) {
@@ -166,27 +174,30 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
 
         const pathToQuote = computePath(quoteNode);
 
-        // Build visible part: remove quoteNode and everything after it within its parent
+        // Build visible part: remove everything from the boundary to the end using a DOM Range
         const visibleContainer = container.cloneNode(true) as HTMLElement;
         const q1 = findByPath(visibleContainer, pathToQuote);
-        if (q1 && q1.parentNode) {
-            const parentEl: Node & ParentNode = q1.parentNode as Node & ParentNode;
-            const startIdx = Array.prototype.indexOf.call(parentEl.childNodes, q1);
-            // Remove all nodes from startIdx to end
-            while (parentEl.childNodes.length > startIdx) {
-                parentEl.removeChild(parentEl.childNodes[startIdx]);
+        if (q1) {
+            const range = document.createRange();
+            range.setStartBefore(q1);
+            // If there is no lastChild, the container is empty; otherwise remove to the end
+            const last = visibleContainer.lastChild;
+            if (last) {
+                range.setEndAfter(last);
+                range.deleteContents();
             }
         }
 
-        // Build quoted part: remove everything before quoteNode within its parent
+        // Build quoted part: remove everything before the boundary using a DOM Range
         const quotedContainer = container.cloneNode(true) as HTMLElement;
         const q2 = findByPath(quotedContainer, pathToQuote);
-        if (q2 && q2.parentNode) {
-            const parentEl: Node & ParentNode = q2.parentNode as Node & ParentNode;
-            const idx = Array.prototype.indexOf.call(parentEl.childNodes, q2);
-            // Remove all nodes before idx
-            for (let i = 0; i < idx; i++) {
-                parentEl.removeChild(parentEl.firstChild as ChildNode);
+        if (q2) {
+            const range2 = document.createRange();
+            const first = quotedContainer.firstChild;
+            if (first) {
+                range2.setStartBefore(first);
+                range2.setEndBefore(q2);
+                range2.deleteContents();
             }
         }
 
