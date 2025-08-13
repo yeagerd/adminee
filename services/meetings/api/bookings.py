@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from services.meetings.models import get_session
 from services.meetings.models.bookings import (
     BookingLink as BookingLinkModel,
+    BookingTemplate as BookingTemplateModel,
     OneTimeLink as OneTimeLinkModel,
 )
 from services.meetings.services.booking_availability import compute_available_slots
@@ -29,6 +30,22 @@ def get_public_link(token: str) -> dict:
         if (expires_at and expires_at < datetime.now(timezone.utc)) or status != "active":
             raise HTTPException(status_code=404, detail="Link expired or inactive")
 
+        # Load template if present
+        parent = (
+            session.query(BookingLinkModel)
+            .filter_by(id=getattr(link, "booking_link_id"))
+            .first()
+        )
+        template_questions = None
+        if parent and getattr(parent, "template_id", None):
+            tmpl = (
+                session.query(BookingTemplateModel)
+                .filter_by(id=getattr(parent, "template_id"))
+                .first()
+            )
+            if tmpl and getattr(tmpl, "questions", None):
+                template_questions = getattr(tmpl, "questions")
+
         return {
             "ok": True,
             "data": {
@@ -36,6 +53,7 @@ def get_public_link(token: str) -> dict:
                 "booking_link_id": str(getattr(link, "booking_link_id", "")),
                 "status": status,
                 "expires_at": expires_at.isoformat() if expires_at else None,
+                "template_questions": template_questions,
             },
         }
 

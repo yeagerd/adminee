@@ -19,6 +19,7 @@ export default function PublicBookingPage({ params }: PageProps) {
   const [meta, setMeta] = useState<any | null>(null);
   const [slotLoading, setSlotLoading] = useState<boolean>(false);
   const [slots, setSlots] = useState<any[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -123,6 +124,34 @@ export default function PublicBookingPage({ params }: PageProps) {
             </ul>
           )}
         </div>
+
+        {Array.isArray(meta?.template_questions) && meta.template_questions.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Questions</label>
+            <div className="space-y-2">
+              {meta.template_questions.map((q: any, idx: number) => {
+                const key = q?.id || q?.name || `q_${idx}`;
+                const label = q?.label || q?.name || `Question ${idx + 1}`;
+                const required = Boolean(q?.required);
+                return (
+                  <div key={key} className="flex flex-col gap-1">
+                    <span className="text-sm">
+                      {label}
+                      {required ? " *" : ""}
+                    </span>
+                    <input
+                      className="border rounded px-2 py-1"
+                      value={answers[key] || ""}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

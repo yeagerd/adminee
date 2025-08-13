@@ -106,6 +106,8 @@ Conventions
   - Render dynamic questions from `BookingTemplate.questions`
   - Acceptance criteria:
     - Required questions enforced; minimal defaults applied
+    
+- [x] Recipient form (from template)
 
 - [ ] Submit booking
   - POST to API with chosen slot and answers
