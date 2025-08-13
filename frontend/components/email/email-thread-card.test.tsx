@@ -3,6 +3,11 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import EmailThreadCard from './email-thread-card';
 
+// Mock Next.js navigation
+jest.mock('next/navigation', () => ({
+    useRouter: jest.fn(),
+}));
+
 // Mock hooks used inside the component to avoid network and side effects
 jest.mock('@/hooks/use-shipment-detection', () => ({
     useShipmentDetection: () => ({ trackingNumbers: [] })
@@ -21,6 +26,15 @@ jest.mock('next-auth/react', () => ({
     signOut: jest.fn(),
     SessionProvider: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
+
+const mockRouter = {
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+};
 
 const baseEmail: EmailMessage = {
     id: 'test-id',
@@ -44,6 +58,11 @@ const baseEmail: EmailMessage = {
 };
 
 describe('EmailThreadCard rendering', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        (require('next/navigation').useRouter as jest.Mock).mockReturnValue(mockRouter);
+    });
+
     it('renders simple HTML body without toggle', () => {
         const simpleHtml = '<html><body><div>Try it out today!</div></body></html>';
         render(
