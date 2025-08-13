@@ -302,7 +302,7 @@ async def create_poll(
                     body_lines.extend(
                         [
                             "",
-                            "=== END EMAIL RESPONSE ===",
+                            "=== END RESPONSE ===",
                             "",
                             "Please respond by the deadline to help us find the best meeting time!",
                         ]

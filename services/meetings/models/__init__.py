@@ -41,7 +41,12 @@ def get_async_sessionmaker() -> async_sessionmaker:
     """Get async session maker for async operations."""
     engine = get_async_engine()
     return async_sessionmaker(
-        bind=engine, autoflush=False, autocommit=False, future=True, class_=AsyncSession
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+        future=True,
+        class_=AsyncSession,
+        expire_on_commit=False,
     )
 
 
