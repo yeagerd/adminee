@@ -326,9 +326,9 @@ async def create_public_booking(
                 one_time_link.expires_at is not None
                 and one_time_link.expires_at < datetime.now()
             ):
-                raise NotFoundError(message="Link has expired")
+                raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":
-                raise NotFoundError(message="Link has already been used")
+                raise NotFoundError("Link", "already used")
 
             booking_link = (
                 session.query(BookingLink)
@@ -344,7 +344,7 @@ async def create_public_booking(
         else:
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
             if not booking_link or not booking_link.is_active:
-                raise NotFoundError(message="Booking link not found or inactive")
+                raise NotFoundError("Booking link", "not found or inactive")
 
             link_id = booking_link.id
             one_time_link_id = None
@@ -591,14 +591,14 @@ async def get_booking_link(
     owner_user_id = get_user_id_from_request(request)
 
     # Database lookup
-    with get_session() as session:
-        link = (
-            session.query(BookingLink)
-            .filter_by(id=link_id, owner_user_id=owner_user_id)
-            .first()
-        )
-        if not link:
-            raise NotFoundError(message="Booking link not found")
+        with get_session() as session:
+            link = (
+                session.query(BookingLink)
+                .filter_by(id=link_id, owner_user_id=owner_user_id)
+                .first()
+            )
+            if not link:
+                raise NotFoundError("Booking link", "not found")
 
         return {
             "data": {
