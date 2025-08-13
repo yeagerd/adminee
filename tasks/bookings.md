@@ -10,7 +10,7 @@ Conventions
 ---
 
 ### 0. Scaffolding and Project Structure
-- [ ] Create frontend area for bookings
+- [x] Create frontend area for bookings
   - Path: `frontend/app/bookings/` (wizard, dashboard) and public page: `frontend/app/public/bookings/[token]/page.tsx`
   - Acceptance criteria:
     - Routing works for `/bookings` (authed) and `/public/bookings/[token]` (unauth)
