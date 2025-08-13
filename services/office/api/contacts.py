@@ -43,6 +43,8 @@ def get_request_id() -> str:
     if not request_id or request_id == "uninitialized":
         return "no-request-id"
     return request_id
+
+
 async def _invalidate_contacts_cache(user_id: str) -> None:
     """Invalidate contacts cache for a user with backwards compatibility.
 
@@ -62,7 +64,6 @@ async def _invalidate_contacts_cache(user_id: str) -> None:
     # Default: delete contacts keys for this user
     pattern = f"office:{user_id}:unified:contacts:*"
     await cache_manager.delete_pattern(pattern)
-
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -188,37 +189,45 @@ async def list_contacts(
 
         async def _fetch(provider: str) -> Tuple[List[Contact], str]:
             scopes = _get_contact_scopes(provider, write=False)
+
             client = await factory.create_client(user_id, provider, scopes=scopes)
             if client is None:
+                logger.error(
+                    f"Failed to create client for provider {provider} - client is None"
+                )
                 raise ServiceError(message=f"No client for provider {provider}")
 
             results: List[Contact] = []
             # Determine account context for this provider
             account_email, account_name = get_user_account_info(user_id, provider)
+
             if provider == "google":
                 # Google client supports page_size
                 g_client: GoogleAPIClient = client  # type: ignore[assignment]
-                data = await g_client.get_contacts(page_size=limit)
-                for c in data.get("connections", []) or []:
-                    normalized = normalize_google_contact(
-                        c, account_email=account_email, account_name=account_name
-                    )
-                    results.append(Contact(**normalized))
+                async with g_client:
+                    data = await g_client.get_contacts(page_size=limit)
+                    for c in data.get("connections", []) or []:
+                        normalized = normalize_google_contact(
+                            c, account_email=account_email, account_name=account_name
+                        )
+                        results.append(Contact(**normalized))
             elif provider == "microsoft":
                 # Microsoft client supports top/select/order_by
                 select = "id,displayName,givenName,surname,emailAddresses,companyName,jobTitle,businessPhones,mobilePhone,homePhones"
                 # Type narrow for mypy
                 ms_client: MicrosoftAPIClient = client  # type: ignore[assignment]
-                data = await ms_client.get_contacts(
-                    top=limit, select=select, order_by="lastModifiedDateTime desc"
-                )
-                for c in data.get("value", []) or []:
-                    normalized = normalize_microsoft_contact(
-                        c, account_email=account_email, account_name=account_name
+                async with ms_client:
+                    data = await ms_client.get_contacts(
+                        top=limit, select=select, order_by="lastModifiedDateTime desc"
                     )
-                    results.append(Contact(**normalized))
+                    for c in data.get("value", []) or []:
+                        normalized = normalize_microsoft_contact(
+                            c, account_email=account_email, account_name=account_name
+                        )
+                        results.append(Contact(**normalized))
             else:
                 raise ServiceError(message=f"Unsupported provider: {provider}")
+
             return results, provider
 
         tasks = [_fetch(p) for p in valid_providers]
@@ -231,6 +240,7 @@ async def list_contacts(
         for i, result in enumerate(provider_results):
             prov = valid_providers[i]
             if isinstance(result, Exception):
+                logger.error(f"Exception for provider {prov}: {result}")
                 provider_errors[prov] = str(result)
                 continue
             if isinstance(result, tuple) and len(result) == 2:
@@ -238,6 +248,7 @@ async def list_contacts(
                 contacts.extend(res_contacts)
                 providers_used.append(prov_used)
             else:
+                logger.error(f"Invalid result format for provider {prov}: {result}")
                 provider_errors[prov] = "Invalid result format"
                 continue
 
