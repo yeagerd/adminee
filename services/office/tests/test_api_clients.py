@@ -758,5 +758,5 @@ class TestDefaultScopes:
         factory = APIClientFactory()
         scopes_google = factory._get_default_scopes(Provider.GOOGLE)
         scopes_ms = factory._get_default_scopes(Provider.MICROSOFT)
-        assert any('contacts' in s for s in scopes_google)
-        assert any('Contacts' in s for s in scopes_ms)
+        assert any("contacts" in s for s in scopes_google)
+        assert any("Contacts" in s for s in scopes_ms)

@@ -77,7 +77,9 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get("/me/contacts", params=params)
         return response.json()
 
-    async def get_contact(self, contact_id: str, select: Optional[str] = None) -> Dict[str, Any]:
+    async def get_contact(
+        self, contact_id: str, select: Optional[str] = None
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
         if select:
             params["$select"] = select
@@ -88,8 +90,12 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.post("/me/contacts", json_data=contact_data)
         return response.json()
 
-    async def update_contact(self, contact_id: str, contact_data: Dict[str, Any]) -> Dict[str, Any]:
-        response = await self.patch(f"/me/contacts/{contact_id}", json_data=contact_data)
+    async def update_contact(
+        self, contact_id: str, contact_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        response = await self.patch(
+            f"/me/contacts/{contact_id}", json_data=contact_data
+        )
         return response.json()
 
     async def delete_contact(self, contact_id: str) -> None:

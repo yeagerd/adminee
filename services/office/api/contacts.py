@@ -1,21 +1,24 @@
-from typing import Any, Dict, List, Optional, Tuple
 import asyncio
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, Query, Request, Path, Body
+from fastapi import APIRouter, Body, Depends, Path, Query, Request
+from pydantic import BaseModel
 
 from services.common.http_errors import ServiceError, ValidationError
 from services.common.logging_config import get_logger, request_id_var
+from services.office.api.email import get_provider_enum, get_user_account_info
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
-from services.office.core.normalizer import normalize_google_contact, normalize_microsoft_contact
+from services.office.core.normalizer import (
+    normalize_google_contact,
+    normalize_microsoft_contact,
+)
 from services.office.models import Provider
-from services.office.schemas import ContactList, Contact
-from pydantic import BaseModel
-from services.office.api.email import get_user_account_info, get_provider_enum
+from services.office.schemas import Contact, ContactList
 
 logger = get_logger(__name__)
 
@@ -52,11 +55,19 @@ async def get_user_id_from_gateway(request: Request) -> str:
 def _get_contact_scopes(provider: str, write: bool = False) -> List[str]:
     if provider == "google":
         return [
-            "https://www.googleapis.com/auth/contacts.readonly" if not write else "https://www.googleapis.com/auth/contacts",
+            (
+                "https://www.googleapis.com/auth/contacts.readonly"
+                if not write
+                else "https://www.googleapis.com/auth/contacts"
+            ),
         ]
     elif provider == "microsoft":
         return [
-            "https://graph.microsoft.com/Contacts.ReadWrite" if write else "https://graph.microsoft.com/Contacts.Read",
+            (
+                "https://graph.microsoft.com/Contacts.ReadWrite"
+                if write
+                else "https://graph.microsoft.com/Contacts.Read"
+            ),
         ]
     return []
 
@@ -66,7 +77,9 @@ class _ContactCreatePayload(BaseModel):
     full_name: Optional[str] = None
     given_name: Optional[str] = None
     family_name: Optional[str] = None
-    emails: Optional[List[Any]] = None  # Accept strings or objects with email/address/value
+    emails: Optional[List[Any]] = (
+        None  # Accept strings or objects with email/address/value
+    )
     company: Optional[str] = None
     job_title: Optional[str] = None
     phones: Optional[List[str]] = None
@@ -79,7 +92,9 @@ class _ContactUpdatePayload(BaseModel):
     family_name: Optional[str] = None
     company: Optional[str] = None
     job_title: Optional[str] = None
-    emails: Optional[List[Any]] = None  # Accept strings or objects with email/address/value
+    emails: Optional[List[Any]] = (
+        None  # Accept strings or objects with email/address/value
+    )
     phones: Optional[List[str]] = None
 
 
@@ -110,11 +125,17 @@ def _extract_email_strings(raw_emails: Optional[List[Any]]) -> Optional[List[str
 async def list_contacts(
     request: Request,
     service_name: str = Depends(service_permission_required(["read_emails"])),
-    providers: Optional[List[str]] = Query(None, description="Providers to fetch from (google, microsoft)."),
+    providers: Optional[List[str]] = Query(
+        None, description="Providers to fetch from (google, microsoft)."
+    ),
     limit: int = Query(100, ge=1, le=500),
     q: Optional[str] = Query(None, description="Free-text search (name or email)"),
-    company: Optional[str] = Query(None, description="Filter by company or email domain"),
-    no_cache: bool = Query(False, description="Bypass cache and fetch fresh data from providers"),
+    company: Optional[str] = Query(
+        None, description="Filter by company or email domain"
+    ),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
 ) -> ContactList:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
@@ -124,15 +145,24 @@ async def list_contacts(
             providers = ["google", "microsoft"]
         valid_providers = [p for p in providers if p in ["google", "microsoft"]]
         if not valid_providers:
-            raise ValidationError(message="No valid providers specified", field="providers")
+            raise ValidationError(
+                message="No valid providers specified", field="providers"
+            )
 
-        cache_params = {"providers": valid_providers, "limit": limit, "q": q or "", "company": company or ""}
+        cache_params = {
+            "providers": valid_providers,
+            "limit": limit,
+            "q": q or "",
+            "company": company or "",
+        }
         cache_key = generate_cache_key(user_id, "unified", "contacts", cache_params)
 
         if not no_cache:
             cached = await cache_manager.get_from_cache(cache_key)
             if cached:
-                return ContactList(success=True, data=cached, cache_hit=True, request_id=request_id)
+                return ContactList(
+                    success=True, data=cached, cache_hit=True, request_id=request_id
+                )
 
         factory = await get_api_client_factory()
 
@@ -150,16 +180,22 @@ async def list_contacts(
                 g_client: GoogleAPIClient = client  # type: ignore[assignment]
                 data = await g_client.get_contacts(page_size=limit)
                 for c in data.get("connections", []) or []:
-                    normalized = normalize_google_contact(c, account_email=account_email, account_name=account_name)
+                    normalized = normalize_google_contact(
+                        c, account_email=account_email, account_name=account_name
+                    )
                     results.append(Contact(**normalized))
             elif provider == "microsoft":
                 # Microsoft client supports top/select/order_by
                 select = "id,displayName,givenName,surname,emailAddresses,companyName,jobTitle,businessPhones,mobilePhone,homePhones"
                 # Type narrow for mypy
                 ms_client: MicrosoftAPIClient = client  # type: ignore[assignment]
-                data = await ms_client.get_contacts(top=limit, select=select, order_by="lastModifiedDateTime desc")
+                data = await ms_client.get_contacts(
+                    top=limit, select=select, order_by="lastModifiedDateTime desc"
+                )
                 for c in data.get("value", []) or []:
-                    normalized = normalize_microsoft_contact(c, account_email=account_email, account_name=account_name)
+                    normalized = normalize_microsoft_contact(
+                        c, account_email=account_email, account_name=account_name
+                    )
                     results.append(Contact(**normalized))
             else:
                 raise ServiceError(message=f"Unsupported provider: {provider}")
@@ -188,12 +224,19 @@ async def list_contacts(
         # Apply client-side search filter
         if q:
             q_low = q.lower()
-            contacts = [c for c in contacts if (c.full_name and q_low in c.full_name.lower()) or any(q_low in e.email.lower() for e in c.emails)]
+            contacts = [
+                c
+                for c in contacts
+                if (c.full_name and q_low in c.full_name.lower())
+                or any(q_low in e.email.lower() for e in c.emails)
+            ]
 
         if company:
             comp_low = company.lower()
+
             def _domain_from_email(e: str) -> Optional[str]:
                 return e.split("@", 1)[1].lower() if "@" in e else None
+
             filtered: List[Contact] = []
             for c in contacts:
                 if c.company and comp_low in c.company.lower():
@@ -227,7 +270,15 @@ async def list_contacts(
         if providers_used:
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
 
-        return ContactList(success=True, data=response_data, cache_hit=False, provider_used=(Provider(providers_used[0]) if len(providers_used) == 1 else None), request_id=request_id)
+        return ContactList(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=(
+                Provider(providers_used[0]) if len(providers_used) == 1 else None
+            ),
+            request_id=request_id,
+        )
     except ValidationError:
         raise
     except Exception as e:
@@ -239,7 +290,10 @@ async def list_contacts(
 async def create_contact(
     request: Request,
     service_name: str = Depends(service_permission_required(["send_emails"])),
-    provider: Optional[str] = Query(None, description="Provider to create contact in (google, microsoft) - optional if provided in JSON body"),
+    provider: Optional[str] = Query(
+        None,
+        description="Provider to create contact in (google, microsoft) - optional if provided in JSON body",
+    ),
     full_name: Optional[str] = Query(None),
     given_name: Optional[str] = Query(None),
     family_name: Optional[str] = Query(None),
@@ -255,9 +309,17 @@ async def create_contact(
     if payload is not None:
         provider = payload.provider or provider
         full_name = payload.full_name if payload.full_name is not None else full_name
-        given_name = payload.given_name if payload.given_name is not None else given_name
-        family_name = payload.family_name if payload.family_name is not None else family_name
-        emails = _extract_email_strings(payload.emails) if payload.emails is not None else emails
+        given_name = (
+            payload.given_name if payload.given_name is not None else given_name
+        )
+        family_name = (
+            payload.family_name if payload.family_name is not None else family_name
+        )
+        emails = (
+            _extract_email_strings(payload.emails)
+            if payload.emails is not None
+            else emails
+        )
         company = payload.company if payload.company is not None else company
         job_title = payload.job_title if payload.job_title is not None else job_title
         phones = payload.phones if payload.phones is not None else phones
@@ -281,11 +343,27 @@ async def create_contact(
         if provider == "google":
             person: Dict[str, Any] = {}
             if full_name or given_name or family_name:
-                person["names"] = [{k: v for k, v in {"displayName": full_name, "givenName": given_name, "familyName": family_name}.items() if v}]
+                person["names"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "displayName": full_name,
+                            "givenName": given_name,
+                            "familyName": family_name,
+                        }.items()
+                        if v
+                    }
+                ]
             if emails:
                 person["emailAddresses"] = [{"value": e} for e in emails]
             if company or job_title:
-                person["organizations"] = [{k: v for k, v in {"name": company, "title": job_title}.items() if v}]
+                person["organizations"] = [
+                    {
+                        k: v
+                        for k, v in {"name": company, "title": job_title}.items()
+                        if v
+                    }
+                ]
             if phones:
                 person["phoneNumbers"] = [{"value": p} for p in phones]
             created = await client.create_contact(person)
@@ -307,14 +385,20 @@ async def create_contact(
             if phones:
                 ms_payload["businessPhones"] = phones
             created = await client.create_contact(ms_payload)
-            normalized = normalize_microsoft_contact(created, account_email, account_name)
+            normalized = normalize_microsoft_contact(
+                created, account_email, account_name
+            )
         else:
             raise ServiceError(message=f"Unsupported provider: {provider}")
 
         # Invalidate contacts cache for this user
         pattern = f"office:{user_id}:unified:contacts:*"
         await cache_manager.delete_pattern(pattern)
-        return {"success": True, "data": {"contact": normalized}, "request_id": request_id}
+        return {
+            "success": True,
+            "data": {"contact": normalized},
+            "request_id": request_id,
+        }
     except Exception as e:
         raise ServiceError(message=f"Failed to create contact: {str(e)}")
 
@@ -322,9 +406,15 @@ async def create_contact(
 @router.put("/{contact_id}", response_model=Dict[str, Any])
 async def update_contact(
     request: Request,
-    contact_id: str = Path(..., description="Unified contact id (provider_originalId) or provider id for write-through"),
+    contact_id: str = Path(
+        ...,
+        description="Unified contact id (provider_originalId) or provider id for write-through",
+    ),
     service_name: str = Depends(service_permission_required(["send_emails"])),
-    provider: Optional[str] = Query(None, description="Provider to update in (if unified id not used) - optional if provided in JSON body"),
+    provider: Optional[str] = Query(
+        None,
+        description="Provider to update in (if unified id not used) - optional if provided in JSON body",
+    ),
     full_name: Optional[str] = Query(None),
     given_name: Optional[str] = Query(None),
     family_name: Optional[str] = Query(None),
@@ -341,11 +431,19 @@ async def update_contact(
     if payload is not None:
         provider = payload.provider or provider
         full_name = payload.full_name if payload.full_name is not None else full_name
-        given_name = payload.given_name if payload.given_name is not None else given_name
-        family_name = payload.family_name if payload.family_name is not None else family_name
+        given_name = (
+            payload.given_name if payload.given_name is not None else given_name
+        )
+        family_name = (
+            payload.family_name if payload.family_name is not None else family_name
+        )
         company = payload.company if payload.company is not None else company
         job_title = payload.job_title if payload.job_title is not None else job_title
-        emails = _extract_email_strings(payload.emails) if payload.emails is not None else emails
+        emails = (
+            _extract_email_strings(payload.emails)
+            if payload.emails is not None
+            else emails
+        )
         phones = payload.phones if payload.phones is not None else phones
 
     prov = provider
@@ -359,7 +457,10 @@ async def update_contact(
         elif prov.lower() in ("outlook", "microsoft"):
             prov = "microsoft"
     if prov is None:
-        raise ValidationError(message="Provider required when contact_id is provider-native id", field="provider")
+        raise ValidationError(
+            message="Provider required when contact_id is provider-native id",
+            field="provider",
+        )
 
     prov_enum = get_provider_enum(prov)
     if prov_enum is None:
@@ -377,14 +478,33 @@ async def update_contact(
         if prov == "google":
             person: Dict[str, Any] = {}
             if full_name or given_name or family_name:
-                person["names"] = [{k: v for k, v in {"displayName": full_name, "givenName": given_name, "familyName": family_name}.items() if v}]
+                person["names"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "displayName": full_name,
+                            "givenName": given_name,
+                            "familyName": family_name,
+                        }.items()
+                        if v
+                    }
+                ]
             if emails is not None:
                 person["emailAddresses"] = [{"value": e} for e in emails]
             if company is not None or job_title is not None:
-                person["organizations"] = [{k: v for k, v in {"name": company, "title": job_title}.items() if v}]
+                person["organizations"] = [
+                    {
+                        k: v
+                        for k, v in {"name": company, "title": job_title}.items()
+                        if v
+                    }
+                ]
             if phones is not None:
                 person["phoneNumbers"] = [{"value": p} for p in phones]
-            updated = await client.update_contact(f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id, person)
+            updated = await client.update_contact(
+                f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id,
+                person,
+            )
             normalized = normalize_google_contact(updated, account_email, account_name)
         elif prov == "microsoft":
             ms_payload: Dict[str, Any] = {}
@@ -403,13 +523,19 @@ async def update_contact(
             if phones is not None:
                 ms_payload["businessPhones"] = phones
             updated = await client.update_contact(prov_id, ms_payload)
-            normalized = normalize_microsoft_contact(updated, account_email, account_name)
+            normalized = normalize_microsoft_contact(
+                updated, account_email, account_name
+            )
         else:
             raise ServiceError(message=f"Unsupported provider: {prov}")
 
         pattern = f"office:{user_id}:unified:contacts:*"
         await cache_manager.delete_pattern(pattern)
-        return {"success": True, "data": {"contact": normalized}, "request_id": request_id}
+        return {
+            "success": True,
+            "data": {"contact": normalized},
+            "request_id": request_id,
+        }
     except Exception as e:
         raise ServiceError(message=f"Failed to update contact: {str(e)}")
 
@@ -419,7 +545,9 @@ async def delete_contact(
     contact_id: str,
     request: Request,
     service_name: str = Depends(service_permission_required(["send_emails"])),
-    provider: Optional[str] = Query(None, description="Provider to delete in (if unified id not used)"),
+    provider: Optional[str] = Query(
+        None, description="Provider to delete in (if unified id not used)"
+    ),
 ) -> Dict[str, Any]:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
@@ -429,7 +557,10 @@ async def delete_contact(
     if "_" in contact_id and not provider:
         prov, prov_id = contact_id.split("_", 1)
     if prov is None:
-        raise ValidationError(message="Provider required when contact_id is provider-native id", field="provider")
+        raise ValidationError(
+            message="Provider required when contact_id is provider-native id",
+            field="provider",
+        )
 
     prov_enum = get_provider_enum(prov)
     if prov_enum is None:

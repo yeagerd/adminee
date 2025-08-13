@@ -517,7 +517,9 @@ class IntegrationHealthCheck(BaseModel):
 
 
 class ContactPhone(BaseModel):
-    type: Optional[str] = Field(None, description="Type of phone number (work, mobile, home)")
+    type: Optional[str] = Field(
+        None, description="Type of phone number (work, mobile, home)"
+    )
     number: str = Field(..., description="Phone number in E.164 or localized format")
 
 
@@ -548,6 +550,7 @@ class ContactList(BaseModel):
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
     request_id: str
+
 
 # Type aliases for common response types
 AvailabilityApiResponse = TypedApiResponse[AvailabilityResponse]

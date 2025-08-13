@@ -15,12 +15,12 @@ from services.common.logging_config import get_logger
 from services.office.models import Provider
 from services.office.schemas import (
     CalendarEvent,
+    Contact,
+    ContactPhone,
     DriveFile,
     EmailAddress,
     EmailMessage,
     EmailThread,
-    Contact,
-    ContactPhone,
 )
 
 logger = get_logger(__name__)
@@ -1030,7 +1030,10 @@ def normalize_google_contact(
     """
     resource_name = raw.get("resourceName") or raw.get("id")
     names = raw.get("names", [])
-    primary_name = next((n for n in names if n.get("metadata", {}).get("primary")), names[0] if names else {})
+    primary_name = next(
+        (n for n in names if n.get("metadata", {}).get("primary")),
+        names[0] if names else {},
+    )
     full_name = primary_name.get("displayName")
     given_name = primary_name.get("givenName")
     family_name = primary_name.get("familyName")
@@ -1050,8 +1053,13 @@ def normalize_google_contact(
         primary_email_obj = email_addrs[0]
 
     organizations = raw.get("organizations", []) or []
-    primary_org = next((o for o in organizations if o.get("metadata", {}).get("primary")), organizations[0] if organizations else {})
-    company = primary_org.get("name") or _derive_company_from_email(primary_email_obj.email if primary_email_obj else None)
+    primary_org = next(
+        (o for o in organizations if o.get("metadata", {}).get("primary")),
+        organizations[0] if organizations else {},
+    )
+    company = primary_org.get("name") or _derive_company_from_email(
+        primary_email_obj.email if primary_email_obj else None
+    )
     job_title = primary_org.get("title")
 
     phones: List[ContactPhone] = []
@@ -1063,7 +1071,10 @@ def normalize_google_contact(
         phones.append(ContactPhone(type=type_label, number=number))
 
     photos = raw.get("photos", []) or []
-    primary_photo = next((p for p in photos if p.get("metadata", {}).get("primary")), photos[0] if photos else {})
+    primary_photo = next(
+        (p for p in photos if p.get("metadata", {}).get("primary")),
+        photos[0] if photos else {},
+    )
     photo_url = primary_photo.get("url")
 
     contact = Contact(
@@ -1106,17 +1117,19 @@ def normalize_microsoft_contact(
         if primary_email_obj is None:
             primary_email_obj = email_model
 
-    company = raw.get("companyName") or _derive_company_from_email(primary_email_obj.email if primary_email_obj else None)
+    company = raw.get("companyName") or _derive_company_from_email(
+        primary_email_obj.email if primary_email_obj else None
+    )
     job_title = raw.get("jobTitle")
 
     phones: List[ContactPhone] = []
-    for number in (raw.get("businessPhones") or []):
+    for number in raw.get("businessPhones") or []:
         if isinstance(number, str) and number:
             phones.append(ContactPhone(type="work", number=number))
     mobile_phone = raw.get("mobilePhone")
     if isinstance(mobile_phone, str) and mobile_phone:
         phones.append(ContactPhone(type="mobile", number=mobile_phone))
-    for number in (raw.get("homePhones") or []):
+    for number in raw.get("homePhones") or []:
         if isinstance(number, str) and number:
             phones.append(ContactPhone(type="home", number=number))
 
