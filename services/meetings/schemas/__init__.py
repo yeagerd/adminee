@@ -29,7 +29,7 @@ class TimeSlot(TimeSlotBase):
 
 class PollParticipantBase(BaseModel):
     email: EmailStr
-    name: Optional[str]
+    name: Optional[str] = None
 
 
 class PollParticipantCreate(PollParticipantBase):
