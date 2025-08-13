@@ -90,7 +90,7 @@ Conventions
 ---
 
 ### 5. Public Booking Flow (Recipient)
-- [ ] Public page shell
+- [x] Public page shell
   - `frontend/app/public/bookings/[token]/page.tsx` renders link details: title, duration choices, timezone awareness
   - Acceptance criteria:
     - Invalid/expired token → friendly error page
