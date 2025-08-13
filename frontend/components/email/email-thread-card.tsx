@@ -146,11 +146,11 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
             const path: number[] = [];
             let cur: Element | null = node;
             while (cur && cur !== container) {
-                const parent = cur.parentElement;
-                if (!parent) break;
-                const idx = Array.prototype.indexOf.call(parent.childNodes, cur);
+                const parentEl: Element | null = cur.parentElement;
+                if (!parentEl) break;
+                const idx = Array.prototype.indexOf.call(parentEl.childNodes, cur);
                 path.unshift(idx);
-                cur = parent;
+                cur = parentEl;
             }
             return path;
         };
@@ -170,11 +170,11 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
         const visibleContainer = container.cloneNode(true) as HTMLElement;
         const q1 = findByPath(visibleContainer, pathToQuote);
         if (q1 && q1.parentNode) {
-            const parent = q1.parentNode;
-            const startIdx = Array.prototype.indexOf.call(parent.childNodes, q1);
+            const parentEl: Node & ParentNode = q1.parentNode as Node & ParentNode;
+            const startIdx = Array.prototype.indexOf.call(parentEl.childNodes, q1);
             // Remove all nodes from startIdx to end
-            while (parent.childNodes.length > startIdx) {
-                parent.removeChild(parent.childNodes[startIdx]);
+            while (parentEl.childNodes.length > startIdx) {
+                parentEl.removeChild(parentEl.childNodes[startIdx]);
             }
         }
 
@@ -182,11 +182,11 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
         const quotedContainer = container.cloneNode(true) as HTMLElement;
         const q2 = findByPath(quotedContainer, pathToQuote);
         if (q2 && q2.parentNode) {
-            const parent = q2.parentNode;
-            const idx = Array.prototype.indexOf.call(parent.childNodes, q2);
+            const parentEl: Node & ParentNode = q2.parentNode as Node & ParentNode;
+            const idx = Array.prototype.indexOf.call(parentEl.childNodes, q2);
             // Remove all nodes before idx
             for (let i = 0; i < idx; i++) {
-                parent.removeChild(parent.firstChild as ChildNode);
+                parentEl.removeChild(parentEl.firstChild as ChildNode);
             }
         }
 
@@ -304,7 +304,10 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     useEffect(() => {
         const res = splitQuotedContent({ html: email.body_html, text: email.body_text });
         setSplitResult(res);
-        setShowQuoted(false);
+        // If the entire message is detected as quoted (no visible part), show quoted by default
+        const shouldShowQuotedHtml = !!email.body_html && !res?.visibleHtml && !!res?.quotedHtml;
+        const shouldShowQuotedText = !email.body_html && !res?.visibleText && !!res?.quotedText;
+        setShowQuoted(shouldShowQuotedHtml || shouldShowQuotedText);
     }, [email.body_html, email.body_text]);
 
     const sanitizedHtml = useMemo(() => (email.body_html ? sanitizeEmailHtml(email.body_html) : ''), [email.body_html]);
