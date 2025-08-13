@@ -497,13 +497,29 @@ class MicrosoftAPIClient(BaseAPIClient):
             else f"/me/messages/{message_id}/createReply"
         )
         response = await self.post(endpoint, json_data={})
-        return response.json()
+        # Some Graph endpoints respond 202 Accepted with no body; return draft id via Location header if present
+        try:
+            return response.json()
+        except Exception:
+            draft_id: Optional[str] = None
+            location = response.headers.get("Location") if hasattr(response, "headers") else None
+            if location and "/me/messages/" in location:
+                draft_id = location.rsplit("/", 1)[-1]
+            return {"id": draft_id} if draft_id else {}
 
     async def create_forward_draft(self, message_id: str) -> Dict[str, Any]:
         response = await self.post(
             f"/me/messages/{message_id}/createForward", json_data={}
         )
-        return response.json()
+        # Some Graph endpoints respond 202 Accepted with no body; return draft id via Location header if present
+        try:
+            return response.json()
+        except Exception:
+            draft_id: Optional[str] = None
+            location = response.headers.get("Location") if hasattr(response, "headers") else None
+            if location and "/me/messages/" in location:
+                draft_id = location.rsplit("/", 1)[-1]
+            return {"id": draft_id} if draft_id else {}
 
     async def get_message_draft(self, draft_id: str) -> Dict[str, Any]:
         return await self.get_message(draft_id)
