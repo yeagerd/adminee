@@ -116,7 +116,7 @@ Conventions
   - Acceptance criteria:
     - Owner can save a new evergreen link; receives generated URL
 
-- [ ] Create one-time link (uses poll/slot picker)
+- [x] Create one-time link (uses poll/slot picker)
   - Let owner select specific slots; generate recipient-specific tokenized URL
   - Acceptance criteria:
     - Generated URL expires on booking or timeout; status visible to owner

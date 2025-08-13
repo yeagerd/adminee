@@ -6,6 +6,7 @@ type Step = "basics" | "availability" | "duration" | "limits" | "template" | "re
 
 export default function BookingsPage() {
   const [currentStep, setCurrentStep] = useState<Step>("basics");
+  const [showOneTimeForm, setShowOneTimeForm] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -19,6 +20,12 @@ export default function BookingsPage() {
     templateName: "",
     questions: [],
     emailFollowup: false,
+  });
+
+  const [oneTimeData, setOneTimeData] = useState({
+    recipientEmail: "",
+    recipientName: "",
+    expiresInDays: 7,
   });
 
   const steps: { key: Step; label: string }[] = [
@@ -242,6 +249,13 @@ export default function BookingsPage() {
     }
   };
 
+  const createOneTimeLink = () => {
+    // TODO: Implement API call to create one-time link
+    const mockToken = "ot_" + Math.random().toString(36).substr(2, 9);
+    const mockUrl = `${window.location.origin}/public/bookings/${mockToken}`;
+    alert(`One-time link created!\n\nURL: ${mockUrl}\n\nThis link will expire in ${oneTimeData.expiresInDays} days or after first use.`);
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-semibold mb-6">Create Booking Link</h1>
@@ -290,6 +304,73 @@ export default function BookingsPage() {
         >
           {currentStep === "review" ? "Create" : "Next"}
         </button>
+      </div>
+
+      {/* One-time link creation */}
+      <div className="mt-12 border-t pt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">One-Time Link</h2>
+          <button
+            className="text-blue-600 hover:text-blue-700 text-sm"
+            onClick={() => setShowOneTimeForm(!showOneTimeForm)}
+          >
+            {showOneTimeForm ? "Hide" : "Create One-Time Link"}
+          </button>
+        </div>
+        
+        {showOneTimeForm && (
+          <div className="bg-white border rounded-lg p-6">
+            <p className="text-sm text-muted-foreground mb-4">
+              Create a single-use link for a specific recipient. This link will expire after use or after a set time.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Recipient Email *</label>
+                <input
+                  type="email"
+                  className="border rounded px-3 py-2 w-full"
+                  value={oneTimeData.recipientEmail}
+                  onChange={(e) => setOneTimeData({ ...oneTimeData, recipientEmail: e.target.value })}
+                  placeholder="recipient@example.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Recipient Name</label>
+                <input
+                  className="border rounded px-3 py-2 w-full"
+                  value={oneTimeData.recipientName}
+                  onChange={(e) => setOneTimeData({ ...oneTimeData, recipientName: e.target.value })}
+                  placeholder="Optional name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Expires In (days)</label>
+                <select
+                  className="border rounded px-3 py-2 w-full"
+                  value={oneTimeData.expiresInDays}
+                  onChange={(e) => setOneTimeData({ ...oneTimeData, expiresInDays: Number(e.target.value) })}
+                >
+                  <option value={1}>1 day</option>
+                  <option value={3}>3 days</option>
+                  <option value={7}>1 week</option>
+                  <option value={14}>2 weeks</option>
+                  <option value={30}>1 month</option>
+                </select>
+              </div>
+              
+              <button
+                className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 disabled:opacity-50"
+                disabled={!oneTimeData.recipientEmail}
+                onClick={createOneTimeLink}
+              >
+                Create One-Time Link
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
