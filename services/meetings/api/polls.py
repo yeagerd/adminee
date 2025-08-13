@@ -229,6 +229,58 @@ async def create_poll(
         result = await session.execute(stmt)
         db_poll = result.scalar_one()
 
+        # Capture values for logging and convert to dict before session closes
+        poll_id = str(db_poll.id)
+        stored_user_id = str(db_poll.user_id)
+        stored_user_id_type = type(db_poll.user_id).__name__
+        poll_title = db_poll.title
+        participant_count = len(db_poll.participants)
+        
+        # Convert SQLAlchemy model to dict to avoid MissingGreenlet errors
+        poll_dict = {
+            "id": db_poll.id,
+            "user_id": db_poll.user_id,
+            "title": db_poll.title,
+            "description": db_poll.description,
+            "duration_minutes": db_poll.duration_minutes,
+            "location": db_poll.location,
+            "meeting_type": db_poll.meeting_type,
+            "response_deadline": db_poll.response_deadline,
+            "min_participants": db_poll.min_participants,
+            "max_participants": db_poll.max_participants,
+            "reveal_participants": db_poll.reveal_participants,
+            "status": db_poll.status,
+            "created_at": db_poll.created_at,
+            "updated_at": db_poll.updated_at,
+            "poll_token": db_poll.poll_token,
+                            "time_slots": [
+                    {
+                        "id": slot.id,
+                        "poll_id": slot.poll_id,
+                        "start_time": slot.start_time,
+                        "end_time": slot.end_time,
+                        "timezone": slot.timezone,
+                        "is_available": slot.is_available,
+                        "created_at": slot.created_at,
+                    }
+                    for slot in db_poll.time_slots
+                ],
+                            "participants": [
+                    {
+                        "id": participant.id,
+                        "poll_id": participant.poll_id,
+                        "email": participant.email,
+                        "name": participant.name,
+                        "response_token": participant.response_token,
+                        "status": participant.status,
+                        "invited_at": participant.invited_at,
+                        "responded_at": participant.responded_at,
+                        "reminder_sent_count": participant.reminder_sent_count,
+                    }
+                    for participant in db_poll.participants
+                ],
+        }
+
         # Send emails if requested
         if poll.send_emails:
             try:
@@ -238,14 +290,14 @@ async def create_poll(
                 email_tasks = []
                 for participant in db_poll.participants:
                     response_url = f"{frontend_url}/public/meetings/respond/{participant.response_token}"
-                    subject = f"You're invited: {db_poll.title}"
+                    subject = f"You're invited: {poll_title}"
                     description = getattr(db_poll, "description", "") or ""
 
                     # Build email body with location and time slots
                     body_lines = [
                         "You have been invited to respond to a meeting poll!",
                         "",
-                        f"Event: {db_poll.title}",
+                        f"Event: {poll_title}",
                         "",
                     ]
 
@@ -319,14 +371,14 @@ async def create_poll(
                 await session.commit()
                 logger.info(
                     "Emails sent successfully for new poll",
-                    poll_id=str(db_poll.id),
-                    participant_count=len(db_poll.participants),
+                    poll_id=poll_id,
+                    participant_count=participant_count,
                 )
 
             except Exception as e:
                 logger.error(
                     "Failed to send emails for new poll",
-                    poll_id=str(db_poll.id),
+                    poll_id=poll_id,
                     error=str(e),
                 )
                 # Don't fail the poll creation if email sending fails
@@ -334,13 +386,13 @@ async def create_poll(
 
         logger.info(
             "Poll created successfully",
-            poll_id=str(db_poll.id),
-            stored_user_id=str(db_poll.user_id),
-            stored_user_id_type=type(db_poll.user_id).__name__,
-            poll_title=db_poll.title,
+            poll_id=poll_id,
+            stored_user_id=stored_user_id,
+            stored_user_id_type=stored_user_id_type,
+            poll_title=poll_title,
         )
 
-        return MeetingPoll.model_validate(db_poll)
+        return MeetingPoll.model_validate(poll_dict)
 
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
