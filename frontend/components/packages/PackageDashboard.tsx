@@ -362,7 +362,7 @@ export default function PackageDashboard() {
                 <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(pkg.tracking_link, '_blank')}
+                    onClick={() => { window.open(pkg.tracking_link, '_blank'); }}
                 >
                     <ExternalLink className="h-4 w-4" />
                 </Button>

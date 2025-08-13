@@ -1,0 +1,25 @@
+/* Mock CSS file for Jest testing */
+.summary-container {
+    container-type: inline-size;
+    container-name: summary-container;
+    width: 100%;
+    min-width: 0;
+}
+
+.summary-grid {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@container summary-container (max-width: 400px) {
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@container summary-container (max-width: 200px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}

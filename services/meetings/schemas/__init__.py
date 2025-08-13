@@ -75,6 +75,7 @@ class MeetingPollBase(BaseModel):
     min_participants: Optional[int] = None
     max_participants: Optional[int] = None
     reveal_participants: Optional[bool] = False
+    send_emails: Optional[bool] = False
 
     @field_validator("meeting_type", mode="before")
     @classmethod

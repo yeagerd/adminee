@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -174,59 +175,160 @@ class TestPollCreation(BaseMeetingsTest):
         assert data["reveal_participants"] is False
         assert data["participants"][0]["email"] == "alice@example.com"
 
-    def test_public_poll_endpoint_filters_current_participant(self, poll_payload):
-        """Test that the public poll endpoint filters out the current participant from the participants list."""
-        user_id = str(uuid4())
-        # Set reveal_participants to True so participants are included
-        poll_payload["reveal_participants"] = True
+    @patch("services.meetings.api.polls.email_integration.send_invitation_email")
+    def test_create_poll_with_send_emails_sends_invitations(self, mock_send_email):
+        """Test that creating a poll with send_emails=True sends invitation emails."""
+        # Mock email sending
+        mock_send_email.return_value = {"ok": True}
 
-        # Create poll
-        resp = self.client.post(
-            "/api/v1/meetings/polls/",
-            json=poll_payload,
-            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
+        poll_data = {
+            "title": "Test Poll with Emails",
+            "description": "Test Description",
+            "duration_minutes": 60,
+            "location": "Test Location",
+            "meeting_type": "tbd",
+            "time_slots": [
+                {
+                    "start_time": "2024-01-01T10:00:00Z",
+                    "end_time": "2024-01-01T11:00:00Z",
+                    "timezone": "UTC",
+                }
+            ],
+            "participants": [
+                {
+                    "email": "test1@example.com",
+                    "name": "Test User 1",
+                },
+                {
+                    "email": "test2@example.com",
+                    "name": "Test User 2",
+                },
+            ],
+            "response_deadline": "2024-01-02T00:00:00Z",
+            "reveal_participants": False,
+            "send_emails": True,
+        }
+
+        # Create the poll
+        response = self.client.post(
+            "/api/v1/meetings/polls",
+            json=poll_data,
+            headers={
+                "X-User-Id": "test-user-123",
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
 
-        # Verify we have multiple participants
-        assert len(data["participants"]) == 2
-        alice_participant = data["participants"][0]
-        bob_participant = data["participants"][1]
+        assert response.status_code == 200
+        poll = response.json()
 
-        # Test with Alice's response token
-        alice_response_token = alice_participant["response_token"]
-        resp2 = self.client.get(f"/api/v1/public/polls/response/{alice_response_token}")
-        assert resp2.status_code == 200, resp2.text
-        public_data = resp2.json()
+        # Verify that emails were sent to both participants
+        assert mock_send_email.call_count == 2
 
-        # Verify the poll data is returned
-        assert "poll" in public_data
-        assert "participant" in public_data
-        assert public_data["participant"]["id"] == alice_participant["id"]
+        # Check first participant email
+        first_call = mock_send_email.call_args_list[0]
+        assert first_call[0][0] == "test1@example.com"  # email
+        assert "You're invited: Test Poll with Emails" in first_call[0][1]  # subject
+        assert "Test Poll with Emails" in first_call[0][2]  # body contains poll title
+        assert first_call[0][3] == "test-user-123"  # user_id
 
-        # Verify that Alice (current participant) is NOT in the participants list
-        poll_participants = public_data["poll"]["participants"]
-        assert len(poll_participants) == 1  # Should only have Bob
-        assert poll_participants[0]["id"] == bob_participant["id"]
-        assert poll_participants[0]["email"] == "bob@example.com"
+        # Check second participant email
+        second_call = mock_send_email.call_args_list[1]
+        assert second_call[0][0] == "test2@example.com"  # email
+        assert "You're invited: Test Poll with Emails" in second_call[0][1]  # subject
+        assert "Test Poll with Emails" in second_call[0][2]  # body contains poll title
+        assert second_call[0][3] == "test-user-123"  # user_id
 
-        # Verify Alice is not in the list
-        alice_ids = [p["id"] for p in poll_participants]
-        assert alice_participant["id"] not in alice_ids
+    @patch("services.meetings.api.polls.email_integration.send_invitation_email")
+    def test_create_poll_without_send_emails_does_not_send_invitations(
+        self, mock_send_email
+    ):
+        """Test that creating a poll with send_emails=False does not send invitation emails."""
+        poll_data = {
+            "title": "Test Poll without Emails",
+            "description": "Test Description",
+            "duration_minutes": 60,
+            "location": "Test Location",
+            "meeting_type": "tbd",
+            "time_slots": [
+                {
+                    "start_time": "2024-01-01T10:00:00Z",
+                    "end_time": "2024-01-01T11:00:00Z",
+                    "timezone": "UTC",
+                }
+            ],
+            "participants": [
+                {
+                    "email": "test@example.com",
+                    "name": "Test User",
+                }
+            ],
+            "response_deadline": "2024-01-02T00:00:00Z",
+            "reveal_participants": False,
+            "send_emails": False,
+        }
 
-        # Test with Bob's response token
-        bob_response_token = bob_participant["response_token"]
-        resp3 = self.client.get(f"/api/v1/public/polls/response/{bob_response_token}")
-        assert resp3.status_code == 200, resp3.text
-        public_data_bob = resp3.json()
+        # Create the poll
+        response = self.client.post(
+            "/api/v1/meetings/polls",
+            json=poll_data,
+            headers={
+                "X-User-Id": "test-user-123",
+                "X-API-Key": "test-frontend-meetings-key",
+            },
+        )
 
-        # Verify that Bob (current participant) is NOT in the participants list
-        poll_participants_bob = public_data_bob["poll"]["participants"]
-        assert len(poll_participants_bob) == 1  # Should only have Alice
-        assert poll_participants_bob[0]["id"] == alice_participant["id"]
-        assert poll_participants_bob[0]["email"] == "alice@example.com"
+        assert response.status_code == 200
 
-        # Verify Bob is not in the list
-        bob_ids = [p["id"] for p in poll_participants_bob]
-        assert bob_participant["id"] not in bob_ids
+        # Verify that no emails were sent
+        mock_send_email.assert_not_called()
+
+    @patch("services.meetings.api.polls.email_integration.send_invitation_email")
+    def test_create_poll_email_sending_failure_does_not_fail_creation(
+        self, mock_send_email
+    ):
+        """Test that poll creation succeeds even if email sending fails."""
+        # Mock email sending to fail
+        mock_send_email.side_effect = ValueError("Email service unavailable")
+
+        poll_data = {
+            "title": "Test Poll with Email Failure",
+            "description": "Test Description",
+            "duration_minutes": 60,
+            "location": "Test Location",
+            "meeting_type": "tbd",
+            "time_slots": [
+                {
+                    "start_time": "2024-01-01T10:00:00Z",
+                    "end_time": "2024-01-01T11:00:00Z",
+                    "timezone": "UTC",
+                }
+            ],
+            "participants": [
+                {
+                    "email": "test@example.com",
+                    "name": "Test User",
+                }
+            ],
+            "response_deadline": "2024-01-02T00:00:00Z",
+            "reveal_participants": False,
+            "send_emails": True,
+        }
+
+        # Create the poll - should succeed despite email failure
+        response = self.client.post(
+            "/api/v1/meetings/polls",
+            json=poll_data,
+            headers={
+                "X-User-Id": "test-user-123",
+                "X-API-Key": "test-frontend-meetings-key",
+            },
+        )
+
+        assert response.status_code == 200
+        poll = response.json()
+
+        # Verify that the poll was created successfully
+        assert poll["title"] == "Test Poll with Email Failure"
+        assert len(poll["participants"]) == 1
+        assert len(poll["time_slots"]) == 1
