@@ -558,6 +558,12 @@ export class GatewayClient {
         });
     }
 
+    async unscheduleMeeting(pollId: string): Promise<ApiResponse<{ status?: string }>> {
+        return this.request<ApiResponse<{ status?: string }>>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
+            method: 'POST',
+        });
+    }
+
     // Shipments Service
     async parseEmail(emailData: { subject: string; sender: string; body: string; content_type: string }): Promise<{
         is_shipment_email: boolean;
