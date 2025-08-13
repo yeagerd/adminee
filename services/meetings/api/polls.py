@@ -608,19 +608,109 @@ async def schedule_meeting(
 ) -> dict:
     user_id = get_user_id_from_request(request)
     selected_slot_id = body.get("selectedSlotId")
-    participants = body.get("participants", [])
     if not selected_slot_id:
         raise HTTPException(status_code=400, detail="Missing selectedSlotId")
-    result = await calendar_integration.create_calendar_event(
-        str(user_id), str(poll_id), selected_slot_id, participants
-    )
-    # Optionally update poll status to scheduled here
+
+    # Ensure selected_slot_id is a UUID instance
+    try:
+        from uuid import UUID as _UUID
+
+        selected_slot_uuid = (
+            selected_slot_id
+            if isinstance(selected_slot_id, _UUID)
+            else _UUID(str(selected_slot_id))
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid selectedSlotId")
+
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
-        if poll:
-            poll.status = PollStatus.scheduled
-            session.commit()
-    return result
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Ownership check
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403, detail="Not authorized to schedule this poll"
+            )
+
+        # Validate slot belongs to this poll
+        slot = (
+            session.query(TimeSlotModel)
+            .filter_by(id=selected_slot_uuid, poll_id=poll_id)
+            .first()
+        )
+        if not slot:
+            raise HTTPException(status_code=404, detail="Time slot not found")
+
+        # Gather participant emails
+        participants = [p.email for p in poll.participants]
+
+        # Prepare event details
+        title = getattr(poll, "title", f"Meeting from poll {poll_id}")
+        description = getattr(poll, "description", None)
+        location = getattr(poll, "location", None)
+        start_time = getattr(slot, "start_time")
+        end_time = getattr(slot, "end_time")
+
+        # Create or update event via Office service
+        existing_event_id = getattr(poll, "calendar_event_id", None)
+        if existing_event_id:
+            # Verify existing event id has required provider-prefixed format
+            if not (isinstance(existing_event_id, str) and "_" in existing_event_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid calendar_event_id format: {existing_event_id}. Expected format: 'provider_originalId' (e.g., 'google_abc123' or 'microsoft_xyz789')",
+                )
+
+            # Use the existing event id as-is since it should already be properly prefixed
+            result = await calendar_integration.update_calendar_event(
+                str(user_id),
+                existing_event_id,
+                title,
+                description,
+                start_time,
+                end_time,
+                participants,
+                location,
+            )
+        else:
+            result = await calendar_integration.create_calendar_event(
+                str(user_id),
+                title,
+                description,
+                start_time,
+                end_time,
+                participants,
+                location,
+            )
+            # Store returned event id if available
+            try:
+                # result expected to be ApiResponse with data.event_id
+                data = result.get("data", {}) if isinstance(result, dict) else {}
+                event_id = data.get("event_id")
+                provider = (data.get("provider") or "").lower()
+                if event_id:
+                    # Normalize to provider-prefixed id if not already prefixed
+                    if isinstance(event_id, str) and (
+                        event_id.startswith("google_")
+                        or event_id.startswith("microsoft_")
+                    ):
+                        normalized = event_id
+                    elif provider in ("google", "microsoft"):
+                        normalized = f"{provider}_{event_id}"
+                    else:
+                        normalized = event_id
+                    setattr(poll, "calendar_event_id", normalized)
+            except Exception:
+                pass
+
+        # Update poll scheduled slot and status
+        setattr(poll, "scheduled_slot_id", selected_slot_uuid)
+        setattr(poll, "status", PollStatus.scheduled)
+        session.commit()
+
+        return result
 
 
 @router.post("/{poll_id}/participants/{participant_id}/resend-invitation")

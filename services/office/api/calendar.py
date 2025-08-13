@@ -692,8 +692,17 @@ async def create_calendar_event(
     )
 
     try:
-        # Determine provider (default to google if not specified)
-        provider = event_data.provider or "google"
+        # Determine provider:
+        # - If explicitly provided, use it
+        # - Otherwise, attempt to use user's preferred provider
+        # - Fallback to Google if no preferred provider is set
+        provider: str
+        if event_data.provider:
+            provider = event_data.provider
+        else:
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
+            provider = preferred_provider.value if preferred_provider else "google"
 
         # Validate provider
         if provider.lower() not in ["google", "microsoft"]:
@@ -704,9 +713,16 @@ async def create_calendar_event(
 
         provider = provider.lower()
 
-        # Get API client for provider
+        # Get API client for provider (with graceful fallback when no provider specified)
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
+        if client is None and not event_data.provider:
+            # Try the other provider as a fallback if caller didn't specify
+            fallback_provider = "microsoft" if provider == "google" else "google"
+            client = await factory.create_client(user_id, fallback_provider)
+            if client:
+                provider = fallback_provider
+
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."

@@ -7,6 +7,8 @@ import { Calendar, FileText, Mail } from 'lucide-react';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
+import { draftService } from '@/services/draft-service';
+import { useEffect } from 'react';
 
 interface DraftPaneProps {
     className?: string;
@@ -66,13 +68,59 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
         }
     };
 
-    const handleAutoSave = (content: string) => {
+    const handleAutoSave = async (content: string) => {
         if (draft) {
             onUpdate({ content });
-            // TODO: Implement actual auto-save to backend
-            console.log('Auto-saving draft:', content);
+            if (draft.type === 'email') {
+                try {
+                    await draftService.saveDraft({ ...draft, content });
+                } catch (err) {
+                    console.error('Autosave failed:', err);
+                }
+            }
         }
     };
+
+    // Best-effort auto-save on tab close or visibility change
+    useEffect(() => {
+        if (!draft) return;
+        const handleBeforeUnload = () => {
+            if (draft.type !== 'email') return;
+            try {
+                // Best-effort: attempt to persist, and ensure errors are handled
+                void draftService.saveDraft(draft).catch(err => {
+                    console.error('beforeunload save failed:', err);
+                });
+            } catch (err) {
+                console.error('beforeunload save failed (sync):', err);
+            }
+        };
+        const handleVisibility = async () => {
+            if (document.visibilityState === 'hidden' && draft.type === 'email') {
+                try {
+                    await draftService.saveDraft(draft);
+                } catch (err) {
+                    console.error('visibilitychange save failed:', err);
+                }
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            // Also try to save on unmount
+            if (draft.type === 'email') {
+                (async () => {
+                    try {
+                        await draftService.saveDraft(draft);
+                    } catch (err) {
+                        console.error('unmount save failed:', err);
+                    }
+                })();
+            }
+        };
+    }, [draft]);
 
     if (!draft) {
         return (

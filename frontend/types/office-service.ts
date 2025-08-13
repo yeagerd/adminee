@@ -45,7 +45,7 @@ export interface CalendarEventsResponse {
     };
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
     success: boolean;
     data: T;
     cache_hit?: boolean;
@@ -127,7 +127,7 @@ export interface GetThreadResponse {
 
 export interface EmailFilters {
     query?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface GetEmailsResponse {

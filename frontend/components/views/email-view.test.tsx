@@ -1,20 +1,27 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { EmailMessage } from '@/types/office-service';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import EmailView from './email-view';
 
 // Mock the integrations context
 jest.mock('@/contexts/integrations-context');
 const mockUseIntegrations = useIntegrations as jest.MockedFunction<typeof useIntegrations>;
 
-// Mock the gateway client
-jest.mock('@/lib/gateway-client', () => ({
-    gatewayClient: {
-        getEmails: jest.fn(),
-        getThread: jest.fn(),
-        getEmailFolders: jest.fn(),
-    },
-}));
+// Mock the gateway client with both class and instance exports
+jest.mock('@/lib/gateway-client', () => {
+    class MockGatewayClient {
+        getEmails = jest.fn();
+        getThread = jest.fn();
+        getEmailFolders = jest.fn();
+        request = jest.fn();
+    }
+    const instance = new MockGatewayClient();
+    return {
+        GatewayClient: MockGatewayClient,
+        gatewayClient: instance,
+        default: instance,
+    };
+});
 
 // Mock next-auth
 jest.mock('next-auth/react', () => ({
@@ -107,24 +114,22 @@ describe('EmailView - Select All Functionality', () => {
     });
 
     it('should select only latest emails in tight view mode', async () => {
-        // Mock the gateway client to return our test emails
         const { gatewayClient } = await import('@/lib/gateway-client');
         (gatewayClient.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });
 
-        render(<EmailView activeTool="email" />);
+        await act(async () => {
+            render(<EmailView activeTool="email" />);
+        });
 
-        // Wait for the component to load
-        // In a real test, you would wait for the emails to load
-        // For this test, we're just verifying the logic structure
-        expect(screen.getByText('Inbox')).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByText('Inbox')).toBeInTheDocument());
     });
 
-    it('should handle view mode changes correctly', () => {
-        render(<EmailView activeTool="email" />);
-
-        // The component should render without crashing
-        expect(screen.getByText('Inbox')).toBeInTheDocument();
+    it('should handle view mode changes correctly', async () => {
+        await act(async () => {
+            render(<EmailView activeTool="email" />);
+        });
+        await waitFor(() => expect(screen.getByText('Inbox')).toBeInTheDocument());
     });
 }); 

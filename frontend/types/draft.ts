@@ -14,6 +14,10 @@ export interface DraftMetadata {
     title?: string;
     tags?: string[];
     priority?: 'low' | 'medium' | 'high';
+    // Provider-specific email draft metadata
+    provider?: 'google' | 'microsoft';
+    providerDraftId?: string; // ID of the draft in the provider (Gmail/Outlook)
+    replyToMessageId?: string; // Provider message id when replying/forwarding
 }
 
 export interface Draft {
@@ -40,7 +44,7 @@ export interface DraftState {
 
 export interface DraftAction {
     type: 'SET_CURRENT_DRAFT' | 'UPDATE_DRAFT' | 'CLEAR_DRAFT' | 'SET_LOADING' | 'SET_ERROR' | 'SET_DRAFT_LIST' | 'ADD_DRAFT' | 'REMOVE_DRAFT';
-    payload?: any;
+    payload?: unknown;
 }
 
 export interface DraftEditorProps {

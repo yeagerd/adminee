@@ -179,6 +179,8 @@ class MeetingPoll(MeetingPollBase):
     time_slots: List[TimeSlot]
     participants: List[PollParticipant]
     responses: Optional[List[PollResponse]] = None
+    scheduled_slot_id: Optional[UUID] = None
+    calendar_event_id: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
