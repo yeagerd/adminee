@@ -63,6 +63,8 @@ export default function CalendarGridView({
     const [formDescription, setFormDescription] = useState('');
     const [formLocation, setFormLocation] = useState('');
     const [formAllDay, setFormAllDay] = useState(false);
+    const [formStartTime, setFormStartTime] = useState<Date | null>(null);
+    const [formEndTime, setFormEndTime] = useState<Date | null>(null);
 
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
     const { effectiveTimezone } = useUserPreferences();
@@ -96,6 +98,27 @@ export default function CalendarGridView({
         setSelection(null);
         setHoverPreview(null);
     }, []);
+
+    const handleStartTimeChange = useCallback((newStartTime: Date) => {
+        if (!formEndTime) return;
+        
+        // Calculate duration in milliseconds
+        const duration = formEndTime.getTime() - formStartTime!.getTime();
+        
+        // Set new start time
+        setFormStartTime(newStartTime);
+        
+        // Adjust end time to maintain duration
+        const newEndTime = new Date(newStartTime.getTime() + duration);
+        setFormEndTime(newEndTime);
+    }, [formStartTime, formEndTime]);
+
+    const handleEndTimeChange = useCallback((newEndTime: Date) => {
+        if (!formStartTime) return;
+        
+        // Set new end time (this changes the duration)
+        setFormEndTime(newEndTime);
+    }, [formStartTime]);
 
     // Use external props if provided, otherwise use internal state
     // For list view, always use internal events to support navigation
@@ -344,6 +367,14 @@ export default function CalendarGridView({
         })();
         return () => { isMounted = false; };
     }, [dateRange, viewType, externalEvents, toolDataLoading, integrationsLoading, activeProviders, activeTool, fetchCalendarEvents]);
+
+    // Initialize form times when selection changes
+    useEffect(() => {
+        if (selectedStartEnd) {
+            setFormStartTime(selectedStartEnd.start);
+            setFormEndTime(selectedStartEnd.end);
+        }
+    }, [selectedStartEnd]);
 
     // Global mouse event handlers for drag selection
     useEffect(() => {
@@ -793,13 +824,15 @@ export default function CalendarGridView({
             {/* Create Event Modal */}
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
                 setIsCreateOpen(open);
-                if (!open) {
-                    setFormTitle('');
-                    setFormDescription('');
-                    setFormLocation('');
-                    setFormAllDay(false);
-                    clearSelection();
-                }
+                            if (!open) {
+                setFormTitle('');
+                setFormDescription('');
+                setFormLocation('');
+                setFormAllDay(false);
+                setFormStartTime(null);
+                setFormEndTime(null);
+                clearSelection();
+            }
             }}>
                 <DialogContent>
                     <DialogHeader>
@@ -812,15 +845,38 @@ export default function CalendarGridView({
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <div className="text-muted-foreground">Start</div>
-                                <div className="font-medium">
-                                    {selectedStartEnd ? DateTime.fromJSDate(selectedStartEnd.start).setZone(effectiveTimezone).toFormat('EEE, MMM d h:mm a') : '—'}
+                                <Label htmlFor="startTime">Start</Label>
+                                <Input
+                                    id="startTime"
+                                    type="datetime-local"
+                                    value={formStartTime ? DateTime.fromJSDate(formStartTime).setZone(effectiveTimezone).toFormat('yyyy-MM-dd\'T\'HH:mm') : ''}
+                                    onChange={(e) => {
+                                        const newStartTime = DateTime.fromFormat(e.target.value, 'yyyy-MM-dd\'T\'HH:mm', { zone: effectiveTimezone }).toJSDate();
+                                        handleStartTimeChange(newStartTime);
+                                    }}
+                                    className="text-sm"
+                                />
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    {formStartTime ? DateTime.fromJSDate(formStartTime).setZone(effectiveTimezone).toFormat('EEE, MMM d h:mm a') : '—'}
                                 </div>
                             </div>
                             <div>
-                                <div className="text-muted-foreground">End</div>
-                                <div className="font-medium">
-                                    {selectedStartEnd ? DateTime.fromJSDate(selectedStartEnd.end).setZone(effectiveTimezone).toFormat('EEE, MMM d h:mm a') : '—'}
+                                <Label htmlFor="endTime">End</Label>
+                                <Input
+                                    id="endTime"
+                                    type="datetime-local"
+                                    value={formEndTime ? DateTime.fromJSDate(formEndTime).setZone(effectiveTimezone).toFormat('yyyy-MM-dd\'T\'HH:mm') : ''}
+                                    onChange={(e) => {
+                                        const newEndTime = DateTime.fromFormat(e.target.value, 'yyyy-MM-dd\'T\'HH:mm', { zone: effectiveTimezone }).toJSDate();
+                                        handleEndTimeChange(newEndTime);
+                                    }}
+                                    className="text-sm"
+                                />
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    {formStartTime && formEndTime ? 
+                                        `Duration: ${Math.round((formEndTime.getTime() - formStartTime.getTime()) / (1000 * 60))} minutes` : 
+                                        '—'
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -851,11 +907,11 @@ export default function CalendarGridView({
                             </Button>
                             <Button
                                 onClick={async () => {
-                                    if (!selectedStartEnd) return;
+                                    if (!formStartTime || !formEndTime) return;
                                     const title = formTitle.trim() || 'New meeting';
                                     try {
-                                        const startUtc = DateTime.fromJSDate(selectedStartEnd.start).toUTC();
-                                        const endUtc = DateTime.fromJSDate(selectedStartEnd.end).toUTC();
+                                        const startUtc = DateTime.fromJSDate(formStartTime).toUTC();
+                                        const endUtc = DateTime.fromJSDate(formEndTime).toUTC();
                                         await gatewayClient.createCalendarEvent({
                                             title,
                                             description: formDescription || undefined,
@@ -870,6 +926,8 @@ export default function CalendarGridView({
                                         setFormDescription('');
                                         setFormLocation('');
                                         setFormAllDay(false);
+                                        setFormStartTime(null);
+                                        setFormEndTime(null);
                                         await (onRefresh ? onRefresh() : handleRefresh());
                                         toast({ description: 'Meeting created' });
                                     } catch (e) {
