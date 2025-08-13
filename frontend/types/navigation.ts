@@ -1,6 +1,7 @@
 export type Tool =
     | 'calendar'
     | 'email'
+    | 'contacts'
     | 'documents'
     | 'tasks'
     | 'drafts'

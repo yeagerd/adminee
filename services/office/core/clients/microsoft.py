@@ -55,6 +55,52 @@ class MicrosoftAPIClient(BaseAPIClient):
         """Get base URL for Microsoft Graph API"""
         return "https://graph.microsoft.com/v1.0"
 
+    # Contacts API methods
+    async def get_contacts(
+        self,
+        top: int = 200,
+        skip: int = 0,
+        select: Optional[str] = None,
+        order_by: Optional[str] = None,
+        filter: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if select:
+            params["$select"] = select
+        if order_by:
+            params["$orderby"] = order_by
+        if filter:
+            params["$filter"] = filter
+        if search:
+            params["$search"] = search
+        response = await self.get("/me/contacts", params=params)
+        return response.json()
+
+    async def get_contact(
+        self, contact_id: str, select: Optional[str] = None
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if select:
+            params["$select"] = select
+        response = await self.get(f"/me/contacts/{contact_id}", params=params)
+        return response.json()
+
+    async def create_contact(self, contact_data: Dict[str, Any]) -> Dict[str, Any]:
+        response = await self.post("/me/contacts", json_data=contact_data)
+        return response.json()
+
+    async def update_contact(
+        self, contact_id: str, contact_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        response = await self.patch(
+            f"/me/contacts/{contact_id}", json_data=contact_data
+        )
+        return response.json()
+
+    async def delete_contact(self, contact_id: str) -> None:
+        await self.delete(f"/me/contacts/{contact_id}")
+
     # Outlook Mail API methods
     async def get_messages(
         self,
