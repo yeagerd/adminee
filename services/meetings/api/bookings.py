@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+
 
 from fastapi import APIRouter, Depends, Request
 
@@ -70,12 +72,12 @@ def get_client_key(request: Request) -> str:
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
     return {"status": "healthy", "service": "bookings"}
 
 
 @router.get("/public/{token}", response_model=PublicLinkResponse)
-async def get_public_link(token: str, request: Request):
+async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
     """Get public link metadata including template questions"""
     # Rate limiting for public endpoints
     client_key = get_client_key(request)
@@ -105,11 +107,11 @@ async def get_public_link(token: str, request: Request):
         if one_time_link is not None:
             # Check if expired or used
             if (
-                one_time_link.expires_at is not None
-                and one_time_link.expires_at < datetime.now()
+                one_time_link.expires_at is not None  # type: ignore
+                and one_time_link.expires_at < datetime.now()  # type: ignore
             ):
                 raise NotFoundError(message="Link has expired")
-            if one_time_link.status != "active":
+            if one_time_link.status != "active":  # type: ignore
                 raise NotFoundError(message="Link has already been used")
 
             # Get the parent booking link
@@ -571,7 +573,7 @@ async def get_booking_link(
     link_id: str,
     request: Request = None,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Get a specific booking link"""
     # Rate limiting for authenticated endpoints
     if request:

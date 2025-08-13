@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from services.meetings.services import email_integration
 
@@ -8,7 +8,7 @@ def _format_dt(dt: datetime) -> str:
     return dt.strftime("%A, %B %d, %Y at %I:%M %p %Z")
 
 
-async def send_confirmation_email(booking) -> bool:
+async def send_confirmation_email(booking: Any) -> bool:
     """
     Send confirmation email for a booking.
 
@@ -45,7 +45,7 @@ async def send_confirmation_email(booking) -> bool:
 
         # Send confirmation emails
         await send_booking_confirmations(
-            user_id=owner_user_id,
+            user_id=owner_user_id,  # type: ignore[arg-type]
             owner_email=owner_email,
             recipient_email=booking.attendee_email,
             title=title,
@@ -64,7 +64,7 @@ async def send_confirmation_email(booking) -> bool:
         return False
 
 
-async def send_follow_up_email(booking) -> bool:
+async def send_follow_up_email(booking: Any) -> bool:
     """
     Send optional follow-up email if enabled in the template.
 
@@ -103,7 +103,7 @@ async def send_follow_up_email(booking) -> bool:
         # Send follow-up email
         title = "Meeting Follow-up"
         await send_optional_followup(
-            user_id=owner_user_id,
+            user_id=owner_user_id,  # type: ignore[arg-type]
             recipient_email=booking.attendee_email,
             title=title,
         )

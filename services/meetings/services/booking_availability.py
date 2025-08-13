@@ -75,8 +75,8 @@ def _apply_booking_settings(
     last_minute_cutoff = settings.get("last_minute_cutoff", 2)  # hours
 
     # Track bookings per day and week for limit enforcement
-    bookings_per_day = {}
-    bookings_per_week = {}
+    bookings_per_day: Dict[str, int] = {}
+    bookings_per_week: Dict[str, int] = {}
 
     for slot in slots:
         if not slot.get("available", True):

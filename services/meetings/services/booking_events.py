@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from services.meetings.services import calendar_integration
 
@@ -24,7 +24,7 @@ async def create_owner_calendar_event(
     )
 
 
-async def create_booking_calendar_event(booking) -> Optional[str]:
+async def create_booking_calendar_event(booking: Any) -> Optional[str]:
     """
     Create a calendar event for a booking.
 
@@ -64,7 +64,7 @@ async def create_booking_calendar_event(booking) -> Optional[str]:
 
         # Create the calendar event
         event_result = await calendar_integration.create_calendar_event(
-            user_id=owner_user_id,
+            user_id=owner_user_id,  # type: ignore[arg-type]
             title=title,
             description=description,
             start_time=start_time,

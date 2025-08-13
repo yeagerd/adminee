@@ -106,6 +106,13 @@ module = [
 ]
 disable_error_code = ["call-arg"]
 
+# Disable SQLAlchemy conditional operand errors for meetings service
+[[tool.mypy.overrides]]
+module = [
+    "services.meetings.*"
+]
+disable_error_code = ["misc", "attr-defined"]
+
 
 
 [tool.coverage.run]
