@@ -114,7 +114,10 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
                 /Begin forwarded message:/i,
                 /Forwarded message:/i,
                 /On .{0,200}?wrote:/i,
-                /From:\s[\s\S]{0,500}?Sent:\s/i, // Outlook-style headers: From: ... Sent: ...
+                // Pattern for Outlook-style quoted headers
+                // Look for From: followed by Sent: and To: in sequence (indicating quoted content)
+                // Use a more flexible approach that doesn't rely on exact newline positioning
+                /From:\s[^<]+Sent:\s[^<]+To:\s[^<]+/i,
             ];
             let matchIndex = -1;
             for (const re of patterns) {
@@ -224,7 +227,10 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
             /\nBegin forwarded message:\n/i,
             /\nForwarded message:\n/i,
             /\nOn .{0,200}?wrote:\n/i,
-            /\nFrom:\s.+\n(?:(?:.*\n){0,4})?Sent:\s.+\n/i,
+            // Pattern for Outlook-style quoted headers
+            // Look for From: followed by Sent: and To: in sequence (indicating quoted content)
+            // Use a more flexible approach that doesn't rely on exact newline positioning
+            /From:\s.+\s+Sent:\s.+\s+To:\s.+/i,
             /\n[-_=*]{5,}\n/, // separator line
         ];
         let idx = -1;
