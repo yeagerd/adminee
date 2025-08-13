@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { DateTimeRangePicker } from '@/components/ui/date-time-range-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
@@ -67,9 +68,6 @@ export default function CalendarGridView({
     const [formEndTime, setFormEndTime] = useState<Date | null>(null);
     const [formAttendees, setFormAttendees] = useState<Array<{ id: string; email: string; name: string }>>([]);
     const [attendeeQuery, setAttendeeQuery] = useState('');
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-    const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
     const { effectiveTimezone } = useUserPreferences();
@@ -104,7 +102,7 @@ export default function CalendarGridView({
         setHoverPreview(null);
     }, []);
 
-    
+
 
     const addAttendee = useCallback((email: string, name?: string) => {
         const newAttendee = {
@@ -123,11 +121,11 @@ export default function CalendarGridView({
     const parseAttendeeFromText = useCallback((text: string): Array<{ email: string; name?: string }> => {
         const results: Array<{ email: string; name?: string }> = [];
         const lines = text.split('\n').filter(line => line.trim());
-        
+
         for (const line of lines) {
             const trimmed = line.trim();
             if (!trimmed) continue;
-            
+
             // Try to parse "Name <email@domain.com>" format
             const emailMatch = trimmed.match(/<(.+?)>/);
             if (emailMatch) {
@@ -141,87 +139,11 @@ export default function CalendarGridView({
                 results.push({ email: trimmed });
             }
         }
-        
+
         return results;
     }, []);
 
-    const generateTimeOptions = useCallback((startTime: Date, maxDurationHours: number = 23.5) => {
-        const options: Array<{ time: Date; label: string; duration: string }> = [];
-        const startDateTime = new Date(startTime);
-        
-        // Generate options in 15-minute increments
-        for (let hour = 0; hour <= maxDurationHours; hour++) {
-            for (let minute = 0; minute < 60; minute += 15) {
-                const time = new Date(startDateTime.getTime() + (hour * 60 + minute) * 60 * 1000);
-                const durationMs = time.getTime() - startDateTime.getTime();
-                const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
-                const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-                
-                let durationLabel = '';
-                if (durationHours === 0) {
-                    durationLabel = `${durationMinutes} mins`;
-                } else if (durationMinutes === 0) {
-                    durationLabel = `${durationHours} hr${durationHours > 1 ? 's' : ''}`;
-                } else {
-                    durationLabel = `${durationHours} hr${durationHours > 1 ? 's' : ''} ${durationMinutes} mins`;
-                }
-                
-                options.push({
-                    time,
-                    label: DateTime.fromJSDate(time).setZone(effectiveTimezone).toFormat('h:mm a'),
-                    duration: durationLabel
-                });
-            }
-        }
-        
-        return options;
-    }, [effectiveTimezone]);
-
-    const handleDateSelect = useCallback((date: Date) => {
-        if (formStartTime) {
-            // Keep the time, change the date
-            const newStartTime = new Date(date);
-            newStartTime.setHours(formStartTime.getHours(), formStartTime.getMinutes(), 0, 0);
-            setFormStartTime(newStartTime);
-            
-            if (formEndTime) {
-                const duration = formEndTime.getTime() - formStartTime.getTime();
-                const newEndTime = new Date(newStartTime.getTime() + duration);
-                setFormEndTime(newEndTime);
-            }
-        } else {
-            // Set both start and end time to 9 AM on selected date
-            const newStartTime = new Date(date);
-            newStartTime.setHours(9, 0, 0, 0);
-            setFormStartTime(newStartTime);
-            
-            const newEndTime = new Date(date);
-            newEndTime.setHours(10, 0, 0, 0);
-            setFormEndTime(newEndTime);
-        }
-        setShowDatePicker(false);
-    }, [formStartTime, formEndTime]);
-
-    const handleStartTimeSelect = useCallback((time: Date) => {
-        setFormStartTime(time);
-        setShowStartTimePicker(false);
-        
-        // Adjust end time to maintain duration
-        if (formEndTime) {
-            const duration = formEndTime.getTime() - formStartTime!.getTime();
-            const newEndTime = new Date(time.getTime() + duration);
-            setFormEndTime(newEndTime);
-        } else {
-            // Set default 1-hour duration
-            const newEndTime = new Date(time.getTime() + 60 * 60 * 1000);
-            setFormEndTime(newEndTime);
-        }
-    }, [formStartTime, formEndTime]);
-
-    const handleEndTimeSelect = useCallback((time: Date) => {
-        setFormEndTime(time);
-        setShowEndTimePicker(false);
-    }, []);
+    
 
     // Use external props if provided, otherwise use internal state
     // For list view, always use internal events to support navigation
@@ -479,20 +401,7 @@ export default function CalendarGridView({
         }
     }, [selectedStartEnd]);
 
-    // Close pickers when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as HTMLElement;
-            if (!target.closest('[data-picker]')) {
-                setShowDatePicker(false);
-                setShowStartTimePicker(false);
-                setShowEndTimePicker(false);
-            }
-        };
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
 
     // Global mouse event handlers for drag selection
     useEffect(() => {
@@ -942,7 +851,7 @@ export default function CalendarGridView({
             {/* Create Event Modal */}
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
                 setIsCreateOpen(open);
-                                                if (!open) {
+                if (!open) {
                     setFormTitle('');
                     setFormDescription('');
                     setFormLocation('');
@@ -951,9 +860,6 @@ export default function CalendarGridView({
                     setFormEndTime(null);
                     setFormAttendees([]);
                     setAttendeeQuery('');
-                    setShowDatePicker(false);
-                    setShowStartTimePicker(false);
-                    setShowEndTimePicker(false);
                     clearSelection();
                 }
             }}>
@@ -966,152 +872,13 @@ export default function CalendarGridView({
                             <Label htmlFor="title">Title</Label>
                             <Input id="title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Meeting title" />
                         </div>
-                        <div className="space-y-3">
-                            <div>
-                                <Label>Date & Time</Label>
-                                <div className="grid grid-cols-3 gap-2 mt-2">
-                                    {/* Date Picker */}
-                                    <div className="relative">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full justify-start text-left font-normal"
-                                            onClick={() => setShowDatePicker(!showDatePicker)}
-                                        >
-                                            {formStartTime ? 
-                                                DateTime.fromJSDate(formStartTime).setZone(effectiveTimezone).toFormat('EEE, MMM d') :
-                                                'Select date'
-                                            }
-                                        </Button>
-                                        {showDatePicker && (
-                                            <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-3 min-w-[280px]" data-picker>
-                                                <div className="grid grid-cols-7 gap-1 text-xs text-center mb-2">
-                                                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-                                                        <div key={day} className="p-1 font-medium text-gray-500">{day}</div>
-                                                    ))}
-                                                </div>
-                                                <div className="grid grid-cols-7 gap-1">
-                                                    {(() => {
-                                                        const today = new Date();
-                                                        const currentMonth = formStartTime ? new Date(formStartTime.getFullYear(), formStartTime.getMonth(), 1) : new Date(today.getFullYear(), today.getMonth(), 1);
-                                                        const firstDay = new Date(currentMonth);
-                                                        const startDate = new Date(firstDay);
-                                                        startDate.setDate(startDate.getDate() - firstDay.getDay());
-                                                        
-                                                        const dates = [];
-                                                        for (let i = 0; i < 42; i++) {
-                                                            const date = new Date(startDate);
-                                                            date.setDate(startDate.getDate() + i);
-                                                            dates.push(date);
-                                                        }
-                                                        
-                                                        return dates.map((date, index) => {
-                                                            const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-                                                            const isToday = date.toDateString() === today.toDateString();
-                                                            const isSelected = formStartTime && date.toDateString() === formStartTime.toDateString();
-                                                            
-                                                            return (
-                                                                <button
-                                                                    key={index}
-                                                                    type="button"
-                                                                    className={`p-2 text-xs rounded hover:bg-gray-100 ${
-                                                                        isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-                                                                    } ${
-                                                                        isToday ? 'bg-blue-100 text-blue-600 font-medium' : ''
-                                                                    } ${
-                                                                        isSelected ? 'bg-blue-600 text-white' : ''
-                                                                    }`}
-                                                                    onClick={() => handleDateSelect(date)}
-                                                                >
-                                                                    {date.getDate()}
-                                                                </button>
-                                                            );
-                                                        });
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Start Time Picker */}
-                                    <div className="relative">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full justify-start text-left font-normal"
-                                            onClick={() => setShowStartTimePicker(!showStartTimePicker)}
-                                        >
-                                            {formStartTime ? 
-                                                DateTime.fromJSDate(formStartTime).setZone(effectiveTimezone).toFormat('h:mm a') :
-                                                'Start time'
-                                            }
-                                        </Button>
-                                        {showStartTimePicker && (
-                                            <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-1 min-w-[120px] max-h-60 overflow-y-auto" data-picker>
-                                                {(() => {
-                                                    const options = [];
-                                                    for (let hour = 0; hour < 24; hour++) {
-                                                        for (let minute = 0; minute < 60; minute += 15) {
-                                                            const time = new Date();
-                                                            time.setHours(hour, minute, 0, 0);
-                                                            options.push(time);
-                                                        }
-                                                    }
-                                                    return options;
-                                                })().map((time, index) => (
-                                                    <button
-                                                        key={index}
-                                                        type="button"
-                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                                                        onClick={() => handleStartTimeSelect(time)}
-                                                    >
-                                                        {DateTime.fromJSDate(time).setZone(effectiveTimezone).toFormat('h:mm a')}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* End Time Picker */}
-                                    <div className="relative">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full justify-start text-left font-normal"
-                                            onClick={() => setShowEndTimePicker(!showEndTimePicker)}
-                                        >
-                                            {formEndTime ? 
-                                                DateTime.fromJSDate(formEndTime).setZone(effectiveTimezone).toFormat('h:mm a') :
-                                                'End time'
-                                            }
-                                        </Button>
-                                        {showEndTimePicker && formStartTime && (
-                                            <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-1 min-w-[140px] max-h-60 overflow-y-auto" data-picker>
-                                                {generateTimeOptions(formStartTime).map((option, index) => (
-                                                    <button
-                                                        key={index}
-                                                        type="button"
-                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                                                        onClick={() => handleEndTimeSelect(option.time)}
-                                                    >
-                                                        <div className="flex justify-between items-center">
-                                                            <span>{option.label}</span>
-                                                            <span className="text-xs text-gray-500 ml-2">({option.duration})</span>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-2">
-                                    {formStartTime && formEndTime ? 
-                                        `${DateTime.fromJSDate(formStartTime).setZone(effectiveTimezone).toFormat('EEE, MMM d h:mm a')} - ${DateTime.fromJSDate(formEndTime).setZone(effectiveTimezone).toFormat('h:mm a')} (${Math.round((formEndTime.getTime() - formStartTime.getTime()) / (1000 * 60))} minutes)` :
-                                        '—'
-                                    }
-                                </div>
-                            </div>
-                        </div>
+                                                <DateTimeRangePicker
+                            startTime={formStartTime}
+                            endTime={formEndTime}
+                            onStartTimeChange={setFormStartTime}
+                            onEndTimeChange={setFormEndTime}
+                            effectiveTimezone={effectiveTimezone}
+                        />
                         <div className="flex items-center gap-2">
                             <Switch id="allDay" checked={formAllDay} onCheckedChange={setFormAllDay} />
                             <Label htmlFor="allDay">All day</Label>
@@ -1214,6 +981,8 @@ export default function CalendarGridView({
                                         setFormAllDay(false);
                                         setFormStartTime(null);
                                         setFormEndTime(null);
+                                        setFormAttendees([]);
+                                        setAttendeeQuery('');
                                         await (onRefresh ? onRefresh() : handleRefresh());
                                         toast({ description: 'Meeting created' });
                                     } catch (e) {
