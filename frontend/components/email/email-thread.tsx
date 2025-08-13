@@ -105,15 +105,11 @@ const EmailThread: React.FC<EmailThreadProps> = ({
             ? (subjectBase?.startsWith('Fwd:') ? subjectBase : `Fwd: ${subjectBase || ''}`)
             : (subjectBase?.startsWith('Re:') ? subjectBase : `Re: ${subjectBase || ''}`);
 
-        const quotedBody = source.body_html || source.body_text || '';
-        const bodyPrefix = mode === 'forward' ? '\n\n---------- Forwarded message ----------\n' : '\n\n';
-        const content = `${bodyPrefix}${quotedBody}`;
-
         const newDraft: Draft = {
             id: `local_${Date.now()}`,
             type: 'email',
             status: 'draft',
-            content,
+            content: '',
             metadata: {
                 subject: subject?.trim(),
                 recipients: Array.from(toSet),
@@ -265,7 +261,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                 ))}
 
                 {threadDrafts.map((d) => {
-                    const src = thread.messages[thread.messages.length - 1];
+                    const src = thread.messages.find(m => m.provider_message_id === d.metadata.replyToMessageId) || thread.messages[thread.messages.length - 1];
                     const quotedHeader = `From: ${src.from_address?.name || src.from_address?.email || ''}\nSent: ${new Date(src.date).toLocaleString()}\nTo: ${src.to_addresses.map(a => a.name || a.email).join(', ')}\nSubject: ${src.subject || ''}`;
                     const quotedBody = src.body_html || src.body_text || '';
                     const quotedIsHtml = !!src.body_html;
