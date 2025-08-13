@@ -46,19 +46,19 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
         const startMinute = eventStart.minute;
         const gridStartHour = 6; // Grid starts at 6 AM
 
-        // Each 30-minute slot is 32px high
-        const slotHeight = 32; // 30-minute slot height
-        const slotsPerHour = 2; // 2 slots per hour (30-minute intervals)
+        // Each 15-minute slot is 12px high
+        const slotHeight = 12; // 15-minute slot height
+        const slotsPerHour = 4; // 4 slots per hour (15-minute intervals)
 
-        // Calculate position in 30-minute slots
+        // Calculate position in 15-minute slots
         const hoursFromStart = startHour - gridStartHour;
-        const minutesOffset = startMinute / 30;
+        const minutesOffset = startMinute / 15;
         const startSlots = hoursFromStart * slotsPerHour + minutesOffset;
         const topPixels = Math.max(0, startSlots * slotHeight);
 
         // Calculate height based on duration
         const durationMinutes = eventEnd.diff(eventStart, 'minutes').minutes;
-        const durationSlots = Math.max(1, durationMinutes / 30); // Minimum 1 slot (30 minutes)
+        const durationSlots = Math.max(1, durationMinutes / 15); // Minimum 1 slot (15 minutes)
         const heightPixels = durationSlots * slotHeight; // Use exact slot height
 
 
