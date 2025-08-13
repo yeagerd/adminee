@@ -145,7 +145,7 @@ def _extract_email_strings(raw_emails: Optional[List[Any]]) -> Optional[List[str
 @router.get("/", response_model=ContactList)
 async def list_contacts(
     request: Request,
-    service_name: str = Depends(service_permission_required(["read_emails"])),
+    service_name: str = Depends(service_permission_required(["read_contacts"])),
     providers: Optional[List[str]] = Query(
         None, description="Providers to fetch from (google, microsoft)."
     ),
@@ -320,7 +320,7 @@ async def list_contacts(
 @router.post("/", response_model=Dict[str, Any])
 async def create_contact(
     request: Request,
-    service_name: str = Depends(service_permission_required(["send_emails"])),
+    service_name: str = Depends(service_permission_required(["write_contacts"])),
     provider: Optional[str] = Query(
         None,
         description="Provider to create contact in (google, microsoft) - optional if provided in JSON body",
@@ -440,7 +440,7 @@ async def update_contact(
         ...,
         description="Unified contact id (provider_originalId) or provider id for write-through",
     ),
-    service_name: str = Depends(service_permission_required(["send_emails"])),
+    service_name: str = Depends(service_permission_required(["write_contacts"])),
     provider: Optional[str] = Query(
         None,
         description="Provider to update in (if unified id not used) - optional if provided in JSON body",
@@ -573,7 +573,7 @@ async def update_contact(
 async def delete_contact(
     contact_id: str,
     request: Request,
-    service_name: str = Depends(service_permission_required(["send_emails"])),
+    service_name: str = Depends(service_permission_required(["write_contacts"])),
     provider: Optional[str] = Query(
         None, description="Provider to delete in (if unified id not used)"
     ),
