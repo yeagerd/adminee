@@ -121,7 +121,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
                 .first()
             )
             if not booking_link or not booking_link.is_active:
-                raise NotFoundError(message="Booking link not found or inactive")
+                raise NotFoundError("Booking link", "not found or inactive")
         else:
             # Check if it's an evergreen link
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
@@ -129,7 +129,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
                 raise NotFoundError("Booking link", "not found or inactive")
 
         # Get template questions if available
-        template_questions = []
+        template_questions: List[Dict[str, Any]] = []
         if booking_link.template_id is not None:
             template = (
                 session.query(BookingTemplate)
@@ -137,7 +137,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
                 .first()
             )
             if template is not None and template.questions is not None:
-                template_questions = template.questions
+                template_questions = template.questions  # type: ignore[assignment]
 
         # Default questions if no template
         if not template_questions:
