@@ -74,10 +74,10 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
   };
 
   return (
-    <div className="mt-3 border rounded-md bg-muted/20">
+    <div id={`thread-draft-${draft.id}`} className="mt-3 border rounded-md bg-white">
       <Collapsible open={open} onOpenChange={setOpen}>
         {/* Header row always on top */}
-        <div className="p-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+        <div className="p-3 border-b bg-white flex items-center justify-between gap-2">
           <div className="text-sm text-muted-foreground truncate">{summary}</div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -107,7 +107,7 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
           </div>
         </div>
         <CollapsibleContent>
-          <div className="p-3 border-b bg-background">
+          <div className="p-3 border-b bg-white">
             <DraftMetadataComponent draft={draft} onUpdate={handleMetadataChange} type={draft.type} />
           </div>
         </CollapsibleContent>
@@ -121,7 +121,7 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
           updatedAt={draft.updatedAt}
         />
       </div>
-      <div className="p-3 border-t bg-muted/30">
+      <div className="p-3 border-t bg-white">
         <DraftActions draft={draft} onActionComplete={handleActionComplete} />
       </div>
     </div>

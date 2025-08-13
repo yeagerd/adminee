@@ -129,6 +129,13 @@ const EmailThread: React.FC<EmailThreadProps> = ({
             threadId: thread.id,
         };
         setThreadDrafts((prev) => [...prev, newDraft]);
+        // Scroll to the newly added draft card on next tick
+        setTimeout(() => {
+            const el = document.getElementById(`thread-draft-${newDraft.id}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 0);
     };
 
     const handleReplyClick = () => {
