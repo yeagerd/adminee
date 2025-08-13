@@ -159,17 +159,17 @@ Conventions
 ---
 
 ### 9. Configuration Options (Owner)
-- [ ] Business hours per weekday
+- [x] Business hours per weekday
   - UI to set ranges per day; stored in link settings
-- [ ] Holiday/vacation exclusions
+- [x] Holiday/vacation exclusions
   - Simple date list exclusion for MVP
-- [ ] Duration presets and custom
+- [x] Duration presets and custom
   - 15m, 30m, 60m, 120m, custom
-- [ ] Buffers before/after
+- [x] Buffers before/after
   - Enforced in availability calculation
-- [ ] Max meetings/day and week
+- [x] Max meetings/day and week
   - Enforced in availability calculation
-- [ ] Advance booking windows (min/max) and last-minute cutoff
+- [x] Advance booking windows (min/max) and last-minute cutoff
   - Enforced in availability and submit validation
   - Acceptance criteria:
     - Availability respects all settings; booking submit rejects invalid times

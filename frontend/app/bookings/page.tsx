@@ -4,6 +4,12 @@ import { useState } from "react";
 
 type Step = "basics" | "availability" | "duration" | "limits" | "template" | "review";
 
+type WeekdayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+type BusinessHours = {
+  [K in WeekdayKey]: { start: string; end: string; enabled: boolean };
+};
+
 export default function BookingsPage() {
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [showOneTimeForm, setShowOneTimeForm] = useState(false);
@@ -22,6 +28,19 @@ export default function BookingsPage() {
     templateName: "",
     questions: [],
     emailFollowup: false,
+    businessHours: {
+      monday: { start: "09:00", end: "17:00", enabled: true },
+      tuesday: { start: "09:00", end: "17:00", enabled: true },
+      wednesday: { start: "09:00", end: "17:00", enabled: true },
+      thursday: { start: "09:00", end: "17:00", enabled: true },
+      friday: { start: "09:00", end: "17:00", enabled: true },
+      saturday: { start: "10:00", end: "14:00", enabled: false },
+      sunday: { start: "10:00", end: "14:00", enabled: false },
+    },
+    holidayExclusions: [] as string[],
+    durationPresets: [15, 30, 60, 120],
+    customDuration: null as number | null,
+    lastMinuteCutoff: 2, // hours
   });
 
   const [oneTimeData, setOneTimeData] = useState({
@@ -117,6 +136,16 @@ export default function BookingsPage() {
     { key: "review", label: "Review" },
   ];
 
+  const weekdays = [
+    { key: "monday", label: "Monday" },
+    { key: "tuesday", label: "Tuesday" },
+    { key: "wednesday", label: "Wednesday" },
+    { key: "thursday", label: "Thursday" },
+    { key: "friday", label: "Friday" },
+    { key: "saturday", label: "Saturday" },
+    { key: "sunday", label: "Sunday" },
+  ];
+
   const renderStep = () => {
     switch (currentStep) {
       case "basics":
@@ -147,11 +176,105 @@ export default function BookingsPage() {
 
       case "availability":
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold">Availability Settings</h2>
-            <p className="text-sm text-muted-foreground">
-              Configure when your booking link is active and available.
-            </p>
+            
+            {/* Business Hours */}
+            <div>
+              <h3 className="text-lg font-medium mb-3">Business Hours</h3>
+              <div className="space-y-3">
+                {weekdays.map((day) => (
+                  <div key={day.key} className="flex items-center gap-4">
+                    <div className="w-24">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.businessHours[day.key as keyof BusinessHours].enabled}
+                          onChange={(e) => {
+                            const newHours = { ...formData.businessHours };
+                            newHours[day.key as keyof BusinessHours].enabled = e.target.checked;
+                            setFormData({ ...formData, businessHours: newHours });
+                          }}
+                        />
+                        <span className="text-sm font-medium">{day.label}</span>
+                      </label>
+                    </div>
+                    {formData.businessHours[day.key as keyof BusinessHours].enabled && (
+                      <>
+                        <input
+                          type="time"
+                          className="border rounded px-2 py-1"
+                          value={formData.businessHours[day.key as keyof BusinessHours].start}
+                          onChange={(e) => {
+                            const newHours = { ...formData.businessHours };
+                            newHours[day.key as keyof BusinessHours].start = e.target.value;
+                            setFormData({ ...formData, businessHours: newHours });
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">to</span>
+                        <input
+                          type="time"
+                          className="border rounded px-2 py-1"
+                          value={formData.businessHours[day.key as keyof BusinessHours].end}
+                          onChange={(e) => {
+                            const newHours = { ...formData.businessHours };
+                            newHours[day.key as keyof BusinessHours].end = e.target.value;
+                            setFormData({ ...formData, businessHours: newHours });
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Holiday Exclusions */}
+            <div>
+              <h3 className="text-lg font-medium mb-3">Holiday & Vacation Exclusions</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                Add dates when you're not available for bookings
+              </p>
+              <div className="space-y-2">
+                {formData.holidayExclusions.map((date, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      className="border rounded px-2 py-1"
+                      value={date}
+                      onChange={(e) => {
+                        const newExclusions = [...formData.holidayExclusions];
+                        newExclusions[index] = e.target.value;
+                        setFormData({ ...formData, holidayExclusions: newExclusions });
+                      }}
+                    />
+                    <button
+                      className="px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                      onClick={() => {
+                        const newExclusions = formData.holidayExclusions.filter((_, i) => i !== index);
+                        setFormData({ ...formData, holidayExclusions: newExclusions });
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                  onClick={() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    setFormData({
+                      ...formData,
+                      holidayExclusions: [...formData.holidayExclusions, today]
+                    });
+                  }}
+                >
+                  + Add Date
+                </button>
+              </div>
+            </div>
+
+            {/* Advance Booking */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Advance Booking (days)</label>
@@ -174,46 +297,105 @@ export default function BookingsPage() {
                 />
               </div>
             </div>
+
+            {/* Last Minute Cutoff */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Minute Cutoff (hours)</label>
+              <input
+                type="number"
+                className="border rounded px-3 py-2 w-full"
+                value={formData.lastMinuteCutoff}
+                onChange={(e) => setFormData({ ...formData, lastMinuteCutoff: Number(e.target.value) })}
+                min="0"
+                max="24"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum time required before a meeting (e.g., 2 hours = no same-day bookings)
+              </p>
+            </div>
           </div>
         );
 
       case "duration":
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold">Duration & Buffer</h2>
+            
+            {/* Duration Presets */}
             <div>
-              <label className="block text-sm font-medium mb-1">Meeting Duration (minutes)</label>
-              <select
-                className="border rounded px-3 py-2 w-full"
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-              >
-                <option value={15}>15 minutes</option>
-                <option value={30}>30 minutes</option>
-                <option value={60}>1 hour</option>
-                <option value={120}>2 hours</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Buffer Before (minutes)</label>
-                <input
-                  type="number"
-                  className="border rounded px-3 py-2 w-full"
-                  value={formData.bufferBefore}
-                  onChange={(e) => setFormData({ ...formData, bufferBefore: Number(e.target.value) })}
-                  min="0"
-                />
+              <h3 className="text-lg font-medium mb-3">Meeting Duration</h3>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                {formData.durationPresets.map((preset) => (
+                  <label key={preset} className="flex items-center gap-2 p-3 border rounded cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="duration"
+                      value={preset}
+                      checked={formData.duration === preset}
+                      onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
+                    />
+                    <span className="font-medium">{preset} minutes</span>
+                  </label>
+                ))}
               </div>
+              
+              {/* Custom Duration */}
               <div>
-                <label className="block text-sm font-medium mb-1">Buffer After (minutes)</label>
-                <input
-                  type="number"
-                  className="border rounded px-3 py-2 w-full"
-                  value={formData.bufferAfter}
-                  onChange={(e) => setFormData({ ...formData, bufferAfter: Number(e.target.value) })}
-                  min="0"
-                />
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="duration"
+                    checked={formData.customDuration !== null}
+                    onChange={() => setFormData({ ...formData, customDuration: formData.customDuration || 45 })}
+                  />
+                  <span className="font-medium">Custom duration</span>
+                </label>
+                {formData.customDuration !== null && (
+                  <div className="mt-2 ml-6">
+                    <input
+                      type="number"
+                      className="border rounded px-3 py-2 w-32"
+                      value={formData.customDuration}
+                      onChange={(e) => setFormData({ ...formData, customDuration: Number(e.target.value) })}
+                      min="5"
+                      max="480"
+                      step="5"
+                    />
+                    <span className="ml-2 text-sm text-muted-foreground">minutes</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Buffers */}
+            <div>
+              <h3 className="text-lg font-medium mb-3">Buffer Time</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Add time before and after meetings to prevent back-to-back scheduling
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Buffer Before (minutes)</label>
+                  <input
+                    type="number"
+                    className="border rounded px-3 py-2 w-full"
+                    value={formData.bufferBefore}
+                    onChange={(e) => setFormData({ ...formData, bufferBefore: Number(e.target.value) })}
+                    min="0"
+                    max="60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Buffer After (minutes)</label>
+                  <input
+                    type="number"
+                    className="border rounded px-3 py-2 w-full"
+                    value={formData.bufferAfter}
+                    onChange={(e) => setFormData({ ...formData, bufferAfter: Number(e.target.value) })}
+                    min="0"
+                    max="60"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -221,28 +403,69 @@ export default function BookingsPage() {
 
       case "limits":
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold">Booking Limits</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Max per Day</label>
-                <input
-                  type="number"
-                  className="border rounded px-3 py-2 w-full"
-                  value={formData.maxPerDay}
-                  onChange={(e) => setFormData({ ...formData, maxPerDay: Number(e.target.value) })}
-                  min="1"
-                />
+            
+            {/* Daily/Weekly Limits */}
+            <div>
+              <h3 className="text-lg font-medium mb-3">Meeting Frequency Limits</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Max per Day</label>
+                  <input
+                    type="number"
+                    className="border rounded px-3 py-2 w-full"
+                    value={formData.maxPerDay}
+                    onChange={(e) => setFormData({ ...formData, maxPerDay: Number(e.target.value) })}
+                    min="1"
+                    max="20"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum meetings per day
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Max per Week</label>
+                  <input
+                    type="number"
+                    className="border rounded px-3 py-2 w-full"
+                    value={formData.maxPerWeek}
+                    onChange={(e) => setFormData({ ...formData, maxPerWeek: Number(e.target.value) })}
+                    min="1"
+                    max="100"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum meetings per week
+                  </p>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Max per Week</label>
-                <input
-                  type="number"
-                  className="border rounded px-3 py-2 w-full"
-                  value={formData.maxPerWeek}
-                  onChange={(e) => setFormData({ ...formData, maxPerWeek: Number(e.target.value) })}
-                  min="1"
-                />
+            </div>
+
+            {/* Time-based Restrictions */}
+            <div>
+              <h3 className="text-lg font-medium mb-3">Time Restrictions</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.lastMinuteCutoff > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({ ...formData, lastMinuteCutoff: 2 });
+                        } else {
+                          setFormData({ ...formData, lastMinuteCutoff: 0 });
+                        }
+                      }}
+                    />
+                    <span className="text-sm font-medium">Enforce last-minute cutoff</span>
+                  </label>
+                  {formData.lastMinuteCutoff > 0 && (
+                    <p className="text-xs text-muted-foreground ml-6 mt-1">
+                      Currently set to {formData.lastMinuteCutoff} hours before meeting time
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -275,20 +498,32 @@ export default function BookingsPage() {
         );
 
       case "review":
+        const effectiveDuration = formData.customDuration || formData.duration;
+        const activeDays = Object.values(formData.businessHours).filter(h => h.enabled).length;
+        
         return (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Review & Create</h2>
-            <div className="bg-gray-50 p-4 rounded">
+            <div className="bg-gray-50 p-4 rounded space-y-3">
               <h3 className="font-medium">{formData.title}</h3>
-              {formData.description && <p className="text-sm text-muted-foreground mt-1">{formData.description}</p>}
-              <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
-                <div>Duration: {formData.duration} minutes</div>
+              {formData.description && <p className="text-sm text-muted-foreground">{formData.description}</p>}
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>Duration: {effectiveDuration} minutes</div>
                 <div>Buffer: {formData.bufferBefore}m before, {formData.bufferAfter}m after</div>
                 <div>Max per day: {formData.maxPerDay}</div>
                 <div>Max per week: {formData.maxPerWeek}</div>
                 <div>Advance booking: {formData.advanceDays} days</div>
                 <div>Max advance: {formData.maxAdvanceDays} days</div>
+                <div>Business days: {activeDays}/7</div>
+                <div>Last-minute cutoff: {formData.lastMinuteCutoff}h</div>
               </div>
+              
+              {formData.holidayExclusions.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium">Holiday exclusions: {formData.holidayExclusions.length} dates</p>
+                </div>
+              )}
             </div>
             <button
               className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
