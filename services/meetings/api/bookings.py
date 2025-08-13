@@ -110,9 +110,9 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
                 one_time_link.expires_at is not None  # type: ignore
                 and one_time_link.expires_at < datetime.now()  # type: ignore
             ):
-                raise NotFoundError(message="Link has expired")
+                raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":  # type: ignore
-                raise NotFoundError(message="Link has already been used")
+                raise NotFoundError("Link", "already used")
 
             # Get the parent booking link
             booking_link = (
@@ -126,7 +126,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
             # Check if it's an evergreen link
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
             if not booking_link or not booking_link.is_active:
-                raise NotFoundError(message="Booking link not found or inactive")
+                raise NotFoundError("Booking link", "not found or inactive")
 
         # Get template questions if available
         template_questions = []
