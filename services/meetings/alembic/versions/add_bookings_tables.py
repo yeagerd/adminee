@@ -56,7 +56,9 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("status", sa.String(length=32), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(["booking_link_id"], ["booking_links.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["booking_link_id"], ["booking_links.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("token"),
     )
@@ -74,7 +76,9 @@ def upgrade() -> None:
         sa.Column("calendar_event_id", sa.String(length=255), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["link_id"], ["booking_links.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["one_time_link_id"], ["one_time_links.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["one_time_link_id"], ["one_time_links.id"], ondelete="SET NULL"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("one_time_link_id", name="_one_time_link_single_use_uc"),
     )
@@ -98,5 +102,3 @@ def downgrade() -> None:
     op.drop_table("one_time_links")
     op.drop_table("booking_links")
     op.drop_table("booking_templates")
-
-

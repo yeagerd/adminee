@@ -35,7 +35,7 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
-from services.meetings.api.auth import verify_api_key_auth, get_user_id_from_request
+from services.meetings.api.auth import get_user_id_from_request, verify_api_key_auth
 
 
 @router.get("/", response_model=List[MeetingPoll])

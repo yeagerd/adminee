@@ -6,7 +6,9 @@ from services.common.logging_config import request_id_var
 from services.meetings.settings import get_settings
 
 
-async def search_contacts(user_id: str, query: str, page_size: int = 25) -> List[Dict[str, Any]]:
+async def search_contacts(
+    user_id: str, query: str, page_size: int = 25
+) -> List[Dict[str, Any]]:
     """
     Search user's contacts via Office service unified contacts endpoint.
     """
@@ -31,7 +33,9 @@ async def search_contacts(user_id: str, query: str, page_size: int = 25) -> List
         return []
 
 
-async def create_contact(user_id: str, email: str, name: str | None = None) -> Dict[str, Any]:
+async def create_contact(
+    user_id: str, email: str, name: str | None = None
+) -> Dict[str, Any]:
     """
     Create a new contact via Office service if not present.
     """
@@ -51,5 +55,3 @@ async def create_contact(user_id: str, email: str, name: str | None = None) -> D
         resp = await client.post(url, headers=headers, json=payload)
         resp.raise_for_status()
         return resp.json()
-
-

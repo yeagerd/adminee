@@ -11,36 +11,38 @@ def _format_dt(dt: datetime) -> str:
 async def send_confirmation_email(booking) -> bool:
     """
     Send confirmation email for a booking.
-    
+
     Args:
         booking: The booking object containing all necessary details
-        
+
     Returns:
         True if email was sent successfully, False otherwise
     """
     try:
         # Get the owner user ID from the booking link
-        from services.meetings.models.bookings import BookingLink
         from services.meetings.models import get_session
-        
+        from services.meetings.models.bookings import BookingLink
+
         with get_session() as session:
-            booking_link = session.query(BookingLink).filter_by(id=booking.link_id).first()
+            booking_link = (
+                session.query(BookingLink).filter_by(id=booking.link_id).first()
+            )
             if not booking_link:
                 return False
-            
+
             owner_user_id = booking_link.owner_user_id
-        
+
         # Get owner email (for now, we'll use a placeholder - in production this would come from user service)
         # TODO: Get actual owner email from user service
         owner_email = f"{owner_user_id}@example.com"  # Placeholder
-        
+
         # Format the meeting details
         title = "Meeting Confirmation"
         start_time = booking.start_at
         end_time = booking.end_at
         location = None  # Could be added to booking settings in the future
         answers = booking.answers
-        
+
         # Send confirmation emails
         await send_booking_confirmations(
             user_id=owner_user_id,
@@ -52,9 +54,9 @@ async def send_confirmation_email(booking) -> bool:
             location=location,
             answers=answers,
         )
-        
+
         return True
-        
+
     except Exception as e:
         # Log the error but don't fail the booking creation
         # In production, this should use proper logging
@@ -65,32 +67,39 @@ async def send_confirmation_email(booking) -> bool:
 async def send_follow_up_email(booking) -> bool:
     """
     Send optional follow-up email if enabled in the template.
-    
+
     Args:
         booking: The booking object containing all necessary details
-        
+
     Returns:
         True if email was sent successfully, False otherwise
     """
     try:
         # Get the owner user ID from the booking link
-        from services.meetings.models.bookings import BookingLink
         from services.meetings.models import get_session
-        
+        from services.meetings.models.bookings import BookingLink
+
         with get_session() as session:
-            booking_link = session.query(BookingLink).filter_by(id=booking.link_id).first()
+            booking_link = (
+                session.query(BookingLink).filter_by(id=booking.link_id).first()
+            )
             if not booking_link:
                 return False
-            
+
             owner_user_id = booking_link.owner_user_id
-            
+
             # Check if follow-up is enabled in the template
             if booking_link.template_id is not None:
                 from services.meetings.models.bookings import BookingTemplate
-                template = session.query(BookingTemplate).filter_by(id=booking_link.template_id).first()
+
+                template = (
+                    session.query(BookingTemplate)
+                    .filter_by(id=booking_link.template_id)
+                    .first()
+                )
                 if template is None or not template.email_followup_enabled:
                     return True  # Follow-up not enabled, consider this successful
-        
+
         # Send follow-up email
         title = "Meeting Follow-up"
         await send_optional_followup(
@@ -98,9 +107,9 @@ async def send_follow_up_email(booking) -> bool:
             recipient_email=booking.attendee_email,
             title=title,
         )
-        
+
         return True
-        
+
     except Exception as e:
         # Log the error but don't fail the booking creation
         # In production, this should use proper logging
@@ -157,11 +166,7 @@ async def send_optional_followup(
     Send an optional short follow-up email when enabled in the template.
     """
     subject = f"Follow-up: {title}"
-    body = (
-        "Thanks for booking. If you need to reschedule, reply to this email or use your link."
-    )
+    body = "Thanks for booking. If you need to reschedule, reply to this email or use your link."
     await email_integration.send_invitation_email(
         recipient_email, subject, body, user_id
     )
-
-

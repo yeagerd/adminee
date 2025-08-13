@@ -110,18 +110,14 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         services.meetings.models.get_engine = lambda: models._test_engine
 
-        # Reload API modules so their imported get_session binds to the fresh test session
-        import services.meetings.api.email as api_email
-        import services.meetings.api.invitations as api_invitations
-        import services.meetings.api.polls as api_polls
-        import services.meetings.api.public as api_public
-        import services.meetings.api.slots as api_slots
-
-        importlib.reload(api_polls)
-        importlib.reload(api_public)
-        importlib.reload(api_slots)
-        importlib.reload(api_invitations)
-        importlib.reload(api_email)
+        # Import API modules to ensure they're loaded with the test session
+        from services.meetings.api import (
+            email_router,
+            invitations_router,
+            polls_router,
+            public_router,
+            slots_router,
+        )
 
         # Create a new FastAPI app instance to avoid reloading the main module
         # This ensures the app uses the updated settings without breaking mocks
