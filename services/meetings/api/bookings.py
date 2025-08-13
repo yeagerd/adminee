@@ -855,3 +855,277 @@ async def get_link_analytics(
         return {"data": analytics_data}
 
 
+# Template Management Endpoints
+@router.post("/templates")
+async def create_booking_template(
+    template_data: dict,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Create a new booking template"""
+    # Rate limiting for authenticated endpoints
+    client_key = get_client_key(request)
+    if not check_rate_limit(client_key, max_requests=50, window_seconds=3600):
+        audit_logger.log_rate_limit_exceeded(
+            client_key=client_key,
+            endpoint="/templates",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Sanitize input
+    name = SecurityUtils.sanitize_input(template_data.get("name", ""))
+    questions = template_data.get("questions", [])
+    
+    # Validate required fields
+    if not name:
+        raise HTTPException(status_code=400, detail="Template name is required")
+    
+    # Database creation
+    with get_session() as session:
+        template = BookingTemplate(
+            owner_user_id=owner_user_id,
+            name=name,
+            questions=questions,
+            email_followup_enabled=template_data.get("email_followup_enabled", False)
+        )
+        
+        session.add(template)
+        session.commit()
+        session.refresh(template)
+        
+        # Audit logging
+        audit_logger.log_event(
+            event_type=AuditEventType.TEMPLATE_CREATED,
+            user_id=owner_user_id,
+            resource_id=str(template.id),
+            details={"template_name": name, "questions_count": len(questions)},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        
+        return {
+            "data": {
+                "id": str(template.id),
+                "name": template.name,
+                "questions": template.questions,
+                "email_followup_enabled": template.email_followup_enabled,
+                "created_at": template.created_at.isoformat() if template.created_at else None,
+                "message": "Template created successfully",
+            }
+        }
+
+
+@router.get("/templates")
+async def list_booking_templates(
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """List all booking templates for the authenticated user"""
+    # Rate limiting for authenticated endpoints
+    if request:
+        client_key = get_client_key(request)
+        if not check_rate_limit(client_key, max_requests=100, window_seconds=3600):
+            audit_logger.log_rate_limit_exceeded(
+                client_key=client_key,
+                endpoint="/templates",
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent")
+            )
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database query
+    with get_session() as session:
+        templates = session.query(BookingTemplate).filter_by(owner_user_id=owner_user_id).all()
+        
+        templates_data = []
+        for template in templates:
+            # Count how many links use this template
+            links_using_template = session.query(BookingLink).filter_by(template_id=template.id).count()
+            
+            templates_data.append({
+                "id": str(template.id),
+                "name": template.name,
+                "questions": template.questions,
+                "email_followup_enabled": template.email_followup_enabled,
+                "created_at": template.created_at.isoformat() if template.created_at else None,
+                "updated_at": template.updated_at.isoformat() if template.updated_at else None,
+                "links_using_template": links_using_template,
+            })
+        
+        return {
+            "data": templates_data,
+            "total": len(templates_data),
+        }
+
+
+@router.get("/templates/{template_id}")
+async def get_booking_template(
+    template_id: str,
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Get a specific booking template"""
+    # Rate limiting for authenticated endpoints
+    if request:
+        client_key = get_client_key(request)
+        if not check_rate_limit(client_key, max_requests=100, window_seconds=3600):
+            audit_logger.log_rate_limit_exceeded(
+                client_key=client_key,
+                endpoint=f"/templates/{template_id}",
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent")
+            )
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database lookup
+    with get_session() as session:
+        template = session.query(BookingTemplate).filter_by(id=template_id, owner_user_id=owner_user_id).first()
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        return {"data": {
+            "id": str(template.id),
+            "name": template.name,
+            "questions": template.questions,
+            "email_followup_enabled": template.email_followup_enabled,
+            "created_at": template.created_at.isoformat() if template.created_at else None,
+            "updated_at": template.updated_at.isoformat() if template.updated_at else None,
+        }}
+
+
+@router.patch("/templates/{template_id}")
+async def update_booking_template(
+    template_id: str,
+    updates: dict,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Update a booking template"""
+    # Rate limiting for authenticated endpoints
+    client_key = get_client_key(request)
+    if not check_rate_limit(client_key, max_requests=50, window_seconds=3600):
+        audit_logger.log_rate_limit_exceeded(
+            client_key=client_key,
+            endpoint=f"/templates/{template_id}",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database update
+    with get_session() as session:
+        template = session.query(BookingTemplate).filter_by(id=template_id, owner_user_id=owner_user_id).first()
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Track changes for audit logging
+        changes = {}
+        
+        # Update fields
+        if "name" in updates:
+            old_name = template.name
+            template.name = SecurityUtils.sanitize_input(updates["name"])
+            changes["name"] = {"old": old_name, "new": template.name}
+        
+        if "questions" in updates:
+            old_questions = template.questions
+            template.questions = updates["questions"]
+            changes["questions"] = {"old": old_questions, "new": template.questions}
+        
+        if "email_followup_enabled" in updates:
+            old_followup = template.email_followup_enabled
+            template.email_followup_enabled = updates["email_followup_enabled"]
+            changes["email_followup_enabled"] = {"old": old_followup, "new": template.email_followup_enabled}
+        
+        template.updated_at = datetime.now()
+        session.commit()
+        
+        # Audit logging
+        if changes:
+            audit_logger.log_event(
+                event_type=AuditEventType.TEMPLATE_UPDATED,
+                user_id=owner_user_id,
+                resource_id=template_id,
+                details={"changes": changes},
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent")
+            )
+        
+        return {"data": {
+            "id": str(template.id),
+            "name": template.name,
+            "questions": template.questions,
+            "email_followup_enabled": template.email_followup_enabled,
+            "created_at": template.created_at.isoformat() if template.created_at else None,
+            "updated_at": template.updated_at.isoformat() if template.updated_at else None,
+        }, "message": "Template updated successfully"}
+
+
+@router.delete("/templates/{template_id}")
+async def delete_booking_template(
+    template_id: str,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Delete a booking template"""
+    # Rate limiting for authenticated endpoints
+    client_key = get_client_key(request)
+    if not check_rate_limit(client_key, max_requests=20, window_seconds=3600):
+        audit_logger.log_rate_limit_exceeded(
+            client_key=client_key,
+            endpoint=f"/templates/{template_id}",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database deletion
+    with get_session() as session:
+        template = session.query(BookingTemplate).filter_by(id=template_id, owner_user_id=owner_user_id).first()
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Check if template is being used by any links
+        links_using_template = session.query(BookingLink).filter_by(template_id=template_id).count()
+        if links_using_template > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot delete template: {links_using_template} booking link(s) are using it"
+            )
+        
+        # Store template info for audit logging
+        template_name = template.name
+        
+        session.delete(template)
+        session.commit()
+        
+        # Audit logging
+        audit_logger.log_event(
+            event_type=AuditEventType.TEMPLATE_DELETED,
+            user_id=owner_user_id,
+            resource_id=template_id,
+            details={"template_name": template_name},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        
+        return {"message": "Template deleted successfully"}
+
+
