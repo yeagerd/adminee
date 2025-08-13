@@ -403,7 +403,7 @@ async def create_public_booking(
 @router.post("/links")
 async def create_booking_link(
     link_data: dict, request: Request, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, Any]:
     """Create a new evergreen booking link"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -501,7 +501,7 @@ async def create_booking_link(
 @router.get("/links")
 async def list_booking_links(
     request: Request = None, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, Any]:
     """List all booking links for the authenticated user"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -620,7 +620,7 @@ async def update_booking_link(
     updates: dict,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Update a booking link's settings"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
