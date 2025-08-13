@@ -3,7 +3,12 @@ from typing import AsyncGenerator, Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 from services.common import get_async_database_url
@@ -35,7 +40,9 @@ def get_sessionmaker() -> sessionmaker:
 def get_async_sessionmaker() -> async_sessionmaker:
     """Get async session maker for async operations."""
     engine = get_async_engine()
-    return async_sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True, class_=AsyncSession)
+    return async_sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, future=True, class_=AsyncSession
+    )
 
 
 @contextmanager

@@ -118,7 +118,9 @@ async def send_invitations(
                 start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
                 end_time = slot.end_time.strftime("%I:%M %p")
                 slot_timezone = slot.timezone
-                body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})")
+                body_lines.append(
+                    f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})"
+                )
 
             body_lines.extend(
                 [

@@ -18,8 +18,8 @@ from services.common.logging_config import get_logger
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
-from services.meetings.models import get_session, get_async_session
-from services.meetings.models.meeting import PollStatus, ParticipantStatus
+from services.meetings.models import get_async_session, get_session
+from services.meetings.models.meeting import ParticipantStatus, PollStatus
 from services.meetings.schemas import (
     MeetingPoll,
     MeetingPollCreate,
@@ -222,7 +222,7 @@ async def create_poll(
             select(MeetingPollModel)
             .options(
                 selectinload(MeetingPollModel.participants),
-                selectinload(MeetingPollModel.time_slots)
+                selectinload(MeetingPollModel.time_slots),
             )
             .where(MeetingPollModel.id == db_poll.id)
         )
@@ -235,7 +235,7 @@ async def create_poll(
         stored_user_id_type = type(db_poll.user_id).__name__
         poll_title = db_poll.title
         participant_count = len(db_poll.participants)
-        
+
         # Convert SQLAlchemy model to dict to avoid MissingGreenlet errors
         poll_dict = {
             "id": db_poll.id,
@@ -253,32 +253,32 @@ async def create_poll(
             "created_at": db_poll.created_at,
             "updated_at": db_poll.updated_at,
             "poll_token": db_poll.poll_token,
-                            "time_slots": [
-                    {
-                        "id": slot.id,
-                        "poll_id": slot.poll_id,
-                        "start_time": slot.start_time,
-                        "end_time": slot.end_time,
-                        "timezone": slot.timezone,
-                        "is_available": slot.is_available,
-                        "created_at": slot.created_at,
-                    }
-                    for slot in db_poll.time_slots
-                ],
-                            "participants": [
-                    {
-                        "id": participant.id,
-                        "poll_id": participant.poll_id,
-                        "email": participant.email,
-                        "name": participant.name,
-                        "response_token": participant.response_token,
-                        "status": participant.status,
-                        "invited_at": participant.invited_at,
-                        "responded_at": participant.responded_at,
-                        "reminder_sent_count": participant.reminder_sent_count,
-                    }
-                    for participant in db_poll.participants
-                ],
+            "time_slots": [
+                {
+                    "id": slot.id,
+                    "poll_id": slot.poll_id,
+                    "start_time": slot.start_time,
+                    "end_time": slot.end_time,
+                    "timezone": slot.timezone,
+                    "is_available": slot.is_available,
+                    "created_at": slot.created_at,
+                }
+                for slot in db_poll.time_slots
+            ],
+            "participants": [
+                {
+                    "id": participant.id,
+                    "poll_id": participant.poll_id,
+                    "email": participant.email,
+                    "name": participant.name,
+                    "response_token": participant.response_token,
+                    "status": participant.status,
+                    "invited_at": participant.invited_at,
+                    "responded_at": participant.responded_at,
+                    "reminder_sent_count": participant.reminder_sent_count,
+                }
+                for participant in db_poll.participants
+            ],
         }
 
         # Send emails if requested
