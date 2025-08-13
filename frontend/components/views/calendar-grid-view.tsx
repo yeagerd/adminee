@@ -498,7 +498,7 @@ export default function CalendarGridView({
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isSelecting, selection, days]);
+    }, [isSelecting, selection, days, timeSlots.length]);
 
     // Format date for display
     const formatDate = (date: Date) => {
