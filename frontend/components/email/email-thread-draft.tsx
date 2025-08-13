@@ -75,41 +75,44 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
 
   return (
     <div className="mt-3 border rounded-md bg-muted/20">
-      <div className="p-3 border-b bg-muted/30 flex items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground truncate">{summary}</div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                {MODE_LABEL[mode]}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => changeMode('reply')}>
-                <Reply className="h-4 w-4 mr-2" /> Reply
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => changeMode('reply_all')}>
-                <ReplyAll className="h-4 w-4 mr-2" /> Reply All
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => changeMode('forward')}>
-                <Forward className="h-4 w-4 mr-2" /> Forward
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Collapsible open={open} onOpenChange={setOpen}>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        {/* Header row always on top */}
+        <div className="p-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+          <div className="text-sm text-muted-foreground truncate">{summary}</div>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                  {MODE_LABEL[mode]}
+                  <ChevronDown className="h-3 w-3 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => changeMode('reply')}>
+                  <Reply className="h-4 w-4 mr-2" /> Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => changeMode('reply_all')}>
+                  <ReplyAll className="h-4 w-4 mr-2" /> Reply All
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => changeMode('forward')}>
+                  <Forward className="h-4 w-4 mr-2" /> Forward
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" aria-label="Toggle details">
                 {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-3">
-                <DraftMetadataComponent draft={draft} onUpdate={handleMetadataChange} type={draft.type} />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          </div>
         </div>
-      </div>
+        <CollapsibleContent>
+          <div className="p-3 border-b bg-background">
+            <DraftMetadataComponent draft={draft} onUpdate={handleMetadataChange} type={draft.type} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
       <div className="p-3">
         <DraftEditor
           type={draft.type}
