@@ -467,9 +467,9 @@ async def schedule_meeting(
             if not (isinstance(existing_event_id, str) and "_" in existing_event_id):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid calendar_event_id format: {existing_event_id}. Expected format: 'provider_originalId' (e.g., 'google_abc123' or 'microsoft_xyz789')"
+                    detail=f"Invalid calendar_event_id format: {existing_event_id}. Expected format: 'provider_originalId' (e.g., 'google_abc123' or 'microsoft_xyz789')",
                 )
-            
+
             # Use the existing event id as-is since it should already be properly prefixed
             result = await calendar_integration.update_calendar_event(
                 str(user_id),
