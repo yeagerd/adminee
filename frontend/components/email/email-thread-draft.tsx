@@ -9,10 +9,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronUp, Reply, ReplyAll, Forward } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface EmailThreadDraftProps {
   initialDraft: Draft;
   onClose?: () => void;
+  quotedHeader?: string;
+  quotedBody?: string;
+  quotedIsHtml?: boolean;
 }
 
 const MODE_LABEL: Record<'reply' | 'reply_all' | 'forward', string> = {
@@ -21,7 +25,7 @@ const MODE_LABEL: Record<'reply' | 'reply_all' | 'forward', string> = {
   forward: 'Forward',
 };
 
-export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadDraftProps) {
+export default function EmailThreadDraft({ initialDraft, onClose, quotedHeader, quotedBody, quotedIsHtml = false }: EmailThreadDraftProps) {
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'reply' | 'reply_all' | 'forward'>(() => {
@@ -30,6 +34,7 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
     if ((initialDraft.metadata.recipients?.length || 0) > 1 || (initialDraft.metadata.cc?.length || 0) > 0) return 'reply_all';
     return 'reply';
   });
+  const [showQuoted, setShowQuoted] = useState(false);
 
   const handleContentChange = (content: string) => {
     setDraft((prev) => ({ ...prev, content, updatedAt: new Date().toISOString() }));
@@ -58,17 +63,13 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
 
   const changeMode = (next: 'reply' | 'reply_all' | 'forward') => {
     setMode(next);
-    // Adjust recipients when switching modes
     const to = draft.metadata.recipients || [];
     const cc = draft.metadata.cc || [];
     if (next === 'reply') {
-      // keep only the first recipient
       handleMetadataChange({ recipients: to.slice(0, 1), cc: [] });
     } else if (next === 'reply_all') {
-      // leave as-is (user can edit)
       handleMetadataChange({ recipients: to, cc });
     } else if (next === 'forward') {
-      // clear recipients
       handleMetadataChange({ recipients: [], cc: [], bcc: [] });
     }
   };
@@ -121,6 +122,34 @@ export default function EmailThreadDraft({ initialDraft, onClose }: EmailThreadD
           updatedAt={draft.updatedAt}
         />
       </div>
+
+      {(quotedHeader || quotedBody) && (
+        <div className="px-3 pb-2">
+          <button
+            className="text-sm text-blue-600 hover:underline"
+            onClick={() => setShowQuoted((s) => !s)}
+            type="button"
+          >
+            {showQuoted ? 'Hide quoted text' : 'Show quoted text'}
+          </button>
+          {showQuoted && (
+            <div className="mt-2 border rounded bg-gray-50 p-3">
+              {quotedHeader && (
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap mb-2">{quotedHeader}</pre>
+              )}
+              {quotedBody && quotedIsHtml ? (
+                <div
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quotedBody) }}
+                />
+              ) : (
+                quotedBody && <pre className="text-xs text-gray-700 whitespace-pre-wrap">{quotedBody}</pre>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="p-3 border-t bg-white">
         <DraftActions draft={draft} onActionComplete={handleActionComplete} />
       </div>

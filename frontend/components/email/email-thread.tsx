@@ -129,13 +129,15 @@ const EmailThread: React.FC<EmailThreadProps> = ({
             threadId: thread.id,
         };
         setThreadDrafts((prev) => [...prev, newDraft]);
-        // Scroll to the newly added draft card on next tick
+        // Scroll to the newly added draft card on next animation frame
         setTimeout(() => {
-            const el = document.getElementById(`thread-draft-${newDraft.id}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 0);
+            requestAnimationFrame(() => {
+                const el = document.getElementById(`thread-draft-${newDraft.id}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }, 50);
     };
 
     const handleReplyClick = () => {
@@ -262,13 +264,22 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                     />
                 ))}
 
-                {threadDrafts.map((d) => (
-                    <EmailThreadDraft
-                        key={d.id}
-                        initialDraft={d}
-                        onClose={() => setThreadDrafts((prev) => prev.filter((x) => x.id !== d.id))}
-                    />
-                ))}
+                {threadDrafts.map((d) => {
+                    const src = thread.messages[thread.messages.length - 1];
+                    const quotedHeader = `From: ${src.from_address?.name || src.from_address?.email || ''}\nSent: ${new Date(src.date).toLocaleString()}\nTo: ${src.to_addresses.map(a => a.name || a.email).join(', ')}\nSubject: ${src.subject || ''}`;
+                    const quotedBody = src.body_html || src.body_text || '';
+                    const quotedIsHtml = !!src.body_html;
+                    return (
+                        <EmailThreadDraft
+                            key={d.id}
+                            initialDraft={d}
+                            quotedHeader={quotedHeader}
+                            quotedBody={quotedBody}
+                            quotedIsHtml={quotedIsHtml}
+                            onClose={() => setThreadDrafts((prev) => prev.filter((x) => x.id !== d.id))}
+                        />
+                    );
+                })}
             </div>
 
         </>
