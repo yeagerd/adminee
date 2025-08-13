@@ -76,13 +76,13 @@ Conventions
 ---
 
 ### 4. Email Integration
-- [ ] Confirmation emails
+- [x] Confirmation emails
   - Send confirmation to both parties after booking
   - Include calendar invite (ICS) or provider-native invite
   - Acceptance criteria:
     - Both recipient and owner receive a confirmation email with event details
 
-- [ ] Optional follow-up emails
+- [x] Optional follow-up emails
   - If template has follow-up enabled, send a follow-up confirmation message
   - Acceptance criteria:
     - Follow-up only sent when `email_followup_enabled` is true
