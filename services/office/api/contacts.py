@@ -97,16 +97,18 @@ async def list_contacts(
                 raise ServiceError(message=f"No client for provider {provider}")
 
             results: List[Contact] = []
+            # Determine account context for this provider
+            account_email, account_name = get_user_account_info(user_id, provider)
             if isinstance(client, GoogleAPIClient):
                 data = await client.get_contacts(page_size=limit)
                 for c in data.get("connections", []) or []:
-                    normalized = normalize_google_contact(c, account_email="", account_name=None)
+                    normalized = normalize_google_contact(c, account_email=account_email, account_name=account_name)
                     results.append(Contact(**normalized))
             elif isinstance(client, MicrosoftAPIClient):
                 select = "id,displayName,givenName,surname,emailAddresses,companyName,jobTitle,businessPhones,mobilePhone,homePhones"
                 data = await client.get_contacts(top=limit, select=select, order_by="lastModifiedDateTime desc")
                 for c in data.get("value", []) or []:
-                    normalized = normalize_microsoft_contact(c, account_email="", account_name=None)
+                    normalized = normalize_microsoft_contact(c, account_email=account_email, account_name=account_name)
                     results.append(Contact(**normalized))
             else:
                 raise ServiceError(message=f"Unsupported provider: {provider}")
@@ -124,9 +126,13 @@ async def list_contacts(
             if isinstance(result, Exception):
                 provider_errors[prov] = str(result)
                 continue
-            res_contacts, prov_used = result
-            contacts.extend(res_contacts)
-            providers_used.append(prov_used)
+            if isinstance(result, tuple) and len(result) == 2:
+                res_contacts, prov_used = result
+                contacts.extend(res_contacts)
+                providers_used.append(prov_used)
+            else:
+                provider_errors[prov] = "Invalid result format"
+                continue
 
         # Apply client-side search filter
         if q:
