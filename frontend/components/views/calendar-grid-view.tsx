@@ -57,6 +57,7 @@ export default function CalendarGridView({
     const [isSelecting, setIsSelecting] = useState(false);
     const selectionStartRef = useRef<{ day: Date; slotIndex: number } | null>(null);
     const [selection, setSelection] = useState<null | { day: Date; startIndex: number; endIndex: number }>(null);
+    const [hoverPreview, setHoverPreview] = useState<null | { day: Date; slotIndex: number }>(null);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [formTitle, setFormTitle] = useState('');
     const [formDescription, setFormDescription] = useState('');
@@ -93,6 +94,7 @@ export default function CalendarGridView({
         setIsSelecting(false);
         selectionStartRef.current = null;
         setSelection(null);
+        setHoverPreview(null);
     }, []);
 
     // Use external props if provided, otherwise use internal state
@@ -395,10 +397,19 @@ export default function CalendarGridView({
             }
 
             if (day && day.toDateString() === selectionStartRef.current.day.toDateString()) {
+                // Ensure minimum selection of 1 slot (15 minutes) when dragging
+                const startIndex = selectionStartRef.current.slotIndex;
+                let endIndex = slotIndex;
+
+                // If dragging backwards, ensure we have at least 1 slot
+                if (endIndex < startIndex) {
+                    endIndex = Math.max(startIndex - 1, 0);
+                }
+
                 setSelection({
                     day,
-                    startIndex: selectionStartRef.current.slotIndex,
-                    endIndex: slotIndex
+                    startIndex,
+                    endIndex
                 });
             }
         };
@@ -675,6 +686,30 @@ export default function CalendarGridView({
                                             return null;
                                         })()}
 
+                                        {/* Hover preview (30-minute shadow) */}
+                                        {!isSelecting && hoverPreview && hoverPreview.day.toDateString() === day.toDateString() && (() => {
+                                            const topPos = hoverPreview.slotIndex * 12;
+                                            const height = 2 * 12; // 2 slots = 30 minutes
+
+                                            return (
+                                                <div
+                                                    className="absolute left-0 right-0 pointer-events-none z-15"
+                                                    style={{
+                                                        top: `${topPos}px`,
+                                                        height: `${height}px`,
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="mx-1 rounded-md bg-blue-300/40 border border-blue-400/60"
+                                                        style={{
+                                                            height: '100%',
+                                                            transition: 'all 0.1s ease-out'
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })()}
+
                                         {/* Selection overlay (drag) */}
                                         {selection && selection.day.toDateString() === day.toDateString() && (() => {
                                             const topPos = Math.min(selection.startIndex, selection.endIndex) * 12;
@@ -708,7 +743,18 @@ export default function CalendarGridView({
                                                 className={`h-3 hover:bg-gray-50 cursor-pointer transition-colors ${slotIndex % 4 === 3 ? 'border-b border-gray-200' : ''
                                                     }`}
                                                 data-slot-index={slotIndex}
+                                                onMouseEnter={() => {
+                                                    if (!isSelecting) {
+                                                        setHoverPreview({ day, slotIndex });
+                                                    }
+                                                }}
+                                                onMouseLeave={() => {
+                                                    if (!isSelecting) {
+                                                        setHoverPreview(null);
+                                                    }
+                                                }}
                                                 onMouseDown={() => {
+                                                    setHoverPreview(null);
                                                     setIsSelecting(true);
                                                     selectionStartRef.current = { day, slotIndex };
                                                     setSelection({ day, startIndex: slotIndex, endIndex: slotIndex });
