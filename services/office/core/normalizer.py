@@ -1057,7 +1057,7 @@ def normalize_google_contact(
     phones: List[ContactPhone] = []
     for p in raw.get("phoneNumbers", []) or []:
         number = p.get("value")
-        if not number:
+        if not isinstance(number, str) or not number:
             continue
         type_label = p.get("type") or p.get("formattedType")
         phones.append(ContactPhone(type=type_label, number=number))
@@ -1078,7 +1078,7 @@ def normalize_google_contact(
         phones=phones,
         photo_url=photo_url,
         provider=Provider.GOOGLE,
-        provider_contact_id=resource_name,
+        provider_contact_id=str(resource_name or ""),
         account_email=account_email,
         account_name=account_name,
     )
@@ -1111,11 +1111,14 @@ def normalize_microsoft_contact(
 
     phones: List[ContactPhone] = []
     for number in (raw.get("businessPhones") or []):
-        phones.append(ContactPhone(type="work", number=number))
-    if raw.get("mobilePhone"):
-        phones.append(ContactPhone(type="mobile", number=raw.get("mobilePhone")))
+        if isinstance(number, str) and number:
+            phones.append(ContactPhone(type="work", number=number))
+    mobile_phone = raw.get("mobilePhone")
+    if isinstance(mobile_phone, str) and mobile_phone:
+        phones.append(ContactPhone(type="mobile", number=mobile_phone))
     for number in (raw.get("homePhones") or []):
-        phones.append(ContactPhone(type="home", number=number))
+        if isinstance(number, str) and number:
+            phones.append(ContactPhone(type="home", number=number))
 
     photo_url = None  # Could fetch via separate /photo endpoint if needed
 

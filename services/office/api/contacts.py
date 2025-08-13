@@ -109,7 +109,7 @@ def _extract_email_strings(raw_emails: Optional[List[Any]]) -> Optional[List[str
 @router.get("/", response_model=ContactList)
 async def list_contacts(
     request: Request,
-    service_name: str = Depends(service_permission_required(["read_contacts"])),
+    service_name: str = Depends(service_permission_required(["read_emails"])),
     providers: Optional[List[str]] = Query(None, description="Providers to fetch from (google, microsoft)."),
     limit: int = Query(100, ge=1, le=500),
     q: Optional[str] = Query(None, description="Free-text search (name or email)"),
@@ -145,14 +145,19 @@ async def list_contacts(
             results: List[Contact] = []
             # Determine account context for this provider
             account_email, account_name = get_user_account_info(user_id, provider)
-            if isinstance(client, GoogleAPIClient):
-                data = await client.get_contacts(page_size=limit)
+            if provider == "google":
+                # Google client supports page_size
+                g_client: GoogleAPIClient = client  # type: ignore[assignment]
+                data = await g_client.get_contacts(page_size=limit)
                 for c in data.get("connections", []) or []:
                     normalized = normalize_google_contact(c, account_email=account_email, account_name=account_name)
                     results.append(Contact(**normalized))
-            elif isinstance(client, MicrosoftAPIClient):
+            elif provider == "microsoft":
+                # Microsoft client supports top/select/order_by
                 select = "id,displayName,givenName,surname,emailAddresses,companyName,jobTitle,businessPhones,mobilePhone,homePhones"
-                data = await client.get_contacts(top=limit, select=select, order_by="lastModifiedDateTime desc")
+                # Type narrow for mypy
+                ms_client: MicrosoftAPIClient = client  # type: ignore[assignment]
+                data = await ms_client.get_contacts(top=limit, select=select, order_by="lastModifiedDateTime desc")
                 for c in data.get("value", []) or []:
                     normalized = normalize_microsoft_contact(c, account_email=account_email, account_name=account_name)
                     results.append(Contact(**normalized))
@@ -233,7 +238,7 @@ async def list_contacts(
 @router.post("/", response_model=Dict[str, Any])
 async def create_contact(
     request: Request,
-    service_name: str = Depends(service_permission_required(["write_contacts"])),
+    service_name: str = Depends(service_permission_required(["send_emails"])),
     provider: Optional[str] = Query(None, description="Provider to create contact in (google, microsoft) - optional if provided in JSON body"),
     full_name: Optional[str] = Query(None),
     given_name: Optional[str] = Query(None),
@@ -273,7 +278,7 @@ async def create_contact(
     account_email, account_name = get_user_account_info(user_id, provider)
 
     try:
-        if isinstance(client, GoogleAPIClient):
+        if provider == "google":
             person: Dict[str, Any] = {}
             if full_name or given_name or family_name:
                 person["names"] = [{k: v for k, v in {"displayName": full_name, "givenName": given_name, "familyName": family_name}.items() if v}]
@@ -285,7 +290,7 @@ async def create_contact(
                 person["phoneNumbers"] = [{"value": p} for p in phones]
             created = await client.create_contact(person)
             normalized = normalize_google_contact(created, account_email, account_name)
-        elif isinstance(client, MicrosoftAPIClient):
+        elif provider == "microsoft":
             ms_payload: Dict[str, Any] = {}
             if full_name:
                 ms_payload["displayName"] = full_name
@@ -306,8 +311,9 @@ async def create_contact(
         else:
             raise ServiceError(message=f"Unsupported provider: {provider}")
 
-        # Invalidate cache for this user
-        await cache_manager.invalidate_user_cache(user_id)
+        # Invalidate contacts cache for this user
+        pattern = f"office:{user_id}:unified:contacts:*"
+        await cache_manager.delete_pattern(pattern)
         return {"success": True, "data": {"contact": normalized}, "request_id": request_id}
     except Exception as e:
         raise ServiceError(message=f"Failed to create contact: {str(e)}")
@@ -315,9 +321,9 @@ async def create_contact(
 
 @router.put("/{contact_id}", response_model=Dict[str, Any])
 async def update_contact(
+    request: Request,
     contact_id: str = Path(..., description="Unified contact id (provider_originalId) or provider id for write-through"),
-    request: Request = None,
-    service_name: str = Depends(service_permission_required(["write_contacts"])),
+    service_name: str = Depends(service_permission_required(["send_emails"])),
     provider: Optional[str] = Query(None, description="Provider to update in (if unified id not used) - optional if provided in JSON body"),
     full_name: Optional[str] = Query(None),
     given_name: Optional[str] = Query(None),
@@ -346,6 +352,12 @@ async def update_contact(
     prov_id = contact_id
     if "_" in contact_id and not provider:
         prov, prov_id = contact_id.split("_", 1)
+    # Normalize provider aliases
+    if prov:
+        if prov.lower() in ("gmail", "google"):
+            prov = "google"
+        elif prov.lower() in ("outlook", "microsoft"):
+            prov = "microsoft"
     if prov is None:
         raise ValidationError(message="Provider required when contact_id is provider-native id", field="provider")
 
@@ -362,7 +374,7 @@ async def update_contact(
     account_email, account_name = get_user_account_info(user_id, prov)
 
     try:
-        if isinstance(client, GoogleAPIClient):
+        if prov == "google":
             person: Dict[str, Any] = {}
             if full_name or given_name or family_name:
                 person["names"] = [{k: v for k, v in {"displayName": full_name, "givenName": given_name, "familyName": family_name}.items() if v}]
@@ -374,7 +386,7 @@ async def update_contact(
                 person["phoneNumbers"] = [{"value": p} for p in phones]
             updated = await client.update_contact(f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id, person)
             normalized = normalize_google_contact(updated, account_email, account_name)
-        elif isinstance(client, MicrosoftAPIClient):
+        elif prov == "microsoft":
             ms_payload: Dict[str, Any] = {}
             if full_name is not None:
                 ms_payload["displayName"] = full_name
@@ -395,17 +407,18 @@ async def update_contact(
         else:
             raise ServiceError(message=f"Unsupported provider: {prov}")
 
-        await cache_manager.invalidate_user_cache(user_id)
+        pattern = f"office:{user_id}:unified:contacts:*"
+        await cache_manager.delete_pattern(pattern)
         return {"success": True, "data": {"contact": normalized}, "request_id": request_id}
     except Exception as e:
         raise ServiceError(message=f"Failed to update contact: {str(e)}")
 
 
-@router.delete("/{contact_id}", response_model=Dict[str, Any])
+@router.delete("/{contact_id:path}", response_model=Dict[str, Any])
 async def delete_contact(
     contact_id: str,
     request: Request,
-    service_name: str = Depends(service_permission_required(["write_contacts"])),
+    service_name: str = Depends(service_permission_required(["send_emails"])),
     provider: Optional[str] = Query(None, description="Provider to delete in (if unified id not used)"),
 ) -> Dict[str, Any]:
     user_id = await get_user_id_from_gateway(request)
@@ -429,13 +442,24 @@ async def delete_contact(
         raise ServiceError(message=f"No client for provider {prov}")
 
     try:
-        if isinstance(client, GoogleAPIClient):
-            await client.delete_contact(f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id)
-        elif isinstance(client, MicrosoftAPIClient):
+        # Normalize provider aliases
+        prov_norm = prov.lower()
+        if prov_norm in ("gmail", "google"):
+            prov_norm = "google"
+        elif prov_norm in ("outlook", "microsoft"):
+            prov_norm = "microsoft"
+
+        if prov_norm == "google":
+            await client.delete_contact(
+                f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id
+            )
+        elif prov_norm == "microsoft":
             await client.delete_contact(prov_id)
         else:
             raise ServiceError(message=f"Unsupported provider: {prov}")
-        await cache_manager.invalidate_user_cache(user_id)
+            # Invalidate caches for this user's contacts
+            pattern = f"office:{user_id}:unified:contacts:*"
+            await cache_manager.delete_pattern(pattern)
         return {"success": True, "data": {"deleted": True}, "request_id": request_id}
     except Exception as e:
         raise ServiceError(message=f"Failed to delete contact: {str(e)}")
