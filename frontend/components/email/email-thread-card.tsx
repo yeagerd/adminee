@@ -197,6 +197,11 @@ function splitQuotedContent({ html, text }: { html?: string; text?: string }): {
         if (!quotedHtml || quotedHtml.length < 20) {
             return null;
         }
+        // If the visible part is empty or whitespace-only, treat as unsplittable
+        const visibleStripped = visibleHtml.replace(/&nbsp;|\s+/g, '');
+        if (!visibleStripped) {
+            return null;
+        }
         return { visibleHtml, quotedHtml };
     }
 
@@ -489,41 +494,51 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                 <div className="w-full">
                     {email.body_html ? (
                         splitResult?.visibleHtml || splitResult?.quotedHtml ? (
-                            <>
-                                {/* Visible (new) content */}
-                                {splitResult.visibleHtml && (
+                            // If there is only quoted content and no visible content, render quoted directly without toggle
+                            !splitResult?.visibleHtml && splitResult?.quotedHtml ? (
+                                <div className="mt-2 border rounded bg-gray-50 p-3">
                                     <div
                                         className="prose prose-sm max-w-none"
-                                        style={{
-                                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                            fontSize: '14px',
-                                            lineHeight: '1.5',
-                                            color: '#333'
-                                        }}
-                                        dangerouslySetInnerHTML={{ __html: splitResult.visibleHtml }}
+                                        dangerouslySetInnerHTML={{ __html: splitResult.quotedHtml }}
                                     />
-                                )}
-                                {/* Toggle for quoted part */}
-                                {splitResult.quotedHtml && (
-                                    <div className="mt-2">
-                                        <button
-                                            className="text-sm text-blue-600 hover:underline"
-                                            onClick={(e) => { e.stopPropagation(); setShowQuoted((s) => !s); }}
-                                            type="button"
-                                        >
-                                            {showQuoted ? 'Hide quoted text' : 'Show quoted text'}
-                                        </button>
-                                        {showQuoted && (
-                                            <div className="mt-2 border rounded bg-gray-50 p-3">
-                                                <div
-                                                    className="prose prose-sm max-w-none"
-                                                    dangerouslySetInnerHTML={{ __html: splitResult.quotedHtml }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Visible (new) content */}
+                                    {splitResult.visibleHtml && (
+                                        <div
+                                            className="prose prose-sm max-w-none"
+                                            style={{
+                                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                                fontSize: '14px',
+                                                lineHeight: '1.5',
+                                                color: '#333'
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: splitResult.visibleHtml }}
+                                        />
+                                    )}
+                                    {/* Toggle for quoted part */}
+                                    {splitResult.quotedHtml && (
+                                        <div className="mt-2">
+                                            <button
+                                                className="text-sm text-blue-600 hover:underline"
+                                                onClick={(e) => { e.stopPropagation(); setShowQuoted((s) => !s); }}
+                                                type="button"
+                                            >
+                                                {showQuoted ? 'Hide quoted text' : 'Show quoted text'}
+                                            </button>
+                                            {showQuoted && (
+                                                <div className="mt-2 border rounded bg-gray-50 p-3">
+                                                    <div
+                                                        className="prose prose-sm max-w-none"
+                                                        dangerouslySetInnerHTML={{ __html: splitResult.quotedHtml }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )
                         ) : (
                             <div
                                 className="prose prose-sm max-w-none"
@@ -539,27 +554,34 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                     ) : (
                         // Plain text fallback
                         splitResult?.visibleText || splitResult?.quotedText ? (
-                            <div className="text-sm text-gray-700">
-                                {splitResult.visibleText && (
-                                    <pre className="whitespace-pre-wrap font-sans text-[14px] leading-5 text-gray-800">{splitResult.visibleText}</pre>
-                                )}
-                                {splitResult.quotedText && (
-                                    <div className="mt-2">
-                                        <button
-                                            className="text-sm text-blue-600 hover:underline"
-                                            onClick={(e) => { e.stopPropagation(); setShowQuoted((s) => !s); }}
-                                            type="button"
-                                        >
-                                            {showQuoted ? 'Hide quoted text' : 'Show quoted text'}
-                                        </button>
-                                        {showQuoted && (
-                                            <div className="mt-2 border rounded bg-gray-50 p-3">
-                                                <pre className="text-xs text-gray-700 whitespace-pre-wrap">{splitResult.quotedText}</pre>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                            // If there is only quoted text and no visible text, render quoted directly without toggle
+                            !splitResult?.visibleText && splitResult?.quotedText ? (
+                                <div className="mt-2 border rounded bg-gray-50 p-3">
+                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap">{splitResult.quotedText}</pre>
+                                </div>
+                            ) : (
+                                <div className="text-sm text-gray-700">
+                                    {splitResult.visibleText && (
+                                        <pre className="whitespace-pre-wrap font-sans text-[14px] leading-5 text-gray-800">{splitResult.visibleText}</pre>
+                                    )}
+                                    {splitResult.quotedText && (
+                                        <div className="mt-2">
+                                            <button
+                                                className="text-sm text-blue-600 hover:underline"
+                                                onClick={(e) => { e.stopPropagation(); setShowQuoted((s) => !s); }}
+                                                type="button"
+                                            >
+                                                {showQuoted ? 'Hide quoted text' : 'Show quoted text'}
+                                            </button>
+                                            {showQuoted && (
+                                                <div className="mt-2 border rounded bg-gray-50 p-3">
+                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap">{splitResult.quotedText}</pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )
                         ) : (
                             <div className="text-sm text-gray-700">
                                 {email.snippet || email.body_text?.substring(0, 200) || 'No preview available'}
