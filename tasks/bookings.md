@@ -177,17 +177,17 @@ Conventions
 ---
 
 ### 10. Security and Privacy
-- [ ] Token generation util
+- [x] Token generation util
   - Cryptographically random tokens for public links; expirable for one-time links
   - Acceptance criteria:
     - Tokens are URL-safe; one-time tokens expire after booking/timeout
 
-- [ ] Rate limiting and abuse protection
+- [x] Rate limiting and abuse protection
   - Rate limit public endpoints; add basic bot protection (e.g., simple challenge or provider-supported checks)
   - Acceptance criteria:
     - Excess requests return 429; logs indicate limited attempts
 
-- [ ] Audit logging
+- [x] Audit logging
   - Log link creation, updates, and booking events
   - Acceptance criteria:
     - Logs include who/when and action summary
