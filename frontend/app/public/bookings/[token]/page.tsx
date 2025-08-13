@@ -17,6 +17,8 @@ export default function PublicBookingPage({ params }: PageProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<any | null>(null);
+  const [slotLoading, setSlotLoading] = useState<boolean>(false);
+  const [slots, setSlots] = useState<any[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,6 +47,20 @@ export default function PublicBookingPage({ params }: PageProps) {
       isMounted = false;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!meta) return;
+    setSlotLoading(true);
+    setSlots([]);
+    fetch(`/api/v1/bookings/public/${token}/availability?duration=${duration}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch availability");
+        return res.json();
+      })
+      .then((data) => setSlots(data?.data?.slots || []))
+      .catch(() => setSlots([]))
+      .finally(() => setSlotLoading(false));
+  }, [meta, token, duration]);
 
   return (
     <div className="p-6">
@@ -89,6 +105,23 @@ export default function PublicBookingPage({ params }: PageProps) {
           <p className="text-xs text-muted-foreground mt-1">
             Detected automatically. Adjust if needed.
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Available slots</label>
+          {slotLoading && <p className="text-sm">Loading slots…</p>}
+          {!slotLoading && slots.length === 0 && (
+            <p className="text-sm text-muted-foreground">No slots available.</p>
+          )}
+          {!slotLoading && slots.length > 0 && (
+            <ul className="space-y-2">
+              {slots.slice(0, 10).map((s, i) => (
+                <li key={i} className="border rounded p-2 text-sm">
+                  {s.start} → {s.end}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

@@ -99,6 +99,8 @@ Conventions
   - Show available slots with timezone conversion
   - Acceptance criteria:
     - Changing timezone displays converted slots
+    
+- [x] Availability display
 
 - [ ] Recipient form (from template)
   - Render dynamic questions from `BookingTemplate.questions`
