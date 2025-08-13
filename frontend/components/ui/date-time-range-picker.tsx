@@ -139,8 +139,8 @@ export function DateTimeRangePicker({
                     {showDatePicker && (
                         <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-3 min-w-[280px]" data-picker>
                             <div className="grid grid-cols-7 gap-1 text-xs text-center mb-2">
-                                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-                                    <div key={day} className="p-1 font-medium text-gray-500">{day}</div>
+                                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                                    <div key={index} className="p-1 font-medium text-gray-500">{day}</div>
                                 ))}
                             </div>
                             <div className="grid grid-cols-7 gap-1">
