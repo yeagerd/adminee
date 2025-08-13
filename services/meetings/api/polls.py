@@ -226,8 +226,8 @@ async def create_poll(
             )
             .where(MeetingPollModel.id == db_poll.id)
         )
-        result = await session.execute(stmt)
-        db_poll = result.scalar_one()
+        exec_result = await session.execute(stmt)
+        db_poll = exec_result.scalar_one()
 
         # Capture values for logging and convert to dict before session closes
         poll_id = str(db_poll.id)
