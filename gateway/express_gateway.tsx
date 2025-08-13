@@ -609,7 +609,7 @@ app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoute
 app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
 app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
-app.use('/api/v1/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts' }));
+app.use('/api/v1/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts/' }));
 app.use('/api/v1/contacts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts' }));
 
 // Fallback for other API routes (default to user service)
