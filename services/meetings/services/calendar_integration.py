@@ -89,7 +89,7 @@ async def update_calendar_event(
 ) -> dict:
     settings = get_settings()
     url = f"{settings.office_service_url}/v1/calendar/events/{event_id}"
-    headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
+    headers = {"X-API-Key": settings.api_meetings_office_key}
 
     # Propagate request ID for distributed tracing
     request_id = request_id_var.get()
@@ -97,11 +97,10 @@ async def update_calendar_event(
         headers["X-Request-Id"] = request_id
 
     # Convert participants to EmailAddress format
-    from services.office.schemas import CreateCalendarEventRequest, EmailAddress
+    from services.office.schemas import EmailAddress, CreateCalendarEventRequest
 
     attendee_list = [
-        EmailAddress(email=email, name=email.split("@")[0])
-        for email in attendees_emails
+        EmailAddress(email=email, name=email.split("@")[0]) for email in attendees_emails
     ]
 
     event_data = CreateCalendarEventRequest(
