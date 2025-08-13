@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { ChatPanelProvider } from '@/contexts/chat-panel-context';
 import { IntegrationsProvider } from '@/contexts/integrations-context';
 import { UserPreferencesProvider } from '@/contexts/settings-context';
+import { OfficeDataProvider } from '@/contexts/office-data-context';
 import type { Metadata } from 'next';
 import './globals.css';
 
@@ -20,13 +21,15 @@ export default function RootLayout({
         <html lang="en">
             <body>
                 <AuthSessionProvider>
-                    <IntegrationsProvider>
-                        <UserPreferencesProvider>
-                            <ChatPanelProvider>
-                                {children}
-                            </ChatPanelProvider>
-                        </UserPreferencesProvider>
-                    </IntegrationsProvider>
+                    <OfficeDataProvider>
+                        <IntegrationsProvider>
+                            <UserPreferencesProvider>
+                                <ChatPanelProvider>
+                                    {children}
+                                </ChatPanelProvider>
+                            </UserPreferencesProvider>
+                        </IntegrationsProvider>
+                    </OfficeDataProvider>
                 </AuthSessionProvider>
                 <Toaster />
             </body>
