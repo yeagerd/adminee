@@ -40,6 +40,8 @@ Conventions
   - Generate and apply initial migration for the above tables
   - Acceptance criteria:
     - Local DB migration succeeds and tables exist
+    
+- [x] Migrations
 
 ---
 
