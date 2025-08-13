@@ -398,7 +398,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     if (providerDrafts.length > 0) {
                         // Take the latest provider draft and reflect into local draft editor for continuity
                         const latest = providerDrafts[0] as Record<string, unknown> | undefined;
-                        const provider = response.data.provider_used as 'google' | 'microsoft' | undefined;
+                        const provider = response.provider_used as 'google' | 'microsoft' | undefined;
                         const session = await getSession();
                         const local = createNewDraft('email', session?.user?.id || '');
                         const headers = (latest?.message as Record<string, unknown> | undefined)?.payload as Record<string, unknown> | undefined;
