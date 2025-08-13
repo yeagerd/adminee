@@ -1,22 +1,22 @@
 "use client"
 
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import type { CalendarEvent } from '@/types/office-service';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarEventItem } from '../calendar-event-item';
 import { CalendarGridEvent } from './calendar-grid-event';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
 
 interface CalendarGridViewProps {
     toolDataLoading?: boolean;
@@ -746,7 +746,7 @@ export default function CalendarGridView({
                                                 end_time: endUtc.toISO()!,
                                                 all_day: formAllDay || false,
                                                 location: formLocation || undefined,
-                                            } as unknown as any);
+                                            });
                                             setIsCreateOpen(false);
                                             clearSelection();
                                             setFormTitle('');

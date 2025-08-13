@@ -1,14 +1,14 @@
+import type { CalendarEvent, CreateCalendarEventRequest } from '@/types/office-service';
 import {
     ApiResponse,
     CalendarEventsResponse,
+    Contact,
     EmailFolder,
+    GetContactsResponse,
     GetEmailsResponse,
     GetThreadResponse,
     GetThreadsResponse,
-    GetContactsResponse,
-    Contact,
 } from '@/types/office-service';
-import type { CreateCalendarEventRequest, CalendarEventResponse } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
 import { env, validateClientEnv } from './env';
@@ -262,7 +262,7 @@ export class GatewayClient {
     }
 
     async createCalendarEvent(payload: CreateCalendarEventRequest) {
-        return this.request<ApiResponse<CalendarEventResponse>>(`/api/v1/calendar/events`, {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events`, {
             method: 'POST',
             body: payload,
         });
@@ -270,19 +270,19 @@ export class GatewayClient {
 
     async updateCalendarEvent(eventId: string, payload: CreateCalendarEventRequest) {
         const session = await getSession();
-        const userId = (session as any)?.user?.id as string | undefined;
+        const userId = session?.user?.id;
         const params = new URLSearchParams();
         if (userId) params.append('user_id', userId);
         const query = params.toString();
         const suffix = query ? `?${query}` : '';
-        return this.request<ApiResponse<CalendarEventResponse>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}${suffix}`, {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}${suffix}`, {
             method: 'PUT',
             body: payload,
         });
     }
 
     async deleteCalendarEvent(eventId: string) {
-        return this.request<ApiResponse<CalendarEventResponse>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}`, {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}`, {
             method: 'DELETE',
         });
     }
