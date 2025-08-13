@@ -2,6 +2,7 @@ import { EmailMessage } from '@/types/office-service';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import EmailThreadCard from './email-thread-card';
+import { useRouter } from 'next/navigation';
 
 // Mock Next.js navigation
 jest.mock('next/navigation', () => ({
@@ -60,7 +61,7 @@ const baseEmail: EmailMessage = {
 describe('EmailThreadCard rendering', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        (require('next/navigation').useRouter as jest.Mock).mockReturnValue(mockRouter);
+        (useRouter as jest.Mock).mockReturnValue(mockRouter);
     });
 
     it('renders simple HTML body without toggle', () => {

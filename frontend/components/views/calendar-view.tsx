@@ -1,4 +1,4 @@
-import { useIntegrations } from '@/contexts/integrations-context';
+gitimport { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import type { CalendarEvent } from '@/types/office-service';
