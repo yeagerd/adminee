@@ -5,6 +5,8 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from services.common.api_key_auth import (
     APIKeyConfig,
@@ -213,6 +215,19 @@ async def create_poll(
             session.add(db_part)
         await session.commit()
         await session.refresh(db_poll)
+
+        # Explicitly load relationships to avoid MissingGreenlet error in async SQLAlchemy
+        # Query the poll with its relationships loaded
+        stmt = (
+            select(MeetingPollModel)
+            .options(
+                selectinload(MeetingPollModel.participants),
+                selectinload(MeetingPollModel.time_slots)
+            )
+            .where(MeetingPollModel.id == db_poll.id)
+        )
+        result = await session.execute(stmt)
+        db_poll = result.scalar_one()
 
         # Send emails if requested
         if poll.send_emails:
