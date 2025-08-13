@@ -500,7 +500,10 @@ async def schedule_meeting(
                 provider = (data.get("provider") or "").lower()
                 if event_id:
                     # Normalize to provider-prefixed id if not already prefixed
-                    if isinstance(event_id, str) and (event_id.startswith("google_") or event_id.startswith("microsoft_")):
+                    if isinstance(event_id, str) and (
+                        event_id.startswith("google_")
+                        or event_id.startswith("microsoft_")
+                    ):
                         normalized = event_id
                     elif provider in ("google", "microsoft"):
                         normalized = f"{provider}_{event_id}"

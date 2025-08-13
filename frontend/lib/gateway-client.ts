@@ -98,7 +98,10 @@ export class GatewayClient {
 
             return response.text() as T;
         } catch (error) {
-            console.error('Gateway Client Error:', error);
+            if (process.env.NODE_ENV !== 'test') {
+                // eslint-disable-next-line no-console
+                console.error('Gateway Client Error:', error);
+            }
             throw error;
         }
     }
