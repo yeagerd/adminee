@@ -123,4 +123,114 @@ describe('EmailThreadCard rendering', () => {
         expect(screen.getByText("I can't wait to try it out!")).toBeInTheDocument();
         expect(screen.queryByText(/Show quoted text/i)).not.toBeInTheDocument();
     });
+
+    it('does not split content with CC and BCC fields in the middle of email body', () => {
+        // This simulates an email that contains CC/BCC fields in the middle
+        // of legitimate email content and should NOT be treated as quoted content
+        const emailWithCCBCCInBody = `
+             <div>Here's my response to your email.</div>
+             <div>CC: colleague@example.com</div>
+             <div>BCC: manager@example.com</div>
+             <div>From: Dan . &lt;danstrashbin@hotmail.com&gt;</div>
+             <div>Sent: Wednesday, July 30, 2025 5:03 PM</div>
+             <div>To: Try Briefly &lt;trybriefly@outlook.com&gt;</div>
+             <div>Subject: Re: Hello from Briefly</div>
+             <div>I can't wait to try it out!</div>
+         `;
+
+        render(
+            <EmailThreadCard
+                email={{ ...baseEmail, body_html: emailWithCCBCCInBody, body_text: '' }}
+                isSelected
+            />
+        );
+
+        // The content should be rendered as a single piece without splitting
+        expect(screen.getByText("Here's my response to your email.")).toBeInTheDocument();
+        expect(screen.getByText("I can't wait to try it out!")).toBeInTheDocument();
+        expect(screen.queryByText(/Show quoted text/i)).not.toBeInTheDocument();
+    });
+
+    it('does not split content with mixed email headers in the middle of email body', () => {
+        // This simulates an email that contains various email header fields
+        // scattered throughout the content, which should NOT be treated as quoted content
+        const emailWithMixedHeadersInBody = `
+             <div>Here's my response to your email.</div>
+             <div>From: Dan . &lt;danstrashbin@hotmail.com&gt;</div>
+             <div>Some additional content here.</div>
+             <div>CC: colleague@example.com</div>
+             <div>More content in the middle.</div>
+             <div>Sent: Wednesday, July 30, 2025 5:03 PM</div>
+             <div>To: Try Briefly &lt;trybriefly@outlook.com&gt;</div>
+             <div>Subject: Re: Hello from Briefly</div>
+             <div>BCC: manager@example.com</div>
+             <div>I can't wait to try it out!</div>
+         `;
+
+        render(
+            <EmailThreadCard
+                email={{ ...baseEmail, body_html: emailWithMixedHeadersInBody, body_text: '' }}
+                isSelected
+            />
+        );
+
+        // The content should be rendered as a single piece without splitting
+        expect(screen.getByText("Here's my response to your email.")).toBeInTheDocument();
+        expect(screen.getByText("Some additional content here.")).toBeInTheDocument();
+        expect(screen.getByText("More content in the middle.")).toBeInTheDocument();
+        expect(screen.getByText("I can't wait to try it out!")).toBeInTheDocument();
+        expect(screen.queryByText(/Show quoted text/i)).not.toBeInTheDocument();
+    });
+
+    it('does not split content with email headers in different HTML elements', () => {
+        // This simulates an email where headers appear in different HTML elements
+        // which should NOT be treated as quoted content
+        const emailWithHeadersInDifferentElements = `
+             <p>Here's my response to your email.</p>
+             <span>From: Dan . &lt;danstrashbin@hotmail.com&gt;</span>
+             <div>Sent: Wednesday, July 30, 2025 5:03 PM</div>
+             <strong>To: Try Briefly &lt;trybriefly@outlook.com&gt;</strong>
+             <em>Subject: Re: Hello from Briefly</em>
+             <p>I can't wait to try it out!</p>
+         `;
+
+        render(
+            <EmailThreadCard
+                email={{ ...baseEmail, body_html: emailWithHeadersInDifferentElements, body_text: '' }}
+                isSelected
+            />
+        );
+
+        // The content should be rendered as a single piece without splitting
+        expect(screen.getByText("Here's my response to your email.")).toBeInTheDocument();
+        expect(screen.getByText("I can't wait to try it out!")).toBeInTheDocument();
+        expect(screen.queryByText(/Show quoted text/i)).not.toBeInTheDocument();
+    });
+
+    it('does not split content with email headers in table cells', () => {
+        // This simulates an email where headers appear in table cells
+        // which should NOT be treated as quoted content
+        const emailWithHeadersInTable = `
+             <div>Here's my response to your email.</div>
+             <table>
+                 <tr><td>From: Dan . &lt;danstrashbin@hotmail.com&gt;</td></tr>
+                 <tr><td>Sent: Wednesday, July 30, 2025 5:03 PM</td></tr>
+                 <tr><td>To: Try Briefly &lt;trybriefly@outlook.com&gt;</td></tr>
+                 <tr><td>Subject: Re: Hello from Briefly</td></tr>
+             </table>
+             <div>I can't wait to try it out!</div>
+         `;
+
+        render(
+            <EmailThreadCard
+                email={{ ...baseEmail, body_html: emailWithHeadersInTable, body_text: '' }}
+                isSelected
+            />
+        );
+
+        // The content should be rendered as a single piece without splitting
+        expect(screen.getByText("Here's my response to your email.")).toBeInTheDocument();
+        expect(screen.getByText("I can't wait to try it out!")).toBeInTheDocument();
+        expect(screen.queryByText(/Show quoted text/i)).not.toBeInTheDocument();
+    });
 });
