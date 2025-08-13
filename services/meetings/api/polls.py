@@ -461,10 +461,17 @@ async def schedule_meeting(
         end_time = getattr(slot, "end_time")
 
         # Create or update event via Office service
-        if getattr(poll, "calendar_event_id", None):
+        existing_event_id = getattr(poll, "calendar_event_id", None)
+        if existing_event_id:
+            # Normalize existing event id to required provider-prefixed format
+            normalized_event_id = (
+                existing_event_id
+                if (isinstance(existing_event_id, str) and "_" in existing_event_id)
+                else f"microsoft_{existing_event_id}"
+            )
             result = await calendar_integration.update_calendar_event(
                 str(user_id),
-                getattr(poll, "calendar_event_id"),
+                normalized_event_id,
                 title,
                 description,
                 start_time,
@@ -472,6 +479,9 @@ async def schedule_meeting(
                 participants,
                 location,
             )
+            # If we had to normalize, persist it for future updates
+            if normalized_event_id != existing_event_id:
+                setattr(poll, "calendar_event_id", normalized_event_id)
         else:
             result = await calendar_integration.create_calendar_event(
                 str(user_id),
@@ -487,8 +497,16 @@ async def schedule_meeting(
                 # result expected to be ApiResponse with data.event_id
                 data = result.get("data", {}) if isinstance(result, dict) else {}
                 event_id = data.get("event_id")
+                provider = (data.get("provider") or "").lower()
                 if event_id:
-                    setattr(poll, "calendar_event_id", event_id)
+                    # Normalize to provider-prefixed id if not already prefixed
+                    if isinstance(event_id, str) and (event_id.startswith("google_") or event_id.startswith("microsoft_")):
+                        normalized = event_id
+                    elif provider in ("google", "microsoft"):
+                        normalized = f"{provider}_{event_id}"
+                    else:
+                        normalized = event_id
+                    setattr(poll, "calendar_event_id", normalized)
             except Exception:
                 pass
 
