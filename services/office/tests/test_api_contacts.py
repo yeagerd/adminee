@@ -203,7 +203,8 @@ class TestContactsApi:
 
             mock_factory.return_value = FakeFactory()
             resp = client.put(
-                "/v1/contacts/google_people%2Fxyz?full_name=Alice%20Updated", headers=auth_headers
+                "/v1/contacts/google_people%2Fxyz?full_name=Alice%20Updated",
+                headers=auth_headers,
             )
             assert resp.status_code == 200
             data = resp.json()
