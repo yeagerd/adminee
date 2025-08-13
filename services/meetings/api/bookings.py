@@ -791,8 +791,8 @@ async def toggle_booking_link(
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
 
-            # Database toggle
-        with get_session() as session:
+    # Database toggle
+    with get_session() as session:
             link = (
                 session.query(BookingLink)
                 .filter_by(id=link_id, owner_user_id=owner_user_id)
