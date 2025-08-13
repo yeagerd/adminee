@@ -1,3 +1,4 @@
+import type { DraftApiResponse } from '@/lib/gateway-client';
 import { gatewayClient } from '@/lib/gateway-client';
 import { officeIntegration } from '@/lib/office-integration';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
@@ -5,19 +6,19 @@ import { Draft, DraftStatus, DraftType } from '@/types/draft';
 export interface CreateDraftRequest {
     type: DraftType;
     content: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
     threadId?: string;
 }
 
 export interface UpdateDraftRequest {
     content?: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
     status?: DraftStatus;
 }
 
 export interface DraftActionResult {
     success: boolean;
-    result?: any;
+    result?: unknown;
     error?: string;
     draftId?: string;
 }
@@ -31,7 +32,7 @@ export class DraftService {
             threadId: request.threadId,
         });
 
-        return this.mapDraftFromApi(data);
+        return this.mapDraftFromApi(data as DraftApiResponse);
     }
 
     async updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
@@ -41,7 +42,7 @@ export class DraftService {
             status: request.status,
         });
 
-        return this.mapDraftFromApi(data);
+        return this.mapDraftFromApi(data as DraftApiResponse);
     }
 
     async deleteDraft(draftId: string): Promise<boolean> {
@@ -61,7 +62,7 @@ export class DraftService {
 
     async getDraft(draftId: string): Promise<Draft> {
         const data = await gatewayClient.getDraft(draftId);
-        return this.mapDraftFromApi(data);
+        return this.mapDraftFromApi(data as DraftApiResponse);
     }
 
     async listDrafts(filters?: { type?: DraftType; status?: DraftStatus; search?: string }): Promise<{
@@ -76,7 +77,7 @@ export class DraftService {
         });
 
         return {
-            drafts: data.drafts.map((draft: any) => this.mapDraftFromApi(draft)),
+            drafts: data.drafts.map((draft) => this.mapDraftFromApi(draft as DraftApiResponse)),
             totalCount: data.total_count,
             hasMore: data.has_more,
         };
@@ -155,18 +156,19 @@ export class DraftService {
         }
     }
 
-    private mapDraftFromApi(apiDraft: any): Draft {
+    private mapDraftFromApi(apiDraft: DraftApiResponse): Draft {
+        const obj = apiDraft as DraftApiResponse;
         return {
-            id: apiDraft.id,
-            type: apiDraft.type,
-            status: apiDraft.status,
-            content: apiDraft.content,
-            metadata: apiDraft.metadata,
-            isAIGenerated: apiDraft.is_ai_generated ?? false,
-            createdAt: apiDraft.created_at,
-            updatedAt: apiDraft.updated_at,
-            userId: apiDraft.user_id,
-            threadId: apiDraft.thread_id,
+            id: obj.id as string,
+            type: obj.type as DraftType,
+            status: obj.status as DraftStatus,
+            content: obj.content as string,
+            metadata: (obj.metadata as Record<string, unknown>) ?? {},
+            isAIGenerated: (obj.is_ai_generated as boolean | undefined) ?? false,
+            createdAt: obj.created_at as string,
+            updatedAt: obj.updated_at as string,
+            userId: obj.user_id as string,
+            threadId: obj.thread_id as string | undefined,
         };
     }
 }

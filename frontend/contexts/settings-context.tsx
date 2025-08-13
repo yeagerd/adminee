@@ -114,12 +114,12 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
                 const prefs: UserPreferences = {
                     timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === 'auto' || obj.timezone_mode === 'manual')) ? obj.timezone_mode : 'auto',
                     manual_timezone: (typeof obj.manual_timezone === 'string') ? obj.manual_timezone : '',
-                    ui: { sidebar_expanded: (obj.ui as any)?.sidebar_expanded ?? false },
+                    ui: { sidebar_expanded: (obj.ui as { sidebar_expanded?: boolean } | undefined)?.sidebar_expanded ?? false },
                     privacy: {
-                        shipment_data_collection: (obj.privacy as any)?.shipment_data_collection ?? true,
-                        data_collection: (obj.privacy as any)?.data_collection ?? true,
-                        analytics: (obj.privacy as any)?.analytics ?? true,
-                        personalization: (obj.privacy as any)?.personalization ?? true,
+                        shipment_data_collection: (obj.privacy as { shipment_data_collection?: boolean; data_collection?: boolean; analytics?: boolean; personalization?: boolean } | undefined)?.shipment_data_collection ?? true,
+                        data_collection: (obj.privacy as { shipment_data_collection?: boolean; data_collection?: boolean; analytics?: boolean; personalization?: boolean } | undefined)?.data_collection ?? true,
+                        analytics: (obj.privacy as { shipment_data_collection?: boolean; data_collection?: boolean; analytics?: boolean; personalization?: boolean } | undefined)?.analytics ?? true,
+                        personalization: (obj.privacy as { shipment_data_collection?: boolean; data_collection?: boolean; analytics?: boolean; personalization?: boolean } | undefined)?.personalization ?? true,
                     },
                     // ...other fields as needed
                 };

@@ -1,7 +1,7 @@
 'use client';
 
 import { MeetingSubView, Tool, ToolContextType, ToolSettings, ToolState } from '@/types/navigation';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 
 // Initial tool settings
@@ -117,7 +117,7 @@ function toolReducer(state: ToolState, action: ToolAction): ToolState {
 }
 
 // Utility to merge preferences from saved state into default tool settings
-function mergeToolSettingsWithPreferences(defaults: Record<Tool, ToolSettings>, saved: any): Record<Tool, ToolSettings> {
+function mergeToolSettingsWithPreferences(defaults: Record<Tool, ToolSettings>, saved: Record<string, { preferences?: Record<string, unknown> }> | undefined): Record<Tool, ToolSettings> {
     const merged: Record<Tool, ToolSettings> = { ...defaults };
     if (saved && typeof saved === 'object') {
         for (const tool of Object.keys(defaults) as Tool[]) {
@@ -141,10 +141,8 @@ const ToolContext = createContext<ToolContextType | undefined>(undefined);
 // Provider component
 export function ToolProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(toolReducer, initialState);
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const isUpdatingUrl = useRef(false);
     const isInitialized = useRef(false);
 
     // Load user-driven state from localStorage on mount (do NOT persist enabled/disabled)
@@ -198,7 +196,7 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         if (!isInitialized.current) return;
         try {
             // Only persist preferences, not enabled/disabled
-            const toolSettingsToSave: Record<Tool, { preferences: Record<string, unknown> }> = {} as any;
+            const toolSettingsToSave: Record<Tool, { preferences: Record<string, unknown> }> = {} as Record<Tool, { preferences: Record<string, unknown> }>;
             for (const tool of Object.keys(defaultToolSettings) as Tool[]) {
                 toolSettingsToSave[tool] = {
                     preferences: state.toolSettings[tool]?.preferences || {},
