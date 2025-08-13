@@ -63,12 +63,12 @@ Conventions
 ---
 
 ### 3. Contacts Integration
-- [ ] Contact lookup
+- [x] Contact lookup
   - Auto-complete by email/name from Microsoft/Google contacts where available
   - Acceptance criteria:
     - Typing 3+ chars returns suggestions from connected provider(s)
 
-- [ ] Auto-create contact (new recipients)
+- [x] Auto-create contact (new recipients)
   - If not found, create new contact record via existing integration when booking is confirmed
   - Acceptance criteria:
     - New contact appears in provider contacts after booking
