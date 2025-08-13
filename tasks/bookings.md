@@ -36,12 +36,10 @@ Conventions
     - SQLAlchemy/Pydantic (or project standard) models created and migratable
     - Migration added under `services/meetings/alembic/versions`
 
-- [ ] Migrations
+- [x] Migrations
   - Generate and apply initial migration for the above tables
   - Acceptance criteria:
     - Local DB migration succeeds and tables exist
-    
-- [x] Migrations
 
 ---
 
@@ -95,31 +93,25 @@ Conventions
   - Acceptance criteria:
     - Invalid/expired token → friendly error page
 
-- [ ] Availability display
+- [x] Availability display
   - Show available slots with timezone conversion
   - Acceptance criteria:
     - Changing timezone displays converted slots
-    
-- [x] Availability display
 
-- [ ] Recipient form (from template)
+- [x] Recipient form (from template)
   - Render dynamic questions from `BookingTemplate.questions`
   - Acceptance criteria:
     - Required questions enforced; minimal defaults applied
-    
-- [x] Recipient form (from template)
 
-- [ ] Submit booking
+- [x] Submit booking
   - POST to API with chosen slot and answers
   - Acceptance criteria:
     - Success → confirmation screen; One-time link becomes inactive
-    
-- [x] Submit booking
 
 ---
 
 ### 6. Authenticated Booking Link Wizard (Owner)
-- [ ] Create evergreen link (stepper UI)
+- [x] Create evergreen link (stepper UI)
   - Steps: Basics → Availability → Duration/Buffer → Limits → Template → Review
   - Acceptance criteria:
     - Owner can save a new evergreen link; receives generated URL
