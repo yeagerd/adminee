@@ -229,7 +229,7 @@ The following items were marked as complete but contain significant incomplete w
   - **Acceptance criteria**: All CRUD operations persist to database; no more mock data
 
 #### 13.2 Authentication Integration (Critical)
-- [ ] Implement proper user authentication and authorization
+- [x] Implement proper user authentication and authorization
   - **Current state**: All endpoints use `"mock_user_id"` hardcoded
   - **Required**: Integrate with existing auth system (JWT, session, etc.)
   - **Files**: `services/meetings/api/bookings.py` (lines 239, 262, 365, 411, 451, 508, 566)

@@ -25,6 +25,7 @@ from services.meetings.services.audit_logger import (
     audit_logger,
     AuditEventType
 )
+from services.meetings.api.auth import verify_api_key_auth, get_user_id_from_request
 
 router = APIRouter()
 
@@ -66,9 +67,9 @@ async def get_public_link(token: str, request: Request):
     with get_session() as session:
         # Check if it's a one-time link
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
-        if one_time_link:
+        if one_time_link is not None:
             # Check if expired or used
-            if one_time_link.expires_at and one_time_link.expires_at < datetime.now():
+            if one_time_link.expires_at is not None and one_time_link.expires_at < datetime.now():
                 raise HTTPException(status_code=404, detail="Link has expired")
             if one_time_link.status != "active":
                 raise HTTPException(status_code=404, detail="Link has already been used")
@@ -239,8 +240,8 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
     with get_session() as session:
         # Find the link
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
-        if one_time_link:
-            if one_time_link.expires_at and one_time_link.expires_at < datetime.now():
+        if one_time_link is not None:
+            if one_time_link.expires_at is not None and one_time_link.expires_at < datetime.now():
                 raise HTTPException(status_code=404, detail="Link has expired")
             if one_time_link.status != "active":
                 raise HTTPException(status_code=404, detail="Link has already been used")
@@ -310,7 +311,11 @@ async def create_public_booking(token: str, booking_data: dict, request: Request
 
 # Owner API endpoints
 @router.post("/links")
-async def create_booking_link(link_data: dict, request: Request):
+async def create_booking_link(
+    link_data: dict, 
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Create a new evergreen booking link"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -323,12 +328,12 @@ async def create_booking_link(link_data: dict, request: Request):
         )
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
     # Sanitize input
     title = SecurityUtils.sanitize_input(link_data.get("title", ""))
     description = SecurityUtils.sanitize_input(link_data.get("description", ""))
-    
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
     
     # Database creation
     with get_session() as session:
@@ -386,7 +391,7 @@ async def create_booking_link(link_data: dict, request: Request):
         
         # Audit logging
         audit_logger.log_link_creation(
-            user_id=owner_user_id,  # TODO: Get from auth
+            user_id=owner_user_id,
             link_id=str(new_link.id),
             link_title=title,
             ip_address=request.client.host if request.client else None,
@@ -403,7 +408,10 @@ async def create_booking_link(link_data: dict, request: Request):
         }
 
 @router.get("/links")
-async def list_booking_links(request: Request = None):
+async def list_booking_links(
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """List all booking links for the authenticated user"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -417,8 +425,8 @@ async def list_booking_links(request: Request = None):
             )
             raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database query
     with get_session() as session:
@@ -462,7 +470,11 @@ async def list_booking_links(request: Request = None):
         }
 
 @router.get("/links/{link_id}")
-async def get_booking_link(link_id: str, request: Request = None):
+async def get_booking_link(
+    link_id: str, 
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Get a specific booking link"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -476,8 +488,8 @@ async def get_booking_link(link_id: str, request: Request = None):
             )
             raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database lookup
     with get_session() as session:
@@ -497,7 +509,12 @@ async def get_booking_link(link_id: str, request: Request = None):
         }}
 
 @router.patch("/links/{link_id}")
-async def update_booking_link(link_id: str, updates: dict, request: Request):
+async def update_booking_link(
+    link_id: str, 
+    updates: dict, 
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Update a booking link's settings"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -510,8 +527,8 @@ async def update_booking_link(link_id: str, updates: dict, request: Request):
         )
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database update
     with get_session() as session:
@@ -551,7 +568,7 @@ async def update_booking_link(link_id: str, updates: dict, request: Request):
         # Audit logging
         if changes:
             audit_logger.log_link_update(
-                user_id=owner_user_id,  # TODO: Get from auth
+                user_id=owner_user_id,
                 link_id=link_id,
                 changes=changes,
                 ip_address=request.client.host if request.client else None,
@@ -570,7 +587,11 @@ async def update_booking_link(link_id: str, updates: dict, request: Request):
         }, "message": "Booking link updated successfully"}
 
 @router.post("/links/{link_id}:duplicate")
-async def duplicate_booking_link(link_id: str, request: Request):
+async def duplicate_booking_link(
+    link_id: str, 
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Duplicate an existing booking link"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -583,8 +604,8 @@ async def duplicate_booking_link(link_id: str, request: Request):
         )
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database duplication
     with get_session() as session:
@@ -617,7 +638,7 @@ async def duplicate_booking_link(link_id: str, request: Request):
         # Audit logging
         audit_logger.log_event(
             event_type=AuditEventType.LINK_DUPLICATED,
-            user_id=owner_user_id,  # TODO: Get from auth
+            user_id=owner_user_id,
             resource_id=link_id,
             details={"new_link_id": str(duplicated.id), "new_slug": new_slug},
             ip_address=request.client.host if request.client else None,
@@ -633,7 +654,11 @@ async def duplicate_booking_link(link_id: str, request: Request):
         }
 
 @router.post("/links/{link_id}:toggle")
-async def toggle_booking_link(link_id: str, request: Request):
+async def toggle_booking_link(
+    link_id: str, 
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Toggle a booking link's active status"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -646,8 +671,8 @@ async def toggle_booking_link(link_id: str, request: Request):
         )
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database toggle
     with get_session() as session:
@@ -662,7 +687,7 @@ async def toggle_booking_link(link_id: str, request: Request):
         
         # Audit logging
         audit_logger.log_link_toggle(
-            user_id=owner_user_id,  # TODO: Get from auth
+            user_id=owner_user_id,
             link_id=link_id,
             new_status=link.is_active,
             ip_address=request.client.host if request.client else None,
@@ -673,12 +698,17 @@ async def toggle_booking_link(link_id: str, request: Request):
             "data": {
                 "id": link_id,
                 "is_active": link.is_active,
-                "message": f"Booking link {'activated' if link['is_active'] else 'deactivated'} successfully",
+                "message": f"Booking link {'activated' if link.is_active else 'deactivated'} successfully",
             }
         }
 
 @router.post("/links/{link_id}/one-time")
-async def create_one_time_link(link_id: str, one_time_data: dict, request: Request):
+async def create_one_time_link(
+    link_id: str, 
+    one_time_data: dict, 
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Create a one-time link for a specific recipient"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -691,8 +721,8 @@ async def create_one_time_link(link_id: str, one_time_data: dict, request: Reque
         )
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database creation
     with get_session() as session:
@@ -724,7 +754,7 @@ async def create_one_time_link(link_id: str, one_time_data: dict, request: Reque
         # Audit logging
         audit_logger.log_event(
             event_type=AuditEventType.ONE_TIME_LINK_CREATED,
-            user_id=owner_user_id,  # TODO: Get from auth
+            user_id=owner_user_id,
             resource_id=link_id,
             details={
                 "one_time_link_id": str(one_time_link.id),
@@ -745,7 +775,11 @@ async def create_one_time_link(link_id: str, one_time_data: dict, request: Reque
         }
 
 @router.get("/links/{link_id}/analytics")
-async def get_link_analytics(link_id: str, request: Request = None):
+async def get_link_analytics(
+    link_id: str, 
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
     """Get analytics for a specific booking link"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -759,8 +793,8 @@ async def get_link_analytics(link_id: str, request: Request = None):
             )
             raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
-    # TODO: Get actual user ID from authentication
-    owner_user_id = "mock_user_id"  # TODO: Get from auth
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
     
     # Database analytics calculation
     with get_session() as session:
@@ -812,7 +846,7 @@ async def get_link_analytics(link_id: str, request: Request = None):
         if request:
             audit_logger.log_event(
                 event_type=AuditEventType.ANALYTICS_VIEWED,
-                user_id=owner_user_id,  # TODO: Get from auth
+                user_id=owner_user_id,
                 resource_id=link_id,
                 details={"analytics_type": "link_performance"},
                 ip_address=request.client.host if request.client else None,
