@@ -8,6 +8,7 @@ export default function BookingsPage() {
   const [currentStep, setCurrentStep] = useState<Step>("basics");
   const [showOneTimeForm, setShowOneTimeForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"create" | "manage">("create");
+  const [manageView, setManageView] = useState<"links" | "bookings">("links");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -48,6 +49,40 @@ export default function BookingsPage() {
       createdAt: "2024-01-10",
       totalBookings: 5,
       conversionRate: "12.3%",
+    },
+  ]);
+
+  // Mock data for bookings
+  const [bookings] = useState([
+    {
+      id: "1",
+      title: "Coffee Chat with John Doe",
+      startTime: "2024-01-20T10:00:00Z",
+      endTime: "2024-01-20T10:30:00Z",
+      attendeeEmail: "john@example.com",
+      attendeeName: "John Doe",
+      linkTitle: "Coffee Chat",
+      status: "confirmed",
+    },
+    {
+      id: "2",
+      title: "Consultation with Jane Smith",
+      startTime: "2024-01-21T14:00:00Z",
+      endTime: "2024-01-21T15:00:00Z",
+      attendeeEmail: "jane@example.com",
+      attendeeName: "Jane Smith",
+      linkTitle: "Consultation",
+      status: "confirmed",
+    },
+    {
+      id: "3",
+      title: "Coffee Chat with Bob Wilson",
+      startTime: "2024-01-22T09:00:00Z",
+      endTime: "2024-01-22T09:30:00Z",
+      attendeeEmail: "bob@example.com",
+      attendeeName: "Bob Wilson",
+      linkTitle: "Coffee Chat",
+      status: "pending",
     },
   ]);
 
@@ -294,6 +329,18 @@ export default function BookingsPage() {
     alert(`Editing link ${linkId}... (edit mode pending)`);
   };
 
+  const formatDateTime = (dateTimeString: string) => {
+    const date = new Date(dateTimeString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  };
+
   if (activeTab === "manage") {
     return (
       <div className="p-6 max-w-6xl mx-auto">
@@ -307,77 +354,179 @@ export default function BookingsPage() {
           </button>
         </div>
 
-        {/* Links list */}
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h2 className="font-medium">Your Booking Links</h2>
-          </div>
-          
-          <div className="divide-y">
-            {existingLinks.map((link) => (
-              <div key={link.id} className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-medium">{link.title}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        link.isActive 
-                          ? "bg-green-100 text-green-800" 
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
-                        {link.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Slug: {link.slug} • Created: {link.createdAt}
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-sm">
-                      <span>Total bookings: {link.totalBookings}</span>
-                      <span>Conversion: {link.conversionRate}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                      onClick={() => toggleLinkStatus(link.id)}
-                    >
-                      {link.isActive ? "Disable" : "Enable"}
-                    </button>
-                    <button
-                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                      onClick={() => duplicateLink(link.id)}
-                    >
-                      Duplicate
-                    </button>
-                    <button
-                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                      onClick={() => editLink(link.id)}
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Tab navigation */}
+        <div className="flex border-b mb-6">
+          <button
+            className={`px-4 py-2 border-b-2 font-medium ${
+              manageView === "links"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setManageView("links")}
+          >
+            Links
+          </button>
+          <button
+            className={`px-4 py-2 border-b-2 font-medium ${
+              manageView === "bookings"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => setManageView("bookings")}
+          >
+            Bookings
+          </button>
         </div>
 
-        {/* Quick stats */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
-            <p className="text-2xl font-semibold">{existingLinks.length}</p>
-          </div>
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
-            <p className="text-2xl font-semibold">{existingLinks.filter(l => l.isActive).length}</p>
-          </div>
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
-            <p className="text-2xl font-semibold">{existingLinks.reduce((sum, l) => sum + l.totalBookings, 0)}</p>
-          </div>
-        </div>
+        {manageView === "links" ? (
+          <>
+            {/* Links list */}
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b bg-gray-50">
+                <h2 className="font-medium">Your Booking Links</h2>
+              </div>
+              
+              <div className="divide-y">
+                {existingLinks.map((link) => (
+                  <div key={link.id} className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-medium">{link.title}</h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            link.isActive 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-gray-100 text-gray-800"
+                          }`}>
+                            {link.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Slug: {link.slug} • Created: {link.createdAt}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2 text-sm">
+                          <span>Total bookings: {link.totalBookings}</span>
+                          <span>Conversion: {link.conversionRate}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                          onClick={() => toggleLinkStatus(link.id)}
+                        >
+                          {link.isActive ? "Disable" : "Enable"}
+                        </button>
+                        <button
+                          className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                          onClick={() => duplicateLink(link.id)}
+                        >
+                          Duplicate
+                        </button>
+                        <button
+                          className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                          onClick={() => editLink(link.id)}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick stats */}
+            <div className="mt-6 grid grid-cols-3 gap-4">
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
+                <p className="text-2xl font-semibold">{existingLinks.length}</p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
+                <p className="text-2xl font-semibold">{existingLinks.filter(l => l.isActive).length}</p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+                <p className="text-2xl font-semibold">{existingLinks.reduce((sum, l) => sum + l.totalBookings, 0)}</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Bookings list */}
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b bg-gray-50">
+                <h2 className="font-medium">Upcoming & Recent Bookings</h2>
+              </div>
+              
+              <div className="divide-y">
+                {bookings.map((booking) => (
+                  <div key={booking.id} className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-medium">{booking.title}</h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            booking.status === "confirmed"
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}>
+                            {booking.status === "confirmed" ? "Confirmed" : "Pending"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2 text-sm">
+                          <span>Attendee: {booking.attendeeName} ({booking.attendeeEmail})</span>
+                          <span>Link: {booking.linkTitle}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                          onClick={() => {
+                            // TODO: Open calendar event
+                            alert(`Opening calendar event for ${booking.title}...`);
+                          }}
+                        >
+                          Open Event
+                        </button>
+                        <button
+                          className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                          onClick={() => {
+                            // TODO: Reschedule booking
+                            alert(`Rescheduling ${booking.title}...`);
+                          }}
+                        >
+                          Reschedule
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bookings stats */}
+            <div className="mt-6 grid grid-cols-3 gap-4">
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+                <p className="text-2xl font-semibold">{bookings.length}</p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Confirmed</h3>
+                <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "confirmed").length}</p>
+              </div>
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Pending</h3>
+                <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "pending").length}</p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   }

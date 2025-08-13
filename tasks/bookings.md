@@ -129,7 +129,7 @@ Conventions
   - Acceptance criteria:
     - Toggling active state reflects immediately in API and UI
 
-- [ ] Bookings list and upcoming meetings view
+- [x] Bookings list and upcoming meetings view
   - Show bookings with date/time and recipient info; simple calendar-style view for upcoming
   - Acceptance criteria:
     - Bookings appear after creation; links to open calendar event
