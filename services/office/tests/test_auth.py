@@ -154,6 +154,8 @@ class TestAPIKeyFunctions:
             "write_calendar",
             "read_files",
             "write_files",
+            "read_contacts",
+            "write_contacts",
             "health",
         ]
         assert permissions == expected
@@ -164,7 +166,7 @@ class TestAPIKeyFunctions:
         permissions = get_permissions_from_api_key(
             get_test_api_keys()["chat"], api_key_mapping
         )
-        expected = ["read_emails", "read_calendar", "read_files", "health"]
+        expected = ["read_emails", "read_calendar", "read_files", "read_contacts", "health"]
         assert set(permissions) == set(expected)
 
     def test_get_permissions_from_api_key_meetings_service(self):
@@ -173,7 +175,7 @@ class TestAPIKeyFunctions:
         permissions = get_permissions_from_api_key(
             get_test_api_keys()["meetings"], api_key_mapping
         )
-        expected = ["send_emails", "read_calendar", "write_calendar", "health"]
+        expected = ["send_emails", "read_calendar", "write_calendar", "read_contacts", "health"]
         assert set(permissions) == set(expected)
 
     def test_get_permissions_from_api_key_invalid(self):
@@ -613,6 +615,8 @@ class TestPermissionMatrix:
             "write_calendar",
             "read_files",
             "write_files",
+            "read_contacts",
+            "write_contacts",
             "health",
         ]
 
