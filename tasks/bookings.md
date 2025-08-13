@@ -57,6 +57,8 @@ Conventions
   - Include meeting details and description with Q&A answers
   - Acceptance criteria:
     - Returns calendar_event_id; event visible in owner’s calendar
+    
+- [x] Event creation util
 
 ---
 
