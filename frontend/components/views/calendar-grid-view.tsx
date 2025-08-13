@@ -345,7 +345,7 @@ export default function CalendarGridView({
 
     // Global mouse event handlers for drag selection
     useEffect(() => {
-                const handleMouseMove = (e: MouseEvent) => {
+        const handleMouseMove = (e: MouseEvent) => {
             if (!isSelecting || !selectionStartRef.current) return;
 
             // Try to find the time slot element under the mouse
@@ -362,21 +362,21 @@ export default function CalendarGridView({
                 if (calendarGrid) {
                     const rect = calendarGrid.getBoundingClientRect();
                     const mouseY = e.clientY - rect.top;
-                    
+
                     // Calculate slot index based on mouse Y position
-                    // Each slot is 24px (h-6), grid starts at 6 AM
+                    // Each slot is 12px (h-3), grid starts at 6 AM
                     const gridStartY = 0; // Assuming grid starts at top
-                    const slotHeight = 24;
+                    const slotHeight = 12;
                     const calculatedSlotIndex = Math.floor((mouseY - gridStartY) / slotHeight);
-                    
+
                     if (calculatedSlotIndex >= 0 && calculatedSlotIndex < 64) { // 6 AM to 10 PM = 16 hours * 4 slots per hour
                         slotIndex = calculatedSlotIndex;
-                        
+
                         // Find the day column by mouse X position
                         const mouseX = e.clientX - rect.left;
                         const dayWidth = rect.width / (days.length + 1); // +1 for time labels column
                         const dayIndex = Math.floor((mouseX - 60) / dayWidth); // 60px for time labels
-                        
+
                         if (dayIndex >= 0 && dayIndex < days.length) {
                             day = days[dayIndex];
                         }
@@ -386,7 +386,7 @@ export default function CalendarGridView({
                 // Use the original closest() approach
                 slotIndex = parseInt(timeSlot.getAttribute('data-slot-index') || '0');
                 dayElement = timeSlot.closest('[data-day]');
-                
+
                 if (!dayElement) return;
 
                 const dayString = dayElement.getAttribute('data-day');
@@ -629,7 +629,8 @@ export default function CalendarGridView({
                                     {timeSlots.map((slot, index) => (
                                         <div
                                             key={index}
-                                            className="h-6 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
+                                            className={`h-3 flex items-start justify-end pr-2 text-xs text-gray-500 ${index % 4 === 3 ? 'border-b border-gray-200' : ''
+                                                }`}
                                         >
                                             {slot.minute === 0 ? slot.time : ''}
                                         </div>
@@ -655,7 +656,7 @@ export default function CalendarGridView({
                                                 const gridEndHour = 22;
                                                 if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
                                                     const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                    const totalHeight = (gridEndHour - gridStartHour) * 4 * 24; // 24px per 15-min slot (h-6)
+                                                    const totalHeight = (gridEndHour - gridStartHour) * 4 * 12; // 12px per 15-min slot (h-3)
                                                     const topPixels = (topPercent / 100) * totalHeight;
 
                                                     return (
@@ -674,13 +675,13 @@ export default function CalendarGridView({
                                             return null;
                                         })()}
 
-                                                                                {/* Selection overlay (drag) */}
+                                        {/* Selection overlay (drag) */}
                                         {selection && selection.day.toDateString() === day.toDateString() && (() => {
-                                            const topPos = Math.min(selection.startIndex, selection.endIndex) * 24;
-                                            const height = (Math.abs(selection.endIndex - selection.startIndex) + 1) * 24;
-                                            
+                                            const topPos = Math.min(selection.startIndex, selection.endIndex) * 12;
+                                            const height = (Math.abs(selection.endIndex - selection.startIndex) + 1) * 12;
+
                                             return (
-                                                <div 
+                                                <div
                                                     key={`selection-${selection.startIndex}-${selection.endIndex}`}
                                                     className="absolute left-0 right-0 pointer-events-none z-20"
                                                     style={{
@@ -688,9 +689,9 @@ export default function CalendarGridView({
                                                         height: `${height}px`,
                                                     }}
                                                 >
-                                                    <div 
-                                                        className="mx-1 rounded-md bg-blue-500/70 border border-blue-600 shadow-lg" 
-                                                        style={{ 
+                                                    <div
+                                                        className="mx-1 rounded-md bg-blue-500/70 border border-blue-600 shadow-lg"
+                                                        style={{
                                                             height: '100%',
                                                             transition: 'all 0.1s ease-out'
                                                         }}
@@ -698,13 +699,14 @@ export default function CalendarGridView({
                                                 </div>
                                             );
                                         })()}
-                                        
+
 
                                         {/* Time slots */}
                                         {timeSlots.map((slot, slotIndex) => (
                                             <div
                                                 key={slotIndex}
-                                                className="h-6 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                className={`h-3 hover:bg-gray-50 cursor-pointer transition-colors ${slotIndex % 4 === 3 ? 'border-b border-gray-200' : ''
+                                                    }`}
                                                 data-slot-index={slotIndex}
                                                 onMouseDown={() => {
                                                     setIsSelecting(true);
