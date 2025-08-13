@@ -113,6 +113,8 @@ Conventions
   - POST to API with chosen slot and answers
   - Acceptance criteria:
     - Success → confirmation screen; One-time link becomes inactive
+    
+- [x] Submit booking
 
 ---
 

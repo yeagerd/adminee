@@ -20,6 +20,8 @@ export default function PublicBookingPage({ params }: PageProps) {
   const [slotLoading, setSlotLoading] = useState<boolean>(false);
   const [slots, setSlots] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,7 +119,13 @@ export default function PublicBookingPage({ params }: PageProps) {
           {!slotLoading && slots.length > 0 && (
             <ul className="space-y-2">
               {slots.slice(0, 10).map((s, i) => (
-                <li key={i} className="border rounded p-2 text-sm">
+                <li
+                  key={i}
+                  className={`border rounded p-2 text-sm cursor-pointer ${
+                    selectedSlot === s ? "ring-2 ring-blue-500" : ""
+                  }`}
+                  onClick={() => setSelectedSlot(s)}
+                >
                   {s.start} → {s.end}
                 </li>
               ))}
@@ -152,6 +160,36 @@ export default function PublicBookingPage({ params }: PageProps) {
             </div>
           </div>
         )}
+        <div>
+          <button
+            disabled={!selectedSlot || submitting}
+            className="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+            onClick={async () => {
+              if (!selectedSlot) return;
+              setSubmitting(true);
+              try {
+                const res = await fetch(`/api/v1/bookings/public/${token}/book`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    start: selectedSlot.start,
+                    end: selectedSlot.end,
+                    attendeeEmail: answers.email || "guest@example.com",
+                    answers,
+                  }),
+                });
+                if (!res.ok) throw new Error("Failed to book");
+                alert("Booked! Check your email for confirmation.");
+              } catch (e) {
+                alert((e as any)?.message || "Booking failed");
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {submitting ? "Booking…" : "Book selected slot"}
+          </button>
+        </div>
       </div>
     </div>
   );
