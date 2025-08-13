@@ -463,15 +463,17 @@ async def schedule_meeting(
         # Create or update event via Office service
         existing_event_id = getattr(poll, "calendar_event_id", None)
         if existing_event_id:
-            # Normalize existing event id to required provider-prefixed format
-            normalized_event_id = (
-                existing_event_id
-                if (isinstance(existing_event_id, str) and "_" in existing_event_id)
-                else f"microsoft_{existing_event_id}"
-            )
+            # Verify existing event id has required provider-prefixed format
+            if not (isinstance(existing_event_id, str) and "_" in existing_event_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid calendar_event_id format: {existing_event_id}. Expected format: 'provider_originalId' (e.g., 'google_abc123' or 'microsoft_xyz789')"
+                )
+            
+            # Use the existing event id as-is since it should already be properly prefixed
             result = await calendar_integration.update_calendar_event(
                 str(user_id),
-                normalized_event_id,
+                existing_event_id,
                 title,
                 description,
                 start_time,
@@ -479,9 +481,6 @@ async def schedule_meeting(
                 participants,
                 location,
             )
-            # If we had to normalize, persist it for future updates
-            if normalized_event_id != existing_event_id:
-                setattr(poll, "calendar_event_id", normalized_event_id)
         else:
             result = await calendar_integration.create_calendar_event(
                 str(user_id),
