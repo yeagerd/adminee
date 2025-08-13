@@ -105,6 +105,15 @@ async def get_public_link(token: str, request: Request):
         if booking_link.settings and "duration" in booking_link.settings:
             duration_options = [booking_link.settings["duration"]] + [d for d in duration_options if d != booking_link.settings["duration"]]
         
+        # Track view analytics event
+        analytics_event = AnalyticsEvent(
+            link_id=booking_link.id,
+            event_type="view",
+            referrer=request.headers.get("referer", "direct")
+        )
+        session.add(analytics_event)
+        session.commit()
+        
         return {
             "data": {
                 "title": booking_link.slug,  # Use slug as title for now
