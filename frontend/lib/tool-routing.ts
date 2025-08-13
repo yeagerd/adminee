@@ -4,6 +4,7 @@ import { Tool } from '@/types/navigation';
 export const TOOL_ROUTES: Record<Tool, string> = {
     calendar: '/dashboard?tool=calendar',
     email: '/dashboard?tool=email',
+    contacts: '/dashboard?tool=contacts',
     documents: '/dashboard?tool=documents',
     tasks: '/dashboard?tool=tasks',
     packages: '/dashboard?tool=packages',
@@ -18,6 +19,7 @@ export const TOOL_ROUTES: Record<Tool, string> = {
 export const TOOL_NAMES: Record<Tool, string> = {
     calendar: 'Calendar',
     email: 'Email',
+    contacts: 'Contacts',
     documents: 'Documents',
     tasks: 'Tasks',
     packages: 'Package Tracker',
@@ -32,6 +34,7 @@ export const TOOL_NAMES: Record<Tool, string> = {
 export const TOOL_DESCRIPTIONS: Record<Tool, string> = {
     calendar: 'View and manage your calendar events',
     email: 'Read and send emails',
+    contacts: 'View and manage your contacts',
     documents: 'Browse and edit documents',
     tasks: 'Track your tasks and todos',
     packages: 'Track your packages',
@@ -90,6 +93,7 @@ export function getToolFromPathname(pathname: string): Tool | null {
     const pathToTool: Record<string, Tool> = {
         'calendar': 'calendar',
         'email': 'email',
+        'contacts': 'contacts',
         'documents': 'documents',
         'tasks': 'tasks',
         'packages': 'packages',
@@ -118,6 +122,7 @@ export function getToolIconName(tool: Tool): string {
     const iconMap: Record<Tool, string> = {
         calendar: 'Calendar',
         email: 'Mail',
+        contacts: 'Users',
         documents: 'FileText',
         tasks: 'ListChecks',
         packages: 'Package',
@@ -135,6 +140,7 @@ export function getToolColor(tool: Tool): string {
     const colorMap: Record<Tool, string> = {
         calendar: 'blue',
         email: 'green',
+        contacts: 'emerald',
         documents: 'purple',
         tasks: 'orange',
         packages: 'red',
@@ -152,6 +158,7 @@ export function getToolBadge(tool: Tool): string | null {
     const badgeMap: Record<Tool, string | null> = {
         calendar: null,
         email: null,
+        contacts: null,
         documents: null,
         tasks: null,
         packages: null,

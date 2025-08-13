@@ -8,6 +8,7 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useReducer, u
 const defaultToolSettings: Record<Tool, ToolSettings> = {
     calendar: { id: 'calendar', enabled: true, preferences: { view: 'month', showWeekends: true } },
     email: { id: 'email', enabled: true, preferences: { view: 'inbox', sortBy: 'date' } },
+    contacts: { id: 'contacts', enabled: true, preferences: {} },
     documents: { id: 'documents', enabled: false, preferences: { view: 'list' } },
     tasks: { id: 'tasks', enabled: false, preferences: { view: 'list' } },
     packages: { id: 'packages', enabled: true, preferences: {} },
@@ -25,6 +26,7 @@ const initialState: ToolState = {
     lastVisited: {
         calendar: '/dashboard?tool=calendar',
         email: '/dashboard?tool=email',
+        contacts: '/dashboard?tool=contacts',
         documents: '/dashboard?tool=documents',
         tasks: '/dashboard?tool=tasks',
         packages: '/dashboard?tool=packages',
@@ -37,6 +39,7 @@ const initialState: ToolState = {
     visitTimestamps: {
         calendar: 0,
         email: 0,
+        contacts: 0,
         documents: 0,
         tasks: 0,
         packages: 0,
