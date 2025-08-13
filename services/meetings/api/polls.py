@@ -236,50 +236,7 @@ async def create_poll(
         poll_title = db_poll.title
         participant_count = len(db_poll.participants)
 
-        # Convert SQLAlchemy model to dict to avoid MissingGreenlet errors
-        poll_dict = {
-            "id": db_poll.id,
-            "user_id": db_poll.user_id,
-            "title": db_poll.title,
-            "description": db_poll.description,
-            "duration_minutes": db_poll.duration_minutes,
-            "location": db_poll.location,
-            "meeting_type": db_poll.meeting_type,
-            "response_deadline": db_poll.response_deadline,
-            "min_participants": db_poll.min_participants,
-            "max_participants": db_poll.max_participants,
-            "reveal_participants": db_poll.reveal_participants,
-            "status": db_poll.status,
-            "created_at": db_poll.created_at,
-            "updated_at": db_poll.updated_at,
-            "poll_token": db_poll.poll_token,
-            "time_slots": [
-                {
-                    "id": slot.id,
-                    "poll_id": slot.poll_id,
-                    "start_time": slot.start_time,
-                    "end_time": slot.end_time,
-                    "timezone": slot.timezone,
-                    "is_available": slot.is_available,
-                    "created_at": slot.created_at,
-                }
-                for slot in db_poll.time_slots
-            ],
-            "participants": [
-                {
-                    "id": participant.id,
-                    "poll_id": participant.poll_id,
-                    "email": participant.email,
-                    "name": participant.name,
-                    "response_token": participant.response_token,
-                    "status": participant.status,
-                    "invited_at": participant.invited_at,
-                    "responded_at": participant.responded_at,
-                    "reminder_sent_count": participant.reminder_sent_count,
-                }
-                for participant in db_poll.participants
-            ],
-        }
+        # Response payload will be built after optional email sending and status updates
 
         # Send emails if requested
         if poll.send_emails:
@@ -359,21 +316,41 @@ async def create_poll(
                     )
                     email_tasks.append((participant, email_task))
 
-                # Send all emails concurrently
+                # Send all emails concurrently; do not cancel all on first failure
+                success_count = 0
+                failure_count = 0
+                failure_details = []
+                now_utc = datetime.now(timezone.utc)
                 if email_tasks:
-                    await asyncio.gather(*(task for _, task in email_tasks))
+                    results = await asyncio.gather(
+                        *(task for _, task in email_tasks), return_exceptions=True
+                    )
 
-                # Update participant statuses after successful email sending
-                for participant, _ in email_tasks:
-                    participant.status = ParticipantStatus.pending
-                    participant.invited_at = datetime.now(timezone.utc)
+                    for (participant, _), result in zip(email_tasks, results):
+                        if isinstance(result, Exception):
+                            failure_count += 1
+                            failure_details.append(
+                                {
+                                    "participant_id": str(participant.id),
+                                    "email": str(participant.email),
+                                    "error": str(result),
+                                }
+                            )
+                            continue
+                        # Mark only successful sends as pending/invited
+                        participant.status = ParticipantStatus.pending
+                        participant.invited_at = now_utc
+                        success_count += 1
 
-                await session.commit()
-                logger.info(
-                    "Emails sent successfully for new poll",
-                    poll_id=poll_id,
-                    participant_count=participant_count,
-                )
+                    await session.commit()
+                    logger.info(
+                        "Invitation emails processed",
+                        poll_id=poll_id,
+                        participant_count=participant_count,
+                        success_count=success_count,
+                        failure_count=failure_count,
+                        failures=failure_details,
+                    )
 
             except Exception as e:
                 logger.error(
@@ -391,6 +368,51 @@ async def create_poll(
             stored_user_id_type=stored_user_id_type,
             poll_title=poll_title,
         )
+
+        # Build and return the final response after any status updates
+        poll_dict = {
+            "id": db_poll.id,
+            "user_id": db_poll.user_id,
+            "title": db_poll.title,
+            "description": db_poll.description,
+            "duration_minutes": db_poll.duration_minutes,
+            "location": db_poll.location,
+            "meeting_type": db_poll.meeting_type,
+            "response_deadline": db_poll.response_deadline,
+            "min_participants": db_poll.min_participants,
+            "max_participants": db_poll.max_participants,
+            "reveal_participants": db_poll.reveal_participants,
+            "status": db_poll.status,
+            "created_at": db_poll.created_at,
+            "updated_at": db_poll.updated_at,
+            "poll_token": db_poll.poll_token,
+            "time_slots": [
+                {
+                    "id": slot.id,
+                    "poll_id": slot.poll_id,
+                    "start_time": slot.start_time,
+                    "end_time": slot.end_time,
+                    "timezone": slot.timezone,
+                    "is_available": slot.is_available,
+                    "created_at": slot.created_at,
+                }
+                for slot in db_poll.time_slots
+            ],
+            "participants": [
+                {
+                    "id": participant.id,
+                    "poll_id": participant.poll_id,
+                    "email": participant.email,
+                    "name": participant.name,
+                    "response_token": participant.response_token,
+                    "status": participant.status,
+                    "invited_at": participant.invited_at,
+                    "responded_at": participant.responded_at,
+                    "reminder_sent_count": participant.reminder_sent_count,
+                }
+                for participant in db_poll.participants
+            ],
+        }
 
         return MeetingPoll.model_validate(poll_dict)
 
