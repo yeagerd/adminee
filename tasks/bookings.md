@@ -24,7 +24,7 @@ Conventions
 ---
 
 ### 1. Data Models (Server)
-- [ ] Booking link models
+- [x] Booking link models
   - Entities: `BookingLink` (evergreen), `OneTimeLink`, `BookingTemplate`, `Booking` (scheduled meeting), `AnalyticsEvent`
   - Fields (minimum):
     - BookingLink: id, owner_user_id, slug/uuid, is_active, settings (duration options, buffers, booking window, limits, timezone behavior), template_id, created_at, updated_at
