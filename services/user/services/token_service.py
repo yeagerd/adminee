@@ -648,13 +648,6 @@ class TokenService:
             # Static mappings first
             if granted_scope in microsoft_scope_hierarchy:
                 expanded_granted_scopes.update(microsoft_scope_hierarchy[granted_scope])
-            # Generic rule: any Graph scope ending in .ReadWrite also implies the corresponding .Read
-            if granted_scope.startswith(
-                "https://graph.microsoft.com/"
-            ) and granted_scope.endswith(".ReadWrite"):
-                expanded_granted_scopes.add(
-                    granted_scope.replace(".ReadWrite", ".Read")
-                )
 
         # Check if all required scopes are in the expanded granted scopes
         return all(scope in expanded_granted_scopes for scope in required_scopes)
