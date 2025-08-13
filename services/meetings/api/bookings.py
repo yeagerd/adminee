@@ -1129,3 +1129,257 @@ async def delete_booking_template(
         return {"message": "Template deleted successfully"}
 
 
+# One-time Link Management Endpoints
+@router.get("/links/{link_id}/one-time")
+async def list_one_time_links(
+    link_id: str,
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """List all one-time links for a specific booking link"""
+    # Rate limiting for authenticated endpoints
+    if request:
+        client_key = get_client_key(request)
+        if not check_rate_limit(client_key, max_requests=100, window_seconds=3600):
+            audit_logger.log_rate_limit_exceeded(
+                client_key=client_key,
+                endpoint=f"/links/{link_id}/one-time",
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent")
+            )
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database query
+    with get_session() as session:
+        # Verify the user owns the booking link
+        link = session.query(BookingLink).filter_by(id=link_id, owner_user_id=owner_user_id).first()
+        if not link:
+            raise HTTPException(status_code=404, detail="Booking link not found")
+        
+        # Get all one-time links for this booking link
+        one_time_links = session.query(OneTimeLink).filter_by(booking_link_id=link_id).all()
+        
+        links_data = []
+        for one_time_link in one_time_links:
+            # Check if expired
+            is_expired = one_time_link.expires_at and one_time_link.expires_at < datetime.now()
+            
+            links_data.append({
+                "id": str(one_time_link.id),
+                "recipient_email": one_time_link.recipient_email,
+                "recipient_name": one_time_link.recipient_name,
+                "token": one_time_link.token,
+                "expires_at": one_time_link.expires_at.isoformat() if one_time_link.expires_at else None,
+                "status": one_time_link.status,
+                "created_at": one_time_link.created_at.isoformat() if one_time_link.created_at else None,
+                "is_expired": is_expired,
+                "public_url": f"/public/bookings/{one_time_link.token}",
+            })
+        
+        return {
+            "data": links_data,
+            "total": len(links_data),
+        }
+
+
+@router.get("/one-time/{token}")
+async def get_one_time_link_details(
+    token: str,
+    request: Request = None,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Get details of a one-time link (for owner)"""
+    # Rate limiting for authenticated endpoints
+    if request:
+        client_key = get_client_key(request)
+        if not check_rate_limit(client_key, max_requests=100, window_seconds=3600):
+            audit_logger.log_rate_limit_exceeded(
+                client_key=client_key,
+                endpoint=f"/one-time/{token}",
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent")
+            )
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database lookup
+    with get_session() as session:
+        one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
+        if not one_time_link:
+            raise HTTPException(status_code=404, detail="One-time link not found")
+        
+        # Verify the user owns the parent booking link
+        booking_link = session.query(BookingLink).filter_by(
+            id=one_time_link.booking_link_id, 
+            owner_user_id=owner_user_id
+        ).first()
+        if not booking_link:
+            raise HTTPException(status_code=403, detail="Not authorized to view this one-time link")
+        
+        # Check if expired
+        is_expired = one_time_link.expires_at and one_time_link.expires_at < datetime.now()
+        
+        return {"data": {
+            "id": str(one_time_link.id),
+            "recipient_email": one_time_link.recipient_email,
+            "recipient_name": one_time_link.recipient_name,
+            "token": one_time_link.token,
+            "expires_at": one_time_link.expires_at.isoformat() if one_time_link.expires_at else None,
+            "status": one_time_link.status,
+            "created_at": one_time_link.created_at.isoformat() if one_time_link.created_at else None,
+            "is_expired": is_expired,
+            "public_url": f"/public/bookings/{one_time_link.token}",
+            "parent_link_id": str(one_time_link.booking_link_id),
+        }}
+
+
+@router.patch("/one-time/{token}")
+async def update_one_time_link(
+    token: str,
+    updates: dict,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Update a one-time link"""
+    # Rate limiting for authenticated endpoints
+    client_key = get_client_key(request)
+    if not check_rate_limit(client_key, max_requests=50, window_seconds=3600):
+        audit_logger.log_rate_limit_exceeded(
+            client_key=client_key,
+            endpoint=f"/one-time/{token}",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database update
+    with get_session() as session:
+        one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
+        if not one_time_link:
+            raise HTTPException(status_code=404, detail="One-time link not found")
+        
+        # Verify the user owns the parent booking link
+        booking_link = session.query(BookingLink).filter_by(
+            id=one_time_link.booking_link_id, 
+            owner_user_id=owner_user_id
+        ).first()
+        if not booking_link:
+            raise HTTPException(status_code=403, detail="Not authorized to update this one-time link")
+        
+        # Track changes for audit logging
+        changes = {}
+        
+        # Update fields
+        if "recipient_email" in updates:
+            old_email = one_time_link.recipient_email
+            one_time_link.recipient_email = SecurityUtils.sanitize_input(updates["recipient_email"])
+            changes["recipient_email"] = {"old": old_email, "new": one_time_link.recipient_email}
+        
+        if "recipient_name" in updates:
+            old_name = one_time_link.recipient_name
+            one_time_link.recipient_name = SecurityUtils.sanitize_input(updates["recipient_name"])
+            changes["recipient_name"] = {"old": old_name, "new": one_time_link.recipient_name}
+        
+        if "expires_at" in updates:
+            old_expires = one_time_link.expires_at
+            new_expires = datetime.fromisoformat(updates["expires_at"])
+            one_time_link.expires_at = new_expires
+            changes["expires_at"] = {"old": old_expires.isoformat() if old_expires else None, "new": new_expires.isoformat()}
+        
+        if "status" in updates:
+            old_status = one_time_link.status
+            one_time_link.status = updates["status"]
+            changes["status"] = {"old": old_status, "new": one_time_link.status}
+        
+        session.commit()
+        
+        # Audit logging
+        if changes:
+            audit_logger.log_event(
+                event_type=AuditEventType.ONE_TIME_LINK_UPDATED,
+                user_id=owner_user_id,
+                resource_id=str(one_time_link.id),
+                details={"changes": changes},
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent")
+            )
+        
+        return {"data": {
+            "id": str(one_time_link.id),
+            "recipient_email": one_time_link.recipient_email,
+            "recipient_name": one_time_link.recipient_name,
+            "token": one_time_link.token,
+            "expires_at": one_time_link.expires_at.isoformat() if one_time_link.expires_at else None,
+            "status": one_time_link.status,
+            "created_at": one_time_link.created_at.isoformat() if one_time_link.created_at else None,
+            "public_url": f"/public/bookings/{one_time_link.token}",
+        }, "message": "One-time link updated successfully"}
+
+
+@router.delete("/one-time/{token}")
+async def delete_one_time_link(
+    token: str,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth)
+):
+    """Delete a one-time link"""
+    # Rate limiting for authenticated endpoints
+    client_key = get_client_key(request)
+    if not check_rate_limit(client_key, max_requests=20, window_seconds=3600):
+        audit_logger.log_rate_limit_exceeded(
+            client_key=client_key,
+            endpoint=f"/one-time/{token}",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    # Get authenticated user ID
+    owner_user_id = get_user_id_from_request(request)
+    
+    # Database deletion
+    with get_session() as session:
+        one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
+        if not one_time_link:
+            raise HTTPException(status_code=404, detail="One-time link not found")
+        
+        # Verify the user owns the parent booking link
+        booking_link = session.query(BookingLink).filter_by(
+            id=one_time_link.booking_link_id, 
+            owner_user_id=owner_user_id
+        ).first()
+        if not booking_link:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this one-time link")
+        
+        # Store info for audit logging
+        recipient_email = one_time_link.recipient_email
+        recipient_name = one_time_link.recipient_name
+        
+        session.delete(one_time_link)
+        session.commit()
+        
+        # Audit logging
+        audit_logger.log_event(
+            event_type=AuditEventType.ONE_TIME_LINK_DELETED,
+            user_id=owner_user_id,
+            resource_id=str(one_time_link.id),
+            details={
+                "recipient_email_hash": SecurityUtils.hash_email(recipient_email),
+                "recipient_name": recipient_name,
+                "parent_link_id": str(one_time_link.booking_link_id),
+            },
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        
+        return {"message": "One-time link deleted successfully"}
+
+

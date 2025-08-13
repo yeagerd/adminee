@@ -278,7 +278,7 @@ The following items were marked as complete but contain significant incomplete w
   - **Acceptance criteria**: Templates can be created, updated, and applied to booking links
 
 #### 13.9 One-time Link Storage (Medium Priority)
-- [ ] Implement one-time link persistence
+- [x] Implement one-time link persistence
   - **Current state**: `# TODO: Store in database` with no implementation
   - **Required**: Store one-time links in database with proper expiration handling
   - **Files**: `services/meetings/api/bookings.py` (line 503)
