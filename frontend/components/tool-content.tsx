@@ -14,6 +14,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import CalendarView from './views/calendar-view';
 import EmailView from './views/email-view';
+import ContactsView from './views/contacts-view';
 
 // Define MeetingPoll type for frontend use
 export interface MeetingPoll {
@@ -85,6 +86,8 @@ export function ToolContent() {
                 return <CalendarView toolDataLoading={toolDataLoading} activeTool={activeTool} />;
             case 'email':
                 return <EmailView toolDataLoading={toolDataLoading} activeTool={activeTool} />;
+            case 'contacts':
+                return <ContactsView toolDataLoading={toolDataLoading} activeTool={activeTool} />;
             case 'documents':
                 return (
                     <div className="p-8">
