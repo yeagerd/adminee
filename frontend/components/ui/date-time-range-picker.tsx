@@ -29,7 +29,7 @@ export function DateTimeRangePicker({
     const generateTimeOptions = useCallback((startTime: Date, maxDurationHours: number = 23.5) => {
         const options: Array<{ time: Date; label: string; duration: string }> = [];
         const startDateTime = new Date(startTime);
-        
+
         // Generate options in 15-minute increments
         for (let hour = 0; hour <= maxDurationHours; hour++) {
             for (let minute = 0; minute < 60; minute += 15) {
@@ -37,7 +37,7 @@ export function DateTimeRangePicker({
                 const durationMs = time.getTime() - startDateTime.getTime();
                 const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
                 const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-                
+
                 let durationLabel = '';
                 if (durationHours === 0) {
                     durationLabel = `${durationMinutes} mins`;
@@ -46,7 +46,7 @@ export function DateTimeRangePicker({
                 } else {
                     durationLabel = `${durationHours} hr${durationHours > 1 ? 's' : ''} ${durationMinutes} mins`;
                 }
-                
+
                 options.push({
                     time,
                     label: DateTime.fromJSDate(time).setZone(effectiveTimezone).toFormat('h:mm a'),
@@ -54,7 +54,7 @@ export function DateTimeRangePicker({
                 });
             }
         }
-        
+
         return options;
     }, [effectiveTimezone]);
 
@@ -64,7 +64,7 @@ export function DateTimeRangePicker({
             const newStartTime = new Date(date);
             newStartTime.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
             onStartTimeChange(newStartTime);
-            
+
             if (endTime) {
                 const duration = endTime.getTime() - startTime.getTime();
                 const newEndTime = new Date(newStartTime.getTime() + duration);
@@ -75,7 +75,7 @@ export function DateTimeRangePicker({
             const newStartTime = new Date(date);
             newStartTime.setHours(9, 0, 0, 0);
             onStartTimeChange(newStartTime);
-            
+
             const newEndTime = new Date(date);
             newEndTime.setHours(10, 0, 0, 0);
             onEndTimeChange(newEndTime);
@@ -86,7 +86,7 @@ export function DateTimeRangePicker({
     const handleStartTimeSelect = useCallback((time: Date) => {
         onStartTimeChange(time);
         setShowStartTimePicker(false);
-        
+
         // Adjust end time to maintain duration
         if (endTime) {
             const duration = endTime.getTime() - startTime!.getTime();
@@ -150,19 +150,19 @@ export function DateTimeRangePicker({
                                     const firstDay = new Date(currentMonth);
                                     const startDate = new Date(firstDay);
                                     startDate.setDate(startDate.getDate() - firstDay.getDay());
-                                    
+
                                     const dates = [];
                                     for (let i = 0; i < 42; i++) {
                                         const date = new Date(startDate);
                                         date.setDate(startDate.getDate() + i);
                                         dates.push(date);
                                     }
-                                    
+
                                     return dates.map((date, index) => {
                                         const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                                         const isToday = date.toDateString() === today.toDateString();
                                         const isSelected = startTime && date.toDateString() === startTime.toDateString();
-                                        
+
                                         return (
                                             <button
                                                 key={index}
@@ -182,7 +182,7 @@ export function DateTimeRangePicker({
                         </div>
                     )}
                 </div>
-                
+
                 {/* Start Time Picker */}
                 <div className="relative">
                     <Button
@@ -221,7 +221,7 @@ export function DateTimeRangePicker({
                         </div>
                     )}
                 </div>
-                
+
                 {/* End Time Picker */}
                 <div className="relative">
                     <Button
