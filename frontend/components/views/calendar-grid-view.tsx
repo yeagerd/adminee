@@ -716,8 +716,9 @@ export default function CalendarGridView({
                             <Button
                                 variant="ghost"
                                 onClick={() => {
-                                    // Clear selection but keep modal closed
+                                    // Clear selection and close modal
                                     setIsCreateOpen(false);
+                                    clearSelection();
                                 }}
                             >
                                 Cancel
