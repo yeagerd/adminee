@@ -5,8 +5,10 @@ import { EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import EmailThreadCard from './email-thread-card';
-import { useDraftState } from '@/hooks/use-draft-state';
+// removed global draft pane wiring for thread-level drafts
 import { getSession } from 'next-auth/react';
+import EmailThreadDraft from './email-thread-draft';
+import { Draft } from '@/types/draft';
 
 interface EmailThreadProps {
     thread: EmailThreadType;
@@ -20,7 +22,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
     selectedMessageId
 }) => {
     const [isStarred, setIsStarred] = useState(false);
-    const { setCurrentDraft, createNewDraft, updateDraft } = useDraftState();
+    const [threadDrafts, setThreadDrafts] = useState<Draft[]>([]);
 
     // Handle null/undefined thread or messages
     if (!thread || !thread.messages || thread.messages.length === 0) {
@@ -107,10 +109,10 @@ const EmailThread: React.FC<EmailThreadProps> = ({
         const bodyPrefix = mode === 'forward' ? '\n\n---------- Forwarded message ----------\n' : '\n\n';
         const content = `${bodyPrefix}${quotedBody}`;
 
-        const draft = createNewDraft('email', session?.user?.id || '');
-        updateDraft({
-            id: draft.id,
+        const newDraft: Draft = {
+            id: `local_${Date.now()}`,
             type: 'email',
+            status: 'draft',
             content,
             metadata: {
                 subject: subject?.trim(),
@@ -120,20 +122,13 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                 provider,
                 replyToMessageId: source.provider_message_id,
             },
+            isAIGenerated: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            userId: session?.user?.id || '',
             threadId: thread.id,
-        });
-        setCurrentDraft({
-            ...draft,
-            content,
-            metadata: {
-                subject: subject?.trim(),
-                recipients: Array.from(toSet),
-                cc: Array.from(ccSet),
-                bcc: [],
-                provider,
-                replyToMessageId: source.provider_message_id,
-            }
-        });
+        };
+        setThreadDrafts((prev) => [...prev, newDraft]);
     };
 
     const handleReplyClick = () => {
@@ -257,6 +252,14 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                         onReply={(email) => startEmailDraft('reply', email.id)}
                         onReplyAll={(email) => startEmailDraft('reply_all', email.id)}
                         onForward={(email) => startEmailDraft('forward', email.id)}
+                    />
+                ))}
+
+                {threadDrafts.map((d) => (
+                    <EmailThreadDraft
+                        key={d.id}
+                        initialDraft={d}
+                        onClose={() => setThreadDrafts((prev) => prev.filter((x) => x.id !== d.id))}
                     />
                 ))}
             </div>
