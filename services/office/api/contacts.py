@@ -13,7 +13,7 @@ from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import normalize_google_contact, normalize_microsoft_contact
 from services.office.models import Provider
-from services.office.schemas import ContactsListApiResponse, Contact
+from services.office.schemas import ContactList, Contact
 from services.office.api.email import get_user_account_info, get_provider_enum
 
 logger = get_logger(__name__)
@@ -60,7 +60,7 @@ def _get_contact_scopes(provider: str, write: bool = False) -> List[str]:
     return []
 
 
-@router.get("/", response_model=ContactsListApiResponse)
+@router.get("/", response_model=ContactList)
 async def list_contacts(
     request: Request,
     service_name: str = Depends(service_permission_required(["read_contacts"])),
@@ -69,7 +69,7 @@ async def list_contacts(
     q: Optional[str] = Query(None, description="Free-text search (name or email)"),
     company: Optional[str] = Query(None, description="Filter by company or email domain"),
     no_cache: bool = Query(False, description="Bypass cache and fetch fresh data from providers"),
-) -> ContactsListApiResponse:
+) -> ContactList:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
 
@@ -86,7 +86,7 @@ async def list_contacts(
         if not no_cache:
             cached = await cache_manager.get_from_cache(cache_key)
             if cached:
-                return ContactsListApiResponse(success=True, data=cached, cache_hit=True, request_id=request_id)
+                return ContactList(success=True, data=cached, cache_hit=True, request_id=request_id)
 
         factory = await get_api_client_factory()
 
@@ -176,7 +176,7 @@ async def list_contacts(
         if providers_used:
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
 
-        return ContactsListApiResponse(success=True, data=response_data, cache_hit=False, provider_used=(Provider(providers_used[0]) if len(providers_used) == 1 else None), request_id=request_id)
+        return ContactList(success=True, data=response_data, cache_hit=False, provider_used=(Provider(providers_used[0]) if len(providers_used) == 1 else None), request_id=request_id)
     except ValidationError:
         raise
     except Exception as e:
