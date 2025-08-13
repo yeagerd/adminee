@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
@@ -15,7 +16,7 @@ from services.common.logging_config import get_logger
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
-from services.meetings.models import get_session
+from services.meetings.models import get_session, get_async_session
 from services.meetings.models.meeting import PollStatus, ParticipantStatus
 from services.meetings.schemas import (
     MeetingPoll,
@@ -171,7 +172,7 @@ async def create_poll(
         poll_title=poll.title,
     )
 
-    with get_session() as session:
+    async with get_async_session() as session:
         poll_token = uuid4().hex
         db_poll = MeetingPollModel(
             id=uuid4(),
@@ -188,7 +189,7 @@ async def create_poll(
             poll_token=str(poll_token),
         )
         session.add(db_poll)
-        session.flush()
+        await session.flush()
         # Add time slots
         for slot in poll.time_slots:
             db_slot = TimeSlotModel(
@@ -210,15 +211,16 @@ async def create_poll(
                 response_token=response_token,
             )
             session.add(db_part)
-        session.commit()
-        session.refresh(db_poll)
+        await session.commit()
+        await session.refresh(db_poll)
 
         # Send emails if requested
         if poll.send_emails:
             try:
                 frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
-                # Send emails to all participants
+                # Prepare email tasks for concurrent sending
+                email_tasks = []
                 for participant in db_poll.participants:
                     response_url = f"{frontend_url}/public/meetings/respond/{participant.response_token}"
                     subject = f"You're invited: {db_poll.title}"
@@ -284,15 +286,22 @@ async def create_poll(
 
                     body = "\n".join(body_lines)
 
-                    await email_integration.send_invitation_email(
+                    # Create email task for concurrent execution
+                    email_task = email_integration.send_invitation_email(
                         str(participant.email), subject, body, user_id
                     )
+                    email_tasks.append((participant, email_task))
 
-                    # Update participant status to indicate invitation was sent
+                # Send all emails concurrently
+                if email_tasks:
+                    await asyncio.gather(*(task for _, task in email_tasks))
+
+                # Update participant statuses after successful email sending
+                for participant, _ in email_tasks:
                     participant.status = ParticipantStatus.pending
                     participant.invited_at = datetime.now(timezone.utc)
 
-                session.commit()
+                await session.commit()
                 logger.info(
                     "Emails sent successfully for new poll",
                     poll_id=str(db_poll.id),
