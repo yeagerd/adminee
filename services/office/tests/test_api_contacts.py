@@ -48,10 +48,10 @@ class TestContactsApi:
             class FakeGoogle:
                 async def __aenter__(self):
                     return self
-                
+
                 async def __aexit__(self, exc_type, exc_val, exc_tb):
                     pass
-                
+
                 async def get_contacts(self, page_size=200):
                     return {
                         "connections": [
@@ -73,10 +73,10 @@ class TestContactsApi:
             class FakeMS:
                 async def __aenter__(self):
                     return self
-                
+
                 async def __aexit__(self, exc_type, exc_val, exc_tb):
                     pass
-                
+
                 async def get_contacts(self, top=200, select=None, order_by=None):
                     return {
                         "value": [
