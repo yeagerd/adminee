@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
+import { useRouter } from 'next/navigation';
 // inline draft removed; thread-level draft card is handled by parent
 
 // Configure DOMPurify for email content
@@ -314,6 +315,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     onReplyAll,
     onForward,
 }) => {
+    const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
     const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
@@ -521,13 +523,13 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                                 // Only include recipients (to + cc)
                                                 email.to_addresses.forEach(a => addAddr(a));
                                                 email.cc_addresses.forEach(a => addAddr(a));
-                                                const participantsParam = parts.join(', ');
-                                                const url = new URL(window.location.href);
-                                                url.searchParams.set('tool', 'meetings');
-                                                url.searchParams.set('view', 'new');
-                                                url.searchParams.set('step', '3');
-                                                url.searchParams.set('participants', participantsParam);
-                                                window.history.pushState({ step: 3 }, '', url.toString());
+                                                const params = new URLSearchParams();
+                                                params.set('tool', 'meetings');
+                                                params.set('view', 'new');
+                                                params.set('step', '1');
+                                                if (email.subject) params.set('title', email.subject);
+                                                params.set('participants', parts.join(', '));
+                                                router.replace(`/dashboard?${params.toString()}`);
                                                 // Let meetings tool pick up the new view
                                                 // No explicit context call here to avoid cross-component coupling
                                             } catch (err) {

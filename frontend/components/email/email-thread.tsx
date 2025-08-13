@@ -9,6 +9,7 @@ import EmailThreadCard from './email-thread-card';
 import { getSession } from 'next-auth/react';
 import EmailThreadDraft from './email-thread-draft';
 import { Draft } from '@/types/draft';
+import { useRouter } from 'next/navigation';
 
 interface EmailThreadProps {
     thread: EmailThreadType;
@@ -21,6 +22,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
     onSelectMessage,
     selectedMessageId
 }) => {
+    const router = useRouter();
     const [isStarred, setIsStarred] = useState(false);
     const [threadDrafts, setThreadDrafts] = useState<Draft[]>([]);
 
@@ -260,13 +262,13 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                             };
                                             latest.to_addresses.forEach(a => addAddr(a));
                                             latest.cc_addresses.forEach(a => addAddr(a));
-                                            const participantsParam = parts.join(', ');
-                                            const url = new URL(window.location.href);
-                                            url.searchParams.set('tool', 'meetings');
-                                            url.searchParams.set('view', 'new');
-                                            url.searchParams.set('step', '3');
-                                            url.searchParams.set('participants', participantsParam);
-                                            window.history.pushState({ step: 3 }, '', url.toString());
+                                            const params = new URLSearchParams();
+                                            params.set('tool', 'meetings');
+                                            params.set('view', 'new');
+                                            params.set('step', '1');
+                                            if (latest.subject) params.set('title', latest.subject);
+                                            params.set('participants', parts.join(', '));
+                                            router.replace(`/dashboard?${params.toString()}`);
                                         } catch (err) {
                                             console.error('Failed to navigate to meeting poll creator:', err);
                                         }

@@ -487,9 +487,20 @@ export function MeetingPollNew() {
                 const parsed = parsePeopleFromText(prefill);
                 if (parsed && parsed.length > 0) {
                     addPeople(parsed);
-                    // If participants were prefilled, and we are at step 1, advance to step 3 for convenience
-                    setStep((s) => (s < 3 ? 3 : s));
                 }
+            }
+        } catch {
+            // ignore parse errors
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Prefill title from URL param if provided
+    useEffect(() => {
+        try {
+            const t = searchParams.get('title');
+            if (t && typeof t === 'string' && t.trim()) {
+                setTitle(t);
             }
         } catch {
             // ignore parse errors
