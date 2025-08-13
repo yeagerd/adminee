@@ -87,11 +87,12 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
         const handleBeforeUnload = () => {
             if (draft.type !== 'email') return;
             try {
-                // Try synchronous hint to the browser that we need to persist
-                // Note: sendBeacon would require an endpoint; here we trigger best-effort async without blocking
-                void draftService.saveDraft(draft);
+                // Best-effort: attempt to persist, and ensure errors are handled
+                void draftService.saveDraft(draft).catch(err => {
+                    console.error('beforeunload save failed:', err);
+                });
             } catch (err) {
-                console.error('beforeunload save failed:', err);
+                console.error('beforeunload save failed (sync):', err);
             }
         };
         const handleVisibility = async () => {
@@ -110,9 +111,13 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             document.removeEventListener('visibilitychange', handleVisibility);
             // Also try to save on unmount
             if (draft.type === 'email') {
-                void draftService.saveDraft(draft).catch(err => {
-                    console.error('unmount save failed:', err);
-                });
+                (async () => {
+                    try {
+                        await draftService.saveDraft(draft);
+                    } catch (err) {
+                        console.error('unmount save failed:', err);
+                    }
+                })();
             }
         };
     }, [draft]);
