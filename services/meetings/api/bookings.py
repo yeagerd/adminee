@@ -793,13 +793,13 @@ async def toggle_booking_link(
 
     # Database toggle
     with get_session() as session:
-            link = (
-                session.query(BookingLink)
-                .filter_by(id=link_id, owner_user_id=owner_user_id)
-                .first()
-            )
-            if not link:
-                raise NotFoundError("Booking link", "not found")
+        link = (
+            session.query(BookingLink)
+            .filter_by(id=link_id, owner_user_id=owner_user_id)
+            .first()
+        )
+        if not link:
+            raise NotFoundError("Booking link", "not found")
 
         old_status = link.is_active
         link.is_active = not link.is_active
@@ -830,7 +830,7 @@ async def create_one_time_link(
     one_time_data: dict,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Create a one-time link for a specific recipient"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -846,15 +846,15 @@ async def create_one_time_link(
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
 
-    # Database creation
-    with get_session() as session:
-        link = (
-            session.query(BookingLink)
-            .filter_by(id=link_id, owner_user_id=owner_user_id)
-            .first()
-        )
-        if not link:
-            raise NotFoundError(message="Booking link not found")
+            # Database creation
+        with get_session() as session:
+            link = (
+                session.query(BookingLink)
+                .filter_by(id=link_id, owner_user_id=owner_user_id)
+                .first()
+            )
+            if not link:
+                raise NotFoundError("Booking link", "not found")
 
         token = TokenGenerator.generate_one_time_token()
         expires_at = datetime.now() + timedelta(
