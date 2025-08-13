@@ -257,7 +257,7 @@ The following items were marked as complete but contain significant incomplete w
   - **Acceptance criteria**: View and booking events properly tracked and queryable
 
 #### 13.6 Availability Calculation (Medium Priority)
-- [ ] Implement business hours, buffers, and limits enforcement
+- [x] Implement business hours, buffers, and limits enforcement
   - **Current state**: `# TODO: post-process availability to enforce buffers, business hours, limits`
   - **Required**: Apply configuration settings to filter available slots
   - **Files**: `services/meetings/services/booking_availability.py` (line 32)

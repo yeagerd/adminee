@@ -167,45 +167,35 @@ async def get_public_availability(token: str, duration: int = 30, request: Reque
         if not booking_link or not booking_link.is_active:
             raise HTTPException(status_code=404, detail="Booking link not found or inactive")
         
-        # TODO: Replace with actual availability calculation using Office Service
-        # For now, generate mock availability based on business hours
-        base_date = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-        slots = []
+        # Use the enhanced availability calculation service
+        from services.meetings.services.booking_availability import compute_available_slots
         
-        # Apply business hours from settings
-        business_hours = booking_link.settings.get("business_hours", {}) if booking_link.settings else {}
+        # Get owner user ID for availability calculation
+        owner_user_id = booking_link.owner_user_id
         
-        for i in range(5):  # Next 5 days
-            for hour in range(9, 17):  # 9 AM to 5 PM
-                start_time = base_date + timedelta(days=i, hours=hour)
-                end_time = start_time + timedelta(minutes=duration)
-                
-                # Check if this time falls within business hours
-                day_name = start_time.strftime("%A").lower()
-                if day_name in business_hours and business_hours[day_name].get("enabled", True):
-                    start_hour = business_hours[day_name].get("start", "09:00")
-                    end_hour = business_hours[day_name].get("end", "17:00")
-                    
-                    start_hour_int = int(start_hour.split(":")[0])
-                    end_hour_int = int(end_hour.split(":")[0])
-                    
-                    if start_hour_int <= hour < end_hour_int:
-                        slots.append({
-                            "start": start_time.isoformat(),
-                            "end": end_time.isoformat(),
-                            "available": True,
-                        })
-                else:
-                    # Default business hours
-                    slots.append({
-                        "start": start_time.isoformat(),
-                        "end": end_time.isoformat(),
-                        "available": True,
-                    })
+        # Calculate availability for next 30 days
+        start_date = datetime.now()
+        end_date = start_date + timedelta(days=30)
+        
+        # Get settings for filtering
+        settings = booking_link.settings or {}
+        buffer_before = settings.get("buffer_before", 0)
+        buffer_after = settings.get("buffer_after", 0)
+        
+        # Compute available slots with all settings applied
+        availability_result = await compute_available_slots(
+            user_id=owner_user_id,
+            start=start_date,
+            end=end_date,
+            duration_minutes=duration,
+            buffer_before_minutes=buffer_before,
+            buffer_after_minutes=buffer_after,
+            settings=settings
+        )
         
         return {
             "data": {
-                "slots": slots,
+                "slots": availability_result.get("slots", []),
                 "duration": duration,
                 "timezone": "UTC",
             }
