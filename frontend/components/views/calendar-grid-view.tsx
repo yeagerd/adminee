@@ -8,10 +8,15 @@ import { gatewayClient } from '@/lib/gateway-client';
 import type { CalendarEvent } from '@/types/office-service';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { getSession } from 'next-auth/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { CalendarEventItem } from '../calendar-event-item';
 import { CalendarGridEvent } from './calendar-grid-event';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/use-toast';
 
 interface CalendarGridViewProps {
     toolDataLoading?: boolean;
@@ -46,6 +51,41 @@ export default function CalendarGridView({
     const [error, setError] = useState<string | null>(null);
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [viewType, setViewType] = useState<ViewType>('week');
+    const { toast } = useToast();
+
+    // Selection state for creating a new event
+    const [isSelecting, setIsSelecting] = useState(false);
+    const selectionStartRef = useRef<{ day: Date; slotIndex: number } | null>(null);
+    const [selection, setSelection] = useState<null | { day: Date; startIndex: number; endIndex: number }>(null);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [formTitle, setFormTitle] = useState('');
+    const [formDescription, setFormDescription] = useState('');
+    const [formLocation, setFormLocation] = useState('');
+    const [formAllDay, setFormAllDay] = useState(false);
+
+    // Derived start/end from current selection
+    const selectedStartEnd = useMemo(() => {
+        if (!selection) return null;
+        const gridStartHour = 6;
+        const slotMinutes = 30;
+        const startSlot = Math.min(selection.startIndex, selection.endIndex);
+        const endSlot = Math.max(selection.startIndex, selection.endIndex) + 1; // inclusive end slot -> add 1
+        const start = new Date(selection.day);
+        const startHours = gridStartHour + Math.floor(startSlot / 2);
+        const startMinutes = (startSlot % 2) * slotMinutes;
+        start.setHours(startHours, startMinutes, 0, 0);
+        const end = new Date(selection.day);
+        const endHours = gridStartHour + Math.floor(endSlot / 2);
+        const endMinutes = (endSlot % 2) * slotMinutes;
+        end.setHours(endHours, endMinutes, 0, 0);
+        return { start, end };
+    }, [selection]);
+
+    const clearSelection = useCallback(() => {
+        setIsSelecting(false);
+        selectionStartRef.current = null;
+        setSelection(null);
+    }, []);
 
     // Use external props if provided, otherwise use internal state
     // For list view, always use internal events to support navigation
@@ -186,9 +226,9 @@ export default function CalendarGridView({
         }
 
         try {
-            const session = await getSession();
-            const userId = session?.user?.id;
-            if (!userId) throw new Error('No user id found in session');
+            // const session = await getSession();
+            // const userId = session?.user?.id;
+            // if (!userId) throw new Error('No user id found in session');
 
 
 
@@ -492,7 +532,7 @@ export default function CalendarGridView({
                         {/* Time Grid */}
                         <div className="relative">
                             <div
-                                className="grid"
+                                className="grid select-none"
                                 style={{
                                     gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
                                     minWidth: `${60 + (days.length * 120)}px`
@@ -512,7 +552,15 @@ export default function CalendarGridView({
 
                                 {/* Day Columns */}
                                 {days.map((day, dayIndex) => (
-                                    <div key={dayIndex} className="border-r relative">
+                                    <div
+                                        key={dayIndex}
+                                        className="border-r relative"
+                                        onMouseLeave={() => {
+                                            if (isSelecting) {
+                                                setIsSelecting(false);
+                                            }
+                                        }}
+                                    >
                                         {/* Current time indicator */}
                                         {(() => {
                                             const now = DateTime.now().setZone(effectiveTimezone);
@@ -544,14 +592,46 @@ export default function CalendarGridView({
                                             return null;
                                         })()}
 
+                                        {/* Selection overlay (drag) */}
+                                        {selection && selection.day.toDateString() === day.toDateString() && (
+                                            <div className="absolute left-0 right-0 pointer-events-none z-10"
+                                                style={{
+                                                    top: `${Math.min(selection.startIndex, selection.endIndex) * 32}px`,
+                                                    height: `${(Math.abs(selection.endIndex - selection.startIndex) + 1) * 32}px`,
+                                                }}
+                                            >
+                                                <div className="mx-1 rounded bg-blue-200/60 border border-blue-400"></div>
+                                            </div>
+                                        )}
+
                                         {/* Time slots */}
                                         {timeSlots.map((slot, slotIndex) => (
                                             <div
                                                 key={slotIndex}
                                                 className="h-8 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                onMouseDown={() => {
+                                                    setIsSelecting(true);
+                                                    selectionStartRef.current = { day, slotIndex };
+                                                    setSelection({ day, startIndex: slotIndex, endIndex: slotIndex });
+                                                }}
+                                                onMouseEnter={() => {
+                                                    if (!isSelecting || !selectionStartRef.current) return;
+                                                    if (selectionStartRef.current.day.toDateString() !== day.toDateString()) return;
+                                                    setSelection({ day, startIndex: selectionStartRef.current.slotIndex, endIndex: slotIndex });
+                                                }}
+                                                onMouseUp={() => {
+                                                    if (!selectionStartRef.current) return;
+                                                    if (selectionStartRef.current.day.toDateString() !== day.toDateString()) {
+                                                        clearSelection();
+                                                        return;
+                                                    }
+                                                    setIsSelecting(false);
+                                                    setIsCreateOpen(true);
+                                                }}
                                                 onClick={() => {
-                                                    // Future: Create event on click
-                                                    console.log('Create event at:', day, slot.time);
+                                                    // Single click create (30 min slot)
+                                                    setSelection({ day, startIndex: slotIndex, endIndex: slotIndex });
+                                                    setIsCreateOpen(true);
                                                 }}
                                             />
                                         ))}
@@ -578,6 +658,110 @@ export default function CalendarGridView({
                     </div>
                 )}
             </div>
+
+            {/* Create Event Modal */}
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+                setIsCreateOpen(open);
+                if (!open) {
+                    setFormTitle('');
+                    setFormDescription('');
+                    setFormLocation('');
+                    setFormAllDay(false);
+                    clearSelection();
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>New meeting</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="title">Title</Label>
+                            <Input id="title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Meeting title" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div className="text-muted-foreground">Start</div>
+                                <div className="font-medium">
+                                    {selectedStartEnd ? DateTime.fromJSDate(selectedStartEnd.start).setZone(effectiveTimezone).toFormat('EEE, MMM d h:mm a') : '—'}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-muted-foreground">End</div>
+                                <div className="font-medium">
+                                    {selectedStartEnd ? DateTime.fromJSDate(selectedStartEnd.end).setZone(effectiveTimezone).toFormat('EEE, MMM d h:mm a') : '—'}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch id="allDay" checked={formAllDay} onCheckedChange={setFormAllDay} />
+                            <Label htmlFor="allDay">All day</Label>
+                        </div>
+                        <div>
+                            <Label htmlFor="location">Location</Label>
+                            <Input id="location" value={formLocation} onChange={(e) => setFormLocation(e.target.value)} placeholder="Location or conferencing" />
+                        </div>
+                        <div>
+                            <Label htmlFor="description">Description</Label>
+                            <Textarea id="description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Add details" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <div className="flex w-full justify-between gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    // Clear selection but keep modal closed
+                                    setIsCreateOpen(false);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => {
+                                        setIsCreateOpen(false);
+                                        clearSelection();
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        if (!selectedStartEnd) return;
+                                        const title = formTitle.trim() || 'New meeting';
+                                        try {
+                                            const startUtc = DateTime.fromJSDate(selectedStartEnd.start).setZone(effectiveTimezone).toUTC();
+                                            const endUtc = DateTime.fromJSDate(selectedStartEnd.end).setZone(effectiveTimezone).toUTC();
+                                            await gatewayClient.createCalendarEvent({
+                                                title,
+                                                description: formDescription || undefined,
+                                                start_time: startUtc.toISO()!,
+                                                end_time: endUtc.toISO()!,
+                                                all_day: formAllDay || false,
+                                                location: formLocation || undefined,
+                                            } as unknown as any);
+                                            setIsCreateOpen(false);
+                                            clearSelection();
+                                            setFormTitle('');
+                                            setFormDescription('');
+                                            setFormLocation('');
+                                            setFormAllDay(false);
+                                            await (onRefresh ? onRefresh() : handleRefresh());
+                                            toast({ description: 'Meeting created' });
+                                        } catch (e) {
+                                            toast({ description: e instanceof Error ? e.message : 'Failed to create meeting' });
+                                        }
+                                    }}
+                                >
+                                    Save
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 } 
