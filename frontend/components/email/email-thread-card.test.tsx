@@ -19,7 +19,7 @@ jest.mock('next-auth/react', () => ({
   useSession: () => ({ data: null, status: 'unauthenticated' }),
   signIn: jest.fn(),
   signOut: jest.fn(),
-  SessionProvider: ({ children }: any) => children,
+  SessionProvider: ({ children }: { children?: React.ReactNode }): JSX.Element => <>{children}</>,
 }));
 
 const baseEmail: EmailMessage = {
