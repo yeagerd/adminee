@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, Request, Path
+from fastapi import APIRouter, Depends, Query, Request, Path, Body
 
 from services.common.http_errors import ServiceError, ValidationError
 from services.common.logging_config import get_logger, request_id_var
@@ -14,6 +14,7 @@ from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import normalize_google_contact, normalize_microsoft_contact
 from services.office.models import Provider
 from services.office.schemas import ContactList, Contact
+from pydantic import BaseModel
 from services.office.api.email import get_user_account_info, get_provider_enum
 
 logger = get_logger(__name__)
@@ -58,6 +59,51 @@ def _get_contact_scopes(provider: str, write: bool = False) -> List[str]:
             "https://graph.microsoft.com/Contacts.ReadWrite" if write else "https://graph.microsoft.com/Contacts.Read",
         ]
     return []
+
+
+class _ContactCreatePayload(BaseModel):
+    provider: Optional[str] = None
+    full_name: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    emails: Optional[List[Any]] = None  # Accept strings or objects with email/address/value
+    company: Optional[str] = None
+    job_title: Optional[str] = None
+    phones: Optional[List[str]] = None
+
+
+class _ContactUpdatePayload(BaseModel):
+    provider: Optional[str] = None
+    full_name: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    company: Optional[str] = None
+    job_title: Optional[str] = None
+    emails: Optional[List[Any]] = None  # Accept strings or objects with email/address/value
+    phones: Optional[List[str]] = None
+
+
+def _extract_email_strings(raw_emails: Optional[List[Any]]) -> Optional[List[str]]:
+    if not raw_emails:
+        return None
+    result: List[str] = []
+    for item in raw_emails:
+        if isinstance(item, str):
+            result.append(item)
+            continue
+        if isinstance(item, dict):
+            addr = item.get("email") or item.get("address") or item.get("value")
+            if addr:
+                result.append(addr)
+            continue
+        # Try attribute access (e.g., EmailAddress model)
+        try:
+            addr = getattr(item, "email", None)
+            if addr:
+                result.append(addr)
+        except Exception:
+            continue
+    return result or None
 
 
 @router.get("/", response_model=ContactList)
@@ -188,17 +234,32 @@ async def list_contacts(
 async def create_contact(
     request: Request,
     service_name: str = Depends(service_permission_required(["write_contacts"])),
-    provider: str = Query(..., description="Provider to create contact in (google, microsoft)"),
-    full_name: Optional[str] = None,
-    given_name: Optional[str] = None,
-    family_name: Optional[str] = None,
+    provider: Optional[str] = Query(None, description="Provider to create contact in (google, microsoft) - optional if provided in JSON body"),
+    full_name: Optional[str] = Query(None),
+    given_name: Optional[str] = Query(None),
+    family_name: Optional[str] = Query(None),
     emails: Optional[List[str]] = Query(None),
-    company: Optional[str] = None,
-    job_title: Optional[str] = None,
+    company: Optional[str] = Query(None),
+    job_title: Optional[str] = Query(None),
     phones: Optional[List[str]] = Query(None),
+    payload: Optional[_ContactCreatePayload] = Body(None),
 ) -> Dict[str, Any]:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
+    # Prefer JSON body if present, else use query params for backward compatibility
+    if payload is not None:
+        provider = payload.provider or provider
+        full_name = payload.full_name if payload.full_name is not None else full_name
+        given_name = payload.given_name if payload.given_name is not None else given_name
+        family_name = payload.family_name if payload.family_name is not None else family_name
+        emails = _extract_email_strings(payload.emails) if payload.emails is not None else emails
+        company = payload.company if payload.company is not None else company
+        job_title = payload.job_title if payload.job_title is not None else job_title
+        phones = payload.phones if payload.phones is not None else phones
+
+    if not provider:
+        raise ValidationError(message="Invalid provider", field="provider")
+
     prov_enum = get_provider_enum(provider)
     if prov_enum is None:
         raise ValidationError(message="Invalid provider", field="provider")
@@ -225,22 +286,22 @@ async def create_contact(
             created = await client.create_contact(person)
             normalized = normalize_google_contact(created, account_email, account_name)
         elif isinstance(client, MicrosoftAPIClient):
-            payload: Dict[str, Any] = {}
+            ms_payload: Dict[str, Any] = {}
             if full_name:
-                payload["displayName"] = full_name
+                ms_payload["displayName"] = full_name
             if given_name:
-                payload["givenName"] = given_name
+                ms_payload["givenName"] = given_name
             if family_name:
-                payload["surname"] = family_name
+                ms_payload["surname"] = family_name
             if emails:
-                payload["emailAddresses"] = [{"address": e} for e in emails]
+                ms_payload["emailAddresses"] = [{"address": e} for e in emails]
             if company:
-                payload["companyName"] = company
+                ms_payload["companyName"] = company
             if job_title:
-                payload["jobTitle"] = job_title
+                ms_payload["jobTitle"] = job_title
             if phones:
-                payload["businessPhones"] = phones
-            created = await client.create_contact(payload)
+                ms_payload["businessPhones"] = phones
+            created = await client.create_contact(ms_payload)
             normalized = normalize_microsoft_contact(created, account_email, account_name)
         else:
             raise ServiceError(message=f"Unsupported provider: {provider}")
@@ -257,17 +318,29 @@ async def update_contact(
     contact_id: str = Path(..., description="Unified contact id (provider_originalId) or provider id for write-through"),
     request: Request = None,
     service_name: str = Depends(service_permission_required(["write_contacts"])),
-    provider: Optional[str] = Query(None, description="Provider to update in (if unified id not used)"),
-    full_name: Optional[str] = None,
-    given_name: Optional[str] = None,
-    family_name: Optional[str] = None,
-    company: Optional[str] = None,
-    job_title: Optional[str] = None,
+    provider: Optional[str] = Query(None, description="Provider to update in (if unified id not used) - optional if provided in JSON body"),
+    full_name: Optional[str] = Query(None),
+    given_name: Optional[str] = Query(None),
+    family_name: Optional[str] = Query(None),
+    company: Optional[str] = Query(None),
+    job_title: Optional[str] = Query(None),
     emails: Optional[List[str]] = Query(None),
     phones: Optional[List[str]] = Query(None),
+    payload: Optional[_ContactUpdatePayload] = Body(None),
 ) -> Dict[str, Any]:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
+
+    # Prefer JSON body if present, else use query params for backward compatibility
+    if payload is not None:
+        provider = payload.provider or provider
+        full_name = payload.full_name if payload.full_name is not None else full_name
+        given_name = payload.given_name if payload.given_name is not None else given_name
+        family_name = payload.family_name if payload.family_name is not None else family_name
+        company = payload.company if payload.company is not None else company
+        job_title = payload.job_title if payload.job_title is not None else job_title
+        emails = _extract_email_strings(payload.emails) if payload.emails is not None else emails
+        phones = payload.phones if payload.phones is not None else phones
 
     prov = provider
     prov_id = contact_id
@@ -302,22 +375,22 @@ async def update_contact(
             updated = await client.update_contact(f"people/{prov_id}" if not prov_id.startswith("people/") else prov_id, person)
             normalized = normalize_google_contact(updated, account_email, account_name)
         elif isinstance(client, MicrosoftAPIClient):
-            payload: Dict[str, Any] = {}
+            ms_payload: Dict[str, Any] = {}
             if full_name is not None:
-                payload["displayName"] = full_name
+                ms_payload["displayName"] = full_name
             if given_name is not None:
-                payload["givenName"] = given_name
+                ms_payload["givenName"] = given_name
             if family_name is not None:
-                payload["surname"] = family_name
+                ms_payload["surname"] = family_name
             if company is not None:
-                payload["companyName"] = company
+                ms_payload["companyName"] = company
             if job_title is not None:
-                payload["jobTitle"] = job_title
+                ms_payload["jobTitle"] = job_title
             if emails is not None:
-                payload["emailAddresses"] = [{"address": e} for e in emails]
+                ms_payload["emailAddresses"] = [{"address": e} for e in emails]
             if phones is not None:
-                payload["businessPhones"] = phones
-            updated = await client.update_contact(prov_id, payload)
+                ms_payload["businessPhones"] = phones
+            updated = await client.update_contact(prov_id, ms_payload)
             normalized = normalize_microsoft_contact(updated, account_email, account_name)
         else:
             raise ServiceError(message=f"Unsupported provider: {prov}")
