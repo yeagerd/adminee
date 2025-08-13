@@ -35,6 +35,41 @@ class GoogleAPIClient(BaseAPIClient):
         """Get base URL for Google APIs"""
         return "https://www.googleapis.com"
 
+    # Contacts (People API)
+    async def get_contacts(
+        self,
+        page_size: int = 200,
+        page_token: Optional[str] = None,
+        person_fields: str = "names,emailAddresses,organizations,photos,phoneNumbers,addresses",
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {
+            "pageSize": page_size,
+            "personFields": person_fields,
+            "sortOrder": "LAST_MODIFIED_DESCENDING",
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        response = await self.get("/people/v1/people/me/connections", params=params)
+        return response.json()
+
+    async def get_contact(self, resource_name: str, person_fields: str = "names,emailAddresses,organizations,photos,phoneNumbers,addresses") -> Dict[str, Any]:
+        params = {"personFields": person_fields}
+        response = await self.get(f"/people/v1/{resource_name}", params=params)
+        return response.json()
+
+    async def create_contact(self, person: Dict[str, Any]) -> Dict[str, Any]:
+        # people.createContact uses POST to /people/v1/people:createContact
+        response = await self.post("/people/v1/people:createContact", json_data={"person": person})
+        return response.json()
+
+    async def update_contact(self, resource_name: str, person: Dict[str, Any], update_person_fields: str = "names,emailAddresses,organizations,phoneNumbers,addresses,photos") -> Dict[str, Any]:
+        params = {"updatePersonFields": update_person_fields}
+        response = await self.patch(f"/people/v1/{resource_name}:updateContact", params=params, json_data={"person": person})
+        return response.json()
+
+    async def delete_contact(self, resource_name: str) -> None:
+        await self.delete(f"/people/v1/{resource_name}:deleteContact")
+
     # Gmail API methods
     async def get_messages(
         self,

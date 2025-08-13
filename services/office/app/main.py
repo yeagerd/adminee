@@ -15,6 +15,7 @@ from services.common.logging_config import (
 from services.office.api.calendar import router as calendar_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
+from services.office.api.contacts import router as contacts_router
 from services.office.core.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
@@ -65,6 +66,7 @@ register_briefly_exception_handlers(app)
 app.include_router(email_router, prefix="/v1")
 app.include_router(calendar_router, prefix="/v1")
 app.include_router(files_router, prefix="/v1")
+app.include_router(contacts_router, prefix="/v1")
 
 
 @app.get("/")

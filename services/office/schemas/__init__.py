@@ -516,9 +516,43 @@ class IntegrationHealthCheck(BaseModel):
     integrations: Dict[str, Dict[str, Any]]
 
 
+class ContactPhone(BaseModel):
+    type: Optional[str] = Field(None, description="Type of phone number (work, mobile, home)")
+    number: str = Field(..., description="Phone number in E.164 or localized format")
+
+
+class Contact(BaseModel):
+    id: str
+    full_name: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    emails: List[EmailAddress] = []
+    primary_email: Optional[EmailAddress] = None
+    company: Optional[str] = None
+    job_title: Optional[str] = None
+    phones: List[ContactPhone] = []
+    photo_url: Optional[str] = None
+    # Provenance Information
+    provider: Provider
+    provider_contact_id: str
+    account_email: EmailStr
+    account_name: Optional[str] = None
+
+
+class ContactList(BaseModel):
+    """Response model for contact lists."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains contacts, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
 # Type aliases for common response types
 AvailabilityApiResponse = TypedApiResponse[AvailabilityResponse]
 CalendarEventApiResponse = TypedApiResponse[CalendarEventResponse]
 CalendarEventListApiResponse = TypedApiResponse[List[CalendarEvent]]
 EmailMessageListApiResponse = TypedApiResponse[List[EmailMessage]]
 DriveFileListApiResponse = TypedApiResponse[List[DriveFile]]
+ContactsListApiResponse = TypedApiResponse[List[Contact]]

@@ -5,6 +5,8 @@ import {
     GetEmailsResponse,
     GetThreadResponse,
     GetThreadsResponse,
+    GetContactsResponse,
+    Contact,
 } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
@@ -824,6 +826,36 @@ export class GatewayClient {
         return this.request('/api/v1/shipments/packages/collect-data', {
             method: 'POST',
             body: data,
+        });
+    }
+
+    async getContacts(providers?: string[], limit?: number, q?: string, company?: string, noCache?: boolean): Promise<ApiResponse<GetContactsResponse>> {
+        const params = new URLSearchParams();
+        if (providers) providers.forEach(p => params.append('providers', p));
+        if (limit) params.append('limit', String(limit));
+        if (q) params.append('q', q);
+        if (company) params.append('company', company);
+        if (noCache) params.append('no_cache', 'true');
+        return this.request<ApiResponse<GetContactsResponse>>(`/api/v1/contacts?${params.toString()}`);
+    }
+
+    async updateContact(contactId: string, payload: Partial<Contact>): Promise<ApiResponse<{ contact: Contact }>> {
+        return this.request<ApiResponse<{ contact: Contact }>>(`/api/v1/contacts/${contactId}`, {
+            method: 'PUT',
+            body: payload,
+        });
+    }
+
+    async createContact(payload: Partial<Contact> & { provider?: 'google' | 'microsoft' }): Promise<ApiResponse<{ contact: Contact }>> {
+        return this.request<ApiResponse<{ contact: Contact }>>(`/api/v1/contacts`, {
+            method: 'POST',
+            body: payload,
+        });
+    }
+
+    async deleteContact(contactId: string): Promise<ApiResponse<{ deleted: boolean }>> {
+        return this.request<ApiResponse<{ deleted: boolean }>>(`/api/v1/contacts/${contactId}`, {
+            method: 'DELETE',
         });
     }
 }

@@ -36,6 +36,8 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
             "write_calendar",
             "read_files",
             "write_files",
+            "read_contacts",
+            "write_contacts",
             "health",
         ],
         settings_key="api_frontend_office_key",
@@ -48,6 +50,7 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
             "read_emails",
             "read_calendar",
             "read_files",
+            "read_contacts",
             "health",
         ],  # No write permissions
         settings_key="api_chat_office_key",
@@ -75,6 +78,8 @@ SERVICE_PERMISSIONS = {
         "write_calendar",
         "read_files",
         "write_files",
+        "read_contacts",
+        "write_contacts",
         "health",
     ],
 }

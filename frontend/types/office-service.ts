@@ -137,4 +137,34 @@ export interface GetEmailsResponse {
     provider_errors?: Record<string, string>;
     has_more: boolean;
     request_metadata?: Record<string, unknown>;
+}
+
+export interface ContactPhone {
+  type?: string;
+  number: string;
+}
+
+export interface Contact {
+  id: string;
+  full_name?: string;
+  given_name?: string;
+  family_name?: string;
+  emails: EmailAddress[];
+  primary_email?: EmailAddress;
+  company?: string;
+  job_title?: string;
+  phones: ContactPhone[];
+  photo_url?: string;
+  provider: 'google' | 'microsoft';
+  provider_contact_id: string;
+  account_email: string;
+  account_name?: string;
+}
+
+export interface GetContactsResponse {
+  contacts: Contact[];
+  total_count: number;
+  providers_used: string[];
+  provider_errors?: Record<string, string>;
+  request_metadata?: Record<string, unknown>;
 } 

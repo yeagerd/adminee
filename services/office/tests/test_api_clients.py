@@ -750,3 +750,13 @@ class TestAPIClientFactory:
         assert Provider.GOOGLE in providers
         assert Provider.MICROSOFT in providers
         assert len(providers) == 2
+
+
+class TestDefaultScopes:
+    @pytest.mark.asyncio
+    async def test_default_scopes_include_contacts(self):
+        factory = APIClientFactory()
+        scopes_google = factory._get_default_scopes(Provider.GOOGLE)
+        scopes_ms = factory._get_default_scopes(Provider.MICROSOFT)
+        assert any('contacts' in s for s in scopes_google)
+        assert any('Contacts' in s for s in scopes_ms)
