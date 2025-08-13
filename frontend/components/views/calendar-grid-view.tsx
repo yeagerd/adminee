@@ -1,13 +1,13 @@
 "use client"
 
 import { Button } from '@/components/ui/button';
+import { DateTimeRangePicker } from '@/components/ui/date-time-range-picker';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { DateTimeRangePicker } from '@/components/ui/date-time-range-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
@@ -143,7 +143,7 @@ export default function CalendarGridView({
         return results;
     }, []);
 
-    
+
 
     // Use external props if provided, otherwise use internal state
     // For list view, always use internal events to support navigation
@@ -214,7 +214,7 @@ export default function CalendarGridView({
         return result;
     }, [currentDate, viewType]);
 
-    // Generate time slots (6 AM to 10 PM) - 15 minute increments
+    // Generate time slots (6 AM to 10:45 PM) - 15 minute increments
     const timeSlots = useMemo(() => {
         const slots: TimeSlot[] = [];
         for (let hour = 6; hour <= 22; hour++) {
@@ -229,6 +229,14 @@ export default function CalendarGridView({
                 });
             }
         }
+        // Add the final 15-minute slot at 10:45 PM (22:45)
+        const finalTimeString = '22:45';
+        const finalTime = DateTime.fromFormat(finalTimeString, 'H:mm', { zone: effectiveTimezone });
+        slots.push({
+            hour: 22,
+            minute: 45,
+            time: finalTime.toFormat('h:mm a')
+        });
         return slots;
     }, [effectiveTimezone]);
 
@@ -429,7 +437,7 @@ export default function CalendarGridView({
                     const slotHeight = 12;
                     const calculatedSlotIndex = Math.floor((mouseY - gridStartY) / slotHeight);
 
-                    if (calculatedSlotIndex >= 0 && calculatedSlotIndex < 64) { // 6 AM to 10 PM = 16 hours * 4 slots per hour
+                    if (calculatedSlotIndex >= 0 && calculatedSlotIndex < timeSlots.length) { // 6 AM to 10:45 PM = 68 slots
                         slotIndex = calculatedSlotIndex;
 
                         // Find the day column by mouse X position
@@ -722,10 +730,10 @@ export default function CalendarGridView({
                                             if (dayDate.toFormat('yyyy-MM-dd') === today.toFormat('yyyy-MM-dd')) {
                                                 const currentHour = now.hour + now.minute / 60;
                                                 const gridStartHour = 6;
-                                                const gridEndHour = 22;
+                                                const gridEndHour = 22.75; // 10:45 PM = 22.75 hours
                                                 if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
                                                     const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                    const totalHeight = (gridEndHour - gridStartHour) * 4 * 12; // 12px per 15-min slot (h-3)
+                                                    const totalHeight = timeSlots.length * 12; // 12px per 15-min slot (h-3)
                                                     const topPixels = (topPercent / 100) * totalHeight;
 
                                                     return (
@@ -872,7 +880,7 @@ export default function CalendarGridView({
                             <Label htmlFor="title">Title</Label>
                             <Input id="title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Meeting title" />
                         </div>
-                                                <DateTimeRangePicker
+                        <DateTimeRangePicker
                             startTime={formStartTime}
                             endTime={formEndTime}
                             onStartTimeChange={setFormStartTime}
