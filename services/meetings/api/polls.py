@@ -1,9 +1,12 @@
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from services.common.api_key_auth import (
     APIKeyConfig,
@@ -15,8 +18,8 @@ from services.common.logging_config import get_logger
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
-from services.meetings.models import get_session
-from services.meetings.models.meeting import PollStatus
+from services.meetings.models import get_async_session, get_session
+from services.meetings.models.meeting import ParticipantStatus, PollStatus
 from services.meetings.schemas import (
     MeetingPoll,
     MeetingPollCreate,
@@ -158,7 +161,7 @@ def get_poll(
 
 @router.post("/", response_model=MeetingPoll)
 @router.post("", response_model=MeetingPoll)
-def create_poll(
+async def create_poll(
     poll: MeetingPollCreate,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
@@ -171,7 +174,7 @@ def create_poll(
         poll_title=poll.title,
     )
 
-    with get_session() as session:
+    async with get_async_session() as session:
         poll_token = uuid4().hex
         db_poll = MeetingPollModel(
             id=uuid4(),
@@ -188,7 +191,7 @@ def create_poll(
             poll_token=str(poll_token),
         )
         session.add(db_poll)
-        session.flush()
+        await session.flush()
         # Add time slots
         for slot in poll.time_slots:
             db_slot = TimeSlotModel(
@@ -210,18 +213,208 @@ def create_poll(
                 response_token=response_token,
             )
             session.add(db_part)
-        session.commit()
-        session.refresh(db_poll)
+        await session.commit()
+        await session.refresh(db_poll)
+
+        # Explicitly load relationships to avoid MissingGreenlet error in async SQLAlchemy
+        # Query the poll with its relationships loaded
+        stmt = (
+            select(MeetingPollModel)
+            .options(
+                selectinload(MeetingPollModel.participants),
+                selectinload(MeetingPollModel.time_slots),
+            )
+            .where(MeetingPollModel.id == db_poll.id)
+        )
+        exec_result = await session.execute(stmt)
+        db_poll = exec_result.scalar_one()
+
+        # Capture values for logging and convert to dict before session closes
+        poll_id = str(db_poll.id)
+        stored_user_id = str(db_poll.user_id)
+        stored_user_id_type = type(db_poll.user_id).__name__
+        poll_title = db_poll.title
+        participant_count = len(db_poll.participants)
+
+        # Response payload will be built after optional email sending and status updates
+
+        # Send emails if requested
+        if poll.send_emails:
+            try:
+                frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+                # Prepare email tasks for concurrent sending
+                email_tasks = []
+                for participant in db_poll.participants:
+                    response_url = f"{frontend_url}/public/meetings/respond/{participant.response_token}"
+                    subject = f"You're invited: {poll_title}"
+                    description = getattr(db_poll, "description", "") or ""
+
+                    # Build email body with location and time slots
+                    body_lines = [
+                        "You have been invited to respond to a meeting poll!",
+                        "",
+                        f"Event: {poll_title}",
+                        "",
+                    ]
+
+                    if description:
+                        body_lines.extend([f"Description: {description}", ""])
+
+                    # Add location if available
+                    location = getattr(db_poll, "location", "") or ""
+                    if location:
+                        body_lines.extend([f"Location: {location}", ""])
+
+                    body_lines.extend(
+                        [
+                            "",
+                            "To respond via web:",
+                            f"{response_url}",
+                            "",
+                            "To respond via email, reply to this message by moving the time slots under the appropriate headings:",
+                            "",
+                            "=== EMAIL RESPONSE ===",
+                            "Copy the headings below and move the time slots under the appropriate category:",
+                            "",
+                            "I'm AVAILABLE:",
+                            "",
+                            "I'm UNAVAILABLE:",
+                            "",
+                            "I'm MAYBE:",
+                            "",
+                            "",
+                            "Proposed Meeting Times:",
+                        ]
+                    )
+
+                    # Add time slots for users to move under headings
+                    for i, slot in enumerate(db_poll.time_slots, 1):
+                        start_time = slot.start_time.strftime(
+                            "%A, %B %d, %Y at %I:%M %p"
+                        )
+                        end_time = slot.end_time.strftime("%I:%M %p")
+                        slot_timezone = slot.timezone
+                        body_lines.append(
+                            f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})"
+                        )
+
+                    body_lines.extend(
+                        [
+                            "",
+                            "=== END RESPONSE ===",
+                            "",
+                            "Please respond by the deadline to help us find the best meeting time!",
+                        ]
+                    )
+
+                    body = "\n".join(body_lines)
+
+                    # Create email task for concurrent execution
+                    email_task = email_integration.send_invitation_email(
+                        str(participant.email), subject, body, user_id
+                    )
+                    email_tasks.append((participant, email_task))
+
+                # Send all emails concurrently; do not cancel all on first failure
+                success_count = 0
+                failure_count = 0
+                failure_details = []
+                now_utc = datetime.now(timezone.utc)
+                if email_tasks:
+                    results = await asyncio.gather(
+                        *(task for _, task in email_tasks), return_exceptions=True
+                    )
+
+                    for (participant, _), result in zip(email_tasks, results):
+                        if isinstance(result, Exception):
+                            failure_count += 1
+                            failure_details.append(
+                                {
+                                    "participant_id": str(participant.id),
+                                    "email": str(participant.email),
+                                    "error": str(result),
+                                }
+                            )
+                            continue
+                        # Mark only successful sends as pending/invited
+                        participant.status = ParticipantStatus.pending
+                        participant.invited_at = now_utc
+                        success_count += 1
+
+                    await session.commit()
+                    logger.info(
+                        "Invitation emails processed",
+                        poll_id=poll_id,
+                        participant_count=participant_count,
+                        success_count=success_count,
+                        failure_count=failure_count,
+                        failures=failure_details,
+                    )
+
+            except Exception as e:
+                logger.error(
+                    "Failed to send emails for new poll",
+                    poll_id=poll_id,
+                    error=str(e),
+                )
+                # Don't fail the poll creation if email sending fails
+                # The user can resend emails later
 
         logger.info(
             "Poll created successfully",
-            poll_id=str(db_poll.id),
-            stored_user_id=str(db_poll.user_id),
-            stored_user_id_type=type(db_poll.user_id).__name__,
-            poll_title=db_poll.title,
+            poll_id=poll_id,
+            stored_user_id=stored_user_id,
+            stored_user_id_type=stored_user_id_type,
+            poll_title=poll_title,
         )
 
-        return MeetingPoll.model_validate(db_poll)
+        # Build and return the final response after any status updates
+        poll_dict = {
+            "id": db_poll.id,
+            "user_id": db_poll.user_id,
+            "title": db_poll.title,
+            "description": db_poll.description,
+            "duration_minutes": db_poll.duration_minutes,
+            "location": db_poll.location,
+            "meeting_type": db_poll.meeting_type,
+            "response_deadline": db_poll.response_deadline,
+            "min_participants": db_poll.min_participants,
+            "max_participants": db_poll.max_participants,
+            "reveal_participants": db_poll.reveal_participants,
+            "status": db_poll.status,
+            "created_at": db_poll.created_at,
+            "updated_at": db_poll.updated_at,
+            "poll_token": db_poll.poll_token,
+            "time_slots": [
+                {
+                    "id": slot.id,
+                    "poll_id": slot.poll_id,
+                    "start_time": slot.start_time,
+                    "end_time": slot.end_time,
+                    "timezone": slot.timezone,
+                    "is_available": slot.is_available,
+                    "created_at": slot.created_at,
+                }
+                for slot in db_poll.time_slots
+            ],
+            "participants": [
+                {
+                    "id": participant.id,
+                    "poll_id": participant.poll_id,
+                    "email": participant.email,
+                    "name": participant.name,
+                    "response_token": participant.response_token,
+                    "status": participant.status,
+                    "invited_at": participant.invited_at,
+                    "responded_at": participant.responded_at,
+                    "reminder_sent_count": participant.reminder_sent_count,
+                }
+                for participant in db_poll.participants
+            ],
+        }
+
+        return MeetingPoll.model_validate(poll_dict)
 
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
@@ -603,8 +796,8 @@ async def resend_invitation(
         for i, slot in enumerate(poll.time_slots, 1):
             start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
             end_time = slot.end_time.strftime("%I:%M %p")
-            timezone = slot.timezone
-            body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({timezone})")
+            slot_timezone = slot.timezone
+            body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({slot_timezone})")
 
         body_lines.extend(
             [
