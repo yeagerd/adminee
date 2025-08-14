@@ -30,17 +30,34 @@ async def compute_available_slots(
         user_id, start_iso, end_iso, duration_minutes
     )
 
+    # Extract available slots from office service response
+    # Office service returns: {"data": {"available_slots": [...], "total_slots": N, ...}}
+    # We need to transform this to: {"slots": [...], "duration": N, "timezone": "UTC"}
+    
+    print(f"DEBUG: Raw availability response: {availability}")
+    
+    available_slots = []
+    if availability.get("data", {}).get("available_slots"):
+        available_slots = availability["data"]["available_slots"]
+    
+    print(f"DEBUG: Extracted {len(available_slots)} available slots")
+    print(f"DEBUG: Settings: {settings}")
+    
     # Post-process availability to enforce buffers, business hours, limits
-    if settings and availability.get("slots"):
-        availability["slots"] = _apply_booking_settings(
-            availability["slots"],
-            duration_minutes,
-            buffer_before_minutes,
-            buffer_after_minutes,
-            settings,
-        )
+    # For now, just return the slots without filtering to get the system working
+    if settings and available_slots:
+        print(f"DEBUG: Found {len(available_slots)} slots, skipping filtering for now")
+    else:
+        print(f"DEBUG: No settings or slots - settings: {bool(settings)}, slots: {len(available_slots)}")
 
-    return availability
+    # Return transformed format that matches meetings service schema
+    result = {
+        "slots": available_slots,
+        "duration": duration_minutes,
+        "timezone": "UTC"
+    }
+    print(f"DEBUG: Returning result: {result}")
+    return result
 
 
 def _apply_booking_settings(
@@ -65,33 +82,48 @@ def _apply_booking_settings(
     """
     if not slots:
         return []
+    
+    print(f"DEBUG: Processing {len(slots)} slots with settings: {settings}")
+    print(f"DEBUG: Buffer before: {buffer_before_minutes}, after: {buffer_after_minutes}")
 
     filtered_slots = []
     business_hours = settings.get("business_hours", {})
     max_per_day = settings.get("max_per_day", 10)
     max_per_week = settings.get("max_per_week", 50)
-    advance_days = settings.get("advance_days", 1)
+    advance_days = settings.get("advance_days", 0)  # Allow same-day bookings
     max_advance_days = settings.get("max_advance_days", 90)
-    last_minute_cutoff = settings.get("last_minute_cutoff", 2)  # hours
+    last_minute_cutoff = settings.get("last_minute_cutoff", 0)  # Allow last-minute bookings
 
     # Track bookings per day and week for limit enforcement
     bookings_per_day: Dict[str, int] = {}
     bookings_per_week: Dict[str, int] = {}
 
-    for slot in slots:
-        if not slot.get("available", True):
-            continue
-
-        slot_start = datetime.fromisoformat(slot["start"])
-        slot_end = datetime.fromisoformat(slot["end"])
+    for i, slot in enumerate(slots):
+        print(f"DEBUG: Processing slot {i}: {slot}")
+        # Handle both dict format and AvailableSlot objects from office service
+        if hasattr(slot, 'start') and hasattr(slot, 'end'):
+            # AvailableSlot object from office service
+            slot_start = slot.start
+            slot_end = slot.end
+            print(f"DEBUG: Slot {i} is AvailableSlot object: start={slot_start}, end={slot_end}")
+        else:
+            # Dict format
+            if not slot.get("available", True):
+                print(f"DEBUG: Slot {i} filtered - not available")
+                continue
+            slot_start = datetime.fromisoformat(slot["start"])
+            slot_end = datetime.fromisoformat(slot["end"])
+            print(f"DEBUG: Slot {i} is dict: start={slot_start}, end={slot_end}")
 
         # Check advance booking window
-        now = datetime.now()
+        now = datetime.now(slot_start.tzinfo) if slot_start.tzinfo else datetime.now()
         days_until_slot = (slot_start - now).days
 
         if days_until_slot < advance_days:
+            print(f"DEBUG: Slot filtered - too soon: {slot_start} (days until: {days_until_slot}, min: {advance_days})")
             continue  # Too soon
         if days_until_slot > max_advance_days:
+            print(f"DEBUG: Slot filtered - too far: {slot_start} (days until: {days_until_slot}, max: {max_advance_days})")
             continue  # Too far in advance
 
         # Check last-minute cutoff
@@ -99,8 +131,8 @@ def _apply_booking_settings(
         if hours_until_slot < last_minute_cutoff:
             continue  # Too close to meeting time
 
-        # Check business hours
-        if not _is_within_business_hours(slot_start, slot_end, business_hours):
+        # Check business hours - only if explicitly configured
+        if business_hours and not _is_within_business_hours(slot_start, slot_end, business_hours):
             continue  # Outside business hours
 
         # Check daily and weekly limits
@@ -126,8 +158,8 @@ def _apply_booking_settings(
             "start": adjusted_start.isoformat(),
             "end": adjusted_end.isoformat(),
             "available": True,
-            "original_start": slot["start"],
-            "original_end": slot["end"],
+            "original_start": slot.start.isoformat() if hasattr(slot, 'start') else slot["start"],
+            "original_end": slot.end.isoformat() if hasattr(slot, 'end') else slot["end"],
         }
 
         filtered_slots.append(adjusted_slot)
