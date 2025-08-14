@@ -1,12 +1,12 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { gatewayClient } from "@/lib/gateway-client";
 import type { BookingLink } from "@/types/bookings";
-import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Step = "basics" | "availability" | "duration" | "limits" | "template" | "review";
 
@@ -730,7 +730,18 @@ export default function BookingsPage() {
 
     const toggleLinkStatus = async (linkId: string) => {
         try {
+            console.log('Toggling link status for:', linkId);
+            
+            // Optimistically update the UI for better user experience
+            setExistingLinks(prev => prev.map(link => 
+                link.id === linkId 
+                    ? { ...link, is_active: !link.is_active }
+                    : link
+            ));
+
             const result = await gatewayClient.toggleBookingLink(linkId);
+            console.log('Toggle API response:', result);
+            
             // Find the link to get its slug for the success message
             const link = existingLinks.find(l => l.id === linkId);
             if (link) {
@@ -742,9 +753,18 @@ export default function BookingsPage() {
                 });
                 setShowSuccessDialog(true);
             }
-            // Refresh the links list
+            
+            // Refresh the links list to ensure consistency with backend
             await fetchLinks();
         } catch (error) {
+            console.error('Error toggling link status:', error);
+            
+            // Revert the optimistic update on error
+            setExistingLinks(prev => prev.map(link => 
+                link.id === linkId 
+                    ? { ...link, is_active: !link.is_active }
+                    : link
+            ));
             alert(`Error toggling link status: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
@@ -1265,7 +1285,7 @@ export default function BookingsPage() {
                         <p className="text-sm text-muted-foreground">
                             {successData?.message}
                         </p>
-                        
+
                         {successData && (
                             <div className="space-y-3">
                                 <div>
@@ -1305,33 +1325,33 @@ export default function BookingsPage() {
                                         </button>
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <Label className="text-xs font-medium text-gray-700">Link Slug</Label>
                                     <div className="flex items-center gap-2 mt-1">
                                         <code className="flex-1 text-sm bg-gray-100 px-2 py-1 rounded font-mono">
                                             {successData.slug}
                                         </code>
-                                                                                    <button
-                                                onClick={() => {
-                                                    if (!successData) return;
-                                                    navigator.clipboard.writeText(successData.slug).then(() => {
-                                                        // Show temporary success feedback
-                                                        const button = event?.target as HTMLButtonElement;
-                                                        if (button) {
-                                                            const originalText = button.textContent;
-                                                            button.textContent = 'Copied!';
-                                                            button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
-                                                            setTimeout(() => {
-                                                                button.textContent = originalText;
-                                                                button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
-                                                            }, 2000);
-                                                        }
-                                                    }).catch(err => {
-                                                        console.error('Failed to copy: ', err);
-                                                        alert('Failed to copy slug to clipboard');
-                                                    });
-                                                }}
+                                        <button
+                                            onClick={() => {
+                                                if (!successData) return;
+                                                navigator.clipboard.writeText(successData.slug).then(() => {
+                                                    // Show temporary success feedback
+                                                    const button = event?.target as HTMLButtonElement;
+                                                    if (button) {
+                                                        const originalText = button.textContent;
+                                                        button.textContent = 'Copied!';
+                                                        button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
+                                                        setTimeout(() => {
+                                                            button.textContent = originalText;
+                                                            button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
+                                                        }, 2000);
+                                                    }
+                                                }).catch(err => {
+                                                    console.error('Failed to copy: ', err);
+                                                    alert('Failed to copy slug to clipboard');
+                                                });
+                                            }}
                                             className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
                                         >
                                             Copy
@@ -1340,7 +1360,7 @@ export default function BookingsPage() {
                                 </div>
                             </div>
                         )}
-                        
+
                         <div className="flex justify-end pt-2">
                             <Button
                                 onClick={() => setShowSuccessDialog(false)}
@@ -1420,15 +1440,15 @@ export default function BookingsPage() {
                                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                            Processing...
-                        </span>
-                    ) : (
-                        currentStep === "review" ? "Create" : "Next"
-                    )}
-                </button>
-            </div>
-        </div>
+                                    </svg>
+                                    Processing...
+                                </span>
+                            ) : (
+                                currentStep === "review" ? "Create" : "Next"
+                            )}
+                        </button>
+                    </div>
+                </div>
             )}
         </>
     );

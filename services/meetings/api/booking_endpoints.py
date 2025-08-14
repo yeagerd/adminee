@@ -710,7 +710,7 @@ async def update_booking_link(
         }
 
 
-@router.post("/links/{link_id}:duplicate")
+@router.post("/links/{link_id}/duplicate")
 async def duplicate_booking_link(
     link_id: str, request: Request, service_name: str = Depends(verify_api_key_auth)
 ) -> Dict[str, Any]:
@@ -720,7 +720,7 @@ async def duplicate_booking_link(
     if not check_rate_limit(client_key, max_requests=20, window_seconds=3600):
         audit_logger.log_rate_limit_exceeded(
             client_key=client_key,
-            endpoint=f"/links/{link_id}:duplicate",
+            endpoint=f"/links/{link_id}/duplicate",
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
@@ -784,7 +784,7 @@ async def duplicate_booking_link(
         }
 
 
-@router.post("/links/{link_id}:toggle")
+@router.post("/links/{link_id}/toggle")
 async def toggle_booking_link(
     link_id: str, request: Request, service_name: str = Depends(verify_api_key_auth)
 ) -> Dict[str, Any]:
@@ -794,7 +794,7 @@ async def toggle_booking_link(
     if not check_rate_limit(client_key, max_requests=50, window_seconds=3600):
         audit_logger.log_rate_limit_exceeded(
             client_key=client_key,
-            endpoint=f"/links/{link_id}:toggle",
+            endpoint=f"/links/{link_id}/toggle",
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
