@@ -272,3 +272,7 @@ Error: Cannot find module 'next-auth'
 6. **Validate security considerations**
 
 This frontend application showcases the complete OAuth integration capabilities of the Briefly platform, providing a polished user experience for authentication and granular integration management.
+
+## Contacts Tool
+
+A new Contacts tool aggregates Google People and Microsoft Graph contacts into a unified list with company/domain filters. It is accessible from the sidebar and uses the low-level `OfficeDataProvider` for shared access.

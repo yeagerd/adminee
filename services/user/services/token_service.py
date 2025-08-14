@@ -636,11 +636,16 @@ class TokenService:
             "https://graph.microsoft.com/Files.ReadWrite": [
                 "https://graph.microsoft.com/Files.Read",
             ],
+            # Explicit mapping for Contacts to treat ReadWrite as satisfying Read
+            "https://graph.microsoft.com/Contacts.ReadWrite": [
+                "https://graph.microsoft.com/Contacts.Read",
+            ],
         }
 
-        # Expand granted scopes to include all implied scopes
+        # Expand granted scopes to include implied narrower scopes
         expanded_granted_scopes = set(granted_scopes)
         for granted_scope in granted_scopes:
+            # Static mappings first
             if granted_scope in microsoft_scope_hierarchy:
                 expanded_granted_scopes.update(microsoft_scope_hierarchy[granted_scope])
 

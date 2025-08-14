@@ -13,12 +13,15 @@ import { CalendarEvent } from "@/types/office-service";
 import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUserPreferences } from '../../contexts/settings-context';
 import { TimeSlotCalendar } from "./time-slot-calendar";
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
+
+// Email regex pattern - moved outside component to avoid dependency issues
+const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
 export function MeetingPollNew() {
     const { setMeetingSubView } = useToolState();
@@ -356,7 +359,7 @@ export function MeetingPollNew() {
     const removeParticipant = (id: string) =>
         setParticipants(prev => prev.filter(p => p.id !== id));
 
-    const generateTempId = (): string => {
+    const generateTempId = useCallback((): string => {
         try {
             // Prefer stable UUID when available
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -368,12 +371,11 @@ export function MeetingPollNew() {
             // ignore
         }
         return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-    };
+    }, []);
 
     // ---- Step 3 helpers: parsing and adding people ----
-    const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
-    const parsePeopleFromText = (text: string): Array<{ email: string; name?: string }> => {
+    const parsePeopleFromText = useCallback((text: string): Array<{ email: string; name?: string }> => {
         const results: Array<{ email: string; name?: string }> = [];
         if (!text) return results;
 
@@ -438,7 +440,7 @@ export function MeetingPollNew() {
             deduped.push(r);
         }
         return deduped;
-    };
+    }, []);
 
     const addPeople = (people: Array<{ email: string; name?: string }>) => {
         if (!people || people.length === 0) return;
@@ -478,6 +480,49 @@ export function MeetingPollNew() {
             setHighlightIndex(-1);
         }
     };
+
+    // Prefill participants from URL param if provided (e.g., "Name <email>, another@example.com")
+    const participantsParam = searchParams.get('participants');
+    const hasPrefilledParticipants = useRef(false);
+    useEffect(() => {
+        // Only prefill on initial mount, not on every URL param change
+        if (hasPrefilledParticipants.current) return;
+
+        try {
+            if (participantsParam && typeof participantsParam === 'string' && participantsParam.trim()) {
+                const parsed = parsePeopleFromText(participantsParam);
+                if (parsed && parsed.length > 0) {
+                    setParticipants(parsed.map(person => ({
+                        id: generateTempId(),
+                        email: person.email.trim(),
+                        name: (person.name || "").trim(),
+                    })));
+                    hasPrefilledParticipants.current = true;
+                }
+            }
+            // Don't clear participants if param is missing - user might have entered data manually
+        } catch {
+            // ignore parse errors
+        }
+    }, [participantsParam, parsePeopleFromText, generateTempId]);
+
+    // Prefill title from URL param if provided
+    const titleParam = searchParams.get('title');
+    const hasPrefilledTitle = useRef(false);
+    useEffect(() => {
+        // Only prefill on initial mount, not on every URL param change
+        if (hasPrefilledTitle.current) return;
+
+        try {
+            if (titleParam && typeof titleParam === 'string' && titleParam.trim()) {
+                setTitle(titleParam);
+                hasPrefilledTitle.current = true;
+            }
+            // Don't clear title if param is missing - user might have entered data manually
+        } catch {
+            // ignore parse errors
+        }
+    }, [titleParam]);
 
     // Suggestions stub (to be replaced with contacts provider)
     useEffect(() => {

@@ -163,6 +163,7 @@ class APIClientFactory:
                 "https://www.googleapis.com/auth/gmail.send",
                 "https://www.googleapis.com/auth/calendar",
                 "https://www.googleapis.com/auth/drive.readonly",
+                "https://www.googleapis.com/auth/contacts.readonly",
             ]
         elif provider == Provider.MICROSOFT:
             return [
@@ -170,6 +171,7 @@ class APIClientFactory:
                 "https://graph.microsoft.com/Mail.Send",
                 "https://graph.microsoft.com/Calendars.ReadWrite",
                 "https://graph.microsoft.com/Files.Read",
+                "https://graph.microsoft.com/Contacts.Read",
             ]
         else:
             return []

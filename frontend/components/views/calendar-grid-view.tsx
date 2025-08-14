@@ -1,15 +1,21 @@
 "use client"
 
 import { Button } from '@/components/ui/button';
+import { DateTimeRangePicker } from '@/components/ui/date-time-range-picker';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import type { CalendarEvent } from '@/types/office-service';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { getSession } from 'next-auth/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarEventItem } from '../calendar-event-item';
 import { CalendarGridEvent } from './calendar-grid-event';
 
@@ -46,6 +52,98 @@ export default function CalendarGridView({
     const [error, setError] = useState<string | null>(null);
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [viewType, setViewType] = useState<ViewType>('week');
+    const { toast } = useToast();
+
+    // Selection state for creating a new event
+    const [isSelecting, setIsSelecting] = useState(false);
+    const selectionStartRef = useRef<{ day: Date; slotIndex: number } | null>(null);
+    const [selection, setSelection] = useState<null | { day: Date; startIndex: number; endIndex: number }>(null);
+    const [hoverPreview, setHoverPreview] = useState<null | { day: Date; slotIndex: number }>(null);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [formTitle, setFormTitle] = useState('');
+    const [formDescription, setFormDescription] = useState('');
+    const [formLocation, setFormLocation] = useState('');
+    const [formAllDay, setFormAllDay] = useState(false);
+    const [formStartTime, setFormStartTime] = useState<Date | null>(null);
+    const [formEndTime, setFormEndTime] = useState<Date | null>(null);
+    const [formAttendees, setFormAttendees] = useState<Array<{ id: string; email: string; name: string }>>([]);
+    const [attendeeQuery, setAttendeeQuery] = useState('');
+
+    const { loading: integrationsLoading, activeProviders } = useIntegrations();
+    const { effectiveTimezone } = useUserPreferences();
+
+    // Derived start/end from current selection
+    const selectedStartEnd = useMemo(() => {
+        if (!selection) return null;
+        const gridStartHour = 6;
+        const slotMinutes = 15;
+        const startSlot = Math.min(selection.startIndex, selection.endIndex);
+        const endSlot = Math.max(selection.startIndex, selection.endIndex) + 1; // inclusive end slot -> add 1
+
+        // Build start/end as Zoned DateTimes in effectiveTimezone, then output JS Dates representing the same instant
+        const selectionDay = DateTime.fromJSDate(selection.day).setZone(effectiveTimezone);
+        const startHours = gridStartHour + Math.floor(startSlot / 4);
+        const startMinutes = (startSlot % 4) * slotMinutes;
+        const startZoned = selectionDay.set({ hour: startHours, minute: startMinutes, second: 0, millisecond: 0 });
+        const endHours = gridStartHour + Math.floor(endSlot / 4);
+        const endMinutes = (endSlot % 4) * slotMinutes;
+        const endZoned = selectionDay.set({ hour: endHours, minute: endMinutes, second: 0, millisecond: 0 });
+
+        // Convert to JS Dates preserving the actual instant in time
+        const start = new Date(startZoned.toMillis());
+        const end = new Date(endZoned.toMillis());
+        return { start, end };
+    }, [selection, effectiveTimezone]);
+
+    const clearSelection = useCallback(() => {
+        setIsSelecting(false);
+        selectionStartRef.current = null;
+        setSelection(null);
+        setHoverPreview(null);
+    }, []);
+
+
+
+    const addAttendee = useCallback((email: string, name?: string) => {
+        const newAttendee = {
+            id: Math.random().toString(36).substr(2, 9),
+            email: email.trim(),
+            name: name?.trim() || ''
+        };
+        setFormAttendees(prev => [...prev, newAttendee]);
+        setAttendeeQuery('');
+    }, []);
+
+    const removeAttendee = useCallback((id: string) => {
+        setFormAttendees(prev => prev.filter(attendee => attendee.id !== id));
+    }, []);
+
+    const parseAttendeeFromText = useCallback((text: string): Array<{ email: string; name?: string }> => {
+        const results: Array<{ email: string; name?: string }> = [];
+        const lines = text.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            // Try to parse "Name <email@domain.com>" format
+            const emailMatch = trimmed.match(/<(.+?)>/);
+            if (emailMatch) {
+                const email = emailMatch[1].trim();
+                const name = trimmed.replace(/<.+?>/, '').trim();
+                if (email && email.includes('@')) {
+                    results.push({ email, name: name || undefined });
+                }
+            } else if (trimmed.includes('@')) {
+                // Just an email address
+                results.push({ email: trimmed });
+            }
+        }
+
+        return results;
+    }, []);
+
+
 
     // Use external props if provided, otherwise use internal state
     // For list view, always use internal events to support navigation
@@ -53,9 +151,6 @@ export default function CalendarGridView({
     const finalLoading = viewType === 'list' ? loading : (externalLoading !== undefined ? externalLoading : loading);
     const finalRefreshing = viewType === 'list' ? refreshing : (externalRefreshing !== undefined ? externalRefreshing : refreshing);
     const finalError = viewType === 'list' ? error : (externalError !== undefined ? externalError : error);
-
-    const { loading: integrationsLoading, activeProviders } = useIntegrations();
-    const { effectiveTimezone } = useUserPreferences();
 
     // Calculate date range based on view type
     const dateRange = useMemo(() => {
@@ -119,11 +214,11 @@ export default function CalendarGridView({
         return result;
     }, [currentDate, viewType]);
 
-    // Generate time slots (6 AM to 10 PM)
+    // Generate time slots (6 AM to 10:45 PM) - 15 minute increments
     const timeSlots = useMemo(() => {
         const slots: TimeSlot[] = [];
         for (let hour = 6; hour <= 22; hour++) {
-            for (let minute = 0; minute < 60; minute += 30) {
+            for (let minute = 0; minute < 60; minute += 15) {
                 // Create a simple time string in the user's timezone
                 const timeString = `${hour}:${minute.toString().padStart(2, '0')}`;
                 const time = DateTime.fromFormat(timeString, 'H:mm', { zone: effectiveTimezone });
@@ -186,9 +281,9 @@ export default function CalendarGridView({
         }
 
         try {
-            const session = await getSession();
-            const userId = session?.user?.id;
-            if (!userId) throw new Error('No user id found in session');
+            // const session = await getSession();
+            // const userId = session?.user?.id;
+            // if (!userId) throw new Error('No user id found in session');
 
 
 
@@ -297,6 +392,105 @@ export default function CalendarGridView({
         })();
         return () => { isMounted = false; };
     }, [dateRange, viewType, externalEvents, toolDataLoading, integrationsLoading, activeProviders, activeTool, fetchCalendarEvents]);
+
+    // Initialize form times when selection changes
+    useEffect(() => {
+        if (selectedStartEnd) {
+            setFormStartTime(selectedStartEnd.start);
+            setFormEndTime(selectedStartEnd.end);
+        }
+    }, [selectedStartEnd]);
+
+
+
+    // Global mouse event handlers for drag selection
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isSelecting || !selectionStartRef.current) return;
+
+            // Try to find the time slot element under the mouse
+            const target = e.target as HTMLElement;
+            const timeSlot = target.closest('[data-slot-index]');
+            let dayElement = null;
+            let slotIndex = 0;
+            let day = null;
+
+            // If closest() doesn't work, try to find by mouse position
+            if (!timeSlot) {
+                // Find the calendar grid container
+                const calendarGrid = document.querySelector('[data-calendar-grid]');
+                if (calendarGrid) {
+                    const rect = calendarGrid.getBoundingClientRect();
+                    const mouseY = e.clientY - rect.top;
+
+                    // Calculate slot index based on mouse Y position
+                    // Each slot is 12px (h-3), grid starts at 6 AM
+                    const gridStartY = 0; // Assuming grid starts at top
+                    const slotHeight = 12;
+                    const calculatedSlotIndex = Math.floor((mouseY - gridStartY) / slotHeight);
+
+                    if (calculatedSlotIndex >= 0 && calculatedSlotIndex < timeSlots.length) { // 6 AM to 10:45 PM = 68 slots
+                        slotIndex = calculatedSlotIndex;
+
+                        // Find the day column by mouse X position
+                        const mouseX = e.clientX - rect.left;
+                        const dayWidth = rect.width / (days.length + 1); // +1 for time labels column
+                        const dayIndex = Math.floor((mouseX - 60) / dayWidth); // 60px for time labels
+
+                        if (dayIndex >= 0 && dayIndex < days.length) {
+                            day = days[dayIndex];
+                        }
+                    }
+                }
+            } else {
+                // Use the original closest() approach
+                slotIndex = parseInt(timeSlot.getAttribute('data-slot-index') || '0');
+                dayElement = timeSlot.closest('[data-day]');
+
+                if (!dayElement) return;
+
+                const dayString = dayElement.getAttribute('data-day');
+                if (!dayString) return;
+                day = new Date(dayString);
+            }
+
+            if (day && day.toDateString() === selectionStartRef.current.day.toDateString()) {
+                // Ensure minimum selection of 1 slot (15 minutes) when dragging
+                const startIndex = selectionStartRef.current.slotIndex;
+                let endIndex = slotIndex;
+
+                // If dragging backwards, ensure we have at least 1 slot
+                if (endIndex < startIndex) {
+                    endIndex = Math.max(startIndex - 1, 0);
+                }
+
+                setSelection({
+                    day,
+                    startIndex,
+                    endIndex
+                });
+            }
+        };
+
+        const handleMouseUp = () => {
+            if (isSelecting && selectionStartRef.current) {
+                setIsSelecting(false);
+                if (selection) {
+                    setIsCreateOpen(true);
+                }
+            }
+        };
+
+        if (isSelecting) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isSelecting, selection, days, timeSlots.length]);
 
     // Format date for display
     const formatDate = (date: Date) => {
@@ -492,7 +686,8 @@ export default function CalendarGridView({
                         {/* Time Grid */}
                         <div className="relative">
                             <div
-                                className="grid"
+                                className="grid select-none"
+                                data-calendar-grid
                                 style={{
                                     gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
                                     minWidth: `${60 + (days.length * 120)}px`
@@ -503,7 +698,8 @@ export default function CalendarGridView({
                                     {timeSlots.map((slot, index) => (
                                         <div
                                             key={index}
-                                            className="h-8 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
+                                            className={`h-3 flex items-start justify-end pr-2 text-xs text-gray-500 ${index % 4 === 3 ? 'border-b border-gray-200' : ''
+                                                }`}
                                         >
                                             {slot.minute === 0 ? slot.time : ''}
                                         </div>
@@ -512,7 +708,11 @@ export default function CalendarGridView({
 
                                 {/* Day Columns */}
                                 {days.map((day, dayIndex) => (
-                                    <div key={dayIndex} className="border-r relative">
+                                    <div
+                                        key={dayIndex}
+                                        className="border-r relative"
+                                        data-day={day.toISOString()}
+                                    >
                                         {/* Current time indicator */}
                                         {(() => {
                                             const now = DateTime.now().setZone(effectiveTimezone);
@@ -522,10 +722,10 @@ export default function CalendarGridView({
                                             if (dayDate.toFormat('yyyy-MM-dd') === today.toFormat('yyyy-MM-dd')) {
                                                 const currentHour = now.hour + now.minute / 60;
                                                 const gridStartHour = 6;
-                                                const gridEndHour = 22;
+                                                const gridEndHour = 22.75; // 10:45 PM = 22.75 hours
                                                 if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
                                                     const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 32; // 32px per 30-min slot (h-8)
+                                                    const totalHeight = timeSlots.length * 12; // 12px per 15-min slot (h-3)
                                                     const topPixels = (topPercent / 100) * totalHeight;
 
                                                     return (
@@ -544,14 +744,83 @@ export default function CalendarGridView({
                                             return null;
                                         })()}
 
+                                        {/* Hover preview (30-minute shadow) */}
+                                        {!isSelecting && hoverPreview && hoverPreview.day.toDateString() === day.toDateString() && (() => {
+                                            const topPos = hoverPreview.slotIndex * 12;
+                                            const height = 2 * 12; // 2 slots = 30 minutes
+
+                                            return (
+                                                <div
+                                                    className="absolute left-0 right-0 pointer-events-none z-15"
+                                                    style={{
+                                                        top: `${topPos}px`,
+                                                        height: `${height}px`,
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="mx-1 rounded-md bg-blue-300/40 border border-blue-400/60"
+                                                        style={{
+                                                            height: '100%',
+                                                            transition: 'all 0.1s ease-out'
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Selection overlay (drag) */}
+                                        {selection && selection.day.toDateString() === day.toDateString() && (() => {
+                                            const topPos = Math.min(selection.startIndex, selection.endIndex) * 12;
+                                            const height = (Math.abs(selection.endIndex - selection.startIndex) + 1) * 12;
+
+                                            return (
+                                                <div
+                                                    key={`selection-${selection.startIndex}-${selection.endIndex}`}
+                                                    className="absolute left-0 right-0 pointer-events-none z-20"
+                                                    style={{
+                                                        top: `${topPos}px`,
+                                                        height: `${height}px`,
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="mx-1 rounded-md bg-blue-500/70 border border-blue-600 shadow-lg"
+                                                        style={{
+                                                            height: '100%',
+                                                            transition: 'all 0.1s ease-out'
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })()}
+
+
                                         {/* Time slots */}
                                         {timeSlots.map((slot, slotIndex) => (
                                             <div
                                                 key={slotIndex}
-                                                className="h-8 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                className={`h-3 hover:bg-gray-50 cursor-pointer transition-colors ${slotIndex % 4 === 3 ? 'border-b border-gray-200' : ''
+                                                    }`}
+                                                data-slot-index={slotIndex}
+                                                onMouseEnter={() => {
+                                                    if (!isSelecting) {
+                                                        setHoverPreview({ day, slotIndex });
+                                                    }
+                                                }}
+                                                onMouseLeave={() => {
+                                                    if (!isSelecting) {
+                                                        setHoverPreview(null);
+                                                    }
+                                                }}
+                                                onMouseDown={() => {
+                                                    setHoverPreview(null);
+                                                    setIsSelecting(true);
+                                                    selectionStartRef.current = { day, slotIndex };
+                                                    setSelection({ day, startIndex: slotIndex, endIndex: slotIndex });
+                                                }}
                                                 onClick={() => {
-                                                    // Future: Create event on click
-                                                    console.log('Create event at:', day, slot.time);
+                                                    // Single click create (30 min slot - 2 slots)
+                                                    setSelection({ day, startIndex: slotIndex, endIndex: slotIndex + 1 });
+                                                    setIsCreateOpen(true);
                                                 }}
                                             />
                                         ))}
@@ -578,6 +847,155 @@ export default function CalendarGridView({
                     </div>
                 )}
             </div>
+
+            {/* Create Event Modal */}
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+                setIsCreateOpen(open);
+                if (!open) {
+                    setFormTitle('');
+                    setFormDescription('');
+                    setFormLocation('');
+                    setFormAllDay(false);
+                    setFormStartTime(null);
+                    setFormEndTime(null);
+                    setFormAttendees([]);
+                    setAttendeeQuery('');
+                    clearSelection();
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>New meeting</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="title">Title</Label>
+                            <Input id="title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Meeting title" />
+                        </div>
+                        <DateTimeRangePicker
+                            startTime={formStartTime}
+                            endTime={formEndTime}
+                            onStartTimeChange={setFormStartTime}
+                            onEndTimeChange={setFormEndTime}
+                            effectiveTimezone={effectiveTimezone}
+                        />
+                        <div className="flex items-center gap-2">
+                            <Switch id="allDay" checked={formAllDay} onCheckedChange={setFormAllDay} />
+                            <Label htmlFor="allDay">All day</Label>
+                        </div>
+                        <div>
+                            <Label htmlFor="location">Location</Label>
+                            <Input id="location" value={formLocation} onChange={(e) => setFormLocation(e.target.value)} placeholder="Location or conferencing" />
+                        </div>
+                        <div>
+                            <Label htmlFor="attendees">Attendees</Label>
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <Input
+                                        id="attendees"
+                                        value={attendeeQuery}
+                                        onChange={(e) => setAttendeeQuery(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                if (attendeeQuery.trim() && attendeeQuery.includes('@')) {
+                                                    addAttendee(attendeeQuery);
+                                                }
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            const parsed = parseAttendeeFromText(text);
+                                            if (parsed.length > 0) {
+                                                e.preventDefault();
+                                                parsed.forEach(person => addAttendee(person.email, person.name));
+                                            }
+                                        }}
+                                        placeholder="Type email or paste multiple (e.g., First Last <email@domain.com>)"
+                                        className="text-sm"
+                                    />
+                                </div>
+                                {formAttendees.length > 0 && (
+                                    <div className="space-y-1">
+                                        {formAttendees.map((attendee) => (
+                                            <div key={attendee.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                                <div className="flex-1 min-w-0">
+                                                    {attendee.name && (
+                                                        <div className="font-medium truncate">{attendee.name}</div>
+                                                    )}
+                                                    <div className="text-gray-600 truncate">{attendee.email}</div>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeAttendee(attendee.id)}
+                                                    className="ml-2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                                >
+                                                    ×
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <Label htmlFor="description">Description</Label>
+                            <Textarea id="description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Add details" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <div className="flex w-full justify-end gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    // Clear selection and close modal
+                                    setIsCreateOpen(false);
+                                    clearSelection();
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={async () => {
+                                    if (!formStartTime || !formEndTime) return;
+                                    const title = formTitle.trim() || 'New meeting';
+                                    try {
+                                        const startUtc = DateTime.fromJSDate(formStartTime).toUTC();
+                                        const endUtc = DateTime.fromJSDate(formEndTime).toUTC();
+                                        await gatewayClient.createCalendarEvent({
+                                            title,
+                                            description: formDescription || undefined,
+                                            start_time: startUtc.toISO()!,
+                                            end_time: endUtc.toISO()!,
+                                            all_day: formAllDay || false,
+                                            location: formLocation || undefined,
+                                            attendees: formAttendees.length > 0 ? formAttendees.map(a => ({ email: a.email, name: a.name || undefined })) : undefined,
+                                        });
+                                        setIsCreateOpen(false);
+                                        clearSelection();
+                                        setFormTitle('');
+                                        setFormDescription('');
+                                        setFormLocation('');
+                                        setFormAllDay(false);
+                                        setFormStartTime(null);
+                                        setFormEndTime(null);
+                                        setFormAttendees([]);
+                                        setAttendeeQuery('');
+                                        await (onRefresh ? onRefresh() : handleRefresh());
+                                        toast({ description: 'Meeting created' });
+                                    } catch (e) {
+                                        toast({ description: e instanceof Error ? e.message : 'Failed to create meeting' });
+                                    }
+                                }}
+                            >
+                                Save
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 } 
