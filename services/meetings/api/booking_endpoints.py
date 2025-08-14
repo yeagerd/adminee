@@ -3,6 +3,17 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Request
+
+from services.common.http_errors import (
+    AuthError,
+    BrieflyAPIError,
+    NotFoundError,
+    RateLimitError,
+    ServiceError,
+    ValidationError,
+)
+from services.meetings.api.auth import get_user_id_from_request, verify_api_key_auth
+from services.meetings.models import get_session
 from services.meetings.models.booking_entities import (
     AnalyticsEvent,
     Booking,
@@ -12,6 +23,7 @@ from services.meetings.models.booking_entities import (
 )
 from services.meetings.schemas.booking_requests import (
     AnalyticsResponse,
+    AvailabilityDataResponse,
     AvailabilityResponse,
     BookingLinkFilters,
     BookingLinkResponse,
@@ -24,27 +36,13 @@ from services.meetings.schemas.booking_requests import (
     OneTimeLinkResponse,
     OneTimeLinksListResponse,
     PaginationParams,
+    PublicLinkDataResponse,
     PublicLinkResponse,
     SuccessResponse,
     TemplateResponse,
     TemplatesListResponse,
     UpdateBookingLinkRequest,
     UpdateTemplateRequest,
-)
-
-from services.common.http_errors import (
-    AuthError,
-    BrieflyAPIError,
-    NotFoundError,
-    RateLimitError,
-    ServiceError,
-    ValidationError,
-)
-from services.meetings.api.auth import get_user_id_from_request, verify_api_key_auth
-from services.meetings.models import get_session
-from services.meetings.schemas.booking_requests import (
-    AvailabilityDataResponse,
-    PublicLinkDataResponse,
 )
 from services.meetings.services.audit_logger import AuditEventType, audit_logger
 from services.meetings.services.booking_emails import (
