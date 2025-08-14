@@ -26,15 +26,49 @@ export function DateTimeRangePicker({
     const [showStartTimePicker, setShowStartTimePicker] = useState(false);
     const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
+    // Helper function to create a time in the effective timezone
+    const createTimeInTimezone = useCallback((date: Date, hour: number, minute: number): Date => {
+        const dateTime = DateTime.fromJSDate(date).setZone(effectiveTimezone);
+        const timeInZone = dateTime.set({ hour, minute, second: 0, millisecond: 0 });
+        return timeInZone.toJSDate();
+    }, [effectiveTimezone]);
+
+    // Helper function to preserve time while changing date in effective timezone
+    const preserveTimeChangeDate = useCallback((originalTime: Date, newDate: Date): Date => {
+        const originalDateTime = DateTime.fromJSDate(originalTime).setZone(effectiveTimezone);
+        const newDateTime = DateTime.fromJSDate(newDate).setZone(effectiveTimezone);
+
+        return newDateTime.set({
+            hour: originalDateTime.hour,
+            minute: originalDateTime.minute,
+            second: 0,
+            millisecond: 0
+        }).toJSDate();
+    }, [effectiveTimezone]);
+
+    // Generate start time options in effective timezone
+    const startTimeOptions = useMemo(() => {
+        const options = [];
+        // Use the selected date if available, otherwise use today
+        const baseDate = startTime ? new Date(startTime) : new Date();
+        for (let hour = 0; hour < 24; hour++) {
+            for (let minute = 0; minute < 60; minute += 15) {
+                const time = createTimeInTimezone(baseDate, hour, minute);
+                options.push(time);
+            }
+        }
+        return options;
+    }, [startTime, createTimeInTimezone]);
+
     const generateTimeOptions = useCallback((startTime: Date, maxDurationHours: number = 23.5) => {
         const options: Array<{ time: Date; label: string; duration: string }> = [];
-        const startDateTime = new Date(startTime);
+        const startDateTime = DateTime.fromJSDate(startTime).setZone(effectiveTimezone);
 
         // Generate options in 15-minute increments
         for (let hour = 0; hour <= maxDurationHours; hour++) {
             for (let minute = 0; minute < 60; minute += 15) {
-                const time = new Date(startDateTime.getTime() + (hour * 60 + minute) * 60 * 1000);
-                const durationMs = time.getTime() - startDateTime.getTime();
+                const time = startDateTime.plus({ hours: hour, minutes: minute }).toJSDate();
+                const durationMs = time.getTime() - startTime.getTime();
                 const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
                 const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -60,9 +94,8 @@ export function DateTimeRangePicker({
 
     const handleDateSelect = useCallback((date: Date) => {
         if (startTime) {
-            // Keep the time, change the date
-            const newStartTime = new Date(date);
-            newStartTime.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+            // Keep the time, change the date using effective timezone
+            const newStartTime = preserveTimeChangeDate(startTime, date);
             onStartTimeChange(newStartTime);
 
             if (endTime) {
@@ -71,24 +104,21 @@ export function DateTimeRangePicker({
                 onEndTimeChange(newEndTime);
             }
         } else {
-            // Set both start and end time to 9 AM on selected date
-            const newStartTime = new Date(date);
-            newStartTime.setHours(9, 0, 0, 0);
+            // Set both start and end time to 9 AM and 10 AM on selected date in effective timezone
+            const newStartTime = createTimeInTimezone(date, 9, 0);
             onStartTimeChange(newStartTime);
 
-            const newEndTime = new Date(date);
-            newEndTime.setHours(10, 0, 0, 0);
+            const newEndTime = createTimeInTimezone(date, 10, 0);
             onEndTimeChange(newEndTime);
         }
         setShowDatePicker(false);
-    }, [startTime, endTime, onStartTimeChange, onEndTimeChange]);
+    }, [startTime, endTime, onStartTimeChange, onEndTimeChange, preserveTimeChangeDate, createTimeInTimezone]);
 
     const handleStartTimeSelect = useCallback((time: Date) => {
-        // Preserve the date from startTime, only update the time
+        // Preserve the date from startTime, only update the time using effective timezone
         let newStartTime: Date;
         if (startTime) {
-            newStartTime = new Date(startTime);
-            newStartTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
+            newStartTime = preserveTimeChangeDate(time, startTime);
         } else {
             newStartTime = time;
         }
@@ -106,21 +136,20 @@ export function DateTimeRangePicker({
             const newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000);
             onEndTimeChange(newEndTime);
         }
-    }, [startTime, endTime, onStartTimeChange, onEndTimeChange]);
+    }, [startTime, endTime, onStartTimeChange, onEndTimeChange, preserveTimeChangeDate]);
 
     const handleEndTimeSelect = useCallback((time: Date) => {
-        // Preserve the date from endTime, only update the time
+        // Preserve the date from endTime, only update the time using effective timezone
         let newEndTime: Date;
         if (endTime) {
-            newEndTime = new Date(endTime);
-            newEndTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
+            newEndTime = preserveTimeChangeDate(time, endTime);
         } else {
             newEndTime = time;
         }
 
         onEndTimeChange(newEndTime);
         setShowEndTimePicker(false);
-    }, [endTime, onEndTimeChange]);
+    }, [endTime, onEndTimeChange, preserveTimeChangeDate]);
 
     // Close pickers when clicking outside
     useEffect(() => {
@@ -216,19 +245,7 @@ export function DateTimeRangePicker({
                     </Button>
                     {showStartTimePicker && (
                         <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-1 min-w-[120px] max-h-60 overflow-y-auto" data-picker>
-                            {(() => {
-                                const options = [];
-                                // Use the selected date if available, otherwise use today
-                                const baseDate = startTime ? new Date(startTime) : new Date();
-                                for (let hour = 0; hour < 24; hour++) {
-                                    for (let minute = 0; minute < 60; minute += 15) {
-                                        const time = new Date(baseDate);
-                                        time.setHours(hour, minute, 0, 0);
-                                        options.push(time);
-                                    }
-                                }
-                                return options;
-                            })().map((time, index) => (
+                            {startTimeOptions.map((time, index) => (
                                 <button
                                     key={index}
                                     type="button"
