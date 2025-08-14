@@ -28,12 +28,27 @@ export interface OneTimeLinkData {
     expires_in_days: number;
 }
 
+export interface BookingLinkSettings {
+    title?: string;
+    description?: string;
+    duration?: number;
+    buffer_before?: number;
+    buffer_after?: number;
+    max_per_day?: number;
+    max_per_week?: number;
+    advance_days?: number;
+    max_advance_days?: number;
+    business_hours?: Record<string, { start: string; end: string; enabled: boolean }>;
+    holiday_exclusions?: string[];
+    last_minute_cutoff?: number;
+}
+
 export interface BookingLink {
     id: string;
     owner_user_id: string;
     slug: string;
     is_active: boolean;
-    settings: Record<string, unknown>;
+    settings: BookingLinkSettings | null;
     template_id: string | null;
     created_at: string;
     updated_at: string;

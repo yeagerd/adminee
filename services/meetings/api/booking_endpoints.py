@@ -463,6 +463,8 @@ async def create_booking_link(
             slug=slug,
             is_active=True,
             settings={
+                "title": title,
+                "description": description,
                 "duration": link_data.get("duration", 30),
                 "buffer_before": link_data.get("buffer_before", 0),
                 "buffer_after": link_data.get("buffer_after", 0),

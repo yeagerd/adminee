@@ -3,6 +3,10 @@
 import { gatewayClient } from "@/lib/gateway-client";
 import type { BookingLink } from "@/types/bookings";
 import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { CheckCircle } from "lucide-react";
 
 type Step = "basics" | "availability" | "duration" | "limits" | "template" | "review";
 
@@ -61,6 +65,15 @@ export default function BookingsPage() {
     const [linksError, setLinksError] = useState<string | null>(null);
     const [bookingsError, setBookingsError] = useState<string | null>(null);
     const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+    // Success dialog state
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+    const [successData, setSuccessData] = useState<{
+        title: string;
+        message: string;
+        publicUrl: string;
+        slug: string;
+    } | null>(null);
 
     // Data fetching functions
     const fetchLinks = async () => {
@@ -630,8 +643,14 @@ export default function BookingsPage() {
                                         expires_in_days: formData.isSingleUse ? formData.expiresInDays : undefined,
                                     });
 
-                                    // Show success message and reset form
-                                    alert(`Booking link created successfully!\n\nPublic URL: ${result.data.public_url}`);
+                                    // Show success dialog
+                                    setSuccessData({
+                                        title: "Booking Link Created Successfully!",
+                                        message: "Your new booking link is ready to share with recipients.",
+                                        publicUrl: result.data.public_url,
+                                        slug: result.data.slug
+                                    });
+                                    setShowSuccessDialog(true);
                                     setFormData({
                                         title: "",
                                         description: "",
@@ -712,7 +731,17 @@ export default function BookingsPage() {
     const toggleLinkStatus = async (linkId: string) => {
         try {
             const result = await gatewayClient.toggleBookingLink(linkId);
-            alert(`Link ${linkId} ${result.data.is_active ? 'activated' : 'deactivated'} successfully!`);
+            // Find the link to get its slug for the success message
+            const link = existingLinks.find(l => l.id === linkId);
+            if (link) {
+                setSuccessData({
+                    title: "Link Status Updated",
+                    message: `Link "${link.settings?.title || link.slug}" has been ${result.data.is_active ? 'activated' : 'deactivated'} successfully.`,
+                    publicUrl: `${window.location.origin}/public/bookings/${link.slug}`,
+                    slug: link.slug
+                });
+                setShowSuccessDialog(true);
+            }
             // Refresh the links list
             await fetchLinks();
         } catch (error) {
@@ -723,7 +752,15 @@ export default function BookingsPage() {
     const duplicateLink = async (linkId: string) => {
         try {
             const result = await gatewayClient.duplicateBookingLink(linkId);
-            alert(`Link duplicated successfully!\n\nNew slug: ${result.data.slug}`);
+            // Find the original link to get its title for the success message
+            const originalLink = existingLinks.find(l => l.id === linkId);
+            setSuccessData({
+                title: "Link Duplicated Successfully!",
+                message: `A copy of "${originalLink?.settings?.title || originalLink?.slug || 'your link'}" has been created.`,
+                publicUrl: `${window.location.origin}/public/bookings/${result.data.slug}`,
+                slug: result.data.slug
+            });
+            setShowSuccessDialog(true);
             // Refresh the links list
             await fetchLinks();
         } catch (error) {
@@ -832,7 +869,7 @@ export default function BookingsPage() {
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <div className="flex-1">
                                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                                    <h3 className="font-medium">{link.slug}</h3>
+                                                    <h3 className="font-medium">{link.settings?.title || link.slug}</h3>
                                                     <span className={`px-2 py-1 text-xs rounded-full w-fit ${link.is_active
                                                         ? "bg-green-100 text-green-800"
                                                         : "bg-gray-100 text-gray-800"
@@ -846,6 +883,49 @@ export default function BookingsPage() {
                                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
                                                     <span>Total bookings: {link.total_bookings}</span>
                                                     <span>Conversion: {link.conversion_rate}</span>
+                                                </div>
+
+                                                {/* Public Link Display */}
+                                                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex-1 min-w-0">
+                                                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                                Public Booking Link
+                                                            </label>
+                                                            <div className="flex items-center gap-2">
+                                                                <a
+                                                                    href={`/public/bookings/${link.slug}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-sm text-blue-600 hover:text-blue-800 truncate"
+                                                                >
+                                                                    {`${window.location.origin}/public/bookings/${link.slug}`}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                const publicUrl = `${window.location.origin}/public/bookings/${link.slug}`;
+                                                                navigator.clipboard.writeText(publicUrl).then(() => {
+                                                                    // Show temporary success feedback
+                                                                    const button = e.currentTarget;
+                                                                    const originalText = button.textContent;
+                                                                    button.textContent = 'Copied!';
+                                                                    button.className = 'px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700';
+                                                                    setTimeout(() => {
+                                                                        button.textContent = originalText;
+                                                                        button.className = 'px-3 py-1 text-sm border rounded hover:bg-gray-50';
+                                                                    }, 2000);
+                                                                }).catch(err => {
+                                                                    console.error('Failed to copy: ', err);
+                                                                    alert('Failed to copy link to clipboard');
+                                                                });
+                                                            }}
+                                                            className="px-3 py-1 text-sm border rounded hover:bg-gray-50 flex-shrink-0"
+                                                        >
+                                                            Copy Link
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -918,8 +998,51 @@ export default function BookingsPage() {
                                                 {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
                                             </p>
                                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                                                <span>Attendee: {booking.attendeeName} ({booking.attendeeEmail})</span>
-                                                <span>Link: {booking.linkTitle}</span>
+                                                <span>Attendee: {booking.attendeeEmail}</span>
+                                                <span>Link ID: {booking.link_id}</span>
+                                            </div>
+
+                                            {/* Public Link Display */}
+                                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1 min-w-0">
+                                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                            Public Booking Link
+                                                        </label>
+                                                        <div className="flex items-center gap-2">
+                                                            <a
+                                                                href={`/public/bookings/${booking.link_id}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-sm text-blue-600 hover:text-blue-800 truncate"
+                                                            >
+                                                                {`${window.location.origin}/public/bookings/${booking.link_id}`}
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            const publicUrl = `${window.location.origin}/public/bookings/${booking.link_id}`;
+                                                            navigator.clipboard.writeText(publicUrl).then(() => {
+                                                                // Show temporary success feedback
+                                                                const button = e.currentTarget;
+                                                                const originalText = button.textContent;
+                                                                button.textContent = 'Copied!';
+                                                                button.className = 'px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700';
+                                                                setTimeout(() => {
+                                                                    button.textContent = originalText;
+                                                                    button.className = 'px-3 py-1 text-sm border rounded hover:bg-gray-50';
+                                                                }, 2000);
+                                                            }).catch(err => {
+                                                                console.error('Failed to copy: ', err);
+                                                                alert('Failed to copy link to clipboard');
+                                                            });
+                                                        }}
+                                                        className="px-3 py-1 text-sm border rounded hover:bg-gray-50 flex-shrink-0"
+                                                    >
+                                                        Copy Link
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -1030,7 +1153,10 @@ export default function BookingsPage() {
                         <div className="bg-white border rounded-lg p-4">
                             <h3 className="text-sm font-medium text-muted-foreground">Avg Conversion</h3>
                             <p className="text-2xl font-semibold text-green-600">
-                                {((analyticsData.reduce((sum, item) => sum + parseFloat(item.conversionRate), 0) / analyticsData.length)).toFixed(1)}%
+                                {analyticsData.length > 0
+                                    ? ((analyticsData.reduce((sum, item) => sum + parseFloat(item.conversionRate), 0) / analyticsData.length)).toFixed(1) + '%'
+                                    : '--- %'
+                                }
                             </p>
                         </div>
                         <div className="bg-white border rounded-lg p-4">
@@ -1121,6 +1247,190 @@ export default function BookingsPage() {
                 </button>
             </div>
         </div>
+    );
+
+    // Success Dialog
+    return (
+        <>
+            {/* Success Dialog */}
+            <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            {successData?.title}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            {successData?.message}
+                        </p>
+                        
+                        {successData && (
+                            <div className="space-y-3">
+                                <div>
+                                    <Label className="text-xs font-medium text-gray-700">Public Booking Link</Label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <a
+                                            href={successData.publicUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex-1 text-sm text-blue-600 hover:text-blue-800 underline truncate"
+                                        >
+                                            {successData.publicUrl}
+                                        </a>
+                                        <button
+                                            onClick={() => {
+                                                if (!successData) return;
+                                                navigator.clipboard.writeText(successData.publicUrl).then(() => {
+                                                    // Show temporary success feedback
+                                                    const button = event?.target as HTMLButtonElement;
+                                                    if (button) {
+                                                        const originalText = button.textContent;
+                                                        button.textContent = 'Copied!';
+                                                        button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
+                                                        setTimeout(() => {
+                                                            button.textContent = originalText;
+                                                            button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
+                                                        }, 2000);
+                                                    }
+                                                }).catch(err => {
+                                                    console.error('Failed to copy: ', err);
+                                                    alert('Failed to copy link to clipboard');
+                                                });
+                                            }}
+                                            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <Label className="text-xs font-medium text-gray-700">Link Slug</Label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <code className="flex-1 text-sm bg-gray-100 px-2 py-1 rounded font-mono">
+                                            {successData.slug}
+                                        </code>
+                                                                                    <button
+                                                onClick={() => {
+                                                    if (!successData) return;
+                                                    navigator.clipboard.writeText(successData.slug).then(() => {
+                                                        // Show temporary success feedback
+                                                        const button = event?.target as HTMLButtonElement;
+                                                        if (button) {
+                                                            const originalText = button.textContent;
+                                                            button.textContent = 'Copied!';
+                                                            button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
+                                                            setTimeout(() => {
+                                                                button.textContent = originalText;
+                                                                button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
+                                                            }, 2000);
+                                                        }
+                                                    }).catch(err => {
+                                                        console.error('Failed to copy: ', err);
+                                                        alert('Failed to copy slug to clipboard');
+                                                    });
+                                                }}
+                                            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={() => setShowSuccessDialog(false)}
+                                className="px-4 py-2"
+                            >
+                                OK
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Main component content */}
+            {activeTab === "manage" ? (
+                renderManageView()
+            ) : (
+                <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                        <h1 className="text-xl sm:text-2xl font-semibold">Create Booking Link</h1>
+                        <button
+                            className="w-full sm:w-auto px-4 py-2 border rounded hover:bg-gray-50"
+                            onClick={() => setActiveTab("manage")}
+                        >
+                            Manage Links
+                        </button>
+                    </div>
+
+                    {/* Step indicator */}
+                    <div className="mb-8">
+                        <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2">
+                            {steps.map((step, index) => (
+                                <div
+                                    key={step.key}
+                                    className="flex items-center flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setCurrentStep(step.key)}
+                                >
+                                    <div
+                                        className={`w-6 sm:w-8 h-6 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${currentStep === step.key
+                                            ? "bg-blue-600 text-white"
+                                            : index < steps.findIndex(s => s.key === currentStep)
+                                                ? "bg-blue-600 text-white"
+                                                : "bg-gray-200 text-gray-600"
+                                            }`}
+                                    >
+                                        {index < steps.findIndex(s => s.key === currentStep) ? "✓" : index + 1}
+                                    </div>
+                                    <span className="ml-2 text-xs sm:text-sm font-medium whitespace-nowrap">{step.label}</span>
+                                    {index < steps.length - 1 && (
+                                        <div className="w-4 sm:w-8 h-0.5 bg-gray-200 mx-2 sm:mx-4" />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Step content */}
+                    <div className="bg-white border rounded-lg p-4 sm:p-6">
+                        {renderStep()}
+                    </div>
+
+                    {/* Navigation */}
+                    <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+                        <button
+                            className="w-full sm:w-auto px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+                            disabled={!canGoBack()}
+                            onClick={goBack}
+                        >
+                            Back
+                        </button>
+                        <button
+                            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                            onClick={goNext}
+                            disabled={!canGoNext() || isLoading}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center gap-2">
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Processing...
+                        </span>
+                    ) : (
+                        currentStep === "review" ? "Create" : "Next"
+                    )}
+                </button>
+            </div>
+        </div>
+            )}
+        </>
     );
 }
 
