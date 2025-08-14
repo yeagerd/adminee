@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface DateTimeRangePickerProps {
     startTime: Date | null;
@@ -245,7 +245,7 @@ export function DateTimeRangePicker({
                     </Button>
                     {showStartTimePicker && (
                         <div className="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg p-1 min-w-[120px] max-h-60 overflow-y-auto" data-picker>
-                            {startTimeOptions.map((time, index) => (
+                            {startTimeOptions.map((time: Date, index: number) => (
                                 <button
                                     key={index}
                                     type="button"
