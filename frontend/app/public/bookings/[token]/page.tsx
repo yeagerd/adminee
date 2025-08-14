@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, use } from "react";
 
 interface BookingMeta {
     title: string;
@@ -28,8 +28,8 @@ interface TimeSlot {
 
 
 
-export default function PublicBookingPage({ params }: { params: { token: string } }) {
-    const { token } = params;
+export default function PublicBookingPage({ params }: { params: Promise<{ token: string }> }) {
+    const { token } = use(params);
     const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
     const durationOptions = useMemo(() => [15, 30, 60, 120], []);
     const [duration, setDuration] = useState<number>(30);

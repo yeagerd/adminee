@@ -445,7 +445,7 @@ const serviceRoutes = {
     '/api/v1/shipments': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
     '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/bookings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
-    '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
+            '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
 };
 
 // Create proxy middleware factory
@@ -606,10 +606,17 @@ app.use('/api/v1/drafts', validateAuth, standardLimiter, createServiceProxy(serv
 app.use('/api/v1/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/drafts'], { '^/api/v1/drafts': '/v1/chat/drafts' }));
 app.use('/api/v1/meetings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
 app.use('/api/v1/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
-app.use('/api/v1/bookings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings': '/api/v1/bookings' }));
-app.use('/api/v1/bookings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings': '/api/v1/bookings' }));
-app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
-app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
+    // Public booking endpoints (no auth required) - must come before general booking routes
+    app.use('/api/v1/bookings/public', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/public': '/api/v1/bookings/public' }));
+    app.use('/api/v1/bookings/public/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/public': '/api/v1/bookings/public' }));
+    
+    // Authenticated booking endpoints - be specific to avoid catching public routes
+    app.use('/api/v1/bookings/links', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/links': '/api/v1/bookings/links' }));
+    app.use('/api/v1/bookings/links/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/links': '/api/v1/bookings/links' }));
+    app.use('/api/v1/bookings/templates', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/templates': '/api/v1/bookings/templates' }));
+    app.use('/api/v1/bookings/templates/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/templates': '/api/v1/bookings/templates' }));
+    app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
+    app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
 app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
 app.use('/api/v1/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts/' }));
@@ -650,7 +657,7 @@ const server = app.listen(PORT, () => {
     logWithContext('info', `  /api/v1/drafts     → ${serviceRoutes['/api/v1/drafts']}`);
     logWithContext('info', `  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
     logWithContext('info', `  /api/v1/bookings → ${serviceRoutes['/api/v1/bookings']}`);
-    logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
+            logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
     logWithContext('info', `  /api/v1/shipments → ${serviceRoutes['/api/v1/shipments']}`);
 });
 
@@ -670,11 +677,15 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/v1/calendar'];
     } else if (path.startsWith('/api/v1/meetings')) {
         targetService = serviceRoutes['/api/v1/meetings'];
-    } else if (path.startsWith('/api/v1/bookings')) {
+        } else if (path.startsWith('/api/v1/bookings/public')) {
+        targetService = serviceRoutes['/api/v1/bookings'];
+    } else if (path.startsWith('/api/v1/bookings/links')) {
+        targetService = serviceRoutes['/api/v1/bookings'];
+    } else if (path.startsWith('/api/v1/bookings/templates')) {
         targetService = serviceRoutes['/api/v1/bookings'];
     } else if (path.startsWith('/api/v1/public/polls')) {
-        targetService = serviceRoutes['/api/v1/public/polls'];
-    } else if (path.startsWith('/api/v1/shipments')) {
+            targetService = serviceRoutes['/api/v1/public/polls'];
+                } else if (path.startsWith('/api/v1/shipments')) {
         targetService = serviceRoutes['/api/v1/shipments'];
     }
 

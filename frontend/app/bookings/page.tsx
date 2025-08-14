@@ -731,17 +731,17 @@ export default function BookingsPage() {
     const toggleLinkStatus = async (linkId: string) => {
         try {
             console.log('Toggling link status for:', linkId);
-            
+
             // Optimistically update the UI for better user experience
-            setExistingLinks(prev => prev.map(link => 
-                link.id === linkId 
+            setExistingLinks(prev => prev.map(link =>
+                link.id === linkId
                     ? { ...link, is_active: !link.is_active }
                     : link
             ));
 
             const result = await gatewayClient.toggleBookingLink(linkId);
             console.log('Toggle API response:', result);
-            
+
             // Find the link to get its slug for the success message
             const link = existingLinks.find(l => l.id === linkId);
             if (link) {
@@ -753,15 +753,15 @@ export default function BookingsPage() {
                 });
                 setShowSuccessDialog(true);
             }
-            
+
             // Refresh the links list to ensure consistency with backend
             await fetchLinks();
         } catch (error) {
             console.error('Error toggling link status:', error);
-            
+
             // Revert the optimistic update on error
-            setExistingLinks(prev => prev.map(link => 
-                link.id === linkId 
+            setExistingLinks(prev => prev.map(link =>
+                link.id === linkId
                     ? { ...link, is_active: !link.is_active }
                     : link
             ));
