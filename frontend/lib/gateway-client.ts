@@ -1,3 +1,13 @@
+import type {
+    CreateBookingLinkData,
+    CreateBookingLinkResponse,
+    CreateOneTimeLinkResponse,
+    CreatePublicBookingResponse,
+    DuplicateBookingLinkResponse,
+    ListBookingLinksResponse,
+    PublicAvailabilityResponse,
+    ToggleBookingLinkResponse,
+} from '@/types/bookings';
 import type { CalendarEvent, CreateCalendarEventRequest } from '@/types/office-service';
 import {
     ApiResponse,
@@ -889,6 +899,52 @@ export class GatewayClient {
     async deleteContact(contactId: string): Promise<ApiResponse<{ deleted: boolean }>> {
         return this.request<ApiResponse<{ deleted: boolean }>>(`/api/v1/contacts/${contactId}`, {
             method: 'DELETE',
+        });
+    }
+
+    // Booking methods
+    async createBookingLink(data: CreateBookingLinkData): Promise<CreateBookingLinkResponse> {
+        return this.request('/api/v1/bookings/links', {
+            method: 'POST',
+            body: data,
+        });
+    }
+
+    async listBookingLinks(): Promise<ListBookingLinksResponse> {
+        return this.request('/api/v1/bookings/links');
+    }
+
+    async toggleBookingLink(linkId: string): Promise<ToggleBookingLinkResponse> {
+        return this.request(`/api/v1/bookings/links/${linkId}/toggle`, {
+            method: 'POST',
+        });
+    }
+
+    async duplicateBookingLink(linkId: string): Promise<DuplicateBookingLinkResponse> {
+        return this.request(`/api/v1/bookings/links/${linkId}/duplicate`, {
+            method: 'POST',
+        });
+    }
+
+    async createOneTimeLink(linkId: string, data: {
+        recipient_email: string;
+        recipient_name: string;
+        expires_in_days: number;
+    }): Promise<CreateOneTimeLinkResponse> {
+        return this.request(`/api/v1/bookings/links/${linkId}/one-time`, {
+            method: 'POST',
+            body: data,
+        });
+    }
+
+    async getPublicAvailability(token: string, duration: number = 30): Promise<PublicAvailabilityResponse> {
+        return this.request(`/api/v1/bookings/public/${token}/availability?duration=${duration}`);
+    }
+
+    async createPublicBooking(token: string, bookingData: { start: string; end: string; attendeeEmail: string; answers?: Record<string, string> }): Promise<CreatePublicBookingResponse> {
+        return this.request(`/api/v1/bookings/public/${token}/book`, {
+            method: 'POST',
+            body: bookingData,
         });
     }
 }
