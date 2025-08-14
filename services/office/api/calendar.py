@@ -1671,9 +1671,20 @@ def find_available_slots(
     # Sort events by start time
     sorted_events = sorted(events, key=lambda e: e.start_time)
 
-    # Convert to UTC if needed
-    start_dt = start_dt.replace(tzinfo=timezone.utc)
-    end_dt = end_dt.replace(tzinfo=timezone.utc)
+    # Ensure all datetimes are timezone-aware and in UTC
+    def ensure_timezone_aware(dt: datetime) -> datetime:
+        """Ensure datetime is timezone-aware and convert to UTC."""
+        if dt.tzinfo is None:
+            # If naive, assume UTC
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            # If timezone-aware, convert to UTC
+            dt = dt.astimezone(timezone.utc)
+        return dt
+
+    # Convert input datetimes to UTC
+    start_dt = ensure_timezone_aware(start_dt)
+    end_dt = ensure_timezone_aware(end_dt)
 
     # Initialize available slots
     available_slots = []
@@ -1683,13 +1694,17 @@ def find_available_slots(
     duration_td = timedelta(minutes=duration_minutes)
 
     for event in sorted_events:
+        # Ensure event datetimes are timezone-aware and in UTC
+        event_start = ensure_timezone_aware(event.start_time)
+        event_end = ensure_timezone_aware(event.end_time)
+        
         # Skip events outside our range
-        if event.end_time <= start_dt or event.start_time >= end_dt:
+        if event_end <= start_dt or event_start >= end_dt:
             continue
 
         # If there's a gap before this event, check if it's long enough
-        if event.start_time > current_time:
-            slot_end = event.start_time
+        if event_start > current_time:
+            slot_end = event_start
             if slot_end - current_time >= duration_td:
                 available_slots.append(
                     {
@@ -1699,7 +1714,7 @@ def find_available_slots(
                 )
 
         # Move current_time to the end of this event
-        current_time = max(current_time, event.end_time)
+        current_time = max(current_time, event_end)
 
     # Check if there's time after the last event
     if current_time < end_dt:
