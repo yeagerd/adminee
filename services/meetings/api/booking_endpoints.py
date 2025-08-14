@@ -58,6 +58,7 @@ from services.meetings.services.security import (
     check_rate_limit,
     get_remaining_requests,
 )
+from services.meetings.schemas.booking_requests import PublicLinkDataResponse, AvailabilityDataResponse
 
 router = APIRouter()
 
@@ -74,8 +75,8 @@ async def health_check() -> Dict[str, str]:
     return {"status": "healthy", "service": "bookings"}
 
 
-@router.get("/public/{token}", response_model=PublicLinkResponse)
-async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
+@router.get("/public/{token}", response_model=PublicLinkDataResponse)
+async def get_public_link(token: str, request: Request) -> PublicLinkDataResponse:
     """Get public link metadata including template questions"""
     # Rate limiting for public endpoints
     client_key = get_client_key(request)
@@ -177,19 +178,21 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
         session.add(analytics_event)
         session.commit()
 
-        return PublicLinkResponse(
-            title=str(booking_link.slug),  # Use slug as title for now
-            description="Book a meeting with us",
-            template_questions=template_questions,  # type: ignore[arg-type]
-            duration_options=duration_options,
-            is_active=booking_link.is_active,
+        return PublicLinkDataResponse(
+            data=PublicLinkResponse(
+                title=str(booking_link.slug),  # Use slug as title for now
+                description="Book a meeting with us",
+                template_questions=template_questions,  # type: ignore[arg-type]
+                duration_options=duration_options,
+                is_active=booking_link.is_active,
+            )
         )
 
 
-@router.get("/public/{token}/availability", response_model=AvailabilityResponse)
+@router.get("/public/{token}/availability", response_model=AvailabilityDataResponse)
 async def get_public_availability(
     token: str, duration: int = 30, request: Request = None
-) -> AvailabilityResponse:
+) -> AvailabilityDataResponse:
     """Get available time slots for a public link"""
     # Rate limiting for public endpoints
     client_key = get_client_key(request) if request else "unknown"
@@ -266,10 +269,12 @@ async def get_public_availability(
             settings=settings,
         )
 
-        return AvailabilityResponse(
-            slots=availability_result.get("slots", []),
-            duration=duration,
-            timezone="UTC",
+        return AvailabilityDataResponse(
+            data=AvailabilityResponse(
+                slots=availability_result.get("slots", []),
+                duration=duration,
+                timezone="UTC",
+            )
         )
 
 

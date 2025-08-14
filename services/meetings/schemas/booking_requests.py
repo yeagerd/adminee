@@ -400,6 +400,15 @@ class AvailabilityResponse(BaseModel):
     timezone: str
 
 
+# Wrapped response models for public endpoints
+class PublicLinkDataResponse(BaseModel):
+    data: PublicLinkResponse
+
+
+class AvailabilityDataResponse(BaseModel):
+    data: AvailabilityResponse
+
+
 # Enhanced Error Response Models
 class FieldError(BaseModel):
     field: str
