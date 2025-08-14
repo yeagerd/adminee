@@ -58,6 +58,9 @@ export default function BookingsPage() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [analyticsData, setAnalyticsData] = useState<any[]>([]);
 
+    // Filter state for bookings
+    const [bookingsFilter, setBookingsFilter] = useState<string | null>(null); // link_id to filter by
+
     // Loading and error states
     const [isLoadingLinks, setIsLoadingLinks] = useState(false);
     const [isLoadingBookings, setIsLoadingBookings] = useState(false);
@@ -787,6 +790,11 @@ export default function BookingsPage() {
         alert(`Editing link ${linkId}... (edit mode pending - would navigate to edit form)`);
     };
 
+    const viewLinkBookings = (linkId: string) => {
+        setBookingsFilter(linkId);
+        setManageView("bookings");
+    };
+
     const formatDateTime = (dateTimeString: string) => {
         const date = new Date(dateTimeString);
         return date.toLocaleString('en-US', {
@@ -956,6 +964,12 @@ export default function BookingsPage() {
                                                 >
                                                     Edit
                                                 </button>
+                                                <button
+                                                    className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                                    onClick={() => viewLinkBookings(link.id)}
+                                                >
+                                                    View
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -985,112 +999,157 @@ export default function BookingsPage() {
                     {/* Bookings list */}
                     <div className="bg-white border rounded-lg overflow-hidden">
                         <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
-                            <h2 className="font-medium">Upcoming & Recent Bookings</h2>
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-medium">
+                                    {bookingsFilter
+                                        ? `Bookings for "${existingLinks.find(l => l.id === bookingsFilter)?.settings?.title || 'this link'}"`
+                                        : "Upcoming & Recent Bookings"
+                                    }
+                                </h2>
+                                {bookingsFilter && (
+                                    <button
+                                        onClick={() => setBookingsFilter(null)}
+                                        className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                    >
+                                        Clear Filter
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="divide-y">
-                            {bookings.map((booking) => (
-                                <div key={booking.id} className="px-4 sm:px-6 py-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                                <h3 className="font-medium">{booking.title}</h3>
-                                                <span className={`px-2 py-1 text-xs rounded-full w-fit ${booking.status === "confirmed"
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-yellow-100 text-yellow-800"
-                                                    }`}>
-                                                    {booking.status === "confirmed" ? "Confirmed" : "Pending"}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
-                                            </p>
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                                                <span>Attendee: {booking.attendeeEmail}</span>
-                                                <span>Link ID: {booking.link_id}</span>
-                                            </div>
+                            {bookings
+                                .filter(booking => !bookingsFilter || booking.link_id === bookingsFilter)
+                                .map((booking) => (
+                                    <div key={booking.id} className="px-4 sm:px-6 py-4">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                                    <h3 className="font-medium">{booking.title}</h3>
+                                                    <span className={`px-2 py-1 text-xs rounded-full w-fit ${booking.status === "confirmed"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : "bg-yellow-100 text-yellow-800"
+                                                        }`}>
+                                                        {booking.status === "confirmed" ? "Confirmed" : "Pending"}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground mt-1">
+                                                    {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
+                                                </p>
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
+                                                    <span>Attendee: {booking.attendeeEmail}</span>
+                                                    <span>Link ID: {booking.link_id}</span>
+                                                </div>
 
-                                            {/* Public Link Display */}
-                                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-medium text-gray-700">URL:</span>
-                                                            <a
-                                                                href={`/public/bookings/${booking.link_id}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-sm text-blue-600 hover:text-blue-800 truncate"
-                                                            >
-                                                                {`${window.location.origin}/public/bookings/${booking.link_id}`}
-                                                            </a>
+                                                {/* Public Link Display */}
+                                                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-medium text-gray-700">URL:</span>
+                                                                <a
+                                                                    href={`/public/bookings/${booking.link_id}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-sm text-blue-600 hover:text-blue-800 truncate"
+                                                                >
+                                                                    {`${window.location.origin}/public/bookings/${booking.link_id}`}
+                                                                </a>
+                                                            </div>
                                                         </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                const publicUrl = `${window.location.origin}/public/bookings/${booking.link_id}`;
+                                                                navigator.clipboard.writeText(publicUrl).then(() => {
+                                                                    // Show temporary success feedback
+                                                                    const button = e.currentTarget;
+                                                                    const originalText = button.textContent;
+                                                                    button.textContent = 'Copied!';
+                                                                    button.className = 'px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700';
+                                                                    setTimeout(() => {
+                                                                        button.textContent = originalText;
+                                                                        button.className = 'px-3 py-1 text-sm border rounded hover:bg-gray-50';
+                                                                    }, 2000);
+                                                                }).catch(err => {
+                                                                    console.error('Failed to copy: ', err);
+                                                                    alert('Failed to copy link to clipboard');
+                                                                });
+                                                            }}
+                                                            className="px-3 py-1 text-sm border rounded hover:bg-gray-50 flex-shrink-0"
+                                                        >
+                                                            Copy Link
+                                                        </button>
                                                     </div>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            const publicUrl = `${window.location.origin}/public/bookings/${booking.link_id}`;
-                                                            navigator.clipboard.writeText(publicUrl).then(() => {
-                                                                // Show temporary success feedback
-                                                                const button = e.currentTarget;
-                                                                const originalText = button.textContent;
-                                                                button.textContent = 'Copied!';
-                                                                button.className = 'px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700';
-                                                                setTimeout(() => {
-                                                                    button.textContent = originalText;
-                                                                    button.className = 'px-3 py-1 text-sm border rounded hover:bg-gray-50';
-                                                                }, 2000);
-                                                            }).catch(err => {
-                                                                console.error('Failed to copy: ', err);
-                                                                alert('Failed to copy link to clipboard');
-                                                            });
-                                                        }}
-                                                        className="px-3 py-1 text-sm border rounded hover:bg-gray-50 flex-shrink-0"
-                                                    >
-                                                        Copy Link
-                                                    </button>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className="flex flex-wrap gap-2">
-                                            <button
-                                                className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                                                onClick={() => {
-                                                    // TODO: Open calendar event - would navigate to calendar or open in new tab
-                                                    alert(`Opening calendar event for ${booking.title}... (would open in calendar app)`);
-                                                }}
-                                            >
-                                                Open Event
-                                            </button>
-                                            <button
-                                                className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                                                onClick={() => {
-                                                    // TODO: Reschedule booking - would open reschedule form
-                                                    alert(`Rescheduling ${booking.title}... (would open reschedule form)`);
-                                                }}
-                                            >
-                                                Reschedule
-                                            </button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button
+                                                    className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                                    onClick={() => {
+                                                        // TODO: Open calendar event - would navigate to calendar or open in new tab
+                                                        alert(`Opening calendar event for ${booking.title}... (would open in calendar app)`);
+                                                    }}
+                                                >
+                                                    Open Event
+                                                </button>
+                                                <button
+                                                    className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                                    onClick={() => {
+                                                        // TODO: Reschedule booking - would open reschedule form
+                                                        alert(`Rescheduling ${booking.title}... (would open reschedule form)`);
+                                                    }}
+                                                >
+                                                    Reschedule
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
+                                ))}
+                            {bookingsFilter && bookings.filter(b => b.link_id === bookingsFilter).length === 0 && (
+                                <div className="px-4 sm:px-6 py-8 text-center">
+                                    <p className="text-gray-500 mb-4">No bookings found for this link</p>
+                                    <button
+                                        onClick={() => setBookingsFilter(null)}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                    >
+                                        View All Bookings
+                                    </button>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
                     {/* Bookings stats */}
                     <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="bg-white border rounded-lg p-4">
-                            <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
-                            <p className="text-2xl font-semibold">{bookings.length}</p>
+                            <h3 className="text-sm font-medium text-muted-foreground">
+                                {bookingsFilter ? "Filtered Bookings" : "Total Bookings"}
+                            </h3>
+                            <p className="text-2xl font-semibold">
+                                {bookingsFilter
+                                    ? bookings.filter(b => b.link_id === bookingsFilter).length
+                                    : bookings.length
+                                }
+                            </p>
                         </div>
                         <div className="bg-white border rounded-lg p-4">
                             <h3 className="text-sm font-medium text-muted-foreground">Confirmed</h3>
-                            <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "confirmed").length}</p>
+                            <p className="text-2xl font-semibold">
+                                {bookingsFilter
+                                    ? bookings.filter(b => b.link_id === bookingsFilter && b.status === "confirmed").length
+                                    : bookings.filter(b => b.status === "confirmed").length
+                                }
+                            </p>
                         </div>
                         <div className="bg-white border rounded-lg p-4">
                             <h3 className="text-sm font-medium text-muted-foreground">Pending</h3>
-                            <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "pending").length}</p>
+                            <p className="text-2xl font-semibold">
+                                {bookingsFilter
+                                    ? bookings.filter(b => b.link_id === bookingsFilter && b.status === "pending").length
+                                    : bookings.filter(b => b.status === "pending").length
+                                }
+                            </p>
                         </div>
                     </div>
                 </>
