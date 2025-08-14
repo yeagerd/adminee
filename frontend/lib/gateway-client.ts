@@ -1,12 +1,13 @@
+import type { CalendarEvent, CreateCalendarEventRequest } from '@/types/office-service';
 import {
     ApiResponse,
     CalendarEventsResponse,
+    Contact,
     EmailFolder,
+    GetContactsResponse,
     GetEmailsResponse,
     GetThreadResponse,
     GetThreadsResponse,
-    GetContactsResponse,
-    Contact,
 } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
@@ -258,6 +259,32 @@ export class GatewayClient {
         if (noCache) params.append('no_cache', 'true');
 
         return this.request<ApiResponse<CalendarEventsResponse>>(`/api/v1/calendar/events?${params.toString()}`);
+    }
+
+    async createCalendarEvent(payload: CreateCalendarEventRequest) {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events`, {
+            method: 'POST',
+            body: payload,
+        });
+    }
+
+    async updateCalendarEvent(eventId: string, payload: CreateCalendarEventRequest) {
+        const session = await getSession();
+        const userId = session?.user?.id;
+        const params = new URLSearchParams();
+        if (userId) params.append('user_id', userId);
+        const query = params.toString();
+        const suffix = query ? `?${query}` : '';
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}${suffix}`, {
+            method: 'PUT',
+            body: payload,
+        });
+    }
+
+    async deleteCalendarEvent(eventId: string) {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}`, {
+            method: 'DELETE',
+        });
     }
 
     async getEmails(
