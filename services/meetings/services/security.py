@@ -38,7 +38,9 @@ class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
 
     def __init__(self) -> None:
-        self.requests: Dict[str, List[float]] = {}  # In production, use Redis or similar
+        self.requests: Dict[str, List[float]] = (
+            {}
+        )  # In production, use Redis or similar
 
     def is_allowed(self, key: str, max_requests: int, window_seconds: int) -> bool:
         """

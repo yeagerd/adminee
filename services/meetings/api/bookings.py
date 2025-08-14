@@ -2,8 +2,6 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-
-
 from fastapi import APIRouter, Depends, Request
 
 from services.common.http_errors import (
