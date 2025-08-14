@@ -1217,13 +1217,8 @@ export default function BookingsPage() {
                             <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.views, 0)}</p>
                         </div>
                         <div className="bg-white border rounded-lg p-4">
-                            <h3 className="text-sm font-medium text-muted-foreground">Created</h3>
-                            <p className="text-sm font-semibold">
-                                {existingLinks.length > 0
-                                    ? formatDateTime(existingLinks[0].created_at)
-                                    : '---'
-                                }
-                            </p>
+                            <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
+                            <p className="text-2xl font-semibold">{existingLinks.length}</p>
                         </div>
                         <div className="bg-white border rounded-lg p-4">
                             <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
