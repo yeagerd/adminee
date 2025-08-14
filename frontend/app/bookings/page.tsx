@@ -746,20 +746,6 @@ export default function BookingsPage() {
             const result = await gatewayClient.toggleBookingLink(linkId);
             console.log('Toggle API response:', result);
 
-            // Find the link to get its slug for the success message
-            const link = existingLinks.find(l => l.id === linkId);
-            if (link) {
-                setSuccessData({
-                    title: "Link Status Updated",
-                    message: `Link "${link.settings?.title || link.slug}" has been ${result.data.is_active ? 'activated' : 'deactivated'} successfully.`,
-                    publicUrl: `${window.location.origin}/public/bookings/${link.slug}`,
-                    slug: link.slug,
-                    bookingTitle: link.settings?.title || link.slug,
-                    createdAt: link.created_at
-                });
-                setShowSuccessDialog(true);
-            }
-
             // Refresh the links list to ensure consistency with backend
             await fetchLinks();
         } catch (error) {
