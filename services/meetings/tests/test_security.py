@@ -30,11 +30,10 @@ class TestTokenGenerator:
     def test_generate_slug(self):
         """Test that slugs are generated with correct format"""
         slug = TokenGenerator.generate_slug()
-
-        assert len(slug) == 12
+        assert len(slug) == 32
         assert all(
             c.islower() or c.isdigit() for c in slug
-        )  # Lowercase and digits only
+        )
 
     def test_token_uniqueness(self):
         """Test that generated tokens are unique"""

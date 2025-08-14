@@ -73,6 +73,8 @@ export default function BookingsPage() {
         message: string;
         publicUrl: string;
         slug: string;
+        bookingTitle: string;
+        createdAt: string;
     } | null>(null);
 
     // Data fetching functions
@@ -648,7 +650,9 @@ export default function BookingsPage() {
                                         title: "Booking Link Created Successfully!",
                                         message: "Your new booking link is ready to share with recipients.",
                                         publicUrl: result.data.public_url,
-                                        slug: result.data.slug
+                                        slug: result.data.slug,
+                                        bookingTitle: formData.title,
+                                        createdAt: new Date().toISOString()
                                     });
                                     setShowSuccessDialog(true);
                                     setFormData({
@@ -749,7 +753,9 @@ export default function BookingsPage() {
                     title: "Link Status Updated",
                     message: `Link "${link.settings?.title || link.slug}" has been ${result.data.is_active ? 'activated' : 'deactivated'} successfully.`,
                     publicUrl: `${window.location.origin}/public/bookings/${link.slug}`,
-                    slug: link.slug
+                    slug: link.slug,
+                    bookingTitle: link.settings?.title || link.slug,
+                    createdAt: link.created_at
                 });
                 setShowSuccessDialog(true);
             }
@@ -778,7 +784,9 @@ export default function BookingsPage() {
                 title: "Link Duplicated Successfully!",
                 message: `A copy of "${originalLink?.settings?.title || originalLink?.slug || 'your link'}" has been created.`,
                 publicUrl: `${window.location.origin}/public/bookings/${result.data.slug}`,
-                slug: result.data.slug
+                slug: result.data.slug,
+                bookingTitle: originalLink?.settings?.title || originalLink?.slug || 'Duplicated Link',
+                createdAt: new Date().toISOString()
             });
             setShowSuccessDialog(true);
             // Refresh the links list
@@ -897,55 +905,49 @@ export default function BookingsPage() {
                                                         {link.is_active ? "Active" : "Inactive"}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-muted-foreground mt-1">
-                                                    Slug: {link.slug} • Created: {link.created_at}
-                                                </p>
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                                                    <span>Total bookings: {link.total_bookings}</span>
-                                                    <span>Conversion: {link.conversion_rate}</span>
+
+                                                {/* URL Display - moved here after title */}
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-gray-700">URL:</span>
+                                                    <a
+                                                        href={`/public/bookings/${link.slug}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm text-blue-600 hover:text-blue-800 truncate"
+                                                    >
+                                                        {`${window.location.origin}/public/bookings/${link.slug}`}
+                                                    </a>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            const publicUrl = `${window.location.origin}/public/bookings/${link.slug}`;
+                                                            navigator.clipboard.writeText(publicUrl).then(() => {
+                                                                // Show temporary success feedback
+                                                                const button = e.currentTarget;
+                                                                const originalText = button.textContent;
+                                                                button.textContent = 'Copied!';
+                                                                button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
+                                                                setTimeout(() => {
+                                                                    button.textContent = originalText;
+                                                                    button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
+                                                                }, 2000);
+                                                            }).catch(err => {
+                                                                console.error('Failed to copy: ', err);
+                                                                alert('Failed to copy link to clipboard');
+                                                            });
+                                                        }}
+                                                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
+                                                        title="Copy link"
+                                                    >
+                                                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
 
-                                                {/* Public Link Display */}
-                                                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex-1 min-w-0">
-                                                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                                Public Booking Link
-                                                            </label>
-                                                            <div className="flex items-center gap-2">
-                                                                <a
-                                                                    href={`/public/bookings/${link.slug}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-sm text-blue-600 hover:text-blue-800 truncate"
-                                                                >
-                                                                    {`${window.location.origin}/public/bookings/${link.slug}`}
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                const publicUrl = `${window.location.origin}/public/bookings/${link.slug}`;
-                                                                navigator.clipboard.writeText(publicUrl).then(() => {
-                                                                    // Show temporary success feedback
-                                                                    const button = e.currentTarget;
-                                                                    const originalText = button.textContent;
-                                                                    button.textContent = 'Copied!';
-                                                                    button.className = 'px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700';
-                                                                    setTimeout(() => {
-                                                                        button.textContent = originalText;
-                                                                        button.className = 'px-3 py-1 text-sm border rounded hover:bg-gray-50';
-                                                                    }, 2000);
-                                                                }).catch(err => {
-                                                                    console.error('Failed to copy: ', err);
-                                                                    alert('Failed to copy link to clipboard');
-                                                                });
-                                                            }}
-                                                            className="px-3 py-1 text-sm border rounded hover:bg-gray-50 flex-shrink-0"
-                                                        >
-                                                            Copy Link
-                                                        </button>
-                                                    </div>
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
+                                                    <span>Created: {formatDateTime(link.created_at)} • Total bookings: {link.total_bookings}</span>
+                                                    <span>Conversion: {link.conversion_rate}</span>
                                                 </div>
                                             </div>
 
@@ -1026,10 +1028,8 @@ export default function BookingsPage() {
                                             <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex-1 min-w-0">
-                                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                            Public Booking Link
-                                                        </label>
                                                         <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-gray-700">URL:</span>
                                                             <a
                                                                 href={`/public/bookings/${booking.link_id}`}
                                                                 target="_blank"
@@ -1161,10 +1161,19 @@ export default function BookingsPage() {
                     </div>
 
                     {/* Analytics summary */}
-                    <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
                         <div className="bg-white border rounded-lg p-4">
                             <h3 className="text-sm font-medium text-muted-foreground">Total Views</h3>
                             <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.views, 0)}</p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Created</h3>
+                            <p className="text-sm font-semibold">
+                                {existingLinks.length > 0
+                                    ? formatDateTime(existingLinks[0].created_at)
+                                    : '---'
+                                }
+                            </p>
                         </div>
                         <div className="bg-white border rounded-lg p-4">
                             <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
@@ -1289,6 +1298,15 @@ export default function BookingsPage() {
                         {successData && (
                             <div className="space-y-3">
                                 <div>
+                                    <Label className="text-xs font-medium text-gray-700">Booking Title</Label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <code className="flex-1 text-sm bg-gray-100 px-2 py-1 rounded font-mono">
+                                            {successData.bookingTitle}
+                                        </code>
+                                    </div>
+                                </div>
+
+                                <div>
                                     <Label className="text-xs font-medium text-gray-700">Public Booking Link</Label>
                                     <div className="flex items-center gap-2 mt-1">
                                         <a
@@ -1319,42 +1337,13 @@ export default function BookingsPage() {
                                                     alert('Failed to copy link to clipboard');
                                                 });
                                             }}
-                                            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
+                                            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0 flex items-center"
+                                            title="Copy link"
                                         >
-                                            Copy
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label className="text-xs font-medium text-gray-700">Link Slug</Label>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <code className="flex-1 text-sm bg-gray-100 px-2 py-1 rounded font-mono">
-                                            {successData.slug}
-                                        </code>
-                                        <button
-                                            onClick={() => {
-                                                if (!successData) return;
-                                                navigator.clipboard.writeText(successData.slug).then(() => {
-                                                    // Show temporary success feedback
-                                                    const button = event?.target as HTMLButtonElement;
-                                                    if (button) {
-                                                        const originalText = button.textContent;
-                                                        button.textContent = 'Copied!';
-                                                        button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
-                                                        setTimeout(() => {
-                                                            button.textContent = originalText;
-                                                            button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
-                                                        }, 2000);
-                                                    }
-                                                }).catch(err => {
-                                                    console.error('Failed to copy: ', err);
-                                                    alert('Failed to copy slug to clipboard');
-                                                });
-                                            }}
-                                            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
-                                        >
-                                            Copy
+                                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                            </svg>
                                         </button>
                                     </div>
                                 </div>

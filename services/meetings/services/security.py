@@ -28,9 +28,10 @@ class TokenGenerator:
     @staticmethod
     def generate_slug() -> str:
         """Generate a URL-friendly slug for booking links"""
-        # Generate a 12-character lowercase alphanumeric slug
+        # Generate a 32-character lowercase alphanumeric slug for security
+        # This provides 2^160 possible combinations, making brute force attacks impractical
         alphabet = string.ascii_lowercase + string.digits
-        slug = "".join(secrets.choice(alphabet) for _ in range(12))
+        slug = "".join(secrets.choice(alphabet) for _ in range(32))
         return slug
 
 
