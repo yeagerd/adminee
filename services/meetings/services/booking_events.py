@@ -42,7 +42,7 @@ async def create_booking_calendar_event(booking: Any) -> Optional[str]:
 
         # Get the owner user ID from the booking link
         from services.meetings.models import get_session
-        from services.meetings.models.bookings import BookingLink
+        from meetings.models.booking_entities import BookingLink
 
         with get_session() as session:
             booking_link = (

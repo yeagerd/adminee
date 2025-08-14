@@ -14,14 +14,14 @@ from services.common.http_errors import (
 )
 from services.meetings.api.auth import get_user_id_from_request, verify_api_key_auth
 from services.meetings.models import get_session
-from services.meetings.models.bookings import (
+from meetings.models.booking_entities import (
     AnalyticsEvent,
     Booking,
     BookingLink,
     BookingTemplate,
     OneTimeLink,
 )
-from services.meetings.schemas.bookings import (
+from meetings.schemas.booking_requests import (
     AnalyticsResponse,
     AvailabilityResponse,
     BookingLinkFilters,
