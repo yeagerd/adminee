@@ -3,6 +3,7 @@ export { GatewayClient } from './clients/gateway-client';
 export { OfficeClient } from './clients/office-client';
 export { ChatClient } from './clients/chat-client';
 export { UserClient } from './clients/user-client';
+export { MeetingsClient } from './clients/meetings-client';
 
 // Export common types
 export * from './types/common';
@@ -11,6 +12,8 @@ export * from './types/common';
 import { OfficeClient } from './clients/office-client';
 import { ChatClient } from './clients/chat-client';
 import { UserClient } from './clients/user-client';
+import { MeetingsClient } from './clients/meetings-client';
 export const officeApi = new OfficeClient();
 export const chatApi = new ChatClient();
 export const userApi = new UserClient();
+export const meetingsApi = new MeetingsClient();
