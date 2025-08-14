@@ -62,6 +62,7 @@ class OneTimeLink(Base):
         nullable=False,
     )
     recipient_email = Column(String(255), nullable=False)
+    recipient_name = Column(String(100), nullable=True)
     token = Column(String(128), unique=True, nullable=False)
     expires_at = Column(DateTime(timezone=True))
     status = Column(String(32), nullable=False, default="active")
