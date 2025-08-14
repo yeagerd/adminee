@@ -1,7 +1,8 @@
 "use client";
 
 import { gatewayClient } from "@/lib/gateway-client";
-import { useState } from "react";
+import type { BookingLink } from "@/types/bookings";
+import { useEffect, useState } from "react";
 
 type Step = "basics" | "availability" | "duration" | "limits" | "template" | "review";
 
@@ -48,83 +49,74 @@ export default function BookingsPage() {
         expiresInDays: 7, // for both evergreen and single-use
     });
 
-    // Mock data for existing links
-    const [existingLinks] = useState([
-        {
-            id: "1",
-            title: "Coffee Chat",
-            slug: "coffee-chat",
-            isActive: true,
-            createdAt: "2024-01-15",
-            totalBookings: 12,
-            conversionRate: "8.5%",
-        },
-        {
-            id: "2",
-            title: "Consultation",
-            slug: "consultation",
-            isActive: false,
-            createdAt: "2024-01-10",
-            totalBookings: 5,
-            conversionRate: "12.3%",
-        },
-    ]);
+    // Real data state
+    const [existingLinks, setExistingLinks] = useState<BookingLink[]>([]);
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [analyticsData, setAnalyticsData] = useState<any[]>([]);
 
-    // Mock data for bookings
-    const [bookings] = useState([
-        {
-            id: "1",
-            title: "Coffee Chat with John Doe",
-            startTime: "2024-01-20T10:00:00Z",
-            endTime: "2024-01-20T10:30:00Z",
-            attendeeEmail: "john@example.com",
-            attendeeName: "John Doe",
-            linkTitle: "Coffee Chat",
-            status: "confirmed",
-        },
-        {
-            id: "2",
-            title: "Consultation with Jane Smith",
-            startTime: "2024-01-21T14:00:00Z",
-            endTime: "2024-01-21T15:00:00Z",
-            attendeeEmail: "jane@example.com",
-            attendeeName: "Jane Smith",
-            linkTitle: "Consultation",
-            status: "confirmed",
-        },
-        {
-            id: "3",
-            title: "Coffee Chat with Bob Wilson",
-            startTime: "2024-01-22T09:00:00Z",
-            endTime: "2024-01-22T09:30:00Z",
-            attendeeEmail: "bob@example.com",
-            attendeeName: "Bob Wilson",
-            linkTitle: "Coffee Chat",
-            status: "pending",
-        },
-    ]);
+    // Loading and error states
+    const [isLoadingLinks, setIsLoadingLinks] = useState(false);
+    const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+    const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+    const [linksError, setLinksError] = useState<string | null>(null);
+    const [bookingsError, setBookingsError] = useState<string | null>(null);
+    const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
-    // Mock analytics data
-    const [analyticsData] = useState([
-        {
-            linkId: "1",
-            linkTitle: "Coffee Chat",
-            views: 142,
-            bookings: 12,
-            conversionRate: "8.5%",
-            lastViewed: "2024-01-19T15:30:00Z",
-            topReferrers: ["Direct", "Email", "LinkedIn"],
-        },
-        {
-            linkId: "2",
-            linkTitle: "Consultation",
-            views: 41,
-            bookings: 5,
-            conversionRate: "12.3%",
-            lastViewed: "2024-01-18T11:20:00Z",
-            topReferrers: ["Direct", "Twitter"],
-        },
-    ]);
+    // Data fetching functions
+    const fetchLinks = async () => {
+        try {
+            setIsLoadingLinks(true);
+            setLinksError(null);
+            const result = await gatewayClient.listBookingLinks();
+            setExistingLinks(result.data);
+        } catch (error) {
+            setLinksError(error instanceof Error ? error.message : 'Failed to fetch links');
+            console.error('Error fetching links:', error);
+        } finally {
+            setIsLoadingLinks(false);
+        }
+    };
+
+    const fetchBookings = async () => {
+        try {
+            setIsLoadingBookings(true);
+            setBookingsError(null);
+            // TODO: Implement when backend endpoint is ready
+            // const result = await gatewayClient.listBookings();
+            // setBookings(result.data);
+            setBookings([]); // Empty for now
+        } catch (error) {
+            setBookingsError(error instanceof Error ? error.message : 'Failed to fetch bookings');
+            console.error('Error fetching bookings:', error);
+        } finally {
+            setIsLoadingBookings(false);
+        }
+    };
+
+    const fetchAnalytics = async () => {
+        try {
+            setIsLoadingAnalytics(true);
+            setAnalyticsError(null);
+            // TODO: Implement when backend endpoint is ready
+            // const result = await gatewayClient.getAnalytics();
+            // setAnalyticsData(result.data);
+            setAnalyticsData([]); // Empty for now
+        } catch (error) {
+            setAnalyticsError(error instanceof Error ? error.message : 'Failed to fetch analytics');
+            console.error('Error fetching analytics:', error);
+        } finally {
+            setIsLoadingAnalytics(false);
+        }
+    };
+
+    // Load data when component mounts or tab changes
+    useEffect(() => {
+        if (activeTab === "manage") {
+            fetchLinks();
+            fetchBookings();
+            fetchAnalytics();
+        }
+    }, [activeTab]);
 
     const steps: { key: Step; label: string }[] = [
         { key: "basics", label: "Basics" },
@@ -721,7 +713,8 @@ export default function BookingsPage() {
         try {
             const result = await gatewayClient.toggleBookingLink(linkId);
             alert(`Link ${linkId} ${result.data.is_active ? 'activated' : 'deactivated'} successfully!`);
-            // In a real app, you would refresh the links list here
+            // Refresh the links list
+            await fetchLinks();
         } catch (error) {
             alert(`Error toggling link status: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -731,7 +724,8 @@ export default function BookingsPage() {
         try {
             const result = await gatewayClient.duplicateBookingLink(linkId);
             alert(`Link duplicated successfully!\n\nNew slug: ${result.data.slug}`);
-            // In a real app, you would refresh the links list here
+            // Refresh the links list
+            await fetchLinks();
         } catch (error) {
             alert(`Error duplicating link: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -754,78 +748,104 @@ export default function BookingsPage() {
         });
     };
 
-    if (activeTab === "manage") {
-        return (
-            <div className="p-4 sm:p-6 max-w-6xl mx-auto">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <h1 className="text-xl sm:text-2xl font-semibold">Manage Booking Links</h1>
-                    <button
-                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                        onClick={() => setActiveTab("create")}
-                    >
-                        Create New Link
-                    </button>
-                </div>
+    // Render manage view
+    const renderManageView = () => (
+        <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <h1 className="text-xl sm:text-2xl font-semibold">Manage Booking Links</h1>
+                <button
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => setActiveTab("create")}
+                >
+                    Create New Link
+                </button>
+            </div>
 
-                {/* Tab navigation */}
-                <div className="flex border-b mb-6 overflow-x-auto">
-                    <button
-                        className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${manageView === "links"
-                            ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
-                            }`}
-                        onClick={() => setManageView("links")}
-                    >
-                        Links
-                    </button>
-                    <button
-                        className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${manageView === "bookings"
-                            ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
-                            }`}
-                        onClick={() => setManageView("bookings")}
-                    >
-                        Bookings
-                    </button>
-                    <button
-                        className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${manageView === "analytics"
-                            ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
-                            }`}
-                        onClick={() => setManageView("analytics")}
-                    >
-                        Analytics
-                    </button>
-                </div>
+            {/* Tab navigation */}
+            <div className="flex border-b mb-6 overflow-x-auto">
+                <button
+                    className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${manageView === "links"
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        }`}
+                    onClick={() => setManageView("links")}
+                >
+                    Links
+                </button>
+                <button
+                    className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${manageView === "bookings"
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        }`}
+                    onClick={() => setManageView("bookings")}
+                >
+                    Bookings
+                </button>
+                <button
+                    className={`px-3 sm:px-4 py-2 border-b-2 font-medium whitespace-nowrap ${manageView === "analytics"
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        }`}
+                    onClick={() => setManageView("analytics")}
+                >
+                    Analytics
+                </button>
+            </div>
 
-                {manageView === "links" ? (
-                    <>
-                        {/* Links list */}
-                        <div className="bg-white border rounded-lg overflow-hidden">
-                            <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
-                                <h2 className="font-medium">Your Booking Links</h2>
+            {manageView === "links" ? (
+                <>
+                    {/* Links list */}
+                    <div className="bg-white border rounded-lg overflow-hidden">
+                        <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
+                            <h2 className="font-medium">Your Booking Links</h2>
+                        </div>
+
+                        {isLoadingLinks ? (
+                            <div className="px-4 sm:px-6 py-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p className="text-gray-500">Loading booking links...</p>
                             </div>
-
+                        ) : linksError ? (
+                            <div className="px-4 sm:px-6 py-8 text-center">
+                                <p className="text-red-500 mb-4">{linksError}</p>
+                                <button
+                                    onClick={fetchLinks}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        ) : existingLinks.length === 0 ? (
+                            <div className="px-4 sm:px-6 py-8 text-center">
+                                <p className="text-gray-500 mb-4">No booking links found</p>
+                                <button
+                                    onClick={() => setActiveTab("create")}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                    Create Your First Link
+                                </button>
+                            </div>
+                        ) : (
                             <div className="divide-y">
                                 {existingLinks.map((link) => (
                                     <div key={link.id} className="px-4 sm:px-6 py-4">
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <div className="flex-1">
                                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                                    <h3 className="font-medium">{link.title}</h3>
-                                                    <span className={`px-2 py-1 text-xs rounded-full w-fit ${link.isActive
+                                                    <h3 className="font-medium">{link.slug}</h3>
+                                                    <span className={`px-2 py-1 text-xs rounded-full w-fit ${link.is_active
                                                         ? "bg-green-100 text-green-800"
                                                         : "bg-gray-100 text-gray-800"
                                                         }`}>
-                                                        {link.isActive ? "Active" : "Inactive"}
+                                                        {link.is_active ? "Active" : "Inactive"}
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-muted-foreground mt-1">
-                                                    Slug: {link.slug} • Created: {link.createdAt}
+                                                    Slug: {link.slug} • Created: {link.created_at}
                                                 </p>
                                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                                                    <span>Total bookings: {link.totalBookings}</span>
-                                                    <span>Conversion: {link.conversionRate}</span>
+                                                    <span>Total bookings: {link.total_bookings}</span>
+                                                    <span>Conversion: {link.conversion_rate}</span>
                                                 </div>
                                             </div>
 
@@ -834,7 +854,7 @@ export default function BookingsPage() {
                                                     className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                                                     onClick={() => toggleLinkStatus(link.id)}
                                                 >
-                                                    {link.isActive ? "Disable" : "Enable"}
+                                                    {link.is_active ? "Disable" : "Enable"}
                                                 </button>
                                                 <button
                                                     className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
@@ -853,174 +873,179 @@ export default function BookingsPage() {
                                     </div>
                                 ))}
                             </div>
+                        )}
+                    </div>
+
+                    {/* Quick stats */}
+                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
+                            <p className="text-2xl font-semibold">{existingLinks.length}</p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
+                            <p className="text-2xl font-semibold">{existingLinks.filter(l => l.is_active).length}</p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+                            <p className="text-2xl font-semibold">{existingLinks.reduce((sum, l) => sum + l.total_bookings, 0)}</p>
+                        </div>
+                    </div>
+                </>
+            ) : manageView === "bookings" ? (
+                <>
+                    {/* Bookings list */}
+                    <div className="bg-white border rounded-lg overflow-hidden">
+                        <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
+                            <h2 className="font-medium">Upcoming & Recent Bookings</h2>
                         </div>
 
-                        {/* Quick stats */}
-                        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Links</h3>
-                                <p className="text-2xl font-semibold">{existingLinks.length}</p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
-                                <p className="text-2xl font-semibold">{existingLinks.filter(l => l.isActive).length}</p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
-                                <p className="text-2xl font-semibold">{existingLinks.reduce((sum, l) => sum + l.totalBookings, 0)}</p>
-                            </div>
-                        </div>
-                    </>
-                ) : manageView === "bookings" ? (
-                    <>
-                        {/* Bookings list */}
-                        <div className="bg-white border rounded-lg overflow-hidden">
-                            <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
-                                <h2 className="font-medium">Upcoming & Recent Bookings</h2>
-                            </div>
+                        <div className="divide-y">
+                            {bookings.map((booking) => (
+                                <div key={booking.id} className="px-4 sm:px-6 py-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                                <h3 className="font-medium">{booking.title}</h3>
+                                                <span className={`px-2 py-1 text-xs rounded-full w-fit ${booking.status === "confirmed"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-yellow-100 text-yellow-800"
+                                                    }`}>
+                                                    {booking.status === "confirmed" ? "Confirmed" : "Pending"}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
+                                            </p>
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
+                                                <span>Attendee: {booking.attendeeName} ({booking.attendeeEmail})</span>
+                                                <span>Link: {booking.linkTitle}</span>
+                                            </div>
+                                        </div>
 
-                            <div className="divide-y">
-                                {bookings.map((booking) => (
-                                    <div key={booking.id} className="px-4 sm:px-6 py-4">
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                            <div className="flex-1">
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                                    <h3 className="font-medium">{booking.title}</h3>
-                                                    <span className={`px-2 py-1 text-xs rounded-full w-fit ${booking.status === "confirmed"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-yellow-100 text-yellow-800"
-                                                        }`}>
-                                                        {booking.status === "confirmed" ? "Confirmed" : "Pending"}
-                                                    </span>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                                onClick={() => {
+                                                    // TODO: Open calendar event - would navigate to calendar or open in new tab
+                                                    alert(`Opening calendar event for ${booking.title}... (would open in calendar app)`);
+                                                }}
+                                            >
+                                                Open Event
+                                            </button>
+                                            <button
+                                                className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                                onClick={() => {
+                                                    // TODO: Reschedule booking - would open reschedule form
+                                                    alert(`Rescheduling ${booking.title}... (would open reschedule form)`);
+                                                }}
+                                            >
+                                                Reschedule
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Bookings stats */}
+                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+                            <p className="text-2xl font-semibold">{bookings.length}</p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Confirmed</h3>
+                            <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "confirmed").length}</p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Pending</h3>
+                            <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "pending").length}</p>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <>
+                    {/* Analytics view */}
+                    <div className="bg-white border rounded-lg overflow-hidden">
+                        <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
+                            <h2 className="font-medium">Link Performance Analytics</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Track views, bookings, and conversion rates for each link
+                            </p>
+                        </div>
+
+                        <div className="divide-y">
+                            {analyticsData.map((item) => (
+                                <div key={item.linkId} className="px-4 sm:px-6 py-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <h3 className="font-medium">{item.linkTitle}</h3>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Views</p>
+                                                    <p className="text-lg font-semibold">{item.views}</p>
                                                 </div>
-                                                <p className="text-sm text-muted-foreground mt-1">
-                                                    {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
-                                                </p>
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                                                    <span>Attendee: {booking.attendeeName} ({booking.attendeeEmail})</span>
-                                                    <span>Link: {booking.linkTitle}</span>
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Bookings</p>
+                                                    <p className="text-lg font-semibold">{item.bookings}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Conversion</p>
+                                                    <p className="text-lg font-semibold text-green-600">{item.conversionRate}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Last Viewed</p>
+                                                    <p className="text-sm">{formatDateTime(item.lastViewed)}</p>
                                                 </div>
                                             </div>
-
-                                            <div className="flex flex-wrap gap-2">
-                                                <button
-                                                    className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                                                    onClick={() => {
-                                                        // TODO: Open calendar event - would navigate to calendar or open in new tab
-                                                        alert(`Opening calendar event for ${booking.title}... (would open in calendar app)`);
-                                                    }}
-                                                >
-                                                    Open Event
-                                                </button>
-                                                <button
-                                                    className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-                                                    onClick={() => {
-                                                        // TODO: Reschedule booking - would open reschedule form
-                                                        alert(`Rescheduling ${booking.title}... (would open reschedule form)`);
-                                                    }}
-                                                >
-                                                    Reschedule
-                                                </button>
+                                            <div className="mt-3">
+                                                <p className="text-sm text-muted-foreground">Top Referrers</p>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    {item.topReferrers.map((referrer: string, idx: number) => (
+                                                        <span key={idx} className="px-2 py-1 bg-gray-100 text-xs rounded">
+                                                            {referrer}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
+                    </div>
 
-                        {/* Bookings stats */}
-                        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
-                                <p className="text-2xl font-semibold">{bookings.length}</p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Confirmed</h3>
-                                <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "confirmed").length}</p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Pending</h3>
-                                <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "pending").length}</p>
-                            </div>
+                    {/* Analytics summary */}
+                    <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Total Views</h3>
+                            <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.views, 0)}</p>
                         </div>
-                    </>
-                ) : (
-                    <>
-                        {/* Analytics view */}
-                        <div className="bg-white border rounded-lg overflow-hidden">
-                            <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
-                                <h2 className="font-medium">Link Performance Analytics</h2>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Track views, bookings, and conversion rates for each link
-                                </p>
-                            </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
+                            <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.bookings, 0)}</p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Avg Conversion</h3>
+                            <p className="text-2xl font-semibold text-green-600">
+                                {((analyticsData.reduce((sum, item) => sum + parseFloat(item.conversionRate), 0) / analyticsData.length)).toFixed(1)}%
+                            </p>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                            <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
+                            <p className="text-2xl font-semibold">{analyticsData.length}</p>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
 
-                            <div className="divide-y">
-                                {analyticsData.map((item) => (
-                                    <div key={item.linkId} className="px-4 sm:px-6 py-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <h3 className="font-medium">{item.linkTitle}</h3>
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
-                                                    <div>
-                                                        <p className="text-sm text-muted-foreground">Views</p>
-                                                        <p className="text-lg font-semibold">{item.views}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm text-muted-foreground">Bookings</p>
-                                                        <p className="text-lg font-semibold">{item.bookings}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm text-muted-foreground">Conversion</p>
-                                                        <p className="text-lg font-semibold text-green-600">{item.conversionRate}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm text-muted-foreground">Last Viewed</p>
-                                                        <p className="text-sm">{formatDateTime(item.lastViewed)}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-3">
-                                                    <p className="text-sm text-muted-foreground">Top Referrers</p>
-                                                    <div className="flex flex-wrap gap-2 mt-1">
-                                                        {item.topReferrers.map((referrer, idx) => (
-                                                            <span key={idx} className="px-2 py-1 bg-gray-100 text-xs rounded">
-                                                                {referrer}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Analytics summary */}
-                        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Views</h3>
-                                <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.views, 0)}</p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Bookings</h3>
-                                <p className="text-2xl font-semibold">{analyticsData.reduce((sum, item) => sum + item.bookings, 0)}</p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Avg Conversion</h3>
-                                <p className="text-2xl font-semibold text-green-600">
-                                    {((analyticsData.reduce((sum, item) => sum + parseFloat(item.conversionRate), 0) / analyticsData.length)).toFixed(1)}%
-                                </p>
-                            </div>
-                            <div className="bg-white border rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Active Links</h3>
-                                <p className="text-2xl font-semibold">{analyticsData.length}</p>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-        );
+    // Main component render
+    if (activeTab === "manage") {
+        return renderManageView();
     }
 
     return (
