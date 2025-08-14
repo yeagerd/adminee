@@ -6,11 +6,12 @@ import { shipmentsClient } from '@/lib/shipments-client';
 import { safeFormatDateAndTime } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
+import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2, CalendarRange } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
+import { useRouter } from 'next/navigation';
 // inline draft removed; thread-level draft card is handled by parent
 
 // Configure DOMPurify for email content
@@ -314,6 +315,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     onReplyAll,
     onForward,
 }) => {
+    const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
     const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
@@ -499,6 +501,43 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                         }}>
                                             <Wand2 className="h-4 w-4 mr-2" />
                                             Track Shipment
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => {
+                                            e.stopPropagation();
+                                            try {
+                                                // Build a participants string like "Name <email>, other@example.com"
+                                                const parts: string[] = [];
+                                                const seenEmails = new Set<string>();
+                                                const addAddr = (addr?: { email?: string; name?: string } | null) => {
+                                                    if (!addr || !addr.email) return;
+                                                    const emailLower = addr.email.toLowerCase().trim();
+                                                    if (seenEmails.has(emailLower)) return;
+                                                    seenEmails.add(emailLower);
+                                                    const name = (addr.name || '').trim();
+                                                    if (name) {
+                                                        parts.push(`${name} <${addr.email}>`);
+                                                    } else {
+                                                        parts.push(addr.email);
+                                                    }
+                                                };
+                                                // Only include recipients (to + cc)
+                                                email.to_addresses.forEach(a => addAddr(a));
+                                                email.cc_addresses.forEach(a => addAddr(a));
+                                                const params = new URLSearchParams();
+                                                params.set('tool', 'meetings');
+                                                params.set('view', 'new');
+                                                params.set('step', '1');
+                                                if (email.subject) params.set('title', email.subject);
+                                                params.set('participants', parts.join(', '));
+                                                router.replace(`/dashboard?${params.toString()}`);
+                                                // Let meetings tool pick up the new view
+                                                // No explicit context call here to avoid cross-component coupling
+                                            } catch (err) {
+                                                console.error('Failed to navigate to meeting poll creator:', err);
+                                            }
+                                        }}>
+                                            <CalendarRange className="h-4 w-4 mr-2" />
+                                            Create Meeting Poll
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

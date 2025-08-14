@@ -2,13 +2,14 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { safeParseDate } from '@/lib/utils';
 import { EmailThread as EmailThreadType } from '@/types/office-service';
-import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
+import { Archive, CalendarRange, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import EmailThreadCard from './email-thread-card';
 // removed global draft pane wiring for thread-level drafts
 import { getSession } from 'next-auth/react';
 import EmailThreadDraft from './email-thread-draft';
 import { Draft } from '@/types/draft';
+import { useRouter } from 'next/navigation';
 
 interface EmailThreadProps {
     thread: EmailThreadType;
@@ -21,6 +22,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
     onSelectMessage,
     selectedMessageId
 }) => {
+    const router = useRouter();
     const [isStarred, setIsStarred] = useState(false);
     const [threadDrafts, setThreadDrafts] = useState<Draft[]>([]);
 
@@ -240,6 +242,39 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                     <DropdownMenuItem onClick={handleDownload}>
                                         <Download className="h-4 w-4 mr-2" />
                                         Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                        try {
+                                            const latest = thread.messages[thread.messages.length - 1];
+                                            const parts: string[] = [];
+                                            const seenEmails = new Set<string>();
+                                            const addAddr = (addr?: { email?: string; name?: string } | null) => {
+                                                if (!addr || !addr.email) return;
+                                                const emailLower = addr.email.toLowerCase().trim();
+                                                if (seenEmails.has(emailLower)) return;
+                                                seenEmails.add(emailLower);
+                                                const name = (addr.name || '').trim();
+                                                if (name) {
+                                                    parts.push(`${name} <${addr.email}>`);
+                                                } else {
+                                                    parts.push(addr.email);
+                                                }
+                                            };
+                                            latest.to_addresses.forEach(a => addAddr(a));
+                                            latest.cc_addresses.forEach(a => addAddr(a));
+                                            const params = new URLSearchParams();
+                                            params.set('tool', 'meetings');
+                                            params.set('view', 'new');
+                                            params.set('step', '1');
+                                            if (latest.subject) params.set('title', latest.subject);
+                                            params.set('participants', parts.join(', '));
+                                            router.replace(`/dashboard?${params.toString()}`);
+                                        } catch (err) {
+                                            console.error('Failed to navigate to meeting poll creator:', err);
+                                        }
+                                    }}>
+                                        <CalendarRange className="h-4 w-4 mr-2" />
+                                        Create Meeting Poll
                                     </DropdownMenuItem>
 
                                 </DropdownMenuContent>
