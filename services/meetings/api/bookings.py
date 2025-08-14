@@ -1149,8 +1149,8 @@ async def get_booking_template(
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
 
-            # Database lookup
-        with get_session() as session:
+    # Database lookup
+    with get_session() as session:
             template = (
                 session.query(BookingTemplate)
                 .filter_by(id=template_id, owner_user_id=owner_user_id)
