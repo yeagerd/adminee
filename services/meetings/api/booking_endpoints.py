@@ -90,7 +90,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkDataRespons
         raise RateLimitError(message="Rate limit exceeded")
 
     # Validate token format
-    if not SecurityUtils.validate_token_format(token):
+    if not SecurityUtils.validate_public_token_format(token):
         audit_logger.log_suspicious_activity(
             activity_type="invalid_token_format",
             details={"token": token, "endpoint": "/public/{token}"},
@@ -207,7 +207,7 @@ async def get_public_availability(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Validate token format
-    if not SecurityUtils.validate_token_format(token):
+    if not SecurityUtils.validate_public_token_format(token):
         if request:
             audit_logger.log_suspicious_activity(
                 activity_type="invalid_token_format",
@@ -295,7 +295,7 @@ async def create_public_booking(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Validate token format
-    if not SecurityUtils.validate_token_format(token):
+    if not SecurityUtils.validate_public_token_format(token):
         audit_logger.log_suspicious_activity(
             activity_type="invalid_token_format",
             details={"token": token, "endpoint": "/public/{token}/book"},

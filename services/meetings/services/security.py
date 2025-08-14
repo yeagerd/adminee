@@ -111,6 +111,22 @@ class SecurityUtils:
         return False
 
     @staticmethod
+    def validate_public_token_format(token: str) -> bool:
+        """Validate that a public endpoint token is valid (accepts both one-time tokens and evergreen slugs)"""
+        if not token:
+            return False
+
+        # Check if it's a valid one-time token (ot_ prefix)
+        if token.startswith("ot_") and len(token) == 23:  # ot_ + 20 chars
+            return True
+        
+        # Check if it's a valid evergreen slug (any non-empty string up to 64 chars)
+        if len(token) <= 64 and not token.startswith(("bl_", "ot_")):
+            return True
+
+        return False
+
+    @staticmethod
     def sanitize_input(text: str, max_length: int = 500) -> str:
         """Sanitize user input to prevent injection attacks"""
         if not text:
