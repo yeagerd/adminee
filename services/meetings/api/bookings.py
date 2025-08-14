@@ -931,13 +931,13 @@ async def get_link_analytics(
 
     # Database analytics calculation
     with get_session() as session:
-            link = (
-                session.query(BookingLink)
-                .filter_by(id=link_id, owner_user_id=owner_user_id)
-                .first()
-            )
-            if not link:
-                raise NotFoundError("Booking link", "not found")
+        link = (
+            session.query(BookingLink)
+            .filter_by(id=link_id, owner_user_id=owner_user_id)
+            .first()
+        )
+        if not link:
+            raise NotFoundError("Booking link", "not found")
 
         # Get analytics data
         views = (
@@ -1011,7 +1011,7 @@ async def create_booking_template(
     template_data: dict,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Create a new booking template"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -1075,7 +1075,7 @@ async def create_booking_template(
 @router.get("/templates")
 async def list_booking_templates(
     request: Request = None, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, Any]:
     """List all booking templates for the authenticated user"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -1149,15 +1149,15 @@ async def get_booking_template(
     # Get authenticated user ID
     owner_user_id = get_user_id_from_request(request)
 
-    # Database lookup
-    with get_session() as session:
-        template = (
-            session.query(BookingTemplate)
-            .filter_by(id=template_id, owner_user_id=owner_user_id)
-            .first()
-        )
-        if not template:
-            raise NotFoundError(message="Template not found")
+            # Database lookup
+        with get_session() as session:
+            template = (
+                session.query(BookingTemplate)
+                .filter_by(id=template_id, owner_user_id=owner_user_id)
+                .first()
+            )
+            if not template:
+                raise NotFoundError("Template", "not found")
 
         return {
             "data": {
