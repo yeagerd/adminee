@@ -905,7 +905,6 @@ export default function BookingsPage() {
 
                                             {/* Upper Right: URL and Copy Button */}
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs font-medium text-gray-700">URL:</span>
                                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                                     <a
                                                         href={`/public/bookings/${link.slug}`}
@@ -913,7 +912,7 @@ export default function BookingsPage() {
                                                         rel="noopener noreferrer"
                                                         className="text-sm text-blue-600 hover:text-blue-800 truncate"
                                                     >
-                                                        {`${window.location.origin}/public/bookings/${link.slug}`}
+                                                        Open Preview
                                                     </a>
                                                     <button
                                                         onClick={(e) => {

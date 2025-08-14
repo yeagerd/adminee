@@ -1,5 +1,6 @@
 "use client";
 
+import { env } from '@/lib/env';
 import { useEffect, useMemo, useState, use } from "react";
 
 interface BookingMeta {
@@ -46,7 +47,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
         let isMounted = true;
         setLoading(true);
         setError(null);
-        fetch(`/api/v1/bookings/public/${token}`)
+        fetch(`${env.GATEWAY_URL}/api/v1/bookings/public/${token}`)
             .then(async (res) => {
                 if (!res.ok) {
                     throw new Error("Link not found or expired");
@@ -74,7 +75,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
         if (!meta) return;
         setSlotLoading(true);
         setSlots([]);
-        fetch(`/api/v1/bookings/public/${token}/availability?duration=${duration}`)
+        fetch(`${env.GATEWAY_URL}/api/v1/bookings/public/${token}/availability?duration=${duration}`)
             .then(async (res) => {
                 if (!res.ok) throw new Error("Failed to fetch availability");
                 return res.json();
@@ -186,7 +187,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                             if (!selectedSlot) return;
                             setSubmitting(true);
                             try {
-                                const res = await fetch(`/api/v1/bookings/public/${token}/book`, {
+                                const res = await fetch(`${env.GATEWAY_URL}/api/v1/bookings/public/${token}/book`, {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
