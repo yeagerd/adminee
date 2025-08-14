@@ -20,8 +20,9 @@ async def send_confirmation_email(booking: Any) -> bool:
     """
     try:
         # Get the owner user ID from the booking link
-        from services.meetings.models import get_session
         from meetings.models.booking_entities import BookingLink
+
+        from services.meetings.models import get_session
 
         with get_session() as session:
             booking_link = (
@@ -76,8 +77,9 @@ async def send_follow_up_email(booking: Any) -> bool:
     """
     try:
         # Get the owner user ID from the booking link
-        from services.meetings.models import get_session
         from meetings.models.booking_entities import BookingLink
+
+        from services.meetings.models import get_session
 
         with get_session() as session:
             booking_link = (

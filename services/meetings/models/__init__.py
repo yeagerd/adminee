@@ -1,6 +1,11 @@
 from contextlib import asynccontextmanager, contextmanager
 from typing import AsyncGenerator, Generator
 
+from meetings.models.booking_entities import AnalyticsEvent as AnalyticsEvent
+from meetings.models.booking_entities import Booking as Booking
+from meetings.models.booking_entities import BookingLink as BookingLink
+from meetings.models.booking_entities import BookingTemplate as BookingTemplate
+from meetings.models.booking_entities import OneTimeLink as OneTimeLink
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import (
@@ -13,11 +18,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from services.common import get_async_database_url
 from services.meetings.models.base import Base as Base
-from meetings.models.booking_entities import AnalyticsEvent as AnalyticsEvent
-from meetings.models.booking_entities import Booking as Booking
-from meetings.models.booking_entities import BookingLink as BookingLink
-from meetings.models.booking_entities import BookingTemplate as BookingTemplate
-from meetings.models.booking_entities import OneTimeLink as OneTimeLink
 from services.meetings.models.meeting import MeetingPoll as MeetingPoll
 from services.meetings.models.meeting import PollParticipant as PollParticipant
 from services.meetings.models.meeting import PollResponse as PollResponse
