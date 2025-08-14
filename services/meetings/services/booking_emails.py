@@ -20,7 +20,7 @@ async def send_confirmation_email(booking: Any) -> bool:
     """
     try:
         # Get the owner user ID from the booking link
-        from meetings.models.booking_entities import BookingLink
+        from services.meetings.models.booking_entities import BookingLink
 
         from services.meetings.models import get_session
 
@@ -77,7 +77,7 @@ async def send_follow_up_email(booking: Any) -> bool:
     """
     try:
         # Get the owner user ID from the booking link
-        from meetings.models.booking_entities import BookingLink
+        from services.meetings.models.booking_entities import BookingLink
 
         from services.meetings.models import get_session
 
@@ -92,7 +92,7 @@ async def send_follow_up_email(booking: Any) -> bool:
 
             # Check if follow-up is enabled in the template
             if booking_link.template_id is not None:
-                from meetings.models.booking_entities import BookingTemplate
+                from services.meetings.models.booking_entities import BookingTemplate
 
                 template = (
                     session.query(BookingTemplate)

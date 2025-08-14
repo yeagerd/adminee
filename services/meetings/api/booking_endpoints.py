@@ -3,14 +3,14 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Request
-from meetings.models.booking_entities import (
+from services.meetings.models.booking_entities import (
     AnalyticsEvent,
     Booking,
     BookingLink,
     BookingTemplate,
     OneTimeLink,
 )
-from meetings.schemas.booking_requests import (
+from services.meetings.schemas.booking_requests import (
     AnalyticsResponse,
     AvailabilityResponse,
     BookingLinkFilters,
