@@ -771,10 +771,10 @@ export default function BookingsPage() {
             const originalLink = existingLinks.find(l => l.id === linkId);
             setSuccessData({
                 title: "Link Duplicated Successfully!",
-                message: `A copy of "${originalLink?.settings?.title || originalLink?.slug || 'your link'}" has been created.`,
+                message: `A copy of "${originalLink?.settings?.title || `Untitled Link (${originalLink?.slug.slice(0, 8)}...)`}" has been created.`,
                 publicUrl: `${window.location.origin}/public/bookings/${result.data.slug}`,
                 slug: result.data.slug,
-                bookingTitle: originalLink?.settings?.title || originalLink?.slug || 'Duplicated Link',
+                bookingTitle: originalLink?.settings?.title || `Untitled Link (${originalLink?.slug.slice(0, 8)}...)`,
                 createdAt: new Date().toISOString()
             });
             setShowSuccessDialog(true);
@@ -891,7 +891,9 @@ export default function BookingsPage() {
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <div className="flex-1">
                                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                                    <h3 className="font-medium">{link.settings?.title || link.slug}</h3>
+                                                    <h3 className="font-medium">
+                                                        {link.settings?.title || `Untitled Link (${link.slug.slice(0, 8)}...)`}
+                                                    </h3>
                                                     <span className={`px-2 py-1 text-xs rounded-full w-fit ${link.is_active
                                                         ? "bg-green-100 text-green-800"
                                                         : "bg-gray-100 text-gray-800"
@@ -1002,7 +1004,7 @@ export default function BookingsPage() {
                             <div className="flex items-center justify-between">
                                 <h2 className="font-medium">
                                     {bookingsFilter
-                                        ? `Bookings for "${existingLinks.find(l => l.id === bookingsFilter)?.settings?.title || 'this link'}"`
+                                        ? `Bookings for "${existingLinks.find(l => l.id === bookingsFilter)?.settings?.title || `Untitled Link (${existingLinks.find(l => l.id === bookingsFilter)?.slug.slice(0, 8)}...)`}"`
                                         : "Upcoming & Recent Bookings"
                                     }
                                 </h2>
