@@ -888,66 +888,69 @@ export default function BookingsPage() {
                             <div className="divide-y">
                                 {existingLinks.map((link) => (
                                     <div key={link.id} className="px-4 sm:px-6 py-4">
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                            <div className="flex-1">
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                                    <h3 className="font-medium">
-                                                        {link.settings?.title || `Untitled Link (${link.slug.slice(0, 8)}...)`}
-                                                    </h3>
-                                                    <span className={`px-2 py-1 text-xs rounded-full w-fit ${link.is_active
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-gray-100 text-gray-800"
-                                                        }`}>
-                                                        {link.is_active ? "Active" : "Inactive"}
-                                                    </span>
-                                                </div>
-
-                                                {/* URL Display - moved here after title */}
-                                                <div className="mt-2 flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-gray-700">URL:</span>
-                                                    <a
-                                                        href={`/public/bookings/${link.slug}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sm text-blue-600 hover:text-blue-800 truncate"
-                                                    >
-                                                        {`${window.location.origin}/public/bookings/${link.slug}`}
-                                                    </a>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            const publicUrl = `${window.location.origin}/public/bookings/${link.slug}`;
-                                                            navigator.clipboard.writeText(publicUrl).then(() => {
-                                                                // Show temporary success feedback
-                                                                const button = e.currentTarget;
-                                                                const originalText = button.textContent;
-                                                                button.textContent = 'Copied!';
-                                                                button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
-                                                                setTimeout(() => {
-                                                                    button.textContent = originalText;
-                                                                    button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
-                                                                }, 2000);
-                                                            }).catch(err => {
-                                                                console.error('Failed to copy: ', err);
-                                                                alert('Failed to copy link to clipboard');
-                                                            });
-                                                        }}
-                                                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
-                                                        title="Copy link"
-                                                    >
-                                                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                                                    <span>Created: {formatDateTime(link.created_at)} • Total bookings: {link.total_bookings}</span>
-                                                    <span>Conversion: {link.conversion_rate}</span>
-                                                </div>
+                                        {/* Responsive 2x2 grid layout */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            {/* Upper Left: Title and Status */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                                <h3 className="font-medium text-lg">
+                                                    {link.settings?.title || `Untitled Link (${link.slug.slice(0, 8)}...)`}
+                                                </h3>
+                                                <span className={`px-2 py-1 text-xs rounded-full w-fit ${link.is_active
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                    }`}>
+                                                    {link.is_active ? "Active" : "Inactive"}
+                                                </span>
                                             </div>
 
-                                            <div className="flex flex-wrap gap-2">
+                                            {/* Upper Right: URL and Copy Button */}
+                                            <div className="flex items-center gap-2 justify-end lg:justify-start">
+                                                <span className="text-xs font-medium text-gray-700">URL:</span>
+                                                <a
+                                                    href={`/public/bookings/${link.slug}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:text-blue-800 truncate flex-1"
+                                                >
+                                                    {`${window.location.origin}/public/bookings/${link.slug}`}
+                                                </a>
+                                                <button
+                                                    onClick={(e) => {
+                                                        const publicUrl = `${window.location.origin}/public/bookings/${link.slug}`;
+                                                        navigator.clipboard.writeText(publicUrl).then(() => {
+                                                            // Show temporary success feedback
+                                                            const button = e.currentTarget;
+                                                            const originalText = button.textContent;
+                                                            button.textContent = 'Copied!';
+                                                            button.className = 'px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700';
+                                                            setTimeout(() => {
+                                                                button.textContent = originalText;
+                                                                button.className = 'px-2 py-1 text-xs border rounded hover:bg-gray-50';
+                                                            }, 2000);
+                                                        }).catch(err => {
+                                                            console.error('Failed to copy: ', err);
+                                                            alert('Failed to copy link to clipboard');
+                                                        });
+                                                    }}
+                                                    className="px-2 py-1 text-xs border rounded hover:bg-gray-50 flex-shrink-0"
+                                                    title="Copy link"
+                                                >
+                                                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+
+                                            {/* Lower Left: Stats */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                                                <span>Created: {formatDateTime(link.created_at)}</span>
+                                                <span>Total bookings: {link.total_bookings}</span>
+                                                <span>Conversion: {link.conversion_rate}</span>
+                                            </div>
+
+                                            {/* Lower Right: Action Buttons */}
+                                            <div className="flex flex-wrap gap-2 justify-end lg:justify-start">
                                                 <button
                                                     className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
                                                     onClick={() => toggleLinkStatus(link.id)}
