@@ -164,9 +164,9 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
             ]
 
         # Get duration from settings
-        duration_options = [15, 30, 60, 120]
+        duration_options: List[int] = [15, 30, 60, 120]
         if booking_link.settings is not None and "duration" in booking_link.settings:
-            duration_options = [booking_link.settings["duration"]] + [
+            duration_options = [booking_link.settings["duration"]] + [  # type: ignore[assignment]
                 d for d in duration_options if d != booking_link.settings["duration"]
             ]
 
@@ -179,15 +179,13 @@ async def get_public_link(token: str, request: Request) -> PublicLinkResponse:
         session.add(analytics_event)
         session.commit()
 
-        return {
-            "data": {
-                "title": booking_link.slug,  # Use slug as title for now
-                "description": "Book a meeting with us",
-                "template_questions": template_questions,
-                "duration_options": duration_options,
-                "is_active": booking_link.is_active,
-            }
-        }
+        return PublicLinkResponse(
+            title=str(booking_link.slug),  # Use slug as title for now
+            description="Book a meeting with us",
+            template_questions=template_questions,  # type: ignore[arg-type]
+            duration_options=duration_options,
+            is_active=booking_link.is_active,
+        )
 
 
 @router.get("/public/{token}/availability", response_model=AvailabilityResponse)
@@ -261,7 +259,7 @@ async def get_public_availability(
 
         # Compute available slots with all settings applied
         availability_result = await compute_available_slots(
-            user_id=owner_user_id,
+            user_id=str(owner_user_id),  # type: ignore[arg-type]
             start=start_date,
             end=end_date,
             duration_minutes=duration,
@@ -270,13 +268,11 @@ async def get_public_availability(
             settings=settings,
         )
 
-        return {
-            "data": {
-                "slots": availability_result.get("slots", []),
-                "duration": duration,
-                "timezone": "UTC",
-            }
-        }
+        return AvailabilityResponse(
+            slots=availability_result.get("slots", []),
+            duration=duration,
+            timezone="UTC",
+        )
 
 
 @router.post("/public/{token}/book", response_model=SuccessResponse)
@@ -335,18 +331,18 @@ async def create_public_booking(
                 .filter_by(id=one_time_link.booking_link_id)
                 .first()
             )
-            link_id = one_time_link.booking_link_id
-            one_time_link_id = one_time_link.id
+            link_id = str(one_time_link.booking_link_id)  # type: ignore[assignment]
+            one_time_link_id = str(one_time_link.id)  # type: ignore[assignment]
 
             # Mark one-time link as used
-            one_time_link.status = "used"
+            one_time_link.status = "used"  # type: ignore[assignment]
             session.commit()
         else:
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
             if not booking_link or not booking_link.is_active:
                 raise NotFoundError("Booking link", "not found or inactive")
 
-            link_id = booking_link.id
+            link_id = str(booking_link.id)  # type: ignore[assignment]
             one_time_link_id = None
 
         # Create the booking
@@ -417,6 +413,8 @@ async def create_booking_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Sanitize input
@@ -516,6 +514,8 @@ async def list_booking_links(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database query
@@ -588,6 +588,8 @@ async def get_booking_link(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database lookup
@@ -634,6 +636,8 @@ async def update_booking_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database update
@@ -644,7 +648,7 @@ async def update_booking_link(
             .first()
         )
         if not link:
-            raise NotFoundError(message="Booking link not found")
+            raise NotFoundError("Booking link", "not found")
 
         # Sanitize updates
         sanitized_updates = {}
@@ -669,10 +673,10 @@ async def update_booking_link(
                     link.settings = new_settings
             elif key == "is_active":
                 old_value = link.is_active
-                link.is_active = value
+                link.is_active = value  # type: ignore[assignment]
                 changes[key] = {"old": old_value, "new": value}
 
-        link.updated_at = datetime.now()
+        link.updated_at = datetime.now()  # type: ignore[assignment]
         session.commit()
 
         # Audit logging
@@ -717,6 +721,8 @@ async def duplicate_booking_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database duplication
@@ -789,6 +795,8 @@ async def toggle_booking_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database toggle
@@ -802,8 +810,8 @@ async def toggle_booking_link(
             raise NotFoundError("Booking link", "not found")
 
         old_status = link.is_active
-        link.is_active = not link.is_active
-        link.updated_at = datetime.now()
+        link.is_active = not link.is_active  # type: ignore[assignment]
+        link.updated_at = datetime.now()  # type: ignore[assignment]
         session.commit()
 
         # Audit logging
@@ -844,6 +852,8 @@ async def create_one_time_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database creation
@@ -927,6 +937,8 @@ async def get_link_analytics(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database analytics calculation
@@ -1025,6 +1037,8 @@ async def create_booking_template(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Sanitize input
@@ -1090,6 +1104,8 @@ async def list_booking_templates(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database query
@@ -1132,7 +1148,7 @@ async def get_booking_template(
     template_id: str,
     request: Request = None,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Get a specific booking template"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -1147,17 +1163,19 @@ async def get_booking_template(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database lookup
     with get_session() as session:
-            template = (
-                session.query(BookingTemplate)
-                .filter_by(id=template_id, owner_user_id=owner_user_id)
-                .first()
-            )
-            if not template:
-                raise NotFoundError("Template", "not found")
+        template = (
+            session.query(BookingTemplate)
+            .filter_by(id=template_id, owner_user_id=owner_user_id)
+            .first()
+        )
+        if not template:
+            raise NotFoundError("Template", "not found")
 
         return {
             "data": {
@@ -1181,7 +1199,7 @@ async def update_booking_template(
     updates: dict,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Update a booking template"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -1195,6 +1213,8 @@ async def update_booking_template(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database update
@@ -1205,7 +1225,7 @@ async def update_booking_template(
             .first()
         )
         if not template:
-            raise NotFoundError(message="Template not found")
+            raise NotFoundError("Template", "not found")
 
         # Track changes for audit logging
         changes = {}
@@ -1213,7 +1233,7 @@ async def update_booking_template(
         # Update fields
         if "name" in updates:
             old_name = template.name
-            template.name = SecurityUtils.sanitize_input(updates["name"])
+            template.name = SecurityUtils.sanitize_input(updates["name"])  # type: ignore[assignment]
             changes["name"] = {"old": old_name, "new": template.name}
 
         if "questions" in updates:
@@ -1223,13 +1243,13 @@ async def update_booking_template(
 
         if "email_followup_enabled" in updates:
             old_followup = template.email_followup_enabled
-            template.email_followup_enabled = updates["email_followup_enabled"]
+            template.email_followup_enabled = updates["email_followup_enabled"]  # type: ignore[assignment]
             changes["email_followup_enabled"] = {
-                "old": old_followup,
-                "new": template.email_followup_enabled,
+                "old": old_followup,  # type: ignore[dict-item]
+                "new": template.email_followup_enabled,  # type: ignore[dict-item]
             }
 
-        template.updated_at = datetime.now()
+        template.updated_at = datetime.now()  # type: ignore[assignment]
         session.commit()
 
         # Audit logging
@@ -1263,7 +1283,7 @@ async def update_booking_template(
 @router.delete("/templates/{template_id}")
 async def delete_booking_template(
     template_id: str, request: Request, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, str]:
     """Delete a booking template"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -1277,6 +1297,8 @@ async def delete_booking_template(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database deletion
@@ -1287,7 +1309,7 @@ async def delete_booking_template(
             .first()
         )
         if not template:
-            raise NotFoundError(message="Template not found")
+            raise NotFoundError("Template", "not found")
 
         # Check if template is being used by any links
         links_using_template = (
@@ -1323,7 +1345,7 @@ async def list_one_time_links(
     link_id: str,
     request: Request = None,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """List all one-time links for a specific booking link"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -1338,6 +1360,8 @@ async def list_one_time_links(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database query
@@ -1349,7 +1373,7 @@ async def list_one_time_links(
             .first()
         )
         if not link:
-            raise NotFoundError(message="Booking link not found")
+            raise NotFoundError("Booking link", "not found")
 
         # Get all one-time links for this booking link
         one_time_links = (
@@ -1396,7 +1420,7 @@ async def get_one_time_link_details(
     token: str,
     request: Request = None,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Get details of a one-time link (for owner)"""
     # Rate limiting for authenticated endpoints
     if request:
@@ -1411,13 +1435,15 @@ async def get_one_time_link_details(
             raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database lookup
     with get_session() as session:
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if not one_time_link:
-            raise NotFoundError(message="One-time link not found")
+            raise NotFoundError("One-time link", "not found")
 
         # Verify the user owns the parent booking link
         booking_link = (
@@ -1463,7 +1489,7 @@ async def update_one_time_link(
     updates: dict,
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
-):
+) -> Dict[str, Any]:
     """Update a one-time link"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -1477,13 +1503,15 @@ async def update_one_time_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database update
     with get_session() as session:
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if not one_time_link:
-            raise NotFoundError(message="One-time link not found")
+            raise NotFoundError("One-time link", "not found")
 
         # Verify the user owns the parent booking link
         booking_link = (
@@ -1502,7 +1530,7 @@ async def update_one_time_link(
             old_email = one_time_link.recipient_email
             one_time_link.recipient_email = SecurityUtils.sanitize_input(
                 updates["recipient_email"]
-            )
+            )  # type: ignore[assignment]
             changes["recipient_email"] = {
                 "old": old_email,
                 "new": one_time_link.recipient_email,
@@ -1512,7 +1540,7 @@ async def update_one_time_link(
             old_name = one_time_link.recipient_name
             one_time_link.recipient_name = SecurityUtils.sanitize_input(
                 updates["recipient_name"]
-            )
+            )  # type: ignore[assignment]
             changes["recipient_name"] = {
                 "old": old_name,
                 "new": one_time_link.recipient_name,
@@ -1521,16 +1549,16 @@ async def update_one_time_link(
         if "expires_at" in updates:
             old_expires = one_time_link.expires_at
             new_expires = datetime.fromisoformat(updates["expires_at"])
-            one_time_link.expires_at = new_expires
+            one_time_link.expires_at = new_expires  # type: ignore[assignment]
             changes["expires_at"] = {
-                "old": old_expires.isoformat() if old_expires else None,
-                "new": new_expires.isoformat(),
+                "old": old_expires.isoformat() if old_expires else None,  # type: ignore[dict-item]
+                "new": new_expires.isoformat(),  # type: ignore[dict-item]
             }
 
         if "status" in updates:
             old_status = one_time_link.status
-            one_time_link.status = updates["status"]
-            changes["status"] = {"old": old_status, "new": one_time_link.status}
+            one_time_link.status = updates["status"]  # type: ignore[assignment]
+            changes["status"] = {"old": old_status, "new": one_time_link.status}  # type: ignore[dict-item]
 
         session.commit()
 
@@ -1571,7 +1599,7 @@ async def update_one_time_link(
 @router.delete("/one-time/{token}")
 async def delete_one_time_link(
     token: str, request: Request, service_name: str = Depends(verify_api_key_auth)
-):
+) -> Dict[str, str]:
     """Delete a one-time link"""
     # Rate limiting for authenticated endpoints
     client_key = get_client_key(request)
@@ -1585,13 +1613,15 @@ async def delete_one_time_link(
         raise RateLimitError(message="Rate limit exceeded")
 
     # Get authenticated user ID
+    if request is None:
+        raise AuthError("Request object is required")
     owner_user_id = get_user_id_from_request(request)
 
     # Database deletion
     with get_session() as session:
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if not one_time_link:
-            raise NotFoundError(message="One-time link not found")
+            raise NotFoundError("One-time link", "not found")
 
         # Verify the user owns the parent booking link
         booking_link = (
@@ -1615,7 +1645,7 @@ async def delete_one_time_link(
             user_id=owner_user_id,
             resource_id=str(one_time_link.id),
             details={
-                "recipient_email_hash": SecurityUtils.hash_email(recipient_email),
+                "recipient_email_hash": SecurityUtils.hash_email(str(recipient_email)),  # type: ignore[arg-type]
                 "recipient_name": recipient_name,
                 "parent_link_id": str(one_time_link.booking_link_id),
             },
