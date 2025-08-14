@@ -972,26 +972,28 @@ export default function BookingsPage() {
       </div>
       
       {/* Step indicator */}
-      <div className="flex items-center justify-between mb-8 overflow-x-auto">
-        {steps.map((step, index) => (
-          <div key={step.key} className="flex items-center flex-shrink-0">
-            <div
-              className={`w-6 sm:w-8 h-6 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
-                currentStep === step.key
-                  ? "bg-blue-600 text-white"
-                  : index < steps.findIndex(s => s.key === currentStep)
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-200 text-gray-600"
-              }`}
-            >
-              {index < steps.findIndex(s => s.key === currentStep) ? "✓" : index + 1}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2">
+          {steps.map((step, index) => (
+            <div key={step.key} className="flex items-center flex-shrink-0">
+              <div
+                className={`w-6 sm:w-8 h-6 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
+                  currentStep === step.key
+                    ? "bg-blue-600 text-white"
+                    : index < steps.findIndex(s => s.key === currentStep)
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}
+              >
+                {index < steps.findIndex(s => s.key === currentStep) ? "✓" : index + 1}
+              </div>
+              <span className="ml-2 text-xs sm:text-sm font-medium whitespace-nowrap">{step.label}</span>
+              {index < steps.length - 1 && (
+                <div className="w-4 sm:w-8 h-0.5 bg-gray-200 mx-2 sm:mx-4" />
+              )}
             </div>
-            <span className="ml-2 text-xs sm:text-sm font-medium">{step.label}</span>
-            {index < steps.length - 1 && (
-              <div className="w-8 sm:w-16 h-0.5 bg-gray-200 mx-2 sm:mx-4" />
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Step content */}
