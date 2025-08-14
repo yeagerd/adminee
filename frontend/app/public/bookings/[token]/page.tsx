@@ -122,10 +122,10 @@ export default function PublicBookingPage({ params }: { params: { token: string 
                     <input
                         className="border rounded px-2 py-1 w-full"
                         value={timezone}
-                        onChange={(e) => setTimezone(e.target.value)}
+                        readOnly
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                        Detected automatically. Adjust if needed.
+                        Detected automatically.
                     </p>
                 </div>
 
@@ -156,8 +156,8 @@ export default function PublicBookingPage({ params }: { params: { token: string 
                         <label className="block text-sm font-medium mb-1">Questions</label>
                         <div className="space-y-2">
                             {meta.template_questions.map((q: QuestionField, idx: number) => {
-                                const key = q?.id || q?.name || `q_${idx}`;
-                                const label = q?.label || q?.name || `Question ${idx + 1}`;
+                                const key = q?.id || `q_${idx}`;
+                                const label = q?.label || `Question ${idx + 1}`;
                                 const required = Boolean(q?.required);
                                 return (
                                     <div key={key} className="flex flex-col gap-1">
