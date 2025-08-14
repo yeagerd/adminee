@@ -229,14 +229,6 @@ export default function CalendarGridView({
                 });
             }
         }
-        // Add the final 15-minute slot at 10:45 PM (22:45)
-        const finalTimeString = '22:45';
-        const finalTime = DateTime.fromFormat(finalTimeString, 'H:mm', { zone: effectiveTimezone });
-        slots.push({
-            hour: 22,
-            minute: 45,
-            time: finalTime.toFormat('h:mm a')
-        });
         return slots;
     }, [effectiveTimezone]);
 
