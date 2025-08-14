@@ -75,8 +75,8 @@ async def create_booking_calendar_event(booking: Any) -> Optional[str]:
         )
 
         # Extract event ID from response
-        if event_result and "id" in event_result:
-            return event_result["id"]
+        if event_result and "data" in event_result and event_result["data"] and "event_id" in event_result["data"]:
+            return event_result["data"]["event_id"]
         else:
             return None
 
