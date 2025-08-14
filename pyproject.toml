@@ -170,6 +170,7 @@ reportOptionalIterable = false
 reportOperatorIssue = false
 reportOptionalMemberAccess = false
 reportFunctionMemberAccess = false
+reportGeneralTypeIssues = false
 
 [tool.ruff]
 src = ["src"]  # Tells Ruff where absolute imports should start
