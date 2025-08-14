@@ -20,7 +20,7 @@ def upgrade() -> None:
     # Add recipient_name column to one_time_links table
     op.add_column(
         "one_time_links",
-        sa.Column("recipient_name", sa.String(length=100), nullable=True)
+        sa.Column("recipient_name", sa.String(length=100), nullable=True),
     )
 
 

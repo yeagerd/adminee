@@ -42,6 +42,10 @@ from services.common.http_errors import (
 )
 from services.meetings.api.auth import get_user_id_from_request, verify_api_key_auth
 from services.meetings.models import get_session
+from services.meetings.schemas.booking_requests import (
+    AvailabilityDataResponse,
+    PublicLinkDataResponse,
+)
 from services.meetings.services.audit_logger import AuditEventType, audit_logger
 from services.meetings.services.booking_emails import (
     send_confirmation_email,
@@ -58,7 +62,6 @@ from services.meetings.services.security import (
     check_rate_limit,
     get_remaining_requests,
 )
-from services.meetings.schemas.booking_requests import PublicLinkDataResponse, AvailabilityDataResponse
 
 router = APIRouter()
 

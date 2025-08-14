@@ -119,7 +119,7 @@ class SecurityUtils:
         # Check if it's a valid one-time token (ot_ prefix)
         if token.startswith("ot_") and len(token) == 23:  # ot_ + 20 chars
             return True
-        
+
         # Check if it's a valid evergreen slug (any non-empty string up to 64 chars)
         if len(token) <= 64 and not token.startswith(("bl_", "ot_")):
             return True
