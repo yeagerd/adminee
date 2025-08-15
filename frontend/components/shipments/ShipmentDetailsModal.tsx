@@ -1,3 +1,4 @@
+import { PackageResponse, ShipmentsClient } from '@/api/clients/shipments-client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,11 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { PackageResponse } from '@/api/clients/shipments-client';
-import { ShipmentsClient } from '@/api/clients/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { BadgeCheck, Calendar, ExternalLink, FileText, Hash, Loader2, Package, Tag, Trash2, Truck, User } from 'lucide-react';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface ShipmentDetailsModalProps {
     isOpen: boolean;
@@ -125,19 +124,12 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
 
 
     // Handle event deletion (stage for deletion)
-    const handleDeleteEvent = async (eventId: string) => {
-        try {
-            await shipmentsClient.deleteTrackingEvent(shipment.id, eventId);
-            setEvents(prev => prev.filter(event => event.id !== eventId));
-            setEventsToDelete(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(eventId);
-                return newSet;
-            });
-        } catch (err) {
-            console.error('Error deleting event:', err);
-            setError(err instanceof Error ? err.message : 'Failed to delete event');
-        }
+    const handleDeleteEvent = (eventId: string) => {
+        setEventsToDelete(prev => {
+            const newSet = new Set(prev);
+            newSet.add(eventId);
+            return newSet;
+        });
     };
 
     // Handle event restoration (unstage from deletion)
