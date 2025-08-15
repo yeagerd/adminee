@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import gatewayClient from '../../../lib/gateway-client';
 
 import PackageDashboard from '../PackageDashboard';
 
@@ -10,20 +9,19 @@ jest.mock('next/navigation', () => ({
     useSearchParams: jest.fn(),
 }));
 
-// Mock the shipments client
-jest.mock('../../../lib/shipments-client', () => ({
-
-}));
-
-// Mock the gateway client
-jest.mock('../../../lib/gateway-client', () => ({
-    __esModule: true,
-    default: {
+// Mock the shipments API
+jest.mock('@/api', () => ({
+    shipmentsApi: {
         getPackages: jest.fn(),
         updatePackage: jest.fn(),
         deletePackage: jest.fn(),
         refreshPackage: jest.fn(),
     },
+}));
+
+// Mock the shipments client
+jest.mock('../../../lib/shipments-client', () => ({
+
 }));
 
 const mockRouter = {
@@ -77,7 +75,8 @@ describe('Package Pagination E2E', () => {
 
     describe('Complete Cursor Pagination User Flows', () => {
         it('should load first page and display pagination controls', async () => {
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
             });
@@ -123,7 +122,8 @@ describe('Package Pagination E2E', () => {
                 limit: 20,
             };
 
-            (gatewayClient.getPackages as jest.Mock)
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
                     ...mockPaginationInfo,
@@ -145,7 +145,7 @@ describe('Package Pagination E2E', () => {
 
             // Wait for next page to load and verify the API call was made
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledWith(
+                expect(shipmentsApi.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
                         cursor: mockPaginationInfo.next_cursor,
                         direction: 'next',
@@ -172,7 +172,8 @@ describe('Package Pagination E2E', () => {
                 limit: 20,
             };
 
-            (gatewayClient.getPackages as jest.Mock)
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
                     ...mockPaginationInfo,
@@ -194,7 +195,7 @@ describe('Package Pagination E2E', () => {
 
             // Wait for next page to load
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledWith(
+                expect(shipmentsApi.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
                         cursor: mockPaginationInfo.next_cursor,
                         direction: 'next',
@@ -221,7 +222,8 @@ describe('Package Pagination E2E', () => {
                 limit: 20,
             };
 
-            (gatewayClient.getPackages as jest.Mock)
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
                     ...mockPaginationInfo,
@@ -243,7 +245,7 @@ describe('Package Pagination E2E', () => {
 
             // Wait for next page to load
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledWith(
+                expect(shipmentsApi.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
                         cursor: mockPaginationInfo.next_cursor,
                         direction: 'next',
@@ -262,7 +264,8 @@ describe('Package Pagination E2E', () => {
         });
 
         it('should handle network errors during pagination', async () => {
-            (gatewayClient.getPackages as jest.Mock)
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
                     ...mockPaginationInfo,
@@ -286,7 +289,8 @@ describe('Package Pagination E2E', () => {
         });
 
         it('should handle empty results gracefully', async () => {
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: [],
                 next_cursor: null,
                 prev_cursor: null,
@@ -311,7 +315,8 @@ describe('Package Pagination E2E', () => {
 
     describe('URL State Management', () => {
         it('should update URL parameters when filters change', async () => {
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
             });
@@ -343,7 +348,8 @@ describe('Package Pagination E2E', () => {
 
             (useSearchParams as jest.Mock).mockReturnValue(urlWithFilters);
 
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
             });
@@ -352,7 +358,7 @@ describe('Package Pagination E2E', () => {
 
             // Verify packages were loaded with URL filter parameters
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledWith(
+                expect(shipmentsApi.getPackages).toHaveBeenCalledWith(
                     expect.objectContaining({
                         carrier: 'FedEx',
                         status: 'in_transit',
@@ -366,7 +372,8 @@ describe('Package Pagination E2E', () => {
         it('should debounce rapid pagination clicks', async () => {
             jest.useFakeTimers();
 
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
             });
@@ -388,14 +395,15 @@ describe('Package Pagination E2E', () => {
 
             // Verify only one request was made
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledTimes(2); // Initial load + 1 debounced request
+                expect(shipmentsApi.getPackages).toHaveBeenCalledTimes(2); // Initial load + 1 debounced request
             });
 
             jest.useRealTimers();
         });
 
         it('should cache cursor data for better performance', async () => {
-            (gatewayClient.getPackages as jest.Mock).mockResolvedValue({
+            const { shipmentsApi } = require('@/api');
+            (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
             });
@@ -415,7 +423,7 @@ describe('Package Pagination E2E', () => {
 
             // Verify cached data was used (no additional API calls for same page)
             await waitFor(() => {
-                expect(gatewayClient.getPackages).toHaveBeenCalledTimes(2); // Initial + next (prev uses cache)
+                expect(shipmentsApi.getPackages).toHaveBeenCalledTimes(2); // Initial + next (prev uses cache)
             });
         });
     });
