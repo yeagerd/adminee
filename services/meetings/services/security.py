@@ -4,6 +4,7 @@ import string
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+import os
 
 
 class TokenGenerator:
@@ -147,6 +148,13 @@ class SecurityUtils:
 # Global rate limiter instance
 rate_limiter = RateLimiter()
 
+# Test mode flag - can be set by tests to control rate limiting behavior
+_test_mode = False
+
+def set_test_mode(enabled: bool):
+    """Enable or disable test mode for rate limiting"""
+    global _test_mode
+    _test_mode = enabled
 
 def check_rate_limit(
     client_key: str, max_requests: int = 100, window_seconds: int = 3600
@@ -162,6 +170,10 @@ def check_rate_limit(
     Returns:
         True if within limits, False if rate limited
     """
+    # Disable rate limiting in test mode
+    if _test_mode:
+        return True
+    
     return rate_limiter.is_allowed(client_key, max_requests, window_seconds)
 
 

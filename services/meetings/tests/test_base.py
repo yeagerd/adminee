@@ -29,6 +29,10 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Set environment variable for database URL
         os.environ["DB_URL_MEETINGS"] = db_url
 
+        # Enable test mode for rate limiting
+        from services.meetings.services.security import set_test_mode
+        set_test_mode(True)
+
         # Import meetings settings module
         import services.meetings.settings as meetings_settings
 

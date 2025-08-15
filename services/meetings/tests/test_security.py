@@ -172,46 +172,76 @@ class TestSecurityService(BaseMeetingsTest):
 
     def test_rate_limiting_basic(self):
         """Test basic rate limiting functionality."""
-        # Test that rate limiting works
-        client_key = "test-client-123"
+        # Temporarily disable test mode to test actual rate limiting
+        from services.meetings.services.security import set_test_mode, check_rate_limit
+        
+        # Disable test mode for this test
+        set_test_mode(False)
+        
+        try:
+            # Test that rate limiting works
+            client_key = "test-client-123"
 
-        # Should allow first 100 requests
-        for i in range(100):
+            # Should allow first 100 requests
+            for i in range(100):
+                result = check_rate_limit(client_key, max_requests=100, window_seconds=3600)
+                assert result is True, f"Request {i+1} should be allowed"
+
+            # 101st request should be blocked
             result = check_rate_limit(client_key, max_requests=100, window_seconds=3600)
-            assert result is True, f"Request {i+1} should be allowed"
-
-        # 101st request should be blocked
-        result = check_rate_limit(client_key, max_requests=100, window_seconds=3600)
-        assert result is False, "101st request should be blocked"
+            assert result is False, "101st request should be blocked"
+        finally:
+            # Re-enable test mode
+            set_test_mode(True)
 
     def test_rate_limiting_different_clients(self):
         """Test that rate limiting is per-client."""
-        client1 = "client-1"
-        client2 = "client-2"
+        # Temporarily disable test mode to test actual rate limiting
+        from services.meetings.services.security import set_test_mode, check_rate_limit
+        
+        # Disable test mode for this test
+        set_test_mode(False)
+        
+        try:
+            client1 = "client-1"
+            client2 = "client-2"
 
-        # Both clients should be able to make requests
-        for i in range(50):
-            result1 = check_rate_limit(client1, max_requests=100, window_seconds=3600)
-            result2 = check_rate_limit(client2, max_requests=100, window_seconds=3600)
-            assert result1 is True, f"Client 1 request {i+1} should be allowed"
-            assert result2 is True, f"Client 2 request {i+1} should be allowed"
+            # Both clients should be able to make requests
+            for i in range(50):
+                result1 = check_rate_limit(client1, max_requests=100, window_seconds=3600)
+                result2 = check_rate_limit(client2, max_requests=100, window_seconds=3600)
+                assert result1 is True, f"Client 1 request {i+1} should be allowed"
+                assert result2 is True, f"Client 2 request {i+1} should be allowed"
+        finally:
+            # Re-enable test mode
+            set_test_mode(True)
 
     def test_rate_limiting_window_reset(self):
         """Test that rate limiting resets after the time window."""
-        client_key = "test-window-reset"
+        # Temporarily disable test mode to test actual rate limiting
+        from services.meetings.services.security import set_test_mode, check_rate_limit
+        
+        # Disable test mode for this test
+        set_test_mode(False)
+        
+        try:
+            client_key = "test-window-reset"
 
-        # Make 100 requests to hit the limit
-        for i in range(100):
-            check_rate_limit(client_key, max_requests=100, window_seconds=1)
+            # Make 100 requests to hit the limit
+            for i in range(100):
+                check_rate_limit(client_key, max_requests=100, window_seconds=1)
 
-        # Next request should be blocked
-        result = check_rate_limit(client_key, max_requests=100, window_seconds=1)
-        assert result is False, "Request should be blocked after hitting limit"
+            # Next request should be blocked
+            result = check_rate_limit(client_key, max_requests=100, window_seconds=1)
+            assert result is False, "Request should be blocked after hitting limit"
 
-        # Wait for window to reset (simulate with a new client key)
-        new_client_key = "test-window-reset-new"
-        result = check_rate_limit(new_client_key, max_requests=100, window_seconds=1)
-        assert result is True, "New client should be allowed"
+            # Wait for window to reset (simulate with a new client key)
+            new_client_key = "test-window-reset-new"
+            result = check_rate_limit(new_client_key, max_requests=100, window_seconds=1)
+            assert result is True, "New client should be allowed"
+        finally:
+            # Re-enable test mode
+            set_test_mode(True)
 
     def test_security_utils_hash_email(self):
         """Test email hashing functionality."""
