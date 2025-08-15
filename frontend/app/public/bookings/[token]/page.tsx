@@ -27,8 +27,6 @@ interface TimeSlot {
     available: boolean;
 }
 
-
-
 export default function PublicBookingPage({ params }: { params: Promise<{ token: string }> }) {
     const { token } = use(params);
     const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
@@ -42,6 +40,18 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
     const [submitting, setSubmitting] = useState(false);
+
+    // Helper function to dynamically find the email field from template questions
+    const findEmailField = useMemo(() => {
+        if (!meta?.template_questions) return null;
+        return meta.template_questions.find(q => q.type === 'email');
+    }, [meta?.template_questions]);
+
+    // Helper function to get the email value dynamically
+    const getEmailValue = useMemo(() => {
+        if (!findEmailField) return '';
+        return answers[findEmailField.id] || '';
+    }, [findEmailField, answers]);
 
     useEffect(() => {
         let isMounted = true;
@@ -227,9 +237,22 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                                 return;
                             }
                             
-                            // Ensure email is provided for confirmation emails
-                            if (!answers.email || answers.email.trim() === '') {
+                            // Ensure email is provided for confirmation emails - dynamically find email field
+                            if (!findEmailField) {
+                                alert('Email field is required but not found in the template. Please contact the meeting organizer.');
+                                return;
+                            }
+                            
+                            const emailValue = getEmailValue;
+                            if (!emailValue || emailValue.trim() === '') {
                                 alert('Email address is required to receive booking confirmation.');
+                                return;
+                            }
+                            
+                            // Validate email format
+                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                            if (!emailRegex.test(emailValue)) {
+                                alert('Please enter a valid email address.');
                                 return;
                             }
                             
@@ -241,7 +264,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                                     body: JSON.stringify({
                                         start: selectedSlot.start,
                                         end: selectedSlot.end,
-                                        attendeeEmail: answers.email,
+                                        attendeeEmail: emailValue,
                                         answers,
                                     }),
                                 });
