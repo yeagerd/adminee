@@ -1,15 +1,8 @@
 import { ApiResponse } from '../types/common';
 import { GatewayClient } from './gateway-client';
 
-// Shipment types
-export interface PackageStatus {
-    pending: string;
-    in_transit: string;
-    delivered: string;
-    delayed: string;
-    returned: string;
-    lost: string;
-}
+// Shipment types - using the same status values as the old package-status.ts
+export type PackageStatus = 'PENDING' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION' | 'DELAYED' | 'CANCELLED' | 'RETURNED';
 
 export interface SuggestedPackageData {
     tracking_number?: string;

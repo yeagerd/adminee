@@ -1,105 +1,11 @@
 import { EmailMessage } from '@/types/office-service';
-import { gatewayClient } from './gateway-client';
-import { PackageStatus } from './package-status';
+import { shipmentsApi } from '@/api';
+import type { PackageStatus, EmailParseRequest, EmailParseResponse, PackageCreateRequest, PackageResponse, DataCollectionRequest, DataCollectionResponse, PackageRefreshResponse } from '@/api/clients/shipments-client';
 
-// Define proper types for shipment data
-export interface SuggestedPackageData {
-    tracking_number?: string;
-    carrier?: string;
-    status?: string;
-    recipient_name?: string;
-    shipper_name?: string;
-    package_description?: string;
-    order_number?: string;
-    estimated_delivery?: string;
-    tracking_link?: string;
-}
+// Re-export types for backward compatibility
+export type { PackageStatus, EmailParseRequest, EmailParseResponse, PackageCreateRequest, PackageResponse, DataCollectionRequest, DataCollectionResponse, PackageRefreshResponse };
 
-export interface CursorPaginationInfo {
-    next_cursor?: string;
-    prev_cursor?: string;
-    has_next: boolean;
-    has_prev: boolean;
-    limit: number;
-}
-
-export interface EmailParseRequest {
-    subject: string;
-    sender: string;
-    body: string;
-    content_type: string;
-}
-
-export interface ParsedTrackingInfo {
-    tracking_number: string;
-    carrier?: string;
-    confidence: number;
-    source: string;
-}
-
-export interface EmailParseResponse {
-    is_shipment_email: boolean;
-    detected_carrier?: string;
-    tracking_numbers: ParsedTrackingInfo[];
-    confidence: number;
-    detected_from: string;
-    suggested_package_data?: SuggestedPackageData;
-}
-
-export interface PackageCreateRequest {
-    tracking_number: string;
-    carrier: string;
-    status: PackageStatus;
-    estimated_delivery?: string;
-    actual_delivery?: string;
-    recipient_name?: string;
-    shipper_name?: string;
-    package_description?: string;
-    order_number?: string;
-    tracking_link?: string;
-    email_message_id?: string;
-}
-
-export interface PackageResponse {
-    id: string; // Changed from number to string (UUID)
-    tracking_number: string;
-    carrier: string;
-    status: PackageStatus;
-    estimated_delivery?: string;
-    actual_delivery?: string;
-    recipient_name?: string;
-    shipper_name?: string;
-    package_description?: string;
-    order_number?: string;
-    tracking_link?: string;
-    updated_at: string;
-    events_count: number;
-    labels: string[];
-}
-
-export interface DataCollectionRequest {
-    user_id: string;
-    email_message_id: string;
-    original_email_data: Record<string, unknown>;
-    auto_detected_data: Record<string, unknown>;
-    user_corrected_data: Record<string, unknown>;
-    detection_confidence: number;
-    correction_reason?: string;
-    consent_given: boolean;
-}
-
-export interface DataCollectionResponse {
-    success: boolean;
-    collection_id: string;
-    timestamp: string;
-    message: string;
-}
-
-export interface PackageRefreshResponse {
-    success: boolean;
-    message: string;
-    updated_data?: Partial<PackageResponse>;
-}
+// Remove duplicate type definitions since they're now imported from the API
 
 class ShipmentsClient {
     /**
@@ -113,21 +19,21 @@ class ShipmentsClient {
             content_type: email.body_html ? 'html' : 'text',
         };
 
-        return gatewayClient.parseEmail(request);
+        return shipmentsApi.parseEmail(request);
     }
 
     /**
      * Create a new package tracking entry
      */
     async createPackage(packageData: PackageCreateRequest): Promise<PackageResponse> {
-        return gatewayClient.createPackage(packageData);
+        return shipmentsApi.createPackage(packageData);
     }
 
     /**
      * Submit data collection for training improvements
      */
     async collectData(data: DataCollectionRequest): Promise<DataCollectionResponse> {
-        return gatewayClient.collectShipmentData(data);
+        return shipmentsApi.collectShipmentData(data);
     }
 
     /**
@@ -143,7 +49,7 @@ class ShipmentsClient {
         user_id?: string;
         date_range?: string;
     }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
-        return gatewayClient.getPackages(params);
+        return shipmentsApi.getPackages(params);
     }
 
     /**
@@ -159,7 +65,7 @@ class ShipmentsClient {
             params.carrier = carrier;
         }
 
-        const response = await gatewayClient.getPackages(params);
+        const response = await shipmentsApi.getPackages(params);
 
         // If no packages found, return null
         if (response.packages.length === 0) {
@@ -191,7 +97,7 @@ class ShipmentsClient {
      */
     async getPackageByEmail(emailMessageId: string): Promise<PackageResponse | null> {
         try {
-            const response = await gatewayClient.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${encodeURIComponent(emailMessageId)}`);
+            const response = await shipmentsApi.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${encodeURIComponent(emailMessageId)}`);
 
             if (response && response.data && response.data.length > 0) {
                 return response.data[0];
@@ -211,28 +117,28 @@ class ShipmentsClient {
      * Get a specific package by ID
      */
     async getPackage(id: string): Promise<PackageResponse> { // Changed from number to string (UUID)
-        return gatewayClient.getPackage(id);
+        return shipmentsApi.getPackage(id);
     }
 
     /**
      * Update a package
      */
     async updatePackage(id: string, packageData: Partial<PackageCreateRequest>): Promise<PackageResponse> { // Changed from number to string (UUID)
-        return gatewayClient.updatePackage(id, packageData);
+        return shipmentsApi.updatePackage(id, packageData);
     }
 
     /**
      * Delete a package
      */
     async deletePackage(id: string): Promise<void> { // Changed from number to string (UUID)
-        return gatewayClient.deletePackage(id);
+        return shipmentsApi.deletePackage(id);
     }
 
     /**
      * Refresh tracking information for a package
      */
     async refreshPackage(id: string): Promise<PackageRefreshResponse> { // Changed from number to string (UUID)
-        return gatewayClient.refreshPackage(id);
+        return shipmentsApi.refreshPackage(id);
     }
 
     /**
@@ -246,7 +152,7 @@ class ShipmentsClient {
         description?: string;
         created_at: string;
     }>> {
-        return gatewayClient.getTrackingEvents(packageId);
+        return shipmentsApi.getTrackingEvents(packageId);
     }
 
     /**
@@ -260,7 +166,7 @@ class ShipmentsClient {
         description?: string;
         created_at: string;
     }>> {
-        return gatewayClient.getEventsByEmail(emailMessageId);
+        return shipmentsApi.getEventsByEmail(emailMessageId);
     }
 
     /**
@@ -280,7 +186,7 @@ class ShipmentsClient {
         description?: string;
         created_at: string;
     }> {
-        return gatewayClient.createTrackingEvent(packageId, eventData);
+        return shipmentsApi.createTrackingEvent(packageId, eventData);
     }
 
     /**
