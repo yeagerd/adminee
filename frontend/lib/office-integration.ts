@@ -1,5 +1,5 @@
 import { Draft } from '@/types/draft';
-import { GatewayClient } from './gateway-client';
+import { OfficeClient } from '@/api/clients/office-client';
 
 export interface OfficeIntegrationConfig {
     provider: 'google' | 'microsoft';
@@ -33,25 +33,25 @@ export interface DocumentSaveRequest {
 
 export class OfficeIntegrationService {
     private config: OfficeIntegrationConfig;
-    private gatewayClient: GatewayClient;
+    private officeClient: OfficeClient;
 
     constructor(config: OfficeIntegrationConfig) {
         this.config = config;
-        this.gatewayClient = new GatewayClient();
+        this.officeClient = new OfficeClient();
     }
 
     async sendEmail(request: EmailSendRequest): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
-            const result = await this.gatewayClient.request<{ messageId: string }>(
-                '/api/v1/email/send',
-                {
-                    method: 'POST',
-                    body: {
-                        ...request,
-                        provider: request.provider ?? this.config.provider,
-                    },
-                }
-            );
+            const result = await this.officeClient.sendEmail({
+                ...request,
+                provider: request.provider ?? this.config.provider,
+            });
+            
+            // Ensure proper response structure validation
+            if (!result || !result.messageId) {
+                throw new Error('Invalid response structure from email sending');
+            }
+            
             return { success: true, messageId: result.messageId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -60,17 +60,23 @@ export class OfficeIntegrationService {
 
     async createCalendarEvent(request: CalendarEventRequest): Promise<{ success: boolean; eventId?: string; error?: string }> {
         try {
-            const result = await this.gatewayClient.request<{ eventId: string }>(
-                '/api/v1/calendar/events',
-                {
-                    method: 'POST',
-                    body: {
-                        ...request,
-                        provider: this.config.provider,
-                    },
-                }
-            );
-            return { success: true, eventId: result.eventId };
+            const result = await this.officeClient.createCalendarEvent({
+                title: request.title,
+                start_time: request.startTime,
+                end_time: request.endTime,
+                location: request.location,
+                description: request.description,
+                attendees: request.attendees?.map(email => ({ email, name: undefined })),
+                // Remove provider field as it's not part of CreateCalendarEventRequest interface
+                // The provider is handled by the backend based on user's connected accounts
+            });
+            
+            // Ensure proper response structure validation
+            if (!result || !result.data || !result.data.id) {
+                throw new Error('Invalid response structure from calendar event creation');
+            }
+            
+            return { success: true, eventId: result.data.id };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
         }
@@ -78,16 +84,16 @@ export class OfficeIntegrationService {
 
     async saveDocument(request: DocumentSaveRequest): Promise<{ success: boolean; documentId?: string; error?: string }> {
         try {
-            const result = await this.gatewayClient.request<{ documentId: string }>(
-                '/api/v1/documents',
-                {
-                    method: 'POST',
-                    body: {
-                        ...request,
-                        provider: this.config.provider,
-                    },
-                }
-            );
+            const result = await this.officeClient.saveDocument({
+                ...request,
+                provider: this.config.provider,
+            });
+            
+            // Ensure proper response structure validation
+            if (!result || !result.documentId) {
+                throw new Error('Invalid response structure from document saving');
+            }
+            
             return { success: true, documentId: result.documentId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

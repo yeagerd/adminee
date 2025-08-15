@@ -1,4 +1,4 @@
-import gatewayClient from '@/lib/gateway-client';
+import { chatApi } from '@/api';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -51,7 +51,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
             if (options.search) params.append('search', options.search);
             if (options.limit) params.append('limit', options.limit.toString());
 
-            const data = await gatewayClient.listDrafts({
+            const data = await chatApi.listDrafts({
                 type: options.type,
                 status: options.status,
                 search: options.search,
@@ -82,7 +82,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
 
     const createDraft = useCallback(async (draft: { type: DraftType; content: string; metadata?: Record<string, unknown> }): Promise<Draft> => {
         try {
-            const data = await gatewayClient.createDraft({
+            const data = await chatApi.createDraft({
                 type: draft.type,
                 content: draft.content,
                 metadata: draft.metadata,
@@ -110,7 +110,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
 
     const updateDraft = useCallback(async (id: string, updates: Partial<Draft>): Promise<Draft> => {
         try {
-            const data = await gatewayClient.updateDraft(id, {
+            const data = await chatApi.updateDraft(id, {
                 content: updates.content,
                 metadata: updates.metadata as Record<string, unknown> | undefined, // Fix type error
                 status: updates.status,
@@ -138,7 +138,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
 
     const deleteDraft = useCallback(async (id: string): Promise<boolean> => {
         try {
-            await gatewayClient.deleteDraft(id);
+            await chatApi.deleteDraft(id);
             setDrafts(prev => prev.filter(draft => draft.id !== id));
             return true;
         } catch (err) {

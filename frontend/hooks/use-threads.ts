@@ -1,4 +1,4 @@
-import { gatewayClient } from '@/lib/gateway-client';
+import { officeApi } from '@/api';
 import { EmailThread } from '@/types/office-service';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -50,7 +50,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         setError(null);
 
         try {
-            const response = await gatewayClient.getThreads(
+            const response = await officeApi.getThreads(
                 mergedOptions.providers,
                 mergedOptions.limit,
                 mergedOptions.includeBody,
@@ -79,7 +79,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         setError(null);
 
         try {
-            const response = await gatewayClient.getThread(threadId, true);
+            const response = await officeApi.getThread(threadId, true);
 
             if (response.success && response.data) {
                 setSelectedThread(response.data.thread);
@@ -100,7 +100,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         setError(null);
 
         try {
-            const response = await gatewayClient.getMessageThread(messageId, true);
+            const response = await officeApi.getMessageThread(messageId, true);
 
             if (response.success && response.data) {
                 setSelectedThread(response.data.thread);
