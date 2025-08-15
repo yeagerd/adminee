@@ -189,8 +189,8 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 - [x] Test error handling and recovery scenarios
 
 **Files to create**:
-- `tests/integration/test_vespa_flow.py` - E2E tests
-- `tests/integration/test_data_consistency.py` - Data validation tests
+- `services/vespa_query/tests/test_vespa_flow.py` - E2E tests
+- `services/vespa_query/tests/test_data_consistency.py` - Data validation tests
 
 ### 5.2 Performance Optimization
 **Goal**: Optimize for demo responsiveness and reliability
