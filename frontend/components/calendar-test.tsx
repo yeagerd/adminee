@@ -2,16 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { gatewayClient } from "@/lib/gateway-client"
+import { OfficeClient } from "@/api/clients/office-client"
 import { CalendarEvent } from "@/types/office-service"
 import { useSession } from "next-auth/react"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 
 export function CalendarTest() {
     const { data: session } = useSession()
     const [events, setEvents] = useState<CalendarEvent[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const officeClient = useMemo(() => new OfficeClient(), [])
 
     const testCalendarAPI = async () => {
         if (!session?.user?.id) {
@@ -23,7 +24,7 @@ export function CalendarTest() {
         setError(null)
 
         try {
-            const response = await gatewayClient.getCalendarEvents(
+            const response = await officeClient.getCalendarEvents(
                 session.provider ? [session.provider] : ['google', 'microsoft'],
                 5,
                 new Date().toISOString().split('T')[0],
