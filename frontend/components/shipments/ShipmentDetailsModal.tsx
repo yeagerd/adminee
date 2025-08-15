@@ -1,4 +1,5 @@
-import { PackageResponse, ShipmentsClient } from '@/api/clients/shipments-client';
+import { shipmentsApi } from '@/api';
+import { PackageResponse } from '@/api/clients/shipments-client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { BadgeCheck, Calendar, ExternalLink, FileText, Hash, Loader2, Package, Tag, Trash2, Truck, User } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface ShipmentDetailsModalProps {
     isOpen: boolean;
@@ -64,7 +65,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    const shipmentsClient = useMemo(() => new ShipmentsClient(), []);
+
 
     // Events state
     const [events, setEvents] = useState<Array<{
@@ -107,7 +108,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                 setLoadingEvents(true);
                 setEventsError(null);
                 try {
-                    const fetchedEvents = await shipmentsClient.getTrackingEvents(shipment.id);
+                    const fetchedEvents = await shipmentsApi.getTrackingEvents(shipment.id);
                     setEvents(fetchedEvents);
                 } catch (err) {
                     console.error('Error fetching events:', err);
@@ -119,7 +120,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
 
             fetchEvents();
         }
-    }, [isOpen, shipment, shipmentsClient]);
+    }, [isOpen, shipment]);
 
 
 
@@ -188,7 +189,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             // Update the shipment if there are form changes
             let updatedShipment = shipment;
             if (hasFormChanges) {
-                updatedShipment = await shipmentsClient.updatePackage(shipment.id, updateData);
+                updatedShipment = await shipmentsApi.updatePackage(shipment.id, updateData);
             }
 
             // Delete staged events if any
@@ -196,7 +197,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             if (hasStagedDeletions) {
                 const deletePromises = Array.from(eventsToDelete).map(async (eventId) => {
                     try {
-                        await shipmentsClient.deleteTrackingEvent(shipment.id, eventId);
+                        await shipmentsApi.deleteTrackingEvent(shipment.id, eventId);
                         return { success: true, eventId };
                     } catch (error) {
                         console.error(`Failed to delete event ${eventId}:`, error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { UserClient } from '@/api/clients/user-client';
+import { userApi } from '@/api';
 import type { Integration } from '@/api/types/common';
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,7 +23,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { status } = useSession();
-    const userClient = useMemo(() => new UserClient(), []);
+
 
     // NEW: Track refresh state to prevent infinite loops and race conditions
     const isRefreshingRef = useRef(false);
@@ -33,14 +33,14 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setLoading(true);
         setError(null);
         try {
-            const resp = await userClient.getIntegrations();
+            const resp = await userApi.getIntegrations();
             setIntegrations(resp.integrations || []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load integrations');
         } finally {
             setLoading(false);
         }
-    }, [userClient]);
+    }, []);
 
     useEffect(() => {
         if (status === 'authenticated') {
@@ -116,7 +116,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     (integration.status === INTEGRATION_STATUS.ACTIVE && attempts < 3)
                 ) {
                     try {
-                        await userClient.refreshIntegrationTokens(integration.provider);
+                        await userApi.refreshIntegrationTokens(integration.provider);
                         // Reset counter on successful refresh
                         refreshAttemptsRef.current[integration.provider] = 0;
                         hasSuccessfulRefreshes = true;
@@ -137,7 +137,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         } finally {
             isRefreshingRef.current = false;
         }
-    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, userClient, fetchIntegrations]);
+    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, fetchIntegrations]);
 
     // Remove the auto-refresh useEffect (now handled by triggerAutoRefreshIfNeeded)
 
