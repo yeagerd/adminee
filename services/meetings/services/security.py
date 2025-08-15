@@ -152,7 +152,7 @@ rate_limiter = RateLimiter()
 _test_mode = False
 
 
-def set_test_mode(enabled: bool):
+def set_test_mode(enabled: bool) -> None:
     """Enable or disable test mode for rate limiting"""
     global _test_mode
     _test_mode = enabled
