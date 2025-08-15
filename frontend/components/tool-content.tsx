@@ -8,7 +8,7 @@ import PackageDashboard from '@/components/packages/PackageDashboard';
 import { Button } from '@/components/ui/button';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient } from '@/lib/gateway-client';
+import { meetingsApi } from '@/api';
 import { MeetingSubView } from '@/types/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
@@ -52,7 +52,7 @@ export function ToolContent() {
 
     const fetchPolls = () => {
         setLoading(true);
-        gatewayClient.listMeetingPolls()
+        meetingsApi.listMeetingPolls()
             .then((data) => setPolls(data as MeetingPoll[]))
             .catch((e: unknown) => {
                 if (e && typeof e === 'object' && 'message' in e) {
