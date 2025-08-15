@@ -326,7 +326,7 @@ export async function sendDraft(draft: Draft): Promise<DraftActionResult> {
                 endTime: endTime || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
                 location: draft.metadata.location,
                 description: draft.content,
-                attendees: draft.metadata.attendees || [],
+                attendees: Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees : [],
             });
 
             if (result.success) {
