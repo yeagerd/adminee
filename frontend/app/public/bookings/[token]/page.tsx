@@ -102,6 +102,14 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                 </div>
             )}
 
+            {!loading && !error && meta && (
+                <div className="border border-blue-200 bg-blue-50 text-blue-800 p-3 rounded mb-4">
+                    <p className="text-sm">
+                        <strong>Important:</strong> Please provide a valid email address to receive your booking confirmation.
+                    </p>
+                </div>
+            )}
+
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium mb-1">Meeting duration</label>
@@ -154,25 +162,48 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
 
                 {Array.isArray(meta?.template_questions) && meta.template_questions.length > 0 && (
                     <div>
-                        <label className="block text-sm font-medium mb-1">Questions</label>
-                        <div className="space-y-2">
+                        <label className="block text-sm font-medium mb-1">
+                            Questions
+                            <span className="text-xs text-muted-foreground ml-2">
+                                Fields marked with * are required
+                            </span>
+                        </label>
+                        <div className="space-y-3">
                             {meta.template_questions.map((q: QuestionField, idx: number) => {
                                 const key = q?.id || `q_${idx}`;
                                 const label = q?.label || `Question ${idx + 1}`;
                                 const required = Boolean(q?.required);
+                                const hasError = required && (!answers[key] || answers[key].trim() === '');
+                                const isEmail = q.type === 'email';
+                                
                                 return (
                                     <div key={key} className="flex flex-col gap-1">
-                                        <span className="text-sm">
+                                        <span className="text-sm font-medium">
                                             {label}
-                                            {required ? " *" : ""}
+                                            {required && <span className="text-red-500 ml-1">*</span>}
                                         </span>
                                         <input
-                                            className="border rounded px-2 py-1"
+                                            type={isEmail ? "email" : "text"}
+                                            placeholder={isEmail ? "Enter your email address" : `Enter your ${label.toLowerCase()}`}
+                                            className={`border rounded px-3 py-2 ${
+                                                hasError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                            }`}
                                             value={answers[key] || ""}
                                             onChange={(e) =>
                                                 setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
                                             }
+                                            onBlur={() => {
+                                                // Trigger validation on blur
+                                                if (required && (!answers[key] || answers[key].trim() === '')) {
+                                                    // Field is already marked as having error
+                                                }
+                                            }}
                                         />
+                                        {hasError && (
+                                            <span className="text-xs text-red-500">
+                                                This field is required
+                                            </span>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -185,6 +216,23 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                         className="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
                         onClick={async () => {
                             if (!selectedSlot) return;
+                            
+                            // Validate required fields before submission
+                            const requiredFields = meta?.template_questions?.filter(q => q.required) || [];
+                            const missingFields = requiredFields.filter(q => !answers[q.id] || answers[q.id].trim() === '');
+                            
+                            if (missingFields.length > 0) {
+                                const fieldNames = missingFields.map(q => q.label).join(', ');
+                                alert(`Please fill in all required fields: ${fieldNames}`);
+                                return;
+                            }
+                            
+                            // Ensure email is provided for confirmation emails
+                            if (!answers.email || answers.email.trim() === '') {
+                                alert('Email address is required to receive booking confirmation.');
+                                return;
+                            }
+                            
                             setSubmitting(true);
                             try {
                                 const res = await fetch(`${env.GATEWAY_URL}/api/v1/bookings/public/${token}/book`, {
@@ -193,7 +241,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                                     body: JSON.stringify({
                                         start: selectedSlot.start,
                                         end: selectedSlot.end,
-                                        attendeeEmail: answers.email || "guest@example.com",
+                                        attendeeEmail: answers.email,
                                         answers,
                                     }),
                                 });
