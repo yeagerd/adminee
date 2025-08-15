@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { gatewayClient } from '@/lib/gateway-client';
 import { PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { PackageResponse, shipmentsClient } from '@/lib/shipments-client';
+import { PackageResponse } from '@/api/clients/shipments-client';
+import { ShipmentsClient } from '@/api/clients/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { BadgeCheck, Calendar, ExternalLink, FileText, Hash, Loader2, Package, Tag, Trash2, Truck, User } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 interface ShipmentDetailsModalProps {
     isOpen: boolean;
@@ -65,6 +65,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const shipmentsClient = useMemo(() => new ShipmentsClient(), []);
 
     // Events state
     const [events, setEvents] = useState<Array<{
@@ -107,11 +108,11 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                 setLoadingEvents(true);
                 setEventsError(null);
                 try {
-                    const fetchedEvents = await gatewayClient.getTrackingEvents(shipment.id);
+                    const fetchedEvents = await shipmentsClient.getTrackingEvents(shipment.id);
                     setEvents(fetchedEvents);
-                } catch (error) {
-                    console.error('Failed to fetch tracking events:', error);
-                    setEventsError('Failed to load tracking events');
+                } catch (err) {
+                    console.error('Error fetching events:', err);
+                    setEventsError(err instanceof Error ? err.message : 'Failed to fetch events');
                 } finally {
                     setLoadingEvents(false);
                 }
@@ -124,8 +125,19 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
 
 
     // Handle event deletion (stage for deletion)
-    const handleDeleteEvent = (eventId: string) => {
-        setEventsToDelete(prev => new Set(prev).add(eventId));
+    const handleDeleteEvent = async (eventId: string) => {
+        try {
+            await shipmentsClient.deleteTrackingEvent(shipment.id, eventId);
+            setEvents(prev => prev.filter(event => event.id !== eventId));
+            setEventsToDelete(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(eventId);
+                return newSet;
+            });
+        } catch (err) {
+            console.error('Error deleting event:', err);
+            setError(err instanceof Error ? err.message : 'Failed to delete event');
+        }
     };
 
     // Handle event restoration (unstage from deletion)
@@ -192,7 +204,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             if (hasStagedDeletions) {
                 const deletePromises = Array.from(eventsToDelete).map(async (eventId) => {
                     try {
-                        await gatewayClient.deleteTrackingEvent(shipment.id, eventId);
+                        await shipmentsClient.deleteTrackingEvent(shipment.id, eventId);
                         return { success: true, eventId };
                     } catch (error) {
                         console.error(`Failed to delete event ${eventId}:`, error);
