@@ -1,4 +1,4 @@
-import { shipmentsClient } from '@/lib/shipments-client';
+import { shipmentsApi } from '@/api';
 import { useEffect, useState } from 'react';
 
 export interface ShipmentEvent {
@@ -26,7 +26,7 @@ export const useShipmentEvents = (emailId: string) => {
             setError(null);
 
             try {
-                const response = await shipmentsClient.getEventsByEmail(emailId);
+                const response = await shipmentsApi.getEventsByEmail(emailId);
                 setEvents(response);
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to fetch shipment events';
