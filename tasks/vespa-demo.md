@@ -21,12 +21,12 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 1.1 Set Up Local Vespa Environment
 **Goal**: Get a local Vespa instance running in streaming mode
-- [ ] Install Vespa locally (use their Docker container or create a Dockerfile)
-- [ ] Create Vespa application package with streaming search configuration
-- [ ] Define document schema supporting email/calendar/files/contacts data model, normalized by the office-service
-- [ ] Configure per-user partitioning strategy (user_id-based routing)
-- [ ] Test basic email ingestion
-- [ ] Verify user isolation with sample emails
+- [x] Install Vespa locally (use their Docker container or create a Dockerfile)
+- [x] Create Vespa application package with streaming search configuration
+- [x] Define document schema supporting email/calendar/files/contacts data model, normalized by the office-service
+- [x] Configure per-user partitioning strategy (user_id-based routing)
+- [x] Test basic email ingestion
+- [x] Verify user isolation with sample emails
 
 **Files to create/modify**:
 - `vespa/schemas/briefly_document.sd` - Main document schema
@@ -36,12 +36,12 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 1.2 Create Office Router Service
 **Goal**: Central routing service for office (eg. email) data distribution
-- [ ] Create new service: `services/office_router/`
-- [ ] Set up FastAPI service with pubsub consumer
-- [ ] Implement routing logic to multiple downstream services
-- [ ] Add configuration for routing rules and service endpoints
-- [ ] Include error handling and retry logic
-- [ ] Add health checks and monitoring endpoints
+- [x] Create new service: `services/office_router/`
+- [x] Set up FastAPI service with pubsub consumer
+- [x] Implement routing logic to multiple downstream services
+- [x] Add configuration for routing rules and service endpoints
+- [x] Include error handling and retry logic
+- [x] Add health checks and monitoring endpoints
 
 **Files to create**:
 - `services/office_router/main.py` - Main FastAPI application
@@ -52,10 +52,10 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 1.3 Set Up Pubsub Infrastructure
 **Goal**: Message queue for backfill job → router communication
-- [ ] Set up local Google Cloud Pubsub emulator
-- [ ] Create topics: `email-backfill`, `email-updates`
-- [ ] Create subscriptions for email router
-- [ ] Test pubsub connectivity and message flow
+- [x] Set up local Google Cloud Pubsub emulator
+- [x] Create topics: `email-backfill`, `email-updates`
+- [x] Create subscriptions for email router
+- [x] Test pubsub connectivity and message flow
 
 
 **Files to create/modify**:
@@ -69,12 +69,12 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 2.1 Create Vespa Loader Service
 **Goal**: Service to consume email data and index into Vespa
-- [ ] Create new service: `services/vespa_loader/`
-- [ ] Implement Vespa document mapper from office service format
-- [ ] Add content normalization (HTML→Markdown for emails)
-- [ ] Implement embedding generation for search_text field
-- [ ] Create batch indexing capabilities
-- [ ] Add document deduplication and update handling
+- [x] Create new service: `services/vespa_loader/`
+- [x] Implement Vespa document mapper from office service format
+- [x] Add content normalization (HTML→Markdown for emails)
+- [x] Implement embedding generation for search_text field
+- [x] Create batch indexing capabilities
+- [x] Add document deduplication and update handling
 
 **Files to create**:
 - `services/vespa_loader/main.py` - Main service
