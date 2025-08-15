@@ -46,6 +46,12 @@ export class OfficeIntegrationService {
                 ...request,
                 provider: request.provider ?? this.config.provider,
             });
+            
+            // Ensure proper response structure validation
+            if (!result || !result.messageId) {
+                throw new Error('Invalid response structure from email sending');
+            }
+            
             return { success: true, messageId: result.messageId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -61,8 +67,15 @@ export class OfficeIntegrationService {
                 location: request.location,
                 description: request.description,
                 attendees: request.attendees?.map(email => ({ email, name: undefined })),
-                provider: this.config.provider,
+                // Remove provider field as it's not part of CreateCalendarEventRequest interface
+                // The provider is handled by the backend based on user's connected accounts
             });
+            
+            // Ensure proper response structure validation
+            if (!result || !result.data || !result.data.id) {
+                throw new Error('Invalid response structure from calendar event creation');
+            }
+            
             return { success: true, eventId: result.data.id };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -75,6 +88,12 @@ export class OfficeIntegrationService {
                 ...request,
                 provider: this.config.provider,
             });
+            
+            // Ensure proper response structure validation
+            if (!result || !result.documentId) {
+                throw new Error('Invalid response structure from document saving');
+            }
+            
             return { success: true, documentId: result.documentId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
