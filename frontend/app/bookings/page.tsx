@@ -55,19 +55,14 @@ export default function BookingsPage() {
 
     // Real data state
     const [existingLinks, setExistingLinks] = useState<BookingLink[]>([]);
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+    const [bookings] = useState<Array<{ link_id: string; status: string }>>([]);
 
     // Filter state for bookings
     const [bookingsFilter, setBookingsFilter] = useState<string | null>(null); // link_id to filter by
 
     // Loading and error states
     const [isLoadingLinks, setIsLoadingLinks] = useState(false);
-    const [isLoadingBookings, setIsLoadingBookings] = useState(false);
-    const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
     const [linksError, setLinksError] = useState<string | null>(null);
-    const [bookingsError, setBookingsError] = useState<string | null>(null);
-    const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
     // Success dialog state
     const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -95,44 +90,12 @@ export default function BookingsPage() {
         }
     };
 
-    const fetchBookings = async () => {
-        try {
-            setIsLoadingBookings(true);
-            setBookingsError(null);
-            // TODO: Implement when backend endpoint is ready
-            // const result = await gatewayClient.listBookings();
-            // setBookings(result.data);
-            setBookings([]); // Empty for now
-        } catch (error) {
-            setBookingsError(error instanceof Error ? error.message : 'Failed to fetch bookings');
-            console.error('Error fetching bookings:', error);
-        } finally {
-            setIsLoadingBookings(false);
-        }
-    };
 
-    const fetchAnalytics = async () => {
-        try {
-            setIsLoadingAnalytics(true);
-            setAnalyticsError(null);
-            // TODO: Implement when backend endpoint is ready
-            // const result = await gatewayClient.getAnalytics();
-            // setAnalyticsData(result.data);
-            setAnalyticsData([]); // Empty for now
-        } catch (error) {
-            setAnalyticsError(error instanceof Error ? error.message : 'Failed to fetch analytics');
-            console.error('Error fetching analytics:', error);
-        } finally {
-            setIsLoadingAnalytics(false);
-        }
-    };
 
     // Load data when component mounts or tab changes
     useEffect(() => {
         if (activeTab === "manage") {
             fetchLinks();
-            fetchBookings();
-            fetchAnalytics();
         }
     }, [activeTab]);
 
