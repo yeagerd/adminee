@@ -1,5 +1,5 @@
-import type { DraftApiResponse } from '@/lib/gateway-client';
-import { gatewayClient } from '@/lib/gateway-client';
+import { chatApi, officeApi } from '@/api';
+import type { DraftApiResponse } from '@/api/types/common';
 import { officeIntegration } from '@/lib/office-integration';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 
@@ -48,7 +48,7 @@ export interface DraftActionResult {
 
 export class DraftService {
     async createDraft(request: CreateDraftRequest): Promise<Draft> {
-        const data = await gatewayClient.createDraft({
+        const data = await chatApi.createDraft({
             type: request.type,
             content: request.content,
             metadata: request.metadata,
@@ -59,7 +59,7 @@ export class DraftService {
     }
 
     async createEmailProviderDraft(args: CreateEmailProviderDraftArgs) {
-        const resp = await gatewayClient.createEmailDraft({
+        const resp = await officeApi.createEmailDraft({
             action: args.action,
             to: args.to,
             cc: args.cc,
@@ -74,7 +74,7 @@ export class DraftService {
     }
 
     async updateEmailProviderDraft(args: UpdateEmailProviderDraftArgs) {
-        const resp = await gatewayClient.updateEmailDraft(args.draftId, {
+        const resp = await officeApi.updateEmailDraft(args.draftId, {
             to: args.to,
             cc: args.cc,
             bcc: args.bcc,
@@ -86,15 +86,15 @@ export class DraftService {
     }
 
     async deleteEmailProviderDraft(draftId: string, provider: 'google' | 'microsoft') {
-        return gatewayClient.deleteEmailDraft(draftId, provider);
+        return officeApi.deleteEmailDraft(draftId, provider);
     }
 
     async listProviderDraftsForThread(threadId: string) {
-        return gatewayClient.listThreadDrafts(threadId);
+        return officeApi.listThreadDrafts(threadId);
     }
 
     async updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
-        const data = await gatewayClient.updateDraft(draftId, {
+        const data = await chatApi.updateDraft(draftId, {
             content: request.content,
             metadata: request.metadata,
             status: request.status,
@@ -109,7 +109,7 @@ export class DraftService {
         // Only call backend if draftId is an integer
         if (/^\d+$/.test(draftId)) {
             console.log('[DraftService] draftId is integer, calling backend to delete.');
-            await gatewayClient.deleteDraft(draftId);
+            await chatApi.deleteDraft(draftId);
             return true;
         } else {
             console.log('[DraftService] draftId is not integer, treating as local/unsaved draft. No backend call.');
@@ -119,7 +119,7 @@ export class DraftService {
     }
 
     async getDraft(draftId: string): Promise<Draft> {
-        const data = await gatewayClient.getDraft(draftId);
+        const data = await chatApi.getDraft(draftId);
         return this.mapDraftFromApi(data as DraftApiResponse);
     }
 
@@ -128,7 +128,7 @@ export class DraftService {
         totalCount: number;
         hasMore: boolean;
     }> {
-        const data = await gatewayClient.listDrafts({
+        const data = await chatApi.listDrafts({
             type: filters?.type,
             status: filters?.status,
             search: filters?.search,

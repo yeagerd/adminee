@@ -1,3 +1,4 @@
+import { shipmentsApi } from '@/api';
 import { usePagination } from '@/hooks/use-pagination';
 import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -5,7 +6,6 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, ExternalLink, Plus, Truck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import ShipmentDetailsModal from '../shipments/ShipmentDetailsModal';
 import { Badge } from '../ui/badge';
@@ -181,7 +181,7 @@ export default function PackageDashboard() {
                 return;
             }
 
-            const res = await gatewayClient.getPackages(filterParams);
+            const res = await shipmentsApi.getPackages(filterParams);
 
             // Cache the result
             setCachedData(cacheKey, res);

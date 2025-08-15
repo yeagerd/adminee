@@ -1,11 +1,12 @@
 'use client';
 
+import { meetingsApi } from '@/api';
+import type { PollResponse } from '@/api/clients/meetings-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient, PollResponse } from '@/lib/gateway-client';
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Mail, Plus, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -599,9 +600,9 @@ function ScheduleActionButton({ poll, slotId, isScheduled }: ScheduleActionButto
         setError(null);
         try {
             if (isScheduled) {
-                await gatewayClient.unscheduleMeeting(poll.id);
+                await meetingsApi.unscheduleMeeting(poll.id);
             } else {
-                await gatewayClient.scheduleMeeting(poll.id, slotId);
+                await meetingsApi.scheduleMeeting(poll.id, slotId);
             }
             // After action, refresh current view by reloading the poll via a custom event
             window.dispatchEvent(new CustomEvent('meeting-poll-refresh', { detail: { pollId: poll.id } }));
@@ -898,7 +899,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     useEffect(() => {
         const listener = (e: CustomEvent<{ pollId: string }>) => {
             if (e?.detail?.pollId === pollId) {
-                gatewayClient.getMeetingPoll(pollId)
+                meetingsApi.getMeetingPoll(pollId)
                     .then((data) => setPoll(data as Poll))
                     .catch((e: unknown) => {
                         if (e && typeof e === 'object' && 'message' in e) {
@@ -918,7 +919,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     useEffect(() => {
         if (!pollId) return;
         setLoading(true);
-        gatewayClient.getMeetingPoll(pollId)
+        meetingsApi.getMeetingPoll(pollId)
             .then((data) => setPoll(data as Poll))
             .catch((e: unknown) => {
                 if (e && typeof e === 'object' && 'message' in e) {
@@ -963,8 +964,8 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         setResendingEmails(prev => new Set(prev).add(participantId));
 
         try {
-            await gatewayClient.resendMeetingInvitation(pollId, participantId);
-            const updatedPoll = await gatewayClient.getMeetingPoll(pollId);
+            await meetingsApi.resendMeetingInvitation(pollId, participantId);
+            const updatedPoll = await meetingsApi.getMeetingPoll(pollId);
             setPoll(updatedPoll as Poll);
         } catch (error) {
             console.error('Failed to resend invitation:', error);
@@ -983,10 +984,10 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         setModalLoading(true);
         try {
             // Add the participant to the poll
-            await gatewayClient.addMeetingParticipant(pollId, email, name);
+            await meetingsApi.addMeetingParticipant(pollId, email, name);
 
             // Refresh the poll data
-            const refreshedPoll = await gatewayClient.getMeetingPoll(pollId);
+            const refreshedPoll = await meetingsApi.getMeetingPoll(pollId);
             setPoll(refreshedPoll as Poll);
         } catch (err) {
             console.error('Failed to add participant:', err);
@@ -1002,7 +1003,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         setModalLoading(true);
         try {
             // Add the time slot
-            await gatewayClient.request(`/api/v1/meetings/polls/${pollId}/slots`, {
+            await meetingsApi.request(`/api/v1/meetings/polls/${pollId}/slots`, {
                 method: 'POST',
                 body: {
                     start_time: startTime,
@@ -1013,11 +1014,11 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
 
             // If requested, resend invitations
             if (resendInvitations) {
-                await gatewayClient.sendMeetingInvitations(pollId);
+                await meetingsApi.sendMeetingInvitations(pollId);
             }
 
             // Refresh the poll data
-            const refreshedPoll = await gatewayClient.getMeetingPoll(pollId);
+            const refreshedPoll = await meetingsApi.getMeetingPoll(pollId);
             setPoll(refreshedPoll as Poll);
         } catch (err) {
             console.error('Failed to add time slot:', err);

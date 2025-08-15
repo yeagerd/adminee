@@ -1,6 +1,6 @@
 'use client';
 
-import { gatewayClient } from '@/lib/gateway-client';
+import { userApi } from '@/api';
 import { getUserTimezone } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -108,7 +108,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     // Fetch preferences on sign-in
     useEffect(() => {
         if (status === 'authenticated' && session?.user?.id) {
-            gatewayClient.getUserPreferences().then((prefsRaw: unknown) => {
+            userApi.getUserPreferences().then((prefsRaw: unknown) => {
                 // Type guard and defaults
                 const obj = (prefsRaw && typeof prefsRaw === 'object') ? prefsRaw as Record<string, unknown> : {};
                 const prefs: UserPreferences = {
@@ -150,7 +150,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
             },
             // ...other fields as needed
         };
-        await gatewayClient.updateUserPreferences(updated as unknown as Record<string, unknown>);
+        await userApi.updateUserPreferences(updated as unknown as Record<string, unknown>);
         setUserPreferencesState(updated);
         const tz = (updated.timezone_mode === 'manual' && updated.manual_timezone)
             ? updated.manual_timezone

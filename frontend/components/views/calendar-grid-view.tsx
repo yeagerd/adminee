@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
-import { gatewayClient } from '@/lib/gateway-client';
+import { officeApi } from '@/api';
 import type { CalendarEvent } from '@/types/office-service';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { DateTime } from 'luxon';
@@ -293,7 +293,7 @@ export default function CalendarGridView({
 
 
 
-            const response = await gatewayClient.getCalendarEvents(
+            const response = await officeApi.getCalendarEvents(
                 activeProviders,
                 100, // Increased limit for grid view
                 startUTC.toFormat('yyyy-MM-dd'),
@@ -964,7 +964,7 @@ export default function CalendarGridView({
                                     try {
                                         const startUtc = DateTime.fromJSDate(formStartTime).toUTC();
                                         const endUtc = DateTime.fromJSDate(formEndTime).toUTC();
-                                        await gatewayClient.createCalendarEvent({
+                                        await officeApi.createCalendarEvent({
                                             title,
                                             description: formDescription || undefined,
                                             start_time: startUtc.toISO()!,

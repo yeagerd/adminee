@@ -3,7 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient, MeetingPollUpdate } from '@/lib/gateway-client';
+import { meetingsApi } from '@/api';
+import type { MeetingPollUpdate } from '@/api/clients/meetings-client';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -25,7 +26,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
     useEffect(() => {
         if (!pollId) return;
         setLoading(true);
-        gatewayClient.getMeetingPoll(pollId)
+        meetingsApi.getMeetingPoll(pollId)
             .then((poll) => {
                 setTitle(poll.title || "");
                 setDescription(poll.description || "");
@@ -53,7 +54,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
                 duration_minutes: duration,
                 location,
             };
-            await gatewayClient.updateMeetingPoll(pollId, updateData);
+            await meetingsApi.updateMeetingPoll(pollId, updateData);
             goBackToPreviousMeetingView();
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
@@ -71,7 +72,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
         setDeleting(true);
         setError(null);
         try {
-            await gatewayClient.deleteMeetingPoll(pollId);
+            await meetingsApi.deleteMeetingPoll(pollId);
             setMeetingSubView('list');
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
