@@ -5,7 +5,6 @@ Provides common setup and teardown for all meetings service tests,
 including required environment variables and database setup.
 """
 
-import importlib
 import os
 import tempfile
 from contextlib import contextmanager
@@ -48,67 +47,15 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         self._original_settings = getattr(meetings_settings, "_settings", None)
         meetings_settings._settings = test_settings
 
-        # Only reload models, not API modules to preserve mock patches
-        # This prevents breaking mock patches applied by test decorators
-        import services.meetings.models
-
-        importlib.reload(services.meetings.models)
-        import services.meetings.models.base
-
-        importlib.reload(services.meetings.models.base)
+        # Import all models to ensure they're registered with metadata
+        import services.meetings.models.booking_entities
         import services.meetings.models.meeting
 
-        importlib.reload(services.meetings.models.meeting)
-
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-
-        from services.meetings import models
-
-        # Ensure models are imported after reload
-
-        models._test_engine = create_engine(
-            db_url,
-            echo=False,
-            future=True,
-            connect_args={"check_same_thread": False},
-        )
-
-        self._test_sessionmaker = sessionmaker(
-            bind=models._test_engine,
-            autoflush=False,
-            autocommit=False,
-            future=True,
-        )
-
-        models.get_engine = lambda: models._test_engine
-
-        @contextmanager
-        def test_get_session():
-            session = self._test_sessionmaker()
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
-            finally:
-                session.close()
-
-        self._original_get_session = models.get_session
-        models.get_session = test_get_session
-
-        # Import all models to ensure they're registered with metadata
+        # Create all tables directly
         from services.meetings.models.base import Base
-
-        # Create all tables in the database
-        Base.metadata.create_all(models._test_engine)
-
-        # Ensure the get_engine function is properly overridden
-        # This is crucial for the API to use the test engine
-        import services.meetings.models
-
-        services.meetings.models.get_engine = lambda: models._test_engine
+        from services.meetings.models import get_engine
+        engine = get_engine()
+        Base.metadata.create_all(engine)
 
         # Import API modules to ensure they're loaded with the test session
         from services.meetings.api import (
@@ -140,15 +87,6 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Register standardized exception handlers
         register_briefly_exception_handlers(app)
-
-        # Import and include routers after settings are configured
-        from services.meetings.api import (
-            email_router,
-            invitations_router,
-            polls_router,
-            public_router,
-            slots_router,
-        )
 
         app.include_router(
             polls_router, prefix="/api/v1/meetings/polls", tags=["polls"]
