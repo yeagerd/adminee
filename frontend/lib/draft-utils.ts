@@ -330,13 +330,24 @@ export async function sendDraft(draft: Draft): Promise<DraftActionResult> {
             const startTime = typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime;
             const endTime = typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime;
 
+            // Process attendees: handle arrays, strings, and comma-separated strings
+            let processedAttendees: string[] = [];
+            if (draft.metadata.attendees) {
+                if (Array.isArray(draft.metadata.attendees)) {
+                    processedAttendees = draft.metadata.attendees;
+                } else if (typeof draft.metadata.attendees === 'string') {
+                    // Handle comma-separated string or single email
+                    processedAttendees = (draft.metadata.attendees as string).split(',').map((s: string) => s.trim()).filter((s: string) => s);
+                }
+            }
+
             const result = await officeApi.createCalendarEventWithValidation({
                 title: draft.metadata.title || 'Untitled Event',
                 startTime: startTime || new Date().toISOString(),
                 endTime: endTime || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
                 location: draft.metadata.location,
                 description: draft.content,
-                attendees: Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees : [],
+                attendees: processedAttendees,
             });
 
             if (result.success) {
