@@ -1,6 +1,5 @@
 import { chatApi, officeApi } from '@/api';
 import type { DraftApiResponse } from '@/api/types/common';
-import { officeIntegration } from '@/lib/office-integration';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 
 export interface CreateDraftRequest {
@@ -149,7 +148,7 @@ export class DraftService {
                 const providerDraftId = draft.metadata.providerDraftId as string | undefined;
 
                 // If we have a provider, let the send endpoint know to avoid account mismatches
-                const result = await officeIntegration.sendEmail({
+                const result = await officeApi.sendEmail({
                     to: draft.metadata.recipients || [],
                     cc: Array.isArray(draft.metadata.cc) ? draft.metadata.cc : (draft.metadata.cc ? [draft.metadata.cc] : []),
                     bcc: Array.isArray(draft.metadata.bcc) ? draft.metadata.bcc : (draft.metadata.bcc ? [draft.metadata.bcc] : []),
@@ -182,8 +181,25 @@ export class DraftService {
                 };
             }
 
-            // Non-email fallback: Execute through integration
-            const result = await officeIntegration.executeDraftAction(draft);
+            // Non-email fallback: Execute through appropriate API methods
+            let result: { success: boolean; result?: unknown; error?: string } = { success: false, error: 'Unsupported draft type' };
+
+            if (draft.type === 'calendar' || draft.type === 'calendar_event' || draft.type === 'calendar_change') {
+                result = await officeApi.createCalendarEventWithValidation({
+                    title: draft.metadata.title || 'New Event',
+                    startTime: typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime || new Date().toISOString(),
+                    endTime: typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime || new Date(Date.now() + 3600000).toISOString(),
+                    location: draft.metadata.location,
+                    description: draft.content,
+                    attendees: Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees : (draft.metadata.attendees ? [draft.metadata.attendees] : []),
+                });
+            } else if (draft.type === 'document') {
+                result = await officeApi.saveDocument({
+                    title: draft.metadata.title || 'Untitled Document',
+                    content: draft.content,
+                    type: 'document',
+                });
+            }
 
             if (result.success) {
                 // Update draft status to 'sent' or 'ready' depending on type
@@ -297,7 +313,7 @@ export class DraftService {
 
             // For documents and calendar, use previous logic
             if (draft.type === 'document') {
-                const result = await officeIntegration.saveDocument({
+                const result = await officeApi.saveDocument({
                     title: draft.metadata.title || 'Untitled Document',
                     content: draft.content,
                     type: 'document',
