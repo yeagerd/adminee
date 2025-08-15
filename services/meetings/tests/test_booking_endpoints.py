@@ -7,6 +7,7 @@ Tests the public booking functionality including:
 - Booking creation
 """
 
+import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -26,7 +27,7 @@ class TestBookingEndpoints(BaseMeetingsTest):
 
         # Create test data
         self.test_user_id = "test-user-123"
-        self.test_booking_link_id = "booking-link-456"
+        self.test_booking_link_id = uuid.uuid4()
         self.test_token = "test-token-789"
 
         # Mock the office service responses
@@ -52,7 +53,7 @@ class TestBookingEndpoints(BaseMeetingsTest):
 
         # Sample data for testing
         self.sample_booking_link_data = {
-            "id": "test-booking-link-123",
+            "id": str(uuid.uuid4()),
             "owner_user_id": "test-user-456",
             "slug": "test-slug",
             "title": "Test Booking Link",
@@ -74,9 +75,9 @@ class TestBookingEndpoints(BaseMeetingsTest):
         }
 
         self.sample_one_time_link_data = {
-            "id": "test-one-time-123",
+            "id": str(uuid.uuid4()),
             "token": "test-token-456",
-            "booking_link_id": "test-booking-link-123",
+            "booking_link_id": str(uuid.uuid4()),
             "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
             "status": "active",
         }
@@ -103,7 +104,7 @@ class TestBookingEndpoints(BaseMeetingsTest):
     def create_test_one_time_link(self, session, booking_link_id):
         """Helper method to create a test one-time link."""
         one_time_link = OneTimeLink(
-            id="one-time-123",
+            id=uuid.uuid4(),
             token=self.test_token,
             booking_link_id=booking_link_id,
             recipient_email="test@example.com",
@@ -135,7 +136,8 @@ class TestBookingEndpoints(BaseMeetingsTest):
             assert response.status_code == 200
             data = response.json()
             assert data["data"]["is_active"] is True
-            assert "id" in data["data"]
+            assert "title" in data["data"]
+            assert data["data"]["title"] == "test-slug"  # Should match the slug
 
     def test_get_public_link_not_found(self):
         """Test retrieval of a non-existent public booking link."""
@@ -246,10 +248,12 @@ class TestBookingEndpoints(BaseMeetingsTest):
             # Create expired one-time link
             booking_link = self.create_test_booking_link(session)
             expired_link = OneTimeLink(
-                id="expired-123",
+                id=uuid.uuid4(),
                 token="expired-token",
                 booking_link_id=booking_link.id,
-                expires_at=datetime.now() - timedelta(days=1),  # Expired
+                recipient_email="expired@example.com",
+                recipient_name="Expired User",
+                expires_at=datetime.now() - timedelta(days=1),  # Expired yesterday
                 status="active",
             )
             session.add(expired_link)
@@ -269,9 +273,11 @@ class TestBookingEndpoints(BaseMeetingsTest):
             # Create used one-time link
             booking_link = self.create_test_booking_link(session)
             used_link = OneTimeLink(
-                id="used-123",
+                id=uuid.uuid4(),
                 token="used-token",
                 booking_link_id=booking_link.id,
+                recipient_email="used@example.com",
+                recipient_name="Used User",
                 expires_at=datetime.now() + timedelta(days=7),
                 status="used",  # Already used
             )
@@ -297,11 +303,9 @@ class TestBookingEndpoints(BaseMeetingsTest):
         with get_session() as session:
             # Create booking link with custom settings
             booking_link = BookingLink(
-                id="custom-settings-123",
+                id=uuid.uuid4(),
                 owner_user_id=self.test_user_id,
-                slug="custom-slug",
-                title="Custom Settings Booking Link",
-                description="Test description",
+                slug="custom-settings",
                 is_active=True,
                 settings=self.sample_booking_link_data["settings"],
             )
@@ -309,7 +313,7 @@ class TestBookingEndpoints(BaseMeetingsTest):
 
             # Create one-time link
             one_time_link = OneTimeLink(
-                id="custom-123",
+                id=uuid.uuid4(),
                 token="custom-token",
                 booking_link_id=booking_link.id,
                 expires_at=datetime.now() + timedelta(days=7),

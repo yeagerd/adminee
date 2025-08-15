@@ -52,13 +52,10 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # This prevents breaking mock patches applied by test decorators
         import services.meetings.models
 
-        importlib.reload(services.meetings.models)
-        import services.meetings.models.base
-
-        importlib.reload(services.meetings.models.base)
+        # Import all models to ensure they're registered with metadata
+        # Don't reload to avoid duplicate table definitions
+        import services.meetings.models.booking_entities
         import services.meetings.models.meeting
-
-        importlib.reload(services.meetings.models.meeting)
 
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
@@ -103,6 +100,22 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         import services.meetings.models.booking_entities
         import services.meetings.models.meeting
         from services.meetings.models.base import Base
+
+        # Ensure all models are properly imported and registered
+        # This is needed because reloading can sometimes break imports
+        from services.meetings.models.booking_entities import (
+            AnalyticsEvent,
+            Booking,
+            BookingLink,
+            BookingTemplate,
+            OneTimeLink,
+        )
+        from services.meetings.models.meeting import (
+            MeetingPoll,
+            PollParticipant,
+            PollResponse,
+            TimeSlot,
+        )
 
         # Debug: Check what tables are in the metadata
         print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
