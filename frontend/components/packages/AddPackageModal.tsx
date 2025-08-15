@@ -1,6 +1,6 @@
-import { gatewayClient } from '@/lib/gateway-client';
+import { ShipmentsClient } from '@/api/clients/shipments-client';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export interface TrackingEvent {
     id?: string;
@@ -52,6 +52,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
     const [form, setForm] = useState(initialState);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const shipmentsClient = useMemo(() => new ShipmentsClient(), []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -63,7 +64,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
         setLoading(true);
         setError(null);
         try {
-            await gatewayClient.createPackage({
+            await shipmentsClient.createPackage({
                 tracking_number: form.tracking_number,
                 carrier: form.carrier,
                 status: form.status,
