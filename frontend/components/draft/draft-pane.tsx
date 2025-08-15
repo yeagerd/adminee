@@ -1,14 +1,14 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { saveDraft } from '@/lib/draft-utils';
 import { cn } from '@/lib/utils';
 import { Draft, DraftMetadata, DraftType } from '@/types/draft';
 import { Calendar, FileText, Mail } from 'lucide-react';
+import { useEffect } from 'react';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
-import { draftService } from '@/services/draft-service';
-import { useEffect } from 'react';
 
 interface DraftPaneProps {
     className?: string;
@@ -73,7 +73,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             onUpdate({ content });
             if (draft.type === 'email') {
                 try {
-                    await draftService.saveDraft({ ...draft, content });
+                    await saveDraft({ ...draft, content });
                 } catch (err) {
                     console.error('Autosave failed:', err);
                 }
@@ -88,7 +88,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             if (draft.type !== 'email') return;
             try {
                 // Best-effort: attempt to persist, and ensure errors are handled
-                void draftService.saveDraft(draft).catch(err => {
+                void saveDraft(draft).catch(err => {
                     console.error('beforeunload save failed:', err);
                 });
             } catch (err) {
@@ -98,7 +98,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
         const handleVisibility = async () => {
             if (document.visibilityState === 'hidden' && draft.type === 'email') {
                 try {
-                    await draftService.saveDraft(draft);
+                    await saveDraft(draft);
                 } catch (err) {
                     console.error('visibilitychange save failed:', err);
                 }
@@ -113,7 +113,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             if (draft.type === 'email') {
                 (async () => {
                     try {
-                        await draftService.saveDraft(draft);
+                        await saveDraft(draft);
                     } catch (err) {
                         console.error('unmount save failed:', err);
                     }
