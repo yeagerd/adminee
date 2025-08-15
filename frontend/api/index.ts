@@ -1,5 +1,4 @@
 // Export base classes
-export { GatewayClient } from './clients/gateway-client';
 export { OfficeClient } from './clients/office-client';
 export { ChatClient } from './clients/chat-client';
 export { UserClient } from './clients/user-client';
