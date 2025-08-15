@@ -192,13 +192,14 @@ async def update_calendar_event(
         status="confirmed",
     )
 
-    params = {"user_id": user_id}
+    # Add user ID to headers for authentication
+    headers["X-User-Id"] = user_id
+
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.put(
                 url,
                 headers=headers,
-                params=params,
                 json=event_data.model_dump(mode="json"),
             )
             resp.raise_for_status()

@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { getUserId } from '../../lib/session-utils';
 import type { CalendarEvent, CreateCalendarEventRequest } from '../../types/office-service';
 import {
     CalendarEventsResponse,
@@ -11,7 +12,6 @@ import {
 } from '../../types/office-service';
 import { ApiResponse, BulkActionType } from '../types/common';
 import { GatewayClient } from './gateway-client';
-import { getUserId } from '../../lib/session-utils';
 
 export class OfficeClient extends GatewayClient {
     // Calendar Service
@@ -45,7 +45,7 @@ export class OfficeClient extends GatewayClient {
     async createCalendarEvent(payload: CreateCalendarEventRequest) {
         const session = await getSession();
         const userId = getUserId(session);
-        
+
         if (!userId) {
             throw new Error('User ID is required for calendar event operations');
         }
@@ -62,7 +62,7 @@ export class OfficeClient extends GatewayClient {
     async updateCalendarEvent(eventId: string, payload: CreateCalendarEventRequest) {
         const session = await getSession();
         const userId = getUserId(session);
-        
+
         if (!userId) {
             throw new Error('User ID is required for calendar event operations');
         }
@@ -79,7 +79,7 @@ export class OfficeClient extends GatewayClient {
     async deleteCalendarEvent(eventId: string) {
         const session = await getSession();
         const userId = getUserId(session);
-        
+
         if (!userId) {
             throw new Error('User ID is required for calendar event operations');
         }
@@ -314,11 +314,22 @@ export class OfficeClient extends GatewayClient {
         body: string;
         reply_to_message_id?: string;
         provider?: 'google' | 'microsoft';
-    }): Promise<{ messageId: string }> {
-        return this.request<{ messageId: string }>('/api/v1/email/send', {
-            method: 'POST',
-            body: request,
-        });
+    }): Promise<{ success: boolean; messageId?: string; error?: string }> {
+        try {
+            const result = await this.request<{ messageId: string }>('/api/v1/email/send', {
+                method: 'POST',
+                body: request,
+            });
+
+            // Ensure proper response structure validation
+            if (!result || !result.messageId) {
+                throw new Error('Invalid response structure from email sending');
+            }
+
+            return { success: true, messageId: result.messageId };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
     }
 
     async saveDocument(request: {
@@ -326,11 +337,51 @@ export class OfficeClient extends GatewayClient {
         content: string;
         type: 'document' | 'spreadsheet' | 'presentation';
         provider?: 'google' | 'microsoft';
-    }): Promise<{ documentId: string }> {
-        return this.request<{ documentId: string }>('/api/v1/documents', {
-            method: 'POST',
-            body: request,
-        });
+    }): Promise<{ success: boolean; documentId?: string; error?: string }> {
+        try {
+            const result = await this.request<{ documentId: string }>('/api/v1/documents', {
+                method: 'POST',
+                body: request,
+            });
+
+            // Ensure proper response structure validation
+            if (!result || !result.documentId) {
+                throw new Error('Invalid response structure from document saving');
+            }
+
+            return { success: true, documentId: result.documentId };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    }
+
+    async createCalendarEventWithValidation(request: {
+        title: string;
+        startTime: string;
+        endTime: string;
+        location?: string;
+        description?: string;
+        attendees?: string[];
+    }): Promise<{ success: boolean; eventId?: string; error?: string }> {
+        try {
+            const result = await this.createCalendarEvent({
+                title: request.title,
+                start_time: request.startTime,
+                end_time: request.endTime,
+                location: request.location,
+                description: request.description,
+                attendees: request.attendees?.map(email => ({ email, name: undefined })),
+            });
+
+            // Ensure proper response structure validation
+            if (!result || !result.data || !result.data.id) {
+                throw new Error('Invalid response structure from calendar event creation');
+            }
+
+            return { success: true, eventId: result.data.id };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
     }
 
 }

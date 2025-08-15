@@ -1,6 +1,6 @@
+import { PackageResponse, shipmentsApi } from '@/api';
 import { usePagination } from '@/hooks/use-pagination';
 import { PackageStatus } from '@/lib/package-status';
-import { PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../ui/button';
@@ -54,9 +54,9 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
 
             let response;
             if (direction === 'first' || !cursor) {
-                response = await shipmentsClient.getFirstPage(20, filters);
+                response = await shipmentsApi.getFirstPage(20, filters);
             } else {
-                response = await shipmentsClient.getPackages({
+                response = await shipmentsApi.getPackages({
                     cursor,
                     limit: 20,
                     direction,

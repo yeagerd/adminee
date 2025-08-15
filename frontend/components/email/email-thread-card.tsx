@@ -1,17 +1,17 @@
+import { shipmentsApi } from '@/api';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentEvents } from '@/hooks/use-shipment-events';
-import { shipmentsClient } from '@/lib/shipments-client';
 import { safeFormatDateAndTime } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2, CalendarRange } from 'lucide-react';
+import { CalendarRange, Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
-import { useRouter } from 'next/navigation';
 // inline draft removed; thread-level draft card is handled by parent
 
 // Configure DOMPurify for email content
@@ -363,7 +363,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                 email_message_id: email.id,
             };
 
-            const createdPackage = await shipmentsClient.createPackage(packageDataWithEmail);
+            const createdPackage = await shipmentsApi.createPackage(packageDataWithEmail);
 
             console.log('Package created successfully:', createdPackage);
 
