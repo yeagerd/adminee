@@ -1,6 +1,7 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { EmailMessage } from '@/types/office-service';
 import { render, screen, waitFor, act } from '@testing-library/react';
+import { officeApi } from '@/api';
 import EmailView from './email-view';
 
 // Mock the integrations context
@@ -94,7 +95,6 @@ describe('EmailView - Select All Functionality', () => {
         });
 
         // Mock the office API methods
-        const { officeApi } = require('@/api');
         (officeApi.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });
@@ -112,7 +112,6 @@ describe('EmailView - Select All Functionality', () => {
     });
 
     it('should select only latest emails in tight view mode', async () => {
-        const { officeApi } = require('@/api');
         (officeApi.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });

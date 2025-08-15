@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { shipmentsApi } from '@/api';
 
 import PackageDashboard from '../PackageDashboard';
 
@@ -75,7 +76,6 @@ describe('Package Pagination E2E', () => {
 
     describe('Complete Cursor Pagination User Flows', () => {
         it('should load first page and display pagination controls', async () => {
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
@@ -122,7 +122,6 @@ describe('Package Pagination E2E', () => {
                 limit: 20,
             };
 
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
@@ -172,7 +171,6 @@ describe('Package Pagination E2E', () => {
                 limit: 20,
             };
 
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
@@ -222,7 +220,6 @@ describe('Package Pagination E2E', () => {
                 limit: 20,
             };
 
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
@@ -264,7 +261,6 @@ describe('Package Pagination E2E', () => {
         });
 
         it('should handle network errors during pagination', async () => {
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock)
                 .mockResolvedValueOnce({
                     packages: mockPackages,
@@ -289,7 +285,6 @@ describe('Package Pagination E2E', () => {
         });
 
         it('should handle empty results gracefully', async () => {
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: [],
                 next_cursor: null,
@@ -315,7 +310,6 @@ describe('Package Pagination E2E', () => {
 
     describe('URL State Management', () => {
         it('should update URL parameters when filters change', async () => {
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
@@ -348,7 +342,6 @@ describe('Package Pagination E2E', () => {
 
             (useSearchParams as jest.Mock).mockReturnValue(urlWithFilters);
 
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
@@ -372,7 +365,6 @@ describe('Package Pagination E2E', () => {
         it('should debounce rapid pagination clicks', async () => {
             jest.useFakeTimers();
 
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,
@@ -402,7 +394,6 @@ describe('Package Pagination E2E', () => {
         });
 
         it('should cache cursor data for better performance', async () => {
-            const { shipmentsApi } = require('@/api');
             (shipmentsApi.getPackages as jest.Mock).mockResolvedValue({
                 packages: mockPackages,
                 ...mockPaginationInfo,

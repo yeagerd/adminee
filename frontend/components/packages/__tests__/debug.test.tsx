@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { shipmentsApi } from '@/api';
 
 import PackageDashboard from '../PackageDashboard';
 
@@ -66,7 +67,6 @@ describe('Debug Test', () => {
 
         console.log('Mock response:', mockResponse);
 
-        const { shipmentsApi } = require('@/api');
         (shipmentsApi.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
         const { container } = render(<PackageDashboard />);
@@ -120,7 +120,6 @@ describe('Debug Test', () => {
             ...mockPaginationInfo,
         };
 
-        const { shipmentsApi } = require('@/api');
         (shipmentsApi.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
         render(<PackageDashboard />);
@@ -166,7 +165,6 @@ describe('Debug Test', () => {
             ...mockPaginationInfo,
         };
 
-        const { shipmentsApi } = require('@/api');
         (shipmentsApi.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
         // Create a modified component with date range set to 'all'

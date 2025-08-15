@@ -120,7 +120,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
 
             fetchEvents();
         }
-    }, [isOpen, shipment]);
+    }, [isOpen, shipment, shipmentsClient]);
 
 
 
