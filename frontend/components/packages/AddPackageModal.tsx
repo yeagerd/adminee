@@ -1,6 +1,6 @@
 import { ShipmentsClient } from '@/api/clients/shipments-client';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 export interface TrackingEvent {
     id?: string;

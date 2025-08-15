@@ -1,6 +1,6 @@
+import { shipmentsApi } from '@/api';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { shipmentsApi } from '@/api';
 
 import PackageDashboard from '../PackageDashboard';
 

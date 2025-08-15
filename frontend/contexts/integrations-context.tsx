@@ -1,10 +1,10 @@
 "use client";
 
+import { UserClient } from '@/api/clients/user-client';
+import type { Integration } from '@/api/types/common';
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { INTEGRATION_STATUS } from '../lib/constants';
-import { UserClient } from '@/api/clients/user-client';
-import type { Integration } from '@/api/types/common';
 
 interface IntegrationsContextType {
     integrations: Integration[];
@@ -13,7 +13,7 @@ interface IntegrationsContextType {
     refreshIntegrations: () => Promise<void>;
     activeProviders: string[];
     hasExpiredButRefreshableTokens: boolean;
-    triggerAutoRefreshIfNeeded: () => void;
+    triggerAutoRefreshIfNeeded: () => Promise<void>;
 }
 
 const IntegrationsContext = createContext<IntegrationsContextType | undefined>(undefined);
@@ -115,11 +115,13 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 ) {
                     try {
                         await userClient.refreshIntegrationTokens(integration.provider);
-                        refreshAttemptsRef.current[integration.provider] = (attempts || 0) + 1;
+                        // Reset counter on successful refresh
+                        refreshAttemptsRef.current[integration.provider] = 0;
                         // Wait a bit before trying the next one to avoid overwhelming the server
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     } catch (e) {
                         console.error(`Failed to refresh ${integration.provider} integration:`, e);
+                        // Only increment counter on failure
                         refreshAttemptsRef.current[integration.provider] = (attempts || 0) + 1;
                     }
                 }

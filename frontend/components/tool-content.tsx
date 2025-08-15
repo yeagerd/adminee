@@ -39,7 +39,9 @@ export function ToolContent() {
 
     // Call auto-refresh logic on every tool change
     useEffect(() => {
-        triggerAutoRefreshIfNeeded();
+        triggerAutoRefreshIfNeeded().catch(error => {
+            console.error('Failed to trigger auto-refresh:', error);
+        });
     }, [activeTool, triggerAutoRefreshIfNeeded]);
 
     // Compute a loading boolean for tool data readiness

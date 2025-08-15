@@ -1,11 +1,11 @@
 "use client"
 
+import { OfficeClient } from "@/api/clients/office-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { OfficeClient } from "@/api/clients/office-client"
 import { CalendarEvent } from "@/types/office-service"
 import { useSession } from "next-auth/react"
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 
 export function CalendarTest() {
     const { data: session } = useSession()

@@ -1,19 +1,19 @@
 // Export base classes
-export { OfficeClient } from './clients/office-client';
 export { ChatClient } from './clients/chat-client';
-export { UserClient } from './clients/user-client';
 export { MeetingsClient } from './clients/meetings-client';
+export { OfficeClient } from './clients/office-client';
 export { ShipmentsClient } from './clients/shipments-client';
+export { UserClient } from './clients/user-client';
 
 // Export common types
 export * from './types/common';
 
 // Export service instances for convenience
-import { OfficeClient } from './clients/office-client';
 import { ChatClient } from './clients/chat-client';
-import { UserClient } from './clients/user-client';
 import { MeetingsClient } from './clients/meetings-client';
+import { OfficeClient } from './clients/office-client';
 import { ShipmentsClient } from './clients/shipments-client';
+import { UserClient } from './clients/user-client';
 export const officeApi = new OfficeClient();
 export const chatApi = new ChatClient();
 export const userApi = new UserClient();

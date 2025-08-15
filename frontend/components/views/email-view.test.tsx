@@ -1,7 +1,7 @@
+import { officeApi } from '@/api';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { EmailMessage } from '@/types/office-service';
-import { render, screen, waitFor, act } from '@testing-library/react';
-import { officeApi } from '@/api';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import EmailView from './email-view';
 
 // Mock the integrations context
