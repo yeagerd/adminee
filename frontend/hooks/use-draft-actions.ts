@@ -1,4 +1,4 @@
-import { DraftActionResult, draftService } from '@/services/draft-service';
+import { discardDraft, DraftActionResult, saveDraft, sendDraft } from '@/lib/draft-utils';
 import { Draft } from '@/types/draft';
 import { useCallback, useState } from 'react';
 
@@ -22,15 +22,15 @@ export function useDraftActions(): UseDraftActionsReturn {
 
             switch (action) {
                 case 'send':
-                    result = await draftService.sendDraft(draft);
+                    result = await sendDraft(draft);
                     break;
                 case 'save':
-                    result = await draftService.saveDraft(draft);
+                    result = await saveDraft(draft);
                     break;
                 case 'discard':
                     const provider = draft.metadata?.provider as 'google' | 'microsoft' | undefined;
                     const providerDraftId = draft.metadata?.providerDraftId as string | undefined;
-                    const success = await draftService.discardDraft(draft.id, provider, providerDraftId);
+                    const success = await discardDraft(draft.id, provider, providerDraftId);
                     result = { success, draftId: draft.id };
                     break;
                 default:
