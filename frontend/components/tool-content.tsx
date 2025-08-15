@@ -1,5 +1,6 @@
 'use client';
 
+import BookingsPage from '@/app/bookings/page';
 import DraftsList from '@/components/drafts/drafts-list';
 import { MeetingPollEdit } from '@/components/meetings/meeting-poll-edit';
 import { MeetingPollNew } from '@/components/meetings/meeting-poll-new';
@@ -13,8 +14,8 @@ import { MeetingSubView } from '@/types/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import CalendarView from './views/calendar-view';
-import EmailView from './views/email-view';
 import ContactsView from './views/contacts-view';
+import EmailView from './views/email-view';
 
 // Define MeetingPoll type for frontend use
 export interface MeetingPoll {
@@ -106,6 +107,8 @@ export function ToolContent() {
                 );
             case 'packages':
                 return <PackageDashboard />;
+            case 'bookings':
+                return <BookingsPage />;
             case 'research':
                 return (
                     <div className="p-8">

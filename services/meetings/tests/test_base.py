@@ -5,16 +5,12 @@ Provides common setup and teardown for all meetings service tests,
 including required environment variables and database setup.
 """
 
-import importlib
 import os
 import tempfile
-from contextlib import contextmanager
+from unittest.mock import patch
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.testclient import TestClient
 
-from services.common.http_errors import register_briefly_exception_handlers
-from services.common.logging_config import create_request_logging_middleware
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
 
@@ -30,7 +26,16 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         self._db_fd, self._db_path = tempfile.mkstemp(suffix=".sqlite3")
         db_url = f"sqlite:///{self._db_path}"
 
+        # Set environment variable for database URL
+        os.environ["DB_URL_MEETINGS"] = db_url
+
+        # Import meetings settings module
         import services.meetings.settings as meetings_settings
+
+        # Store original settings singleton for cleanup
+        self._original_settings = meetings_settings._settings
+
+        # Create test settings instance
         from services.meetings.settings import Settings
 
         test_settings = Settings(
@@ -45,180 +50,63 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             log_format="json",
             pagination_secret_key="test-pagination-secret-key",
         )
-        self._original_settings = getattr(meetings_settings, "_settings", None)
+
+        # Set the test settings as the singleton
         meetings_settings._settings = test_settings
 
-        # Only reload models, not API modules to preserve mock patches
-        # This prevents breaking mock patches applied by test decorators
-        import services.meetings.models
+        # Initialize database schema for testing
+        import asyncio
 
-        importlib.reload(services.meetings.models)
-        import services.meetings.models.base
+        from services.meetings.models import create_all_tables_for_testing
 
-        importlib.reload(services.meetings.models.base)
-        import services.meetings.models.meeting
+        try:
+            asyncio.run(create_all_tables_for_testing())
+        except RuntimeError:
+            # If we're already in an event loop, create a task
+            import concurrent.futures
 
-        importlib.reload(services.meetings.models.meeting)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, create_all_tables_for_testing())
+                future.result()
 
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
+        # Import app after environment variables are set
+        from services.meetings.main import app
 
-        from services.meetings import models
-
-        # Ensure models are imported after reload
-
-        models._test_engine = create_engine(
-            db_url,
-            echo=False,
-            future=True,
-            connect_args={"check_same_thread": False},
-        )
-
-        self._test_sessionmaker = sessionmaker(
-            bind=models._test_engine,
-            autoflush=False,
-            autocommit=False,
-            future=True,
-        )
-
-        models.get_engine = lambda: models._test_engine
-
-        @contextmanager
-        def test_get_session():
-            session = self._test_sessionmaker()
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
-            finally:
-                session.close()
-
-        self._original_get_session = models.get_session
-        models.get_session = test_get_session
-
-        # Import all models to ensure they're registered with metadata
-        from services.meetings.models.base import Base
-
-        # Debug: Check what tables are in the metadata
-        print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
-
-        # Create all tables in the database
-        Base.metadata.create_all(models._test_engine)
-
-        # Verify tables were created
-        from sqlalchemy import text
-
-        with models._test_engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table'")
-            )
-            tables = [row[0] for row in result]
-            print(f"Tables in database: {tables}")
-
-        # Ensure the get_engine function is properly overridden
-        # This is crucial for the API to use the test engine
-        import services.meetings.models
-
-        services.meetings.models.get_engine = lambda: models._test_engine
-
-        # Reload API modules so their imported get_session binds to the fresh test session
-        import services.meetings.api.email as api_email
-        import services.meetings.api.invitations as api_invitations
-        import services.meetings.api.polls as api_polls
-        import services.meetings.api.public as api_public
-        import services.meetings.api.slots as api_slots
-
-        importlib.reload(api_polls)
-        importlib.reload(api_public)
-        importlib.reload(api_slots)
-        importlib.reload(api_invitations)
-        importlib.reload(api_email)
-
-        # Create a new FastAPI app instance to avoid reloading the main module
-        # This ensures the app uses the updated settings without breaking mocks
-        app = FastAPI(
-            title="Briefly Meetings Service Test",
-            version="0.1.0",
-            description="Meeting scheduling and polling microservice for Briefly (Test).",
-        )
-
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-
-        # Add request logging middleware
-        app.middleware("http")(create_request_logging_middleware())
-
-        # Register standardized exception handlers
-        register_briefly_exception_handlers(app)
-
-        # Import and include routers after settings are configured
-        from services.meetings.api import (
-            email_router,
-            invitations_router,
-            polls_router,
-            public_router,
-            slots_router,
-        )
-
-        app.include_router(
-            polls_router, prefix="/api/v1/meetings/polls", tags=["polls"]
-        )
-        app.include_router(
-            slots_router,
-            prefix="/api/v1/meetings/polls/{poll_id}/slots",
-            tags=["slots"],
-        )
-        app.include_router(
-            invitations_router,
-            prefix="/api/v1/meetings/polls/{poll_id}/send-invitations",
-            tags=["invitations"],
-        )
-        app.include_router(
-            public_router, prefix="/api/v1/public/polls", tags=["public"]
-        )
-        app.include_router(
-            email_router,
-            prefix="/api/v1/meetings/process-email-response",
-            tags=["email"],
-        )
-
-        from fastapi.testclient import TestClient
-
-        self.client = TestClient(app)
+        self.app = app
 
     def teardown_method(self, method):
-        """Clean up test environment."""
+        """Clean up Meetings Service test environment."""
+        # Call parent teardown to clean up HTTP patches
+        super().teardown_method(method)
 
-        import services.meetings.models
-
-        if hasattr(self, "_original_get_session"):
-            services.meetings.models.get_session = self._original_get_session
-
+        # Restore original settings singleton
         import services.meetings.settings as meetings_settings
 
-        if hasattr(self, "_original_settings"):
-            if self._original_settings is None:
-                if hasattr(meetings_settings, "_settings"):
-                    delattr(meetings_settings, "_settings")
-            else:
-                meetings_settings._settings = self._original_settings
+        meetings_settings._settings = self._original_settings
 
-        from services.meetings import models
-
-        if hasattr(models, "_test_engine"):
-            models._test_engine.dispose()
-            delattr(models, "_test_engine")
-
-        # Remove the temp DB file
+        # Close and remove temporary database file
         if hasattr(self, "_db_fd"):
             os.close(self._db_fd)
         if hasattr(self, "_db_path") and os.path.exists(self._db_path):
             os.unlink(self._db_path)
-        super().teardown_method(method)
+
+
+class BaseMeetingsIntegrationTest(BaseMeetingsTest):
+    """Base class for Meetings Service integration tests with full app setup."""
+
+    def setup_method(self, method):
+        """Set up Meetings Service integration test environment."""
+        # Call parent setup for environment variables and database
+        super().setup_method(method)
+
+        # Create test client using app from base class
+        self.client = TestClient(self.app)
+
+        # Set up authentication overrides if needed
+        self._override_auth()
+
+    def _override_auth(self):
+        """Override authentication for testing."""
+        # Override authentication dependencies if needed for testing
+        # This can be customized based on specific test requirements
+        pass
