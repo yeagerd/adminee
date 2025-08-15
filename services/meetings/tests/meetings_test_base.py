@@ -29,23 +29,17 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         self._db_fd, self._db_path = tempfile.mkstemp(suffix=".sqlite3")
         db_url = f"sqlite:///{self._db_path}"
 
-        import services.meetings.settings as meetings_settings
-        from services.meetings.settings import Settings
-
-        test_settings = Settings(
-            db_url_meetings=db_url,
-            api_email_sync_meetings_key="test-email-sync-key",
-            api_meetings_office_key="test-meetings-office-key",
-            api_meetings_user_key="test-meetings-user-key",
-            api_frontend_meetings_key="test-frontend-meetings-key",
-            office_service_url="http://localhost:8003",
-            user_service_url="http://localhost:8001",
-            log_level="INFO",
-            log_format="json",
-            pagination_secret_key="test-pagination-secret-key",
-        )
-        self._original_settings = getattr(meetings_settings, "_settings", None)
-        meetings_settings._settings = test_settings
+        # Set environment variables for test settings instead of manipulating the module
+        os.environ["DB_URL_MEETINGS"] = db_url
+        os.environ["API_EMAIL_SYNC_MEETINGS_KEY"] = "test-email-sync-key"
+        os.environ["API_MEETINGS_OFFICE_KEY"] = "test-meetings-office-key"
+        os.environ["API_MEETINGS_USER_KEY"] = "test-meetings-user-key"
+        os.environ["API_FRONTEND_MEETINGS_KEY"] = "test-frontend-meetings-key"
+        os.environ["OFFICE_SERVICE_URL"] = "http://localhost:8003"
+        os.environ["USER_SERVICE_URL"] = "http://localhost:8001"
+        os.environ["LOG_LEVEL"] = "INFO"
+        os.environ["LOG_FORMAT"] = "json"
+        os.environ["PAGINATION_SECRET_KEY"] = "test-pagination-secret-key"
 
         # Import all models to ensure they're registered with metadata
         import services.meetings.models.booking_entities
@@ -117,25 +111,23 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
     def teardown_method(self, method):
         """Clean up test environment."""
 
-        import services.meetings.models
-
-        if hasattr(self, "_original_get_session"):
-            services.meetings.models.get_session = self._original_get_session
-
-        import services.meetings.settings as meetings_settings
-
-        if hasattr(self, "_original_settings"):
-            if self._original_settings is None:
-                if hasattr(meetings_settings, "_settings"):
-                    delattr(meetings_settings, "_settings")
-            else:
-                meetings_settings._settings = self._original_settings
-
-        from services.meetings import models
-
-        if hasattr(models, "_test_engine"):
-            models._test_engine.dispose()
-            delattr(models, "_test_engine")
+        # Clean up environment variables
+        env_vars_to_remove = [
+            "DB_URL_MEETINGS",
+            "API_EMAIL_SYNC_MEETINGS_KEY",
+            "API_MEETINGS_OFFICE_KEY",
+            "API_MEETINGS_USER_KEY",
+            "API_FRONTEND_MEETINGS_KEY",
+            "OFFICE_SERVICE_URL",
+            "USER_SERVICE_URL",
+            "LOG_LEVEL",
+            "LOG_FORMAT",
+            "PAGINATION_SECRET_KEY"
+        ]
+        
+        for var in env_vars_to_remove:
+            if var in os.environ:
+                del os.environ[var]
 
         # Remove the temp DB file
         if hasattr(self, "_db_fd"):
