@@ -178,6 +178,39 @@ class AuditLogger:
             user_agent=user_agent,
         )
 
+    def log_booking_creation_error(
+        self,
+        link_id: str,
+        booking_id: str,
+        attendee_email: str,
+        start_time: str,
+        end_time: str,
+        error_details: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> None:
+        """Log errors during booking creation"""
+        # Hash the email for privacy
+        from services.meetings.services.security import SecurityUtils
+
+        hashed_email = SecurityUtils.hash_email(attendee_email)
+
+        self.log_event(
+            event_type=AuditEventType.BOOKING_CREATED,
+            resource_id=link_id,
+            details={
+                "booking_id": booking_id,
+                "attendee_email_hash": hashed_email,
+                "start_time": start_time,
+                "end_time": end_time,
+                "action": "booking_created",
+                "error_details": error_details,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+            severity="ERROR",
+        )
+
     def log_rate_limit_exceeded(
         self,
         client_key: str,

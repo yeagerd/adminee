@@ -331,7 +331,8 @@ async def create_public_booking(
         if one_time_link is not None:
             if (
                 one_time_link.expires_at is not None
-                and one_time_link.expires_at < datetime.now(timezone.utc)
+                and one_time_link.expires_at.replace(tzinfo=timezone.utc)
+                < datetime.now(timezone.utc)
             ):
                 raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":
@@ -374,21 +375,60 @@ async def create_public_booking(
         session.add(analytics_event)
 
         try:
-            # Create calendar event
-            calendar_event_id = await create_booking_calendar_event(booking)
+            # First commit the database transaction to ensure data persistence
+            session.commit()
+            session.refresh(booking)
 
-            # Send confirmation emails
-            await send_confirmation_email(booking)
+            # Now perform external operations after successful database commit
+            calendar_event_id = None
+            email_sent = False
+
+            try:
+                # Create calendar event
+                calendar_event_id = await create_booking_calendar_event(booking)
+
+                # Update the booking with the calendar event ID if successful
+                if calendar_event_id:
+                    booking.calendar_event_id = calendar_event_id
+                    session.add(booking)
+                    session.commit()
+                    session.refresh(booking)
+            except Exception as calendar_error:
+                # Log calendar creation failure but don't fail the entire booking
+                audit_logger.log_booking_creation_error(
+                    link_id=token,
+                    booking_id=str(booking.id),
+                    attendee_email=attendee_email,
+                    start_time=booking_data.start.isoformat(),
+                    end_time=booking_data.end.isoformat(),
+                    error_details=f"Calendar event creation failed: {str(calendar_error)}",
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
+
+            try:
+                # Send confirmation emails
+                email_sent = await send_confirmation_email(booking)
+            except Exception as email_error:
+                # Log email failure but don't fail the entire booking
+                audit_logger.log_booking_creation_error(
+                    link_id=token,
+                    booking_id=str(booking.id),
+                    attendee_email=attendee_email,
+                    start_time=booking_data.start.isoformat(),
+                    end_time=booking_data.end.isoformat(),
+                    error_details=f"Email sending failed: {str(email_error)}",
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
 
             # Mark one-time link as used after all operations succeed
             if one_time_link is not None:
                 one_time_link.status = "used"
+                session.add(one_time_link)
+                session.commit()
 
-            # Now commit everything together - booking, analytics, and one-time link status
-            session.commit()
-            session.refresh(booking)
-
-            # Audit logging
+            # Audit logging for successful booking creation
             audit_logger.log_booking_creation(
                 link_id=token,
                 booking_id=str(booking.id),
@@ -404,6 +444,7 @@ async def create_public_booking(
                     "id": str(booking.id),
                     "message": "Booking created successfully",
                     "calendar_event_id": calendar_event_id,
+                    "email_sent": email_sent,
                 },
                 message="Booking created successfully",
             )

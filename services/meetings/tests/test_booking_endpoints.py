@@ -450,3 +450,146 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
             assert "end" in slot
             # Duration is at the top level, not in each slot
             assert data["data"]["duration"] == 30
+
+    @patch("services.meetings.api.booking_endpoints.create_booking_calendar_event")
+    @patch("services.meetings.api.booking_endpoints.send_confirmation_email")
+    async def test_create_public_booking_success(
+        self, mock_send_email, mock_create_calendar
+    ):
+        """Test successful booking creation with proper transaction handling."""
+        from services.meetings.models import get_session
+        from services.meetings.schemas.booking_requests import (
+            CreatePublicBookingRequest,
+        )
+
+        # Mock external service responses
+        mock_create_calendar.return_value = "calendar-event-123"
+        mock_send_email.return_value = True
+
+        with get_session() as session:
+            # Create test data
+            booking_link = self.create_test_booking_link(session)
+            one_time_link = OneTimeLink(
+                id=uuid.uuid4(),
+                token="booking-test-token",
+                booking_link_id=booking_link.id,
+                recipient_email="attendee@example.com",
+                recipient_name="Test Attendee",
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+                status="active",
+            )
+            session.add(one_time_link)
+            session.commit()
+
+            # Create booking request data
+            future_date = datetime.now(timezone.utc) + timedelta(days=7)
+            booking_data = CreatePublicBookingRequest(
+                start=future_date.replace(hour=9, minute=0, second=0, microsecond=0),
+                end=future_date.replace(hour=9, minute=30, second=0, microsecond=0),
+                attendee_email="attendee@example.com",
+                answers={"name": "Test User", "company": "Test Corp"},
+            )
+
+            # Make booking request
+            response = self.client.post(
+                f"/api/v1/bookings/public/booking-test-token/book",
+                json=booking_data.model_dump(mode="json"),
+            )
+
+            # Verify response
+            assert response.status_code == 200
+            data = response.json()
+            assert data["data"]["message"] == "Booking created successfully"
+            assert "id" in data["data"]
+            assert data["data"]["calendar_event_id"] == "calendar-event-123"
+            assert data["data"]["email_sent"] is True
+
+            # Verify database state
+            session.refresh(one_time_link)
+            assert one_time_link.status == "used"
+
+            # Verify the booking was created with calendar event ID
+            from services.meetings.models.booking_entities import Booking
+
+            booking = (
+                session.query(Booking)
+                .filter_by(one_time_link_id=one_time_link.id)
+                .first()
+            )
+            assert booking is not None
+            assert booking.calendar_event_id == "calendar-event-123"
+
+            # Verify external services were called
+            mock_create_calendar.assert_called_once()
+            mock_send_email.assert_called_once()
+
+    @patch("services.meetings.api.booking_endpoints.create_booking_calendar_event")
+    @patch("services.meetings.api.booking_endpoints.send_confirmation_email")
+    async def test_create_public_booking_calendar_failure(
+        self, mock_send_email, mock_create_calendar
+    ):
+        """Test booking creation when calendar event creation fails."""
+        from services.meetings.models import get_session
+        from services.meetings.schemas.booking_requests import (
+            CreatePublicBookingRequest,
+        )
+
+        # Mock calendar service failure
+        mock_create_calendar.side_effect = Exception("Calendar service unavailable")
+        mock_send_email.return_value = True
+
+        with get_session() as session:
+            # Create test data
+            booking_link = self.create_test_booking_link(session)
+            one_time_link = OneTimeLink(
+                id=uuid.uuid4(),
+                token="calendar-fail-token",
+                booking_link_id=booking_link.id,
+                recipient_email="attendee@example.com",
+                recipient_name="Test Attendee",
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+                status="active",
+            )
+            session.add(one_time_link)
+            session.commit()
+
+            # Create booking request data
+            future_date = datetime.now(timezone.utc) + timedelta(days=7)
+            booking_data = CreatePublicBookingRequest(
+                start=future_date.replace(hour=9, minute=0, second=0, microsecond=0),
+                end=future_date.replace(hour=9, minute=30, second=0, microsecond=0),
+                attendee_email="attendee@example.com",
+                answers={"name": "Test User"},
+            )
+
+            # Make booking request
+            response = self.client.post(
+                f"/api/v1/bookings/public/calendar-fail-token/book",
+                json=booking_data.model_dump(mode="json"),
+            )
+
+            # Verify response still succeeds (calendar failure doesn't fail booking)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["data"]["message"] == "Booking created successfully"
+            assert data["data"]["calendar_event_id"] is None
+            assert data["data"]["email_sent"] is True
+
+            # Verify database state
+            session.refresh(one_time_link)
+            assert one_time_link.status == "used"
+
+            # Verify the booking was created without calendar event ID
+            from services.meetings.models.booking_entities import Booking
+
+            booking = (
+                session.query(Booking)
+                .filter_by(one_time_link_id=one_time_link.id)
+                .first()
+            )
+            assert booking is not None
+            assert booking.calendar_event_id is None
+
+            # Verify external services were called
+            mock_create_calendar.assert_called_once()
+            mock_send_email.assert_called_once()
