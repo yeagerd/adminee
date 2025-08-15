@@ -682,7 +682,7 @@ async def update_booking_link(
                 sanitized_updates[key] = value
 
         # Update fields
-        changes = {}
+        changes: Dict[str, Dict[str, Any]] = {}
         for key, value in sanitized_updates.items():
             if key in ["title", "description"]:
                 # These would need to be added to the model if we want to store them
@@ -1251,7 +1251,7 @@ async def update_booking_template(
             raise NotFoundError("Template", "not found")
 
         # Track changes for audit logging
-        changes = {}
+        changes: Dict[str, Dict[str, Any]] = {}
 
         # Update fields
         if "name" in updates:
@@ -1548,7 +1548,7 @@ async def update_one_time_link(
             raise AuthError(message="Not authorized to update this one-time link")
 
         # Track changes for audit logging
-        changes = {}
+        changes: Dict[str, Dict[str, Any]] = {}
 
         # Update fields
         if "recipient_email" in updates:
