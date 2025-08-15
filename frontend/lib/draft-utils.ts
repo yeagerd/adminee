@@ -100,6 +100,16 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             location: draftData.new_location,
             attendees: draftData.new_attendees ? draftData.new_attendees.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [],
         };
+    } else {
+        // For any unhandled types, preserve the original type instead of defaulting to 'email'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const genericData = draftData as any;
+        type = genericData.type as DraftType;
+        content = genericData.description || genericData.body || '';
+        metadata = {
+            title: genericData.title,
+            // Add any other generic metadata that might be available
+        };
     }
 
     return {
@@ -315,7 +325,7 @@ export async function sendDraft(draft: Draft): Promise<DraftActionResult> {
         }
 
         // Non-email fallback: Execute through integration
-        if (draft.type === 'calendar') {
+        if (draft.type === 'calendar' || draft.type === 'calendar_event' || draft.type === 'calendar_change') {
             // Handle calendar event creation
             const startTime = typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime;
             const endTime = typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime;
