@@ -342,18 +342,14 @@ async def create_public_booking(
                 .filter_by(id=one_time_link.booking_link_id)
                 .first()
             )
-            link_id = str(one_time_link.booking_link_id)  # type: ignore[assignment]
-            one_time_link_id = str(one_time_link.id)  # type: ignore[assignment]
-
-            # Mark one-time link as used
-            one_time_link.status = "used"  # type: ignore[assignment]
-            session.commit()
+            link_id = one_time_link.booking_link_id  # Keep as UUID
+            one_time_link_id = one_time_link.id  # Keep as UUID
         else:
             booking_link = session.query(BookingLink).filter_by(slug=token).first()
             if not booking_link or not booking_link.is_active:
                 raise NotFoundError("Booking link", "not found or inactive")
 
-            link_id = str(booking_link.id)  # type: ignore[assignment]
+            link_id = booking_link.id  # Keep as UUID
             one_time_link_id = None
 
         # Create the booking
@@ -379,31 +375,51 @@ async def create_public_booking(
         session.add(analytics_event)
         session.commit()
 
-        # Create calendar event
-        calendar_event_id = await create_booking_calendar_event(booking)
+        try:
+            # Create calendar event
+            calendar_event_id = await create_booking_calendar_event(booking)
 
-        # Send confirmation emails
-        await send_confirmation_email(booking)
+            # Send confirmation emails
+            await send_confirmation_email(booking)
 
-        # Audit logging
-        audit_logger.log_booking_creation(
-            link_id=token,
-            booking_id=str(booking.id),
-            attendee_email=attendee_email,
-            start_time=booking_data.start.isoformat(),
-            end_time=booking_data.end.isoformat(),
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-        )
+            # Only mark one-time link as used after all operations succeed
+            if one_time_link is not None:
+                one_time_link.status = "used"
+                session.commit()
 
-        return SuccessResponse(
-            data={
-                "id": str(booking.id),
-                "message": "Booking created successfully",
-                "calendar_event_id": calendar_event_id,
-            },
-            message="Booking created successfully",
-        )
+            # Audit logging
+            audit_logger.log_booking_creation(
+                link_id=token,
+                booking_id=str(booking.id),
+                attendee_email=attendee_email,
+                start_time=booking_data.start.isoformat(),
+                end_time=booking_data.end.isoformat(),
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+
+            return SuccessResponse(
+                data={
+                    "id": str(booking.id),
+                    "message": "Booking created successfully",
+                    "calendar_event_id": calendar_event_id,
+                },
+                message="Booking created successfully",
+            )
+        except Exception as e:
+            # If any operation fails, rollback the one-time link status
+            if one_time_link is not None:
+                session.rollback()
+                # Re-query the one-time link to ensure we have the latest state
+                fresh_one_time_link = (
+                    session.query(OneTimeLink).filter_by(id=one_time_link.id).first()
+                )
+                if fresh_one_time_link:
+                    fresh_one_time_link.status = "active"
+                    session.commit()
+
+            # Re-raise the exception to be handled by the caller
+            raise e
 
 
 # Owner API endpoints
