@@ -362,18 +362,16 @@ async def create_public_booking(
             answers=answers,
         )
 
-        session.add(booking)
-        session.commit()
-        session.refresh(booking)
-
         # Track analytics event
         analytics_event = AnalyticsEvent(
             link_id=link_id,
             event_type="booked",
             referrer=request.headers.get("referer", "direct"),
         )
+
+        # Add both to session but don't commit yet
+        session.add(booking)
         session.add(analytics_event)
-        session.commit()
 
         try:
             # Create calendar event
@@ -382,10 +380,13 @@ async def create_public_booking(
             # Send confirmation emails
             await send_confirmation_email(booking)
 
-            # Only mark one-time link as used after all operations succeed
+            # Mark one-time link as used after all operations succeed
             if one_time_link is not None:
                 one_time_link.status = "used"
-                session.commit()
+
+            # Now commit everything together - booking, analytics, and one-time link status
+            session.commit()
+            session.refresh(booking)
 
             # Audit logging
             audit_logger.log_booking_creation(
@@ -407,16 +408,9 @@ async def create_public_booking(
                 message="Booking created successfully",
             )
         except Exception as e:
-            # If any operation fails, rollback the one-time link status
-            if one_time_link is not None:
-                session.rollback()
-                # Re-query the one-time link to ensure we have the latest state
-                fresh_one_time_link = (
-                    session.query(OneTimeLink).filter_by(id=one_time_link.id).first()
-                )
-                if fresh_one_time_link:
-                    fresh_one_time_link.status = "active"
-                    session.commit()
+            # If any operation fails, rollback the entire transaction
+            # This ensures no booking or analytics event is persisted
+            session.rollback()
 
             # Re-raise the exception to be handled by the caller
             raise e
