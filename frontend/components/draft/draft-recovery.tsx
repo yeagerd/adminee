@@ -1,8 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDraftDate } from '@/lib/draft-utils';
-import { draftService } from '@/services/draft-service';
+import { deleteDraft, formatDraftDate, listDrafts } from '@/lib/draft-utils';
 import { Draft } from '@/types/draft';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -27,7 +26,7 @@ export function DraftRecovery({ onRecoverDraft, onDismiss }: DraftRecoveryProps)
             setError(null);
 
             // Get drafts from the last 24 hours that might need recovery
-            const result = await draftService.listDrafts({
+            const result = await listDrafts({
                 status: 'draft',
             });
 
@@ -53,7 +52,7 @@ export function DraftRecovery({ onRecoverDraft, onDismiss }: DraftRecoveryProps)
 
     const handleDeleteDraft = async (draftId: string) => {
         try {
-            await draftService.deleteDraft(draftId);
+            await deleteDraft(draftId);
             setRecoveryDrafts(prev => prev.filter(d => d.id !== draftId));
         } catch (err) {
             console.error('Failed to delete recovery draft:', err);
