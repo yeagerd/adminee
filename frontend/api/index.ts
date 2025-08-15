@@ -6,6 +6,9 @@ export { OfficeClient } from './clients/office-client';
 export { ShipmentsClient } from './clients/shipments-client';
 export { UserClient } from './clients/user-client';
 
+// Export types from clients
+export * from './clients/bookings-client';
+
 // Export common types
 export * from './types/common';
 
