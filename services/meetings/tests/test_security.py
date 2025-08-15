@@ -273,7 +273,9 @@ class TestSecurityService(BaseMeetingsTest):
             result = check_rate_limit(malformed_user_id)
             # The rate limiting function accepts any key, including empty strings
             # This is actually correct behavior for rate limiting
-            assert result is True, f"Rate limiting should work with any key, including '{malformed_user_id}'"
+            assert (
+                result is True
+            ), f"Rate limiting should work with any key, including '{malformed_user_id}'"
 
     def test_security_performance(self):
         """Test that security checks don't leak memory."""

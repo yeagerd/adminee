@@ -20,9 +20,9 @@ async def get_user_availability(
         headers["X-Request-Id"] = request_id
 
     # Convert datetime objects to ISO format strings if needed
-    start_str = start.isoformat() if hasattr(start, 'isoformat') else str(start)
-    end_str = end.isoformat() if hasattr(end, 'isoformat') else str(end)
-    
+    start_str = start.isoformat() if hasattr(start, "isoformat") else str(start)
+    end_str = end.isoformat() if hasattr(end, "isoformat") else str(end)
+
     params = {"start": start_str, "end": end_str, "duration": str(duration)}
     async with httpx.AsyncClient() as client:
         try:
@@ -32,6 +32,7 @@ async def get_user_availability(
         except httpx.HTTPStatusError as e:
             # Handle HTTP errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(
                 f"HTTP error from office service: {e.response.status_code} - {e.response.text}",
@@ -51,6 +52,7 @@ async def get_user_availability(
         except Exception as e:
             # Handle other errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.error(
                 f"Unexpected error from office service: {str(e)}",
@@ -122,6 +124,7 @@ async def create_calendar_event(
         except httpx.HTTPStatusError as e:
             # Handle HTTP errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(
                 f"HTTP error creating calendar event: {e.response.status_code} - {e.response.text}",
@@ -130,10 +133,13 @@ async def create_calendar_event(
                 status_code=e.response.status_code,
             )
             # Return empty response structure on error
-            return {"error": f"Failed to create calendar event: {e.response.status_code}"}
+            return {
+                "error": f"Failed to create calendar event: {e.response.status_code}"
+            }
         except Exception as e:
             # Handle other errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.error(
                 f"Unexpected error creating calendar event: {str(e)}",
@@ -200,6 +206,7 @@ async def update_calendar_event(
         except httpx.HTTPStatusError as e:
             # Handle HTTP errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(
                 f"HTTP error updating calendar event: {e.response.status_code} - {e.response.text}",
@@ -208,10 +215,13 @@ async def update_calendar_event(
                 status_code=e.response.status_code,
             )
             # Return empty response structure on error
-            return {"error": f"Failed to update calendar event: {e.response.status_code}"}
+            return {
+                "error": f"Failed to update calendar event: {e.response.status_code}"
+            }
         except Exception as e:
             # Handle other errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.error(
                 f"Unexpected error updating calendar event: {str(e)}",
@@ -241,6 +251,7 @@ async def delete_calendar_event(user_id: str, event_id: str) -> dict:
         except httpx.HTTPStatusError as e:
             # Handle HTTP errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(
                 f"HTTP error deleting calendar event: {e.response.status_code} - {e.response.text}",
@@ -249,10 +260,13 @@ async def delete_calendar_event(user_id: str, event_id: str) -> dict:
                 status_code=e.response.status_code,
             )
             # Return empty response structure on error
-            return {"error": f"Failed to delete calendar event: {e.response.status_code}"}
+            return {
+                "error": f"Failed to delete calendar event: {e.response.status_code}"
+            }
         except Exception as e:
             # Handle other errors gracefully
             from services.common.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.error(
                 f"Unexpected error deleting calendar event: {str(e)}",

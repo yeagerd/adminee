@@ -467,7 +467,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
 
         # First call: mock failure
         mock_client.get = AsyncMock(return_value=mock_response_fail)
-        
+
         # Call the service - should fail and return empty response
         result = await get_user_availability(
             user_id=self.test_user_id,
@@ -475,7 +475,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
             end=self.end_date,
             duration=self.duration_minutes,
         )
-        
+
         # First call should fail and return empty response
         assert result == {
             "data": {
@@ -488,7 +488,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
 
         # Second call: mock success
         mock_client.get = AsyncMock(return_value=mock_response_success)
-        
+
         # Call the service again - should succeed
         result = await get_user_availability(
             user_id=self.test_user_id,
@@ -496,6 +496,6 @@ class TestCalendarIntegration(BaseMeetingsTest):
             end=self.end_date,
             duration=self.duration_minutes,
         )
-        
+
         # Second call should succeed
         assert result == self.mock_office_response

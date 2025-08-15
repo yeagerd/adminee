@@ -81,4 +81,5 @@ async def create_all_tables_for_testing() -> None:
     """Create all database tables for testing only. Use Alembic migrations in production."""
     engine = get_engine()
     from services.meetings.models.base import Base
+
     Base.metadata.create_all(engine)

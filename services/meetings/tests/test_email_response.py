@@ -23,8 +23,14 @@ class TestEmailResponse(BaseMeetingsTest):
 
     def _clear_test_data(self):
         """Clear all test data from the database."""
-        from services.meetings.models import PollResponse, PollParticipant, TimeSlot, MeetingPoll, get_session
-        
+        from services.meetings.models import (
+            MeetingPoll,
+            PollParticipant,
+            PollResponse,
+            TimeSlot,
+            get_session,
+        )
+
         with get_session() as session:
             # Delete in reverse order to avoid foreign key constraints
             session.query(PollResponse).delete()
@@ -60,19 +66,19 @@ class TestEmailResponse(BaseMeetingsTest):
                 poll_token=str(uuid4()),
             )
             session.add(poll)
-            
+
             # Add time slots
             for i in range(num_slots):
                 slot = TimeSlot(
                     id=uuid4(),
                     poll_id=poll_id,
-                    start_time=now + timedelta(days=i+1),
-                    end_time=now + timedelta(days=i+1, hours=1),
+                    start_time=now + timedelta(days=i + 1),
+                    end_time=now + timedelta(days=i + 1, hours=1),
                     timezone="UTC",
                 )
                 session.add(slot)
                 slot_ids.append(str(slot.id))
-            
+
             # Add a participant
             participant = PollParticipant(
                 id=participant_id,
@@ -182,7 +188,9 @@ class TestEmailResponse(BaseMeetingsTest):
         )
 
         # Create a poll with 2 time slots
-        poll_id, slot_ids, participant_id = self.create_poll_and_participant(num_slots=2)
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=2
+        )
 
         payload = {
             "emailId": "irrelevant",
@@ -232,7 +240,9 @@ class TestEmailResponse(BaseMeetingsTest):
     def test_process_email_response_malformed_slot_identifier(self):
         """Test that malformed slot identifiers don't cause errors."""
 
-        poll_id, slot_ids, participant_id = self.create_poll_and_participant(num_slots=1)
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test with malformed slot identifiers that should be skipped
         payload = {
@@ -253,7 +263,9 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollResponse, get_session
 
-        poll_id, slot_ids, participant_id = self.create_poll_and_participant(num_slots=1)
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test cases that would cause keyword position mismatch
         test_cases = [
@@ -283,7 +295,8 @@ class TestEmailResponse(BaseMeetingsTest):
                 response = (
                     session.query(PollResponse)
                     .filter_by(
-                        participant_id=UUID(participant_id), time_slot_id=UUID(slot_ids[0])
+                        participant_id=UUID(participant_id),
+                        time_slot_id=UUID(slot_ids[0]),
                     )
                     .first()
                 )
@@ -308,7 +321,9 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollParticipant, PollResponse, get_session
 
-        poll_id, slot_ids, participant_id = self.create_poll_and_participant(num_slots=1)
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test with a valid slot response and an invalid slot number response
         payload = {
@@ -349,7 +364,9 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollResponse, get_session
 
-        poll_id, slot_ids, participant_id = self.create_poll_and_participant(num_slots=1)
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test cases that would have failed with the old split logic
         test_cases = [
@@ -398,7 +415,8 @@ class TestEmailResponse(BaseMeetingsTest):
                 response = (
                     session.query(PollResponse)
                     .filter_by(
-                        participant_id=UUID(participant_id), time_slot_id=UUID(slot_ids[0])
+                        participant_id=UUID(participant_id),
+                        time_slot_id=UUID(slot_ids[0]),
                     )
                     .first()
                 )

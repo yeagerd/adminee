@@ -44,10 +44,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Import all models to ensure they're registered with metadata
         import services.meetings.models.booking_entities
         import services.meetings.models.meeting
+        from services.meetings.models import get_engine
 
         # Create all tables directly
         from services.meetings.models.base import Base
-        from services.meetings.models import get_engine
+
         engine = get_engine()
         Base.metadata.create_all(engine)
 
@@ -122,9 +123,9 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             "USER_SERVICE_URL",
             "LOG_LEVEL",
             "LOG_FORMAT",
-            "PAGINATION_SECRET_KEY"
+            "PAGINATION_SECRET_KEY",
         ]
-        
+
         for var in env_vars_to_remove:
             if var in os.environ:
                 del os.environ[var]
