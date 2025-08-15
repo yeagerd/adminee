@@ -34,22 +34,23 @@ class TestAvailabilityService(BaseMeetingsTest):
         self.duration_minutes = 30
 
         # Mock office service response
+        future_date = datetime.now(timezone.utc) + timedelta(days=7)
         self.mock_office_response = {
             "data": {
                 "available_slots": [
                     {
-                        "start": "2025-08-15T09:00:00Z",
-                        "end": "2025-08-15T09:30:00Z",
+                        "start": future_date.replace(hour=9, minute=0, second=0, microsecond=0).isoformat(),
+                        "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0).isoformat(),
                         "duration_minutes": 30,
                     },
                     {
-                        "start": "2025-08-15T14:00:00Z",
-                        "end": "2025-08-15T14:30:00Z",
+                        "start": future_date.replace(hour=14, minute=0, second=0, microsecond=0).isoformat(),
+                        "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0).isoformat(),
                         "duration_minutes": 30,
                     },
                     {
-                        "start": "2025-08-15T17:00:00Z",
-                        "end": "2025-08-15T17:30:00Z",
+                        "start": future_date.replace(hour=17, minute=0, second=0, microsecond=0).isoformat(),
+                        "end": future_date.replace(hour=17, minute=30, second=0, microsecond=0).isoformat(),
                         "duration_minutes": 30,
                     },
                 ],
@@ -193,9 +194,11 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_no_settings(self):
         """Test applying booking settings when no settings are provided."""
+        # Use future dates to avoid advance booking window filtering
+        future_date = datetime.now(timezone.utc) + timedelta(days=7)
         slots = [
-            {"start": "2025-08-15T09:00:00Z", "end": "2025-08-15T09:30:00Z"},
-            {"start": "2025-08-15T14:00:00Z", "end": "2025-08-15T14:30:00Z"},
+            {"start": future_date.replace(hour=9, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0)},
+            {"start": future_date.replace(hour=14, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0)},
         ]
 
         result = _apply_booking_settings(
@@ -349,10 +352,9 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_daily_limits(self):
         """Test daily booking limits."""
-        # Create multiple slots for the same day
-        base_date = datetime.now(timezone.utc).replace(
-            hour=9, minute=0, second=0, microsecond=0
-        )
+        # Create multiple slots for the same day in the future
+        future_date = datetime.now(timezone.utc) + timedelta(days=7)
+        base_date = future_date.replace(hour=9, minute=0, second=0, microsecond=0)
         slots = []
         for i in range(12):  # More than the daily limit
             slots.append(

@@ -31,17 +31,18 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         self.test_token = "test-token-789"
 
         # Mock the office service responses
+        future_date = datetime.now(timezone.utc) + timedelta(days=7)
         self.mock_office_availability_response = {
             "data": {
                 "available_slots": [
                     {
-                        "start": "2025-08-15T09:00:00Z",
-                        "end": "2025-08-15T09:30:00Z",
+                        "start": future_date.replace(hour=9, minute=0, second=0, microsecond=0).isoformat(),
+                        "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0).isoformat(),
                         "duration_minutes": 30,
                     },
                     {
-                        "start": "2025-08-15T14:00:00Z",
-                        "end": "2025-08-15T14:30:00Z",
+                        "start": future_date.replace(hour=14, minute=0, second=0, microsecond=0).isoformat(),
+                        "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0).isoformat(),
                         "duration_minutes": 30,
                     },
                 ],
@@ -389,13 +390,14 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         """Test proper timezone handling in availability responses."""
         from services.meetings.models import get_session
 
-        # Mock response with timezone-aware datetimes
+        # Mock response with timezone-aware datetimes in the future
+        future_date = datetime.now(timezone.utc) + timedelta(days=7)
         mock_get_availability.return_value = {
             "data": {
                 "available_slots": [
                     {
-                        "start": "2025-08-15T09:00:00+00:00",
-                        "end": "2025-08-15T09:30:00+00:00",
+                        "start": future_date.replace(hour=9, minute=0, second=0, microsecond=0).isoformat(),
+                        "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0).isoformat(),
                         "duration_minutes": 30,
                     }
                 ],
