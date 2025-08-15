@@ -39,18 +39,30 @@ class TestAvailabilityService(BaseMeetingsTest):
             "data": {
                 "available_slots": [
                     {
-                        "start": future_date.replace(hour=9, minute=0, second=0, microsecond=0).isoformat(),
-                        "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0).isoformat(),
+                        "start": future_date.replace(
+                            hour=9, minute=0, second=0, microsecond=0
+                        ).isoformat(),
+                        "end": future_date.replace(
+                            hour=9, minute=30, second=0, microsecond=0
+                        ).isoformat(),
                         "duration_minutes": 30,
                     },
                     {
-                        "start": future_date.replace(hour=14, minute=0, second=0, microsecond=0).isoformat(),
-                        "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0).isoformat(),
+                        "start": future_date.replace(
+                            hour=14, minute=0, second=0, microsecond=0
+                        ).isoformat(),
+                        "end": future_date.replace(
+                            hour=14, minute=30, second=0, microsecond=0
+                        ).isoformat(),
                         "duration_minutes": 30,
                     },
                     {
-                        "start": future_date.replace(hour=17, minute=0, second=0, microsecond=0).isoformat(),
-                        "end": future_date.replace(hour=17, minute=30, second=0, microsecond=0).isoformat(),
+                        "start": future_date.replace(
+                            hour=17, minute=0, second=0, microsecond=0
+                        ).isoformat(),
+                        "end": future_date.replace(
+                            hour=17, minute=30, second=0, microsecond=0
+                        ).isoformat(),
                         "duration_minutes": 30,
                     },
                 ],
@@ -197,8 +209,16 @@ class TestAvailabilityService(BaseMeetingsTest):
         # Use future dates to avoid advance booking window filtering
         future_date = datetime.now(timezone.utc) + timedelta(days=7)
         slots = [
-            {"start": future_date.replace(hour=9, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0)},
-            {"start": future_date.replace(hour=14, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0)},
+            {
+                "start": future_date.replace(hour=9, minute=0, second=0, microsecond=0),
+                "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0),
+            },
+            {
+                "start": future_date.replace(
+                    hour=14, minute=0, second=0, microsecond=0
+                ),
+                "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0),
+            },
         ]
 
         result = _apply_booking_settings(
