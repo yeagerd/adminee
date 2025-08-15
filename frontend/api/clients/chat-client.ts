@@ -1,4 +1,4 @@
-import { ApiResponse, DraftApiResponse, DraftListResponse, EmailDraftResponse } from '../types/common';
+import { DraftApiResponse, DraftListResponse, EmailDraftResponse } from '../types/common';
 import { GatewayClient } from './gateway-client';
 
 export class ChatClient extends GatewayClient {
@@ -15,13 +15,12 @@ export class ChatClient extends GatewayClient {
     }
 
     async chatStream(message: string, threadId?: string, userContext?: Record<string, unknown>, signal?: AbortSignal): Promise<ReadableStream> {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-        };
+        // Get authentication headers from the base class
+        const authHeaders = await this.getAuthHeaders();
 
         const response = await fetch(`${this.getGatewayUrl()}/api/v1/chat/completions/stream`, {
             method: 'POST',
-            headers,
+            headers: authHeaders,
             body: JSON.stringify({
                 message,
                 thread_id: threadId,

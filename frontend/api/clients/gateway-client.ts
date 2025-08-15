@@ -13,7 +13,7 @@ export class GatewayClient {
         validateClientEnv();
     }
 
-    private async getAuthHeaders(): Promise<Record<string, string>> {
+    protected async getAuthHeaders(): Promise<Record<string, string>> {
         const session = await getSession();
 
         const headers: Record<string, string> = {
