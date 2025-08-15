@@ -606,16 +606,8 @@ app.use('/api/v1/drafts', validateAuth, standardLimiter, createServiceProxy(serv
 app.use('/api/v1/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/drafts'], { '^/api/v1/drafts': '/v1/chat/drafts' }));
 app.use('/api/v1/meetings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
 app.use('/api/v1/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
-// Public booking endpoints (no auth required) - must come before general booking routes
-app.use('/api/v1/bookings/health', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/health': '/api/v1/bookings/health' }));
-app.use('/api/v1/bookings/public', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/public': '/api/v1/bookings/public' }));
-app.use('/api/v1/bookings/public/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/public': '/api/v1/bookings/public' }));
-
-// Authenticated booking endpoints - be specific to avoid catching public routes
-app.use('/api/v1/bookings/links', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/links': '/api/v1/bookings/links' }));
-app.use('/api/v1/bookings/links/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/links': '/api/v1/bookings/links' }));
-app.use('/api/v1/bookings/templates', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/templates': '/api/v1/bookings/templates' }));
-app.use('/api/v1/bookings/templates/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings/templates': '/api/v1/bookings/templates' }));
+app.use('/api/v1/bookings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings': '/api/v1/bookings' }));
+app.use('/api/v1/bookings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings': '/api/v1/bookings' }));
 app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
@@ -678,11 +670,7 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/v1/calendar'];
     } else if (path.startsWith('/api/v1/meetings')) {
         targetService = serviceRoutes['/api/v1/meetings'];
-    } else if (path.startsWith('/api/v1/bookings/public')) {
-        targetService = serviceRoutes['/api/v1/bookings'];
-    } else if (path.startsWith('/api/v1/bookings/links')) {
-        targetService = serviceRoutes['/api/v1/bookings'];
-    } else if (path.startsWith('/api/v1/bookings/templates')) {
+    } else if (path.startsWith('/api/v1/bookings')) {
         targetService = serviceRoutes['/api/v1/bookings'];
     } else if (path.startsWith('/api/v1/public/polls')) {
         targetService = serviceRoutes['/api/v1/public/polls'];
