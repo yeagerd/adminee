@@ -1,3 +1,4 @@
+import { env } from '../../lib/env';
 import { DraftApiResponse, DraftListResponse, EmailDraftResponse } from '../types/common';
 import { GatewayClient } from './gateway-client';
 
@@ -91,10 +92,9 @@ export class ChatClient extends GatewayClient {
         return this.request<DraftApiResponse>(`/api/v1/drafts/${draftId}`);
     }
 
-    // Helper method for gateway URL
+    // Helper method for gateway URL - use the validated env from base class
     private getGatewayUrl(): string {
-        // Access the environment variable directly for the stream method
-        return process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
+        return env.GATEWAY_URL;
     }
 
     // Email Provider Draft Methods
