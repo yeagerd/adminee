@@ -58,6 +58,7 @@ def main():
         ("Office Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_office"),
         ("Chat Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_chat"),
         ("Vector Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_vector"),
+        ("Email Sync Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_sync"),
     ]
 
     success_count = 0
