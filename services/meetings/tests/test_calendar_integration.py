@@ -82,7 +82,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = self.mock_office_response
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service
         result = await get_user_availability(
@@ -107,7 +107,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         params = call_args[1]["params"]
         assert params["start"] == self.start_date.isoformat()
         assert params["end"] == self.end_date.isoformat()
-        assert params["duration"] == self.duration_minutes
+        assert params["duration"] == str(self.duration_minutes)
 
     @patch("services.meetings.services.calendar_integration.httpx.AsyncClient")
     async def test_get_user_availability_with_headers(self, mock_client_class):
@@ -120,7 +120,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = self.mock_office_response
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service
         await get_user_availability(
@@ -150,7 +150,11 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
-        mock_client.get.return_value = mock_response
+        # Mock raise_for_status to raise HTTPStatusError for non-2xx status codes
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=None, response=mock_response
+        )
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service - should handle error gracefully
         result = await get_user_availability(
@@ -237,7 +241,11 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.text = "Unauthorized"
-        mock_client.get.return_value = mock_response
+        # Mock raise_for_status to raise HTTPStatusError for non-2xx status codes
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "401 Unauthorized", request=None, response=mock_response
+        )
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service - should handle error gracefully
         result = await get_user_availability(
@@ -268,7 +276,11 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.text = "Bad Request"
-        mock_client.get.return_value = mock_response
+        # Mock raise_for_status to raise HTTPStatusError for non-2xx status codes
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "400 Bad Request", request=None, response=mock_response
+        )
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service - should handle error gracefully
         result = await get_user_availability(
@@ -299,7 +311,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.side_effect = ValueError("Invalid JSON")
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service - should handle error gracefully
         result = await get_user_availability(
@@ -330,7 +342,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = self.mock_office_response
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Test different durations
         for duration in self.sample_durations:
@@ -344,7 +356,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
             # Verify the duration parameter was passed correctly
             call_args = mock_client.get.call_args
             params = call_args[1]["params"]
-            assert params["duration"] == duration
+            assert params["duration"] == str(duration)
 
     @patch("services.meetings.services.calendar_integration.httpx.AsyncClient")
     async def test_get_user_availability_date_range_handling(self, mock_client_class):
@@ -357,7 +369,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = self.mock_office_response
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Test with different date ranges
         for start, end in self.sample_date_ranges:
@@ -385,7 +397,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = self.mock_office_response
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Test with timezone-aware datetimes
         utc_tz = timezone.utc
@@ -418,7 +430,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = self.mock_office_response
-        mock_client.get.return_value = mock_response
+        mock_client.get = AsyncMock(return_value=mock_response)
 
         # Call the service
         await get_user_availability(
@@ -443,32 +455,47 @@ class TestCalendarIntegration(BaseMeetingsTest):
         # Mock first call fails, second call succeeds
         mock_response_fail = MagicMock()
         mock_response_fail.status_code = 500
+        mock_response_fail.text = "Internal Server Error"
+        # Mock raise_for_status to raise HTTPStatusError for non-2xx status codes
+        mock_response_fail.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=None, response=mock_response_fail
+        )
 
         mock_response_success = MagicMock()
         mock_response_success.status_code = 200
         mock_response_success.json.return_value = self.mock_office_response
 
-        mock_client.get.side_effect = [mock_response_fail, mock_response_success]
+        # First call: mock failure
+        mock_client.get = AsyncMock(return_value=mock_response_fail)
+        
+        # Call the service - should fail and return empty response
+        result = await get_user_availability(
+            user_id=self.test_user_id,
+            start=self.start_date,
+            end=self.end_date,
+            duration=self.duration_minutes,
+        )
+        
+        # First call should fail and return empty response
+        assert result == {
+            "data": {
+                "available_slots": [],
+                "total_slots": 0,
+                "providers_used": [],
+                "request_metadata": {},
+            }
+        }
 
-        # Call the service multiple times
-        for i in range(2):
-            result = await get_user_availability(
-                user_id=self.test_user_id,
-                start=self.start_date,
-                end=self.end_date,
-                duration=self.duration_minutes,
-            )
-
-            if i == 0:
-                # First call should fail and return empty response
-                assert result == {
-                    "data": {
-                        "available_slots": [],
-                        "total_slots": 0,
-                        "providers_used": [],
-                        "request_metadata": {},
-                    }
-                }
-            else:
-                # Second call should succeed
-                assert result == self.mock_office_response
+        # Second call: mock success
+        mock_client.get = AsyncMock(return_value=mock_response_success)
+        
+        # Call the service again - should succeed
+        result = await get_user_availability(
+            user_id=self.test_user_id,
+            start=self.start_date,
+            end=self.end_date,
+            duration=self.duration_minutes,
+        )
+        
+        # Second call should succeed
+        assert result == self.mock_office_response
