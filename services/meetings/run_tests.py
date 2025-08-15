@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 
-def main():
+def main() -> int:
     """Run the test suite."""
     # Get the directory containing this script
     script_dir = Path(__file__).parent
