@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { gatewayClient } from '@/lib/gateway-client';
+import { OfficeClient } from '@/api/clients/office-client';
 import type { Contact } from '@/types/office-service';
 
 interface OfficeDataContextType {
@@ -19,6 +19,7 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastQueryRef = useRef<{ providers?: string[]; q?: string; company?: string; limit?: number }>({});
+  const officeClient = useMemo(() => new OfficeClient(), []);
 
   const detectCompanyFromEmail = useCallback((email?: string) => {
     if (!email) return undefined;
@@ -36,7 +37,7 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setError(null);
     try {
       lastQueryRef.current = { providers, q: opts?.q, company: opts?.company, limit: opts?.limit };
-      const resp = await gatewayClient.getContacts(providers, opts?.limit ?? 200, opts?.q, opts?.company, opts?.noCache);
+      const resp = await officeClient.getContacts(providers, opts?.limit ?? 200, opts?.q, opts?.company, opts?.noCache);
       if (resp.success && resp.data) {
         setContacts((resp.data.contacts || []) as Contact[]);
       } else {
@@ -47,7 +48,7 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [officeClient]);
 
   const value = useMemo(() => ({ contacts, loading, error, refreshContacts, detectCompanyFromEmail }), [contacts, loading, error, refreshContacts, detectCompanyFromEmail]);
 
