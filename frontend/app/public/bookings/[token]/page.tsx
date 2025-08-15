@@ -264,7 +264,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                                     body: JSON.stringify({
                                         start: selectedSlot.start,
                                         end: selectedSlot.end,
-                                        attendeeEmail: emailValue,
+                                        attendee_email: emailValue,
                                         answers,
                                     }),
                                 });
