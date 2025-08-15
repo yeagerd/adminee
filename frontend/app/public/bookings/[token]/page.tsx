@@ -1,7 +1,7 @@
 "use client";
 
 import { env } from '@/lib/env';
-import { useEffect, useMemo, useState, use } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 
 interface BookingMeta {
     title: string;
@@ -185,7 +185,7 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                                 const required = Boolean(q?.required);
                                 const hasError = required && (!answers[key] || answers[key].trim() === '');
                                 const isEmail = q.type === 'email';
-                                
+
                                 return (
                                     <div key={key} className="flex flex-col gap-1">
                                         <span className="text-sm font-medium">
@@ -195,9 +195,8 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                                         <input
                                             type={isEmail ? "email" : "text"}
                                             placeholder={isEmail ? "Enter your email address" : `Enter your ${label.toLowerCase()}`}
-                                            className={`border rounded px-3 py-2 ${
-                                                hasError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                                            }`}
+                                            className={`border rounded px-3 py-2 ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                                }`}
                                             value={answers[key] || ""}
                                             onChange={(e) =>
                                                 setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
@@ -226,36 +225,36 @@ export default function PublicBookingPage({ params }: { params: Promise<{ token:
                         className="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
                         onClick={async () => {
                             if (!selectedSlot) return;
-                            
+
                             // Validate required fields before submission
                             const requiredFields = meta?.template_questions?.filter(q => q.required) || [];
                             const missingFields = requiredFields.filter(q => !answers[q.id] || answers[q.id].trim() === '');
-                            
+
                             if (missingFields.length > 0) {
                                 const fieldNames = missingFields.map(q => q.label).join(', ');
                                 alert(`Please fill in all required fields: ${fieldNames}`);
                                 return;
                             }
-                            
+
                             // Ensure email is provided for confirmation emails - dynamically find email field
                             if (!findEmailField) {
                                 alert('Email field is required but not found in the template. Please contact the meeting organizer.');
                                 return;
                             }
-                            
+
                             const emailValue = getEmailValue;
                             if (!emailValue || emailValue.trim() === '') {
                                 alert('Email address is required to receive booking confirmation.');
                                 return;
                             }
-                            
+
                             // Validate email format
                             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                             if (!emailRegex.test(emailValue)) {
                                 alert('Please enter a valid email address.');
                                 return;
                             }
-                            
+
                             setSubmitting(true);
                             try {
                                 const res = await fetch(`${env.GATEWAY_URL}/api/v1/bookings/public/${token}/book`, {
