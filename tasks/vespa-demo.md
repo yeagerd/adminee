@@ -85,12 +85,12 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 2.2 Enhance Office Service for Backfill
 **Goal**: Add backfill capabilities to office service
-- [ ] Add new endpoint: `POST /api/backfill/start` for triggering backfill jobs
-- [ ] Implement pagination for large email datasets
-- [ ] Add configurable batch sizes and rate limiting
-- [ ] Include progress tracking and resumption capability
-- [ ] Add filtering options (date ranges, folders, etc.)
-- [ ] Integrate with pubsub for publishing crawled emails
+- [x] Add new endpoint: `POST /api/backfill/start` for triggering backfill jobs
+- [x] Implement pagination for large email datasets
+- [x] Add configurable batch sizes and rate limiting
+- [x] Include progress tracking and resumption capability
+- [x] Add filtering options (date ranges, folders, etc.)
+- [x] Integrate with pubsub for publishing crawled emails
 
 **Files to modify**:
 - `services/office/api/backfill.py` - New backfill endpoints
