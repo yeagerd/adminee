@@ -60,6 +60,9 @@ describe('useShipmentEvents', () => {
         const errorMessage = 'Failed to fetch events';
         mockShipmentsApi.getEventsByEmail.mockRejectedValue(new Error(errorMessage));
 
+        // Mock console.error to avoid logging during this test
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
         const { result } = renderHook(() => useShipmentEvents('test-email-id'));
 
         await waitFor(() => {
@@ -69,6 +72,9 @@ describe('useShipmentEvents', () => {
         expect(result.current.data).toEqual([]);
         expect(result.current.hasEvents).toBe(false);
         expect(result.current.error).toBe(errorMessage);
+
+        // Restore original console.error
+        consoleErrorSpy.mockRestore();
     });
 
     it('should return hasEvents as false when no events are found', async () => {

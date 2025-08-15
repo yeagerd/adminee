@@ -1,5 +1,5 @@
 import { useIntegrations } from '@/contexts/integrations-context';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { EmailFolderSelector } from './email-folder-selector';
 
 // Mock the integrations context
@@ -26,15 +26,17 @@ describe('EmailFolderSelector', () => {
         });
     });
 
-    it('renders without crashing', () => {
+    it('renders without crashing', async () => {
         const mockOnFolderSelect = jest.fn();
         render(<EmailFolderSelector onFolderSelect={mockOnFolderSelect} />);
 
-        const button = screen.getByRole('button');
-        expect(button).toBeInTheDocument();
+        await waitFor(() => {
+            const button = screen.getByRole('button');
+            expect(button).toBeInTheDocument();
+        });
     });
 
-    it('uses fallback folders when no providers are active', () => {
+    it('uses fallback folders when no providers are active', async () => {
         mockUseIntegrations.mockReturnValue({
             integrations: [],
             activeProviders: [],
@@ -48,7 +50,9 @@ describe('EmailFolderSelector', () => {
         const mockOnFolderSelect = jest.fn();
         render(<EmailFolderSelector onFolderSelect={mockOnFolderSelect} />);
 
-        const button = screen.getByRole('button');
-        expect(button).toBeInTheDocument();
+        await waitFor(() => {
+            const button = screen.getByRole('button');
+            expect(button).toBeInTheDocument();
+        });
     });
 }); 
