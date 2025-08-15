@@ -7,21 +7,15 @@ import EmailView from './email-view';
 jest.mock('@/contexts/integrations-context');
 const mockUseIntegrations = useIntegrations as jest.MockedFunction<typeof useIntegrations>;
 
-// Mock the gateway client with both class and instance exports
-jest.mock('@/lib/gateway-client', () => {
-    class MockGatewayClient {
-        getEmails = jest.fn();
-        getThread = jest.fn();
-        getEmailFolders = jest.fn();
-        request = jest.fn();
-    }
-    const instance = new MockGatewayClient();
-    return {
-        GatewayClient: MockGatewayClient,
-        gatewayClient: instance,
-        default: instance,
-    };
-});
+// Mock the office API
+jest.mock('@/api', () => ({
+    officeApi: {
+        getEmails: jest.fn(),
+        getThread: jest.fn(),
+        getEmailFolders: jest.fn(),
+        bulkAction: jest.fn(),
+    },
+}));
 
 // Mock next-auth
 jest.mock('next-auth/react', () => ({
@@ -99,23 +93,27 @@ describe('EmailView - Select All Functionality', () => {
             triggerAutoRefreshIfNeeded: jest.fn(),
         });
 
-        // Mock the gateway client methods
-        const { gatewayClient } = await import('@/lib/gateway-client');
-        (gatewayClient.getEmails as jest.Mock).mockResolvedValue({
+        // Mock the office API methods
+        const { officeApi } = require('@/api');
+        (officeApi.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });
-        (gatewayClient.getEmailFolders as jest.Mock).mockResolvedValue({
-            success: true,
+        (officeApi.getEmailFolders as jest.Mock).mockResolvedValue({
             data: { folders: [] }
         });
-        (gatewayClient.getThread as jest.Mock).mockResolvedValue({
-            data: { thread: null }
+        (officeApi.getThread as jest.Mock).mockResolvedValue({
+            data: { messages: mockEmails }
+        });
+
+        // Mock the office API methods for the second test
+        (officeApi.getEmails as jest.Mock).mockResolvedValue({
+            data: { messages: mockEmails }
         });
     });
 
     it('should select only latest emails in tight view mode', async () => {
-        const { gatewayClient } = await import('@/lib/gateway-client');
-        (gatewayClient.getEmails as jest.Mock).mockResolvedValue({
+        const { officeApi } = require('@/api');
+        (officeApi.getEmails as jest.Mock).mockResolvedValue({
             data: { messages: mockEmails }
         });
 
