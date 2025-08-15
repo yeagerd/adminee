@@ -4,12 +4,12 @@ Vespa HTTP API client for the loader service
 """
 
 import aiohttp
-import logging
 from typing import Dict, Any, Optional, List
 import json
 from datetime import datetime
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class VespaClient:
     """Client for interacting with Vespa HTTP API"""

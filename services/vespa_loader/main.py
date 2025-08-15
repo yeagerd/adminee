@@ -6,24 +6,29 @@ Vespa Loader Service - Consumes email data and indexes into Vespa
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import logging
 from contextlib import asynccontextmanager
+from services.vespa_loader.vespa_client import VespaClient
+from services.vespa_loader.content_normalizer import ContentNormalizer
+from services.vespa_loader.embeddings import EmbeddingGenerator
+from services.vespa_loader.mapper import DocumentMapper
+from services.vespa_loader.settings import Settings
+from services.common.logging_config import setup_service_logging, get_logger
 
-from .vespa_client import VespaClient
-from .content_normalizer import ContentNormalizer
-from .embeddings import EmbeddingGenerator
-from .mapper import DocumentMapper
-from .settings import Settings
+# Setup service logging
+setup_service_logging(
+    service_name="vespa-loader",
+    log_level="INFO",
+    log_format="json"
+)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Get logger for this module
+logger = get_logger(__name__)
 
 # Global service instances
-vespa_client: VespaClient = None
-content_normalizer: ContentNormalizer = None
-embedding_generator: EmbeddingGenerator = None
-document_mapper: DocumentMapper = None
+vespa_client: VespaClient | None = None
+content_normalizer: ContentNormalizer | None = None
+embedding_generator: EmbeddingGenerator | None = None
+document_mapper: DocumentMapper | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

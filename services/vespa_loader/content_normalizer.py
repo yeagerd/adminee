@@ -4,11 +4,11 @@ Content normalizer for processing HTML and other content formats
 """
 
 import re
-import logging
 from typing import Optional
 from html import unescape
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class ContentNormalizer:
     """Normalizes content for better search indexing"""

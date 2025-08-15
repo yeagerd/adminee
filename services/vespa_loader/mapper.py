@@ -3,11 +3,11 @@
 Document mapper for transforming office service data to Vespa format
 """
 
-import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class DocumentMapper:
     """Maps office service data formats to Vespa document format"""

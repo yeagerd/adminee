@@ -4,13 +4,13 @@ Core search engine for hybrid search capabilities using Vespa
 """
 
 import aiohttp
-import logging
 from typing import Dict, Any, Optional, List
 import json
 from datetime import datetime
 import time
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class SearchEngine:
     """Core search engine for Vespa queries"""

@@ -6,7 +6,6 @@ Vespa Query Service - Query interface for hybrid search capabilities
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import logging
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 
@@ -14,15 +13,22 @@ from .search_engine import SearchEngine
 from .query_builder import QueryBuilder
 from .result_processor import ResultProcessor
 from .settings import Settings
+from services.common.logging_config import setup_service_logging, get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Setup service logging
+setup_service_logging(
+    service_name="vespa-query",
+    log_level="INFO",
+    log_format="json"
+)
+
+# Get logger for this module
+logger = get_logger(__name__)
 
 # Global service instances
-search_engine: SearchEngine = None
-query_builder: QueryBuilder = None
-result_processor: ResultProcessor = None
+search_engine: SearchEngine | None = None
+query_builder: QueryBuilder | None = None
+result_processor: ResultProcessor | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

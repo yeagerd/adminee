@@ -3,11 +3,11 @@
 Embedding generator for semantic search capabilities
 """
 
-import logging
 from typing import List, Optional
 import numpy as np
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class EmbeddingGenerator:
     """Generates embeddings for semantic search"""

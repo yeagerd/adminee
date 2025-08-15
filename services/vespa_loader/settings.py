@@ -3,9 +3,7 @@
 Configuration settings for the Vespa loader service
 """
 
-import os
-from typing import Optional
-from pydantic import BaseSettings, Field
+from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -54,7 +52,8 @@ class Settings(BaseSettings):
     health_check_interval_seconds: int = Field(default=30, env="HEALTH_CHECK_INTERVAL")
     health_check_timeout_seconds: int = Field(default=5, env="HEALTH_CHECK_TIMEOUT")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
