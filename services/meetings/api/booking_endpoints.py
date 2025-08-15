@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -108,7 +108,7 @@ async def get_public_link(token: str, request: Request) -> PublicLinkDataRespons
             # Check if expired or used
             if (
                 one_time_link.expires_at is not None  # type: ignore
-                and one_time_link.expires_at < datetime.now()  # type: ignore
+                and one_time_link.expires_at < datetime.now(timezone.utc)  # type: ignore
             ):
                 raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":  # type: ignore
@@ -225,7 +225,7 @@ async def get_public_availability(
         if one_time_link is not None:
             if (
                 one_time_link.expires_at is not None
-                and one_time_link.expires_at < datetime.now()
+                and one_time_link.expires_at < datetime.now(timezone.utc)
             ):
                 raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":
@@ -251,7 +251,7 @@ async def get_public_availability(
         owner_user_id = booking_link.owner_user_id
 
         # Calculate availability for next 30 days
-        start_date = datetime.now()
+        start_date = datetime.now(timezone.utc)
         end_date = start_date + timedelta(days=30)
 
         # Get settings for filtering
@@ -324,7 +324,7 @@ async def create_public_booking(
         if one_time_link is not None:
             if (
                 one_time_link.expires_at is not None
-                and one_time_link.expires_at < datetime.now()
+                and one_time_link.expires_at < datetime.now(timezone.utc)
             ):
                 raise NotFoundError("Link", "expired")
             if one_time_link.status != "active":
@@ -682,7 +682,7 @@ async def update_booking_link(
                 link.is_active = value  # type: ignore[assignment]
                 changes[key] = {"old": old_value, "new": value}
 
-        link.updated_at = datetime.now()  # type: ignore[assignment]
+        link.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
         session.commit()
 
         # Audit logging
@@ -817,7 +817,7 @@ async def toggle_booking_link(
 
         old_status = link.is_active
         link.is_active = not link.is_active  # type: ignore[assignment]
-        link.updated_at = datetime.now()  # type: ignore[assignment]
+        link.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
         session.commit()
 
         # Audit logging
@@ -873,7 +873,7 @@ async def create_one_time_link(
             raise NotFoundError("Booking link", "not found")
 
         token = TokenGenerator.generate_one_time_token()
-        expires_at = datetime.now() + timedelta(
+        expires_at = datetime.now(timezone.utc) + timedelta(
             days=one_time_data.get("expires_in_days", 7)
         )
 
@@ -1255,7 +1255,7 @@ async def update_booking_template(
                 "new": template.email_followup_enabled,  # type: ignore[dict-item]
             }
 
-        template.updated_at = datetime.now()  # type: ignore[assignment]
+        template.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
         session.commit()
 
         # Audit logging
@@ -1390,7 +1390,7 @@ async def list_one_time_links(
         for one_time_link in one_time_links:
             # Check if expired
             is_expired = (
-                one_time_link.expires_at and one_time_link.expires_at < datetime.now()
+                one_time_link.expires_at and one_time_link.expires_at < datetime.now(timezone.utc)
             )
 
             links_data.append(
@@ -1462,7 +1462,7 @@ async def get_one_time_link_details(
 
         # Check if expired
         is_expired = (
-            one_time_link.expires_at and one_time_link.expires_at < datetime.now()
+            one_time_link.expires_at and one_time_link.expires_at < datetime.now(timezone.utc)
         )
 
         return {

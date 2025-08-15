@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from services.meetings.services import calendar_integration
@@ -143,7 +143,7 @@ def _apply_booking_settings(
             print(f"DEBUG: Slot {i} is dict: start={slot_start}, end={slot_end}")
 
         # Check advance booking window
-        now = datetime.now(slot_start.tzinfo) if slot_start.tzinfo else datetime.now()
+        now = datetime.now(slot_start.tzinfo) if slot_start.tzinfo else datetime.now(timezone.utc)
         days_until_slot = (slot_start - now).days
 
         if days_until_slot < advance_days:

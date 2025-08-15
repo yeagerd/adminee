@@ -109,7 +109,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
             booking_link_id=booking_link_id,
             recipient_email="test@example.com",
             recipient_name="Test User",
-            expires_at=datetime.now() + timedelta(days=7),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
             status="active",
         )
         session.add(one_time_link)
@@ -254,7 +254,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
                 booking_link_id=booking_link.id,
                 recipient_email="expired@example.com",
                 recipient_name="Expired User",
-                expires_at=datetime.now() - timedelta(days=1),  # Expired yesterday
+                expires_at=datetime.now(timezone.utc) - timedelta(days=1),  # Expired yesterday
                 status="active",
             )
             session.add(expired_link)
@@ -279,7 +279,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
                 booking_link_id=booking_link.id,
                 recipient_email="used@example.com",
                 recipient_name="Used User",
-                expires_at=datetime.now() + timedelta(days=7),
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
                 status="used",  # Already used
             )
             session.add(used_link)
@@ -319,7 +319,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
                 booking_link_id=booking_link.id,
                 recipient_email="custom@example.com",
                 recipient_name="Custom Test User",
-                expires_at=datetime.now() + timedelta(days=7),
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
                 status="active",
             )
             session.add(one_time_link)
@@ -413,7 +413,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
                 booking_link_id=booking_link.id,
                 recipient_email="timezone@example.com",
                 recipient_name="Timezone Test User",
-                expires_at=datetime.now() + timedelta(days=7),
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
                 status="active",
             )
             session.add(one_time_link)
