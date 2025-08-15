@@ -785,9 +785,9 @@ async def create_calendar_event(
 
 @router.put("/events/{event_id}", response_model=ApiResponse)
 async def update_calendar_event(
+    request: Request,
     event_data: CreateCalendarEventRequest,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user updating the event"),
     service_name: str = Depends(service_permission_required(["write_calendar"])),
 ) -> ApiResponse:
     """
@@ -799,11 +799,11 @@ async def update_calendar_event(
     Args:
         event_id: Event ID with provider prefix (e.g., "google_abc123")
         event_data: Updated event content and configuration
-        user_id: ID of the user updating the event
 
     Returns:
         ApiResponse with updated event details
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 

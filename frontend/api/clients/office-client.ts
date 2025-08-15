@@ -1,4 +1,3 @@
-import { getSession } from 'next-auth/react';
 import type { CalendarEvent, CreateCalendarEventRequest } from '../../types/office-service';
 import {
     CalendarEventsResponse,
@@ -11,7 +10,6 @@ import {
 } from '../../types/office-service';
 import { ApiResponse, BulkActionType } from '../types/common';
 import { GatewayClient } from './gateway-client';
-import { getUserId } from '../../lib/session-utils';
 
 export class OfficeClient extends GatewayClient {
     // Calendar Service
@@ -43,51 +41,21 @@ export class OfficeClient extends GatewayClient {
     }
 
     async createCalendarEvent(payload: CreateCalendarEventRequest) {
-        const session = await getSession();
-        const userId = getUserId(session);
-        
-        if (!userId) {
-            throw new Error('User ID is required for calendar event operations');
-        }
-
-        const params = new URLSearchParams();
-        params.append('user_id', userId);
-
-        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events?${params.toString()}`, {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events`, {
             method: 'POST',
             body: payload,
         });
     }
 
     async updateCalendarEvent(eventId: string, payload: CreateCalendarEventRequest) {
-        const session = await getSession();
-        const userId = getUserId(session);
-        
-        if (!userId) {
-            throw new Error('User ID is required for calendar event operations');
-        }
-
-        const params = new URLSearchParams();
-        params.append('user_id', userId);
-
-        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}?${params.toString()}`, {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}`, {
             method: 'PUT',
             body: payload,
         });
     }
 
     async deleteCalendarEvent(eventId: string) {
-        const session = await getSession();
-        const userId = getUserId(session);
-        
-        if (!userId) {
-            throw new Error('User ID is required for calendar event operations');
-        }
-
-        const params = new URLSearchParams();
-        params.append('user_id', userId);
-
-        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}?${params.toString()}`, {
+        return this.request<ApiResponse<CalendarEvent>>(`/api/v1/calendar/events/${encodeURIComponent(eventId)}`, {
             method: 'DELETE',
         });
     }
