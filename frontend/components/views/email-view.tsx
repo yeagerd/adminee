@@ -1,3 +1,5 @@
+import { officeApi } from '@/api';
+import { BulkActionType } from '@/api/types/common';
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailListCard from '@/components/email/email-list-card';
@@ -8,15 +10,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { BulkActionType } from '@/api/types/common';
-import { officeApi } from '@/api';
+import { useDraftState } from '@/hooks/use-draft-state';
+import { listProviderDraftsForThread } from '@/lib/draft-utils';
 import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
-import { draftService } from '@/services/draft-service';
-import { useDraftState } from '@/hooks/use-draft-state';
 
 interface EmailViewProps {
     toolDataLoading?: boolean;
@@ -394,7 +394,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 setFullThread(response.data.thread);
                 // Auto-load provider drafts for this thread
                 try {
-                    const draftsResp = await draftService.listProviderDraftsForThread(threadId);
+                    const draftsResp = await listProviderDraftsForThread(threadId);
                     const providerDrafts = (draftsResp?.data?.drafts as unknown[]) || [];
                     if (providerDrafts.length > 0) {
                         // Take the latest provider draft and reflect into local draft editor for continuity
@@ -406,7 +406,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         const headerArr = (headers?.headers as Array<{ name?: string; value?: string }>) || [];
                         const subject = headerArr.find((h) => h?.name === 'Subject')?.value || (latest?.subject as string | undefined) || '';
                         const body = ((latest?.message as Record<string, unknown> | undefined)?.snippet as string | undefined) ||
-                                     ((latest?.body as Record<string, unknown> | undefined)?.content as string | undefined) || '';
+                            ((latest?.body as Record<string, unknown> | undefined)?.content as string | undefined) || '';
                         const latestId = (latest?.id as string | undefined) || '';
                         updateDraft({
                             id: local.id,
