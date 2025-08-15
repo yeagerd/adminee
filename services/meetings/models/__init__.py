@@ -75,3 +75,10 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async_session_factory = get_async_sessionmaker()
     async with async_session_factory() as session:
         yield session
+
+
+async def create_all_tables_for_testing() -> None:
+    """Create all database tables for testing only. Use Alembic migrations in production."""
+    engine = get_engine()
+    from services.meetings.models.base import Base
+    Base.metadata.create_all(engine)
