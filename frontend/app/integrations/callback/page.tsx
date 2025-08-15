@@ -3,7 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { gatewayClient } from '@/lib/gateway-client';
+import { userApi } from '@/api';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
@@ -47,7 +47,7 @@ function IntegrationCallbackContent() {
                 }
 
                 // Complete the OAuth flow
-                const result = await gatewayClient.completeOAuthFlow(detectedProvider, code, state);
+                const result = await userApi.completeOAuthFlow(detectedProvider, code, state);
 
                 if (result?.success) {
                     setStatus('success');
