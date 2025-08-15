@@ -319,7 +319,7 @@ export async function sendDraft(draft: Draft): Promise<DraftActionResult> {
             // Handle calendar event creation
             const startTime = typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime;
             const endTime = typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime;
-            
+
             const result = await officeApi.createCalendarEventWithValidation({
                 title: draft.metadata.title || 'Untitled Event',
                 startTime: startTime || new Date().toISOString(),
