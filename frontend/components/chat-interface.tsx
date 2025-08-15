@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useUserPreferences } from '@/contexts/settings-context'
 import { useToolState } from '@/contexts/tool-context'
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
-import gatewayClient from "@/lib/gateway-client"
+import { chatApi } from "@/api"
 import { safeParseDate, safeParseDateToLocaleString } from '@/lib/utils'
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
@@ -187,7 +187,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         setHistoryLoading(true);
         try {
             const offset = reset ? 0 : historyOffset;
-            const resp = await gatewayClient.getChatThreads(HISTORY_PAGE_SIZE, offset) as { threads: ThreadResponse[]; has_more: boolean; offset: number; limit: number; };
+            const resp = await chatApi.getChatThreads(HISTORY_PAGE_SIZE, offset) as { threads: ThreadResponse[]; has_more: boolean; offset: number; limit: number; };
             const threads = resp.threads;
             if (reset) {
                 setChatHistory(threads);
@@ -229,7 +229,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
 
     const handleLoadChat = async (threadId: string) => {
         try {
-            const history = (await gatewayClient.getChatHistory(threadId)) as ChatResponse
+            const history = (await chatApi.getChatHistory(threadId)) as ChatResponse
             const loadedMessages: Message[] = history.messages.map((msg) => ({
                 id: msg.message_id,
                 content: msg.content,
@@ -286,7 +286,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 };
                 if (enableStreaming) {
                     streamControllerRef.current = new AbortController();
-                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId ?? undefined, userContext, streamControllerRef.current.signal);
+                    const stream = await chatApi.chatStream(currentInput, currentThreadId ?? undefined, userContext, streamControllerRef.current.signal);
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
                     const placeholderId = self.crypto.randomUUID()
@@ -379,7 +379,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                     }
                 } else {
                     // Non-streaming implementation using GatewayClient
-                    const data = await gatewayClient.chat(currentInput, currentThreadId ?? undefined, userContext) as ChatResponse;
+                    const data = await chatApi.chat(currentInput, currentThreadId ?? undefined, userContext) as ChatResponse;
                     if (!currentThreadId) {
                         fetchChatHistory()
                     }

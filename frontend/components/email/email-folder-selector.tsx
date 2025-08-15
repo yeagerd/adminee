@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
-import gatewayClient from '@/lib/gateway-client';
+import { officeApi } from '@/api';
 import { EmailFolder } from '@/types/office-service';
 import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -42,7 +42,7 @@ export function EmailFolderSelector({ onFolderSelect, selectedFolder }: EmailFol
         setError(null);
 
         try {
-            const response = await gatewayClient.getEmailFolders(activeProviders, true);
+            const response = await officeApi.getEmailFolders(activeProviders, true);
             if (response.success && response.data?.folders) {
                 setFolders(response.data.folders);
             } else {

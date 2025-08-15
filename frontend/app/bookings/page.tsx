@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { gatewayClient } from "@/lib/gateway-client";
-import type { BookingLink } from "@/types/bookings";
+import { bookingsApi } from "@/api";
+import type { BookingLink } from "@/api";
 import { CheckCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -99,7 +99,7 @@ export default function BookingsPage() {
         try {
             setIsLoadingLinks(true);
             setLinksError(null);
-            const result = await gatewayClient.listBookingLinks();
+            const result = await bookingsApi.listBookingLinks();
             setExistingLinks(result.data);
         } catch (error) {
             setLinksError(error instanceof Error ? error.message : 'Failed to fetch links');
@@ -649,7 +649,7 @@ export default function BookingsPage() {
                             onClick={async () => {
                                 try {
                                     setIsLoading(true);
-                                    const result = await gatewayClient.createBookingLink({
+                                    const result = await bookingsApi.createBookingLink({
                                         title: formData.title,
                                         description: formData.description,
                                         duration: formData.duration,
@@ -769,7 +769,7 @@ export default function BookingsPage() {
                     : link
             ));
 
-            const result = await gatewayClient.toggleBookingLink(linkId);
+            const result = await bookingsApi.toggleBookingLink(linkId);
             console.log('Toggle API response:', result);
 
             // Refresh the links list to ensure consistency with backend
@@ -789,7 +789,7 @@ export default function BookingsPage() {
 
     const duplicateLink = async (linkId: string) => {
         try {
-            const result = await gatewayClient.duplicateBookingLink(linkId);
+            const result = await bookingsApi.duplicateBookingLink(linkId);
             // Find the original link to get its title for the success message
             const originalLink = existingLinks.find(l => l.id === linkId);
             setSuccessData({

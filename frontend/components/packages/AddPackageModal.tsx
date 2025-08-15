@@ -1,4 +1,4 @@
-import { gatewayClient } from '@/lib/gateway-client';
+import { shipmentsApi } from '@/api';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { useState } from 'react';
 
@@ -53,6 +53,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
@@ -63,7 +64,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
         setLoading(true);
         setError(null);
         try {
-            await gatewayClient.createPackage({
+            await shipmentsApi.createPackage({
                 tracking_number: form.tracking_number,
                 carrier: form.carrier,
                 status: form.status,

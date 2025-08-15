@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
-import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
+import { userApi, type Integration, type OAuthStartResponse } from '@/api';
 import { AlertCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -58,7 +58,7 @@ export function IntegrationsContent() {
             }
 
             console.log(`Loading scopes for ${provider}...`);
-            const response = await gatewayClient.getProviderScopes(provider);
+            const response = await userApi.getProviderScopes(provider);
             const scopes = response.scopes;
             console.log(`Loaded scopes for ${provider}:`, scopes.map(s => s.name));
 
@@ -153,7 +153,7 @@ export function IntegrationsContent() {
 
             console.log(`Starting OAuth flow for ${config.provider} with scopes:`, scopesToUse);
 
-            const response = await gatewayClient.startOAuthFlow(
+            const response = await userApi.startOAuthFlow(
                 config.provider,
                 scopesToUse
             ) as OAuthStartResponse;
@@ -174,7 +174,7 @@ export function IntegrationsContent() {
         try {
             // error is now handled by the global context
             console.log(`Disconnecting ${provider} integration...`);
-            await gatewayClient.disconnectIntegration(provider);
+            await userApi.disconnectIntegration(provider);
             console.log('Integration disconnected, clearing frontend cache...');
 
             // Clear frontend calendar cache for this user
