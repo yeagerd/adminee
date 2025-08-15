@@ -20,10 +20,7 @@ jest.mock('@/api', () => ({
     },
 }));
 
-// Mock the shipments client
-jest.mock('../../../lib/shipments-client', () => ({
 
-}));
 
 const mockRouter = {
     push: jest.fn(),
