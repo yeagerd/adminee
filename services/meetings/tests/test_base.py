@@ -166,6 +166,13 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             public_router,
             slots_router,
         )
+        
+        # Import booking endpoints if they exist
+        try:
+            from services.meetings.api import bookings_router
+            has_booking_router = True
+        except ImportError:
+            has_booking_router = False
 
         app.include_router(
             polls_router, prefix="/api/v1/meetings/polls", tags=["polls"]
@@ -188,6 +195,12 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             prefix="/api/v1/meetings/process-email-response",
             tags=["email"],
         )
+        
+        # Include booking router if it exists
+        if has_booking_router:
+            app.include_router(
+                bookings_router, prefix="/api/v1/bookings", tags=["bookings"]
+            )
 
         from fastapi.testclient import TestClient
 

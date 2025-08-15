@@ -1,0 +1,20 @@
+# Development dependencies for the Meetings Service
+# Install with: pip install -r requirements-dev.txt
+
+# Testing framework
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.10.0
+
+# Mocking and testing utilities
+httpx>=0.24.0
+responses>=0.23.0
+
+# Code quality
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
+# Development utilities
+ipython>=8.0.0
+ipdb>=0.13.0
