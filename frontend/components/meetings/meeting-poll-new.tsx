@@ -7,8 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToolState } from "@/contexts/tool-context";
-import type { MeetingPoll, PollParticipant } from "@/lib/gateway-client";
-import { gatewayClient } from "@/lib/gateway-client";
+import { meetingsApi, officeApi } from "@/api";
+import type { MeetingPoll, PollParticipant } from "@/api/clients/meetings-client";
 import { CalendarEvent } from "@/types/office-service";
 import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';
@@ -216,7 +216,7 @@ export function MeetingPollNew() {
                 reveal_participants: revealParticipants
             };
 
-            const created = await gatewayClient.createMeetingPoll(pollData);
+            const created = await meetingsApi.createMeetingPoll(pollData);
             setCreatedPoll(created);
 
             if (sendEmails) {
@@ -540,7 +540,7 @@ export function MeetingPollNew() {
     useEffect(() => {
         if (step === 2 && session?.user?.id) {
             setCalendarLoading(true);
-            gatewayClient.getCalendarEvents(
+            officeApi.getCalendarEvents(
                 ['google', 'microsoft'], // Try both providers
                 50, // Get more events for better conflict detection
                 new Date().toISOString().split('T')[0],

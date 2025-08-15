@@ -114,3 +114,54 @@ export interface EmailDraftResponse {
     };
     request_id: string;
 }
+
+// Meeting Poll Types
+export interface MeetingPoll {
+    id: string;
+    user_id: string;
+    title: string;
+    description?: string;
+    duration_minutes: number;
+    location?: string;
+    meeting_type: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
+    reveal_participants?: boolean;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    poll_token: string;
+    time_slots: TimeSlot[];
+    participants: PollParticipant[];
+    responses?: PollResponse[];
+    scheduled_slot_id?: string;
+    calendar_event_id?: string;
+}
+
+export interface PollParticipant {
+    id: string;
+    poll_id: string;
+    email: string;
+    name?: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface TimeSlot {
+    id: string;
+    poll_id: string;
+    start_time: string;
+    end_time: string;
+    created_at: string;
+}
+
+export interface PollResponse {
+    id: string;
+    participant_id: string;
+    time_slot_id: string;
+    response: string;
+    created_at: string;
+    updated_at: string;
+}
