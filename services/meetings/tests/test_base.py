@@ -31,6 +31,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Enable test mode for rate limiting
         from services.meetings.services.security import set_test_mode
+
         set_test_mode(True)
 
         # Import meetings settings module
