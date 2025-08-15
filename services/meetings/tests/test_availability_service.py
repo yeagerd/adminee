@@ -7,16 +7,17 @@ Tests the availability calculation logic including:
 - Business hours and buffer handling
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from services.meetings.tests.test_base import BaseMeetingsTest
+import pytest
+
 from services.meetings.services.booking_availability import (
-    compute_available_slots,
     _apply_booking_settings,
-    _is_within_business_hours
+    _is_within_business_hours,
+    compute_available_slots,
 )
+from services.meetings.tests.test_base import BaseMeetingsTest
 
 
 class TestAvailabilityService(BaseMeetingsTest):
@@ -25,13 +26,13 @@ class TestAvailabilityService(BaseMeetingsTest):
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
-        
+
         # Test data
         self.test_user_id = "test-user-123"
         self.start_date = datetime.now(timezone.utc)
         self.end_date = self.start_date + timedelta(days=30)
         self.duration_minutes = 30
-        
+
         # Mock office service response
         self.mock_office_response = {
             "data": {
@@ -39,25 +40,25 @@ class TestAvailabilityService(BaseMeetingsTest):
                     {
                         "start": "2025-08-15T09:00:00Z",
                         "end": "2025-08-15T09:30:00Z",
-                        "duration_minutes": 30
+                        "duration_minutes": 30,
                     },
                     {
                         "start": "2025-08-15T14:00:00Z",
                         "end": "2025-08-15T14:30:00Z",
-                        "duration_minutes": 30
+                        "duration_minutes": 30,
                     },
                     {
                         "start": "2025-08-15T17:00:00Z",
                         "end": "2025-08-15T17:30:00Z",
-                        "duration_minutes": 30
-                    }
+                        "duration_minutes": 30,
+                    },
                 ],
                 "total_slots": 3,
                 "providers_used": ["microsoft"],
-                "request_metadata": {}
+                "request_metadata": {},
             }
         }
-        
+
         # Sample settings for testing
         self.sample_settings = {
             "buffer_before": 15,
@@ -67,52 +68,51 @@ class TestAvailabilityService(BaseMeetingsTest):
                 "tuesday": {"enabled": True, "start": "09:00", "end": "17:00"},
                 "wednesday": {"enabled": True, "start": "09:00", "end": "17:00"},
                 "thursday": {"enabled": True, "start": "09:00", "end": "17:00"},
-                "friday": {"enabled": True, "start": "09:00", "end": "17:00"}
+                "friday": {"enabled": True, "start": "09:00", "end": "17:00"},
             },
             "max_per_day": 10,
             "max_per_week": 50,
             "advance_days": 1,
             "max_advance_days": 90,
-            "last_minute_cutoff": 2
+            "last_minute_cutoff": 2,
         }
-        
+
         # Sample time slots for testing
-        base_time = datetime.now(timezone.utc).replace(hour=9, minute=0, second=0, microsecond=0)
+        base_time = datetime.now(timezone.utc).replace(
+            hour=9, minute=0, second=0, microsecond=0
+        )
         self.sample_time_slots = [
-            {
-                "start": base_time,
-                "end": base_time + timedelta(minutes=30)
-            },
+            {"start": base_time, "end": base_time + timedelta(minutes=30)},
             {
                 "start": base_time + timedelta(hours=1),
-                "end": base_time + timedelta(hours=1, minutes=30)
+                "end": base_time + timedelta(hours=1, minutes=30),
             },
             {
                 "start": base_time + timedelta(hours=2),
-                "end": base_time + timedelta(hours=2, minutes=30)
-            }
+                "end": base_time + timedelta(hours=2, minutes=30),
+            },
         ]
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_compute_available_slots_success(self, mock_get_availability):
         """Test successful computation of available slots."""
         # Mock the office service response
         mock_get_availability.return_value = self.mock_office_response
-        
+
         # Call the service
         result = await compute_available_slots(
             user_id=self.test_user_id,
             start=self.start_date,
             end=self.end_date,
-            duration_minutes=self.duration_minutes
+            duration_minutes=self.duration_minutes,
         )
-        
+
         # Verify result
         assert "slots" in result
         assert len(result["slots"]) == 3
         assert result["duration"] == self.duration_minutes
         assert result["timezone"] == "UTC"
-        
+
         # Verify the mock was called correctly
         mock_get_availability.assert_called_once()
         call_args = mock_get_availability.call_args
@@ -121,7 +121,7 @@ class TestAvailabilityService(BaseMeetingsTest):
         assert call_args[0][2] == self.end_date.isoformat()  # end
         assert call_args[0][3] == self.duration_minutes  # duration
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_compute_available_slots_no_slots(self, mock_get_availability):
         """Test computation when no slots are available."""
         # Mock empty response
@@ -130,32 +130,32 @@ class TestAvailabilityService(BaseMeetingsTest):
                 "available_slots": [],
                 "total_slots": 0,
                 "providers_used": [],
-                "request_metadata": {}
+                "request_metadata": {},
             }
         }
-        
+
         # Call the service
         result = await compute_available_slots(
             user_id=self.test_user_id,
             start=self.start_date,
             end=self.end_date,
-            duration_minutes=self.duration_minutes
+            duration_minutes=self.duration_minutes,
         )
-        
+
         # Verify result
         assert "slots" in result
         assert len(result["slots"]) == 0
         assert result["duration"] == self.duration_minutes
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_compute_available_slots_with_settings(self, mock_get_availability):
         """Test computation with booking settings applied."""
         # Mock the office service response
         mock_get_availability.return_value = self.mock_office_response
-        
+
         # Use the sample settings from setup_method
         settings = self.sample_settings
-        
+
         # Call the service
         result = await compute_available_slots(
             user_id=self.test_user_id,
@@ -164,27 +164,29 @@ class TestAvailabilityService(BaseMeetingsTest):
             duration_minutes=self.duration_minutes,
             buffer_before_minutes=15,
             buffer_after_minutes=15,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Verify result
         assert "slots" in result
         assert result["duration"] == self.duration_minutes
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
-    async def test_compute_available_slots_office_service_error(self, mock_get_availability):
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
+    async def test_compute_available_slots_office_service_error(
+        self, mock_get_availability
+    ):
         """Test handling of office service errors."""
         # Mock office service error
         mock_get_availability.side_effect = Exception("Office service unavailable")
-        
+
         # Call the service
         result = await compute_available_slots(
             user_id=self.test_user_id,
             start=self.start_date,
             end=self.end_date,
-            duration_minutes=self.duration_minutes
+            duration_minutes=self.duration_minutes,
         )
-        
+
         # Should return empty slots on error
         assert "slots" in result
         assert len(result["slots"]) == 0
@@ -193,17 +195,17 @@ class TestAvailabilityService(BaseMeetingsTest):
         """Test applying booking settings when no settings are provided."""
         slots = [
             {"start": "2025-08-15T09:00:00Z", "end": "2025-08-15T09:30:00Z"},
-            {"start": "2025-08-15T14:00:00Z", "end": "2025-08-15T14:30:00Z"}
+            {"start": "2025-08-15T14:00:00Z", "end": "2025-08-15T14:30:00Z"},
         ]
-        
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings={}
+            settings={},
         )
-        
+
         # Should return all slots when no settings
         assert len(result) == 2
 
@@ -212,23 +214,28 @@ class TestAvailabilityService(BaseMeetingsTest):
         # Use future dates to avoid advance booking window filtering
         future_date = datetime.now(timezone.utc) + timedelta(days=7)
         slots = [
-            {"start": future_date.replace(hour=9, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0)},
-            {"start": future_date.replace(hour=14, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0)}
+            {
+                "start": future_date.replace(hour=9, minute=0, second=0, microsecond=0),
+                "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0),
+            },
+            {
+                "start": future_date.replace(
+                    hour=14, minute=0, second=0, microsecond=0
+                ),
+                "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0),
+            },
         ]
-        
-        settings = {
-            "buffer_before": 5,
-            "buffer_after": 5
-        }
-    
+
+        settings = {"buffer_before": 5, "buffer_after": 5}
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=5,
             buffer_after_minutes=5,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should return adjusted slots
         assert len(result) == 2
         for slot in result:
@@ -242,32 +249,34 @@ class TestAvailabilityService(BaseMeetingsTest):
         # Adjust to Monday
         while monday_date.weekday() != 0:  # Monday is 0
             monday_date += timedelta(days=1)
-        
+
         slots = [
             {
                 "start": monday_date.replace(hour=9, minute=0, second=0, microsecond=0),
-                "end": monday_date.replace(hour=9, minute=30, second=0, microsecond=0)
+                "end": monday_date.replace(hour=9, minute=30, second=0, microsecond=0),
             },
             {
-                "start": monday_date.replace(hour=18, minute=0, second=0, microsecond=0),
-                "end": monday_date.replace(hour=18, minute=30, second=0, microsecond=0)
-            }
+                "start": monday_date.replace(
+                    hour=18, minute=0, second=0, microsecond=0
+                ),
+                "end": monday_date.replace(hour=18, minute=30, second=0, microsecond=0),
+            },
         ]
-        
+
         settings = {
             "business_hours": {
                 "monday": {"enabled": True, "start": "09:00", "end": "17:00"}
             }
         }
-        
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should filter out the 18:00 slot (outside business hours)
         assert len(result) == 1
         # The result contains ISO strings, so we need to parse them
@@ -281,31 +290,28 @@ class TestAvailabilityService(BaseMeetingsTest):
         slots = [
             {
                 "start": now + timedelta(hours=1),  # Too soon
-                "end": now + timedelta(hours=1, minutes=30)
+                "end": now + timedelta(hours=1, minutes=30),
             },
             {
                 "start": now + timedelta(days=2),  # Within window
-                "end": now + timedelta(days=2, minutes=30)
+                "end": now + timedelta(days=2, minutes=30),
             },
             {
                 "start": now + timedelta(days=100),  # Too far
-                "end": now + timedelta(days=100, minutes=30)
-            }
+                "end": now + timedelta(days=100, minutes=30),
+            },
         ]
-        
-        settings = {
-            "advance_days": 1,
-            "max_advance_days": 90
-        }
-        
+
+        settings = {"advance_days": 1, "max_advance_days": 90}
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should only return the slot within the advance booking window
         assert len(result) == 1
         start_time = datetime.fromisoformat(result[0]["start"])
@@ -318,26 +324,24 @@ class TestAvailabilityService(BaseMeetingsTest):
         slots = [
             {
                 "start": now + timedelta(hours=1),  # Too close
-                "end": now + timedelta(hours=1, minutes=30)
+                "end": now + timedelta(hours=1, minutes=30),
             },
             {
                 "start": now + timedelta(hours=3),  # Acceptable
-                "end": now + timedelta(hours=3, minutes=30)
-            }
+                "end": now + timedelta(hours=3, minutes=30),
+            },
         ]
-        
-        settings = {
-            "last_minute_cutoff": 2  # 2 hours
-        }
-        
+
+        settings = {"last_minute_cutoff": 2}  # 2 hours
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should only return the slot that's not too close
         assert len(result) == 1
         start_time = datetime.fromisoformat(result[0]["start"])
@@ -346,26 +350,28 @@ class TestAvailabilityService(BaseMeetingsTest):
     def test_apply_booking_settings_daily_limits(self):
         """Test daily booking limits."""
         # Create multiple slots for the same day
-        base_date = datetime.now(timezone.utc).replace(hour=9, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(timezone.utc).replace(
+            hour=9, minute=0, second=0, microsecond=0
+        )
         slots = []
         for i in range(12):  # More than the daily limit
-            slots.append({
-                "start": base_date + timedelta(hours=i),
-                "end": base_date + timedelta(hours=i, minutes=30)
-            })
-        
-        settings = {
-            "max_per_day": 10
-        }
-        
+            slots.append(
+                {
+                    "start": base_date + timedelta(hours=i),
+                    "end": base_date + timedelta(hours=i, minutes=30),
+                }
+            )
+
+        settings = {"max_per_day": 10}
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should respect daily limit
         assert len(result) == 10
 
@@ -374,31 +380,28 @@ class TestAvailabilityService(BaseMeetingsTest):
         # Create multiple slots for today (same day) starting from current hour + 1
         now = datetime.now(timezone.utc)
         base_date = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-        
+
         slots = []
         for i in range(60):  # More than the weekly limit
             # Create slots within the same day by using minutes instead of hours
             slot_start = base_date + timedelta(minutes=i * 30)  # 30-minute intervals
             slot_end = slot_start + timedelta(minutes=30)
-            slots.append({
-                "start": slot_start,
-                "end": slot_end
-            })
-        
+            slots.append({"start": slot_start, "end": slot_end})
+
         settings = {
             "max_per_week": 50,
             "max_per_day": 60,  # Allow more than 60 slots per day
-            "advance_days": 0  # Allow same-day bookings
+            "advance_days": 0,  # Allow same-day bookings
         }
-        
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should respect weekly limit - only 50 slots within the same week
         assert len(result) == 50
 
@@ -408,40 +411,40 @@ class TestAvailabilityService(BaseMeetingsTest):
         monday = datetime.now(timezone.utc)
         while monday.weekday() != 0:  # Monday is 0
             monday += timedelta(days=1)
-        
+
         start_time = monday.replace(hour=10, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(minutes=30)
-        
-        business_hours = {
-            "monday": {"enabled": True, "start": "09:00", "end": "17:00"}
-        }
-        
+
+        business_hours = {"monday": {"enabled": True, "start": "09:00", "end": "17:00"}}
+
         result = _is_within_business_hours(start_time, end_time, business_hours)
         assert result is True
 
     def test_is_within_business_hours_disabled_day(self):
         """Test business hours check for disabled day."""
         # Monday 10:00 AM
-        start_time = datetime.now(timezone.utc).replace(hour=10, minute=0, second=0, microsecond=0)
+        start_time = datetime.now(timezone.utc).replace(
+            hour=10, minute=0, second=0, microsecond=0
+        )
         end_time = start_time + timedelta(minutes=30)
-        
+
         business_hours = {
             "monday": {"enabled": False, "start": "09:00", "end": "17:00"}
         }
-        
+
         result = _is_within_business_hours(start_time, end_time, business_hours)
         assert result is False
 
     def test_is_within_business_hours_outside_hours(self):
         """Test business hours check for time outside business hours."""
         # Monday 18:00 (6 PM) - outside 9 AM - 5 PM
-        start_time = datetime.now(timezone.utc).replace(hour=18, minute=0, second=0, microsecond=0)
+        start_time = datetime.now(timezone.utc).replace(
+            hour=18, minute=0, second=0, microsecond=0
+        )
         end_time = start_time + timedelta(minutes=30)
-        
-        business_hours = {
-            "monday": {"enabled": True, "start": "09:00", "end": "17:00"}
-        }
-        
+
+        business_hours = {"monday": {"enabled": True, "start": "09:00", "end": "17:00"}}
+
         result = _is_within_business_hours(start_time, end_time, business_hours)
         assert result is False
 
@@ -449,7 +452,7 @@ class TestAvailabilityService(BaseMeetingsTest):
         """Test business hours check when no configuration is provided."""
         start_time = datetime.now(timezone.utc)
         end_time = start_time + timedelta(minutes=30)
-        
+
         result = _is_within_business_hours(start_time, end_time, {})
         assert result is True  # Should allow all times when no config
 
@@ -459,15 +462,15 @@ class TestAvailabilityService(BaseMeetingsTest):
         monday = datetime.now(timezone.utc)
         while monday.weekday() != 0:  # Monday is 0
             monday += timedelta(days=1)
-        
+
         start_time = monday.replace(hour=23, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=2)  # Goes to 01:00 next day
-        
+
         business_hours = {
             "monday": {"enabled": True, "start": "09:00", "end": "17:00"},
-            "tuesday": {"enabled": True, "start": "09:00", "end": "17:00"}
+            "tuesday": {"enabled": True, "start": "09:00", "end": "17:00"},
         }
-        
+
         result = _is_within_business_hours(start_time, end_time, business_hours)
         # Should be False since it's outside business hours
         assert result is False
@@ -477,28 +480,24 @@ class TestAvailabilityService(BaseMeetingsTest):
         # Create timezone-aware slots (like what the office service returns)
         utc_tz = timezone.utc
         now = datetime.now(utc_tz)
-        
+
         slots = [
             {
                 "start": now + timedelta(hours=2),
-                "end": now + timedelta(hours=2, minutes=30)
+                "end": now + timedelta(hours=2, minutes=30),
             }
         ]
-        
-        settings = {
-            "advance_days": 0,
-            "max_advance_days": 90,
-            "last_minute_cutoff": 0
-        }
-        
+
+        settings = {"advance_days": 0, "max_advance_days": 90, "last_minute_cutoff": 0}
+
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
             buffer_before_minutes=0,
             buffer_after_minutes=0,
-            settings=settings
+            settings=settings,
         )
-        
+
         # Should handle timezone-aware datetimes correctly
         assert len(result) == 1
         start_time = datetime.fromisoformat(result[0]["start"])

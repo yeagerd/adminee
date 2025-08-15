@@ -99,12 +99,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         models.get_session = test_get_session
 
         # Import all models to ensure they're registered with metadata
-        from services.meetings.models.base import Base
-        
         # Import all model modules to register them with Base.metadata
         import services.meetings.models.booking_entities
         import services.meetings.models.meeting
-        
+        from services.meetings.models.base import Base
+
         # Debug: Check what tables are in the metadata
         print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
 
@@ -170,10 +169,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             public_router,
             slots_router,
         )
-        
+
         # Import booking endpoints if they exist
         try:
             from services.meetings.api import bookings_router
+
             has_booking_router = True
         except ImportError:
             has_booking_router = False
@@ -199,7 +199,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             prefix="/api/v1/meetings/process-email-response",
             tags=["email"],
         )
-        
+
         # Include booking router if it exists
         if has_booking_router:
             app.include_router(

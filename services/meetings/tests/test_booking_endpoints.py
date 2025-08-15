@@ -7,13 +7,14 @@ Tests the public booking functionality including:
 - Booking creation
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
-from services.meetings.tests.test_base import BaseMeetingsTest
 from services.meetings.models.booking_entities import BookingLink, OneTimeLink
+from services.meetings.tests.test_base import BaseMeetingsTest
 
 
 class TestBookingEndpoints(BaseMeetingsTest):
@@ -22,12 +23,12 @@ class TestBookingEndpoints(BaseMeetingsTest):
     def setup_method(self, method):
         """Set up test environment with booking-specific data."""
         super().setup_method(method)
-        
+
         # Create test data
         self.test_user_id = "test-user-123"
         self.test_booking_link_id = "booking-link-456"
         self.test_token = "test-token-789"
-        
+
         # Mock the office service responses
         self.mock_office_availability_response = {
             "data": {
@@ -35,20 +36,20 @@ class TestBookingEndpoints(BaseMeetingsTest):
                     {
                         "start": "2025-08-15T09:00:00Z",
                         "end": "2025-08-15T09:30:00Z",
-                        "duration_minutes": 30
+                        "duration_minutes": 30,
                     },
                     {
                         "start": "2025-08-15T14:00:00Z",
                         "end": "2025-08-15T14:30:00Z",
-                        "duration_minutes": 30
-                    }
+                        "duration_minutes": 30,
+                    },
                 ],
                 "total_slots": 2,
                 "providers_used": ["microsoft"],
-                "request_metadata": {}
+                "request_metadata": {},
             }
         }
-        
+
         # Sample data for testing
         self.sample_booking_link_data = {
             "id": "test-booking-link-123",
@@ -62,22 +63,22 @@ class TestBookingEndpoints(BaseMeetingsTest):
                 "buffer_after": 15,
                 "business_hours": {
                     "monday": {"enabled": True, "start": "09:00", "end": "17:00"},
-                    "tuesday": {"enabled": True, "start": "09:00", "end": "17:00"}
+                    "tuesday": {"enabled": True, "start": "09:00", "end": "17:00"},
                 },
                 "max_per_day": 10,
                 "max_per_week": 50,
                 "advance_days": 1,
                 "max_advance_days": 90,
-                "last_minute_cutoff": 2
-            }
+                "last_minute_cutoff": 2,
+            },
         }
-        
+
         self.sample_one_time_link_data = {
             "id": "test-one-time-123",
             "token": "test-token-456",
             "booking_link_id": "test-booking-link-123",
             "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
-            "status": "active"
+            "status": "active",
         }
 
     def create_test_booking_link(self, session):
@@ -92,8 +93,8 @@ class TestBookingEndpoints(BaseMeetingsTest):
                 "buffer_after": 0,
                 "business_hours": {},
                 "max_per_day": 10,
-                "max_per_week": 50
-            }
+                "max_per_week": 50,
+            },
         )
         session.add(booking_link)
         session.commit()
@@ -108,28 +109,28 @@ class TestBookingEndpoints(BaseMeetingsTest):
             recipient_email="test@example.com",
             recipient_name="Test User",
             expires_at=datetime.now() + timedelta(days=7),
-            status="active"
+            status="active",
         )
         session.add(one_time_link)
         session.commit()
         return one_time_link
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_get_public_link_success(self, mock_get_availability):
         """Test successful retrieval of a public booking link."""
         from services.meetings.models import get_session
-        
+
         # Mock the availability service
         mock_get_availability.return_value = self.mock_office_availability_response
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Make request
             response = self.client.get(f"/api/v1/bookings/public/{self.test_token}")
-            
+
             # Verify response
             assert response.status_code == 200
             data = response.json()
@@ -141,24 +142,24 @@ class TestBookingEndpoints(BaseMeetingsTest):
         response = self.client.get("/api/v1/bookings/public/nonexistent-token")
         assert response.status_code == 404
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_get_public_availability_success(self, mock_get_availability):
         """Test successful retrieval of availability for a public link."""
         from services.meetings.models import get_session
-        
+
         # Mock the office service response
         mock_get_availability.return_value = self.mock_office_availability_response
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Make request
             response = self.client.get(
                 f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
             )
-            
+
             # Verify response
             assert response.status_code == 200
             data = response.json()
@@ -166,7 +167,7 @@ class TestBookingEndpoints(BaseMeetingsTest):
             assert len(data["data"]["slots"]) == 2
             assert data["data"]["duration"] == 30
             assert data["data"]["timezone"] == "UTC"
-            
+
             # Verify the mock was called correctly
             mock_get_availability.assert_called_once()
             call_args = mock_get_availability.call_args
@@ -175,54 +176,56 @@ class TestBookingEndpoints(BaseMeetingsTest):
             assert "end" in call_args[1]  # kwargs
             assert call_args[1]["duration"] == 30
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
-    async def test_get_public_availability_with_different_durations(self, mock_get_availability):
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
+    async def test_get_public_availability_with_different_durations(
+        self, mock_get_availability
+    ):
         """Test availability retrieval with different meeting durations."""
         from services.meetings.models import get_session
-        
+
         # Mock the office service response
         mock_get_availability.return_value = self.mock_office_availability_response
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Test different durations
             for duration in [15, 30, 60, 120]:
                 response = self.client.get(
                     f"/api/v1/bookings/public/{self.test_token}/availability?duration={duration}"
                 )
-                
+
                 assert response.status_code == 200
                 data = response.json()
                 assert data["data"]["duration"] == duration
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_get_public_availability_no_slots(self, mock_get_availability):
         """Test availability retrieval when no slots are available."""
         from services.meetings.models import get_session
-        
+
         # Mock empty response from office service
         mock_get_availability.return_value = {
             "data": {
                 "available_slots": [],
                 "total_slots": 0,
                 "providers_used": [],
-                "request_metadata": {}
+                "request_metadata": {},
             }
         }
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Make request
             response = self.client.get(
                 f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
             )
-            
+
             # Verify response
             assert response.status_code == 200
             data = response.json()
@@ -230,13 +233,15 @@ class TestBookingEndpoints(BaseMeetingsTest):
 
     def test_get_public_availability_invalid_token(self):
         """Test availability retrieval with invalid token format."""
-        response = self.client.get("/api/v1/bookings/public/invalid-token/availability?duration=30")
+        response = self.client.get(
+            "/api/v1/bookings/public/invalid-token/availability?duration=30"
+        )
         assert response.status_code == 400
 
     def test_get_public_availability_expired_link(self):
         """Test availability retrieval with expired one-time link."""
         from services.meetings.models import get_session
-        
+
         with get_session() as session:
             # Create expired one-time link
             booking_link = self.create_test_booking_link(session)
@@ -245,19 +250,21 @@ class TestBookingEndpoints(BaseMeetingsTest):
                 token="expired-token",
                 booking_link_id=booking_link.id,
                 expires_at=datetime.now() - timedelta(days=1),  # Expired
-                status="active"
+                status="active",
             )
             session.add(expired_link)
             session.commit()
-            
+
             # Make request
-            response = self.client.get("/api/v1/bookings/public/expired-token/availability?duration=30")
+            response = self.client.get(
+                "/api/v1/bookings/public/expired-token/availability?duration=30"
+            )
             assert response.status_code == 404
 
     def test_get_public_availability_used_link(self):
         """Test availability retrieval with already used one-time link."""
         from services.meetings.models import get_session
-        
+
         with get_session() as session:
             # Create used one-time link
             booking_link = self.create_test_booking_link(session)
@@ -266,23 +273,27 @@ class TestBookingEndpoints(BaseMeetingsTest):
                 token="used-token",
                 booking_link_id=booking_link.id,
                 expires_at=datetime.now() + timedelta(days=7),
-                status="used"  # Already used
+                status="used",  # Already used
             )
             session.add(used_link)
             session.commit()
-            
+
             # Make request
-            response = self.client.get("/api/v1/bookings/public/used-token/availability?duration=30")
+            response = self.client.get(
+                "/api/v1/bookings/public/used-token/availability?duration=30"
+            )
             assert response.status_code == 404
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
-    async def test_get_public_availability_with_booking_settings(self, mock_get_availability):
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
+    async def test_get_public_availability_with_booking_settings(
+        self, mock_get_availability
+    ):
         """Test availability retrieval with custom booking settings."""
         from services.meetings.models import get_session
-        
+
         # Mock the office service response
         mock_get_availability.return_value = self.mock_office_availability_response
-        
+
         with get_session() as session:
             # Create booking link with custom settings
             booking_link = BookingLink(
@@ -292,49 +303,51 @@ class TestBookingEndpoints(BaseMeetingsTest):
                 title="Custom Settings Booking Link",
                 description="Test description",
                 is_active=True,
-                settings=self.sample_booking_link_data["settings"]
+                settings=self.sample_booking_link_data["settings"],
             )
             session.add(booking_link)
-            
+
             # Create one-time link
             one_time_link = OneTimeLink(
                 id="custom-123",
                 token="custom-token",
                 booking_link_id=booking_link.id,
                 expires_at=datetime.now() + timedelta(days=7),
-                status="active"
+                status="active",
             )
             session.add(one_time_link)
             session.commit()
-            
+
             # Make request
             response = self.client.get(
                 "/api/v1/bookings/public/custom-token/availability?duration=30"
             )
-            
+
             # Verify response
             assert response.status_code == 200
             data = response.json()
             assert "slots" in data["data"]
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
-    async def test_get_public_availability_office_service_error(self, mock_get_availability):
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
+    async def test_get_public_availability_office_service_error(
+        self, mock_get_availability
+    ):
         """Test handling of office service errors."""
         from services.meetings.models import get_session
-        
+
         # Mock office service error
         mock_get_availability.side_effect = Exception("Office service unavailable")
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Make request
             response = self.client.get(
                 f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
             )
-            
+
             # Should still return 200 but with empty slots
             assert response.status_code == 200
             data = response.json()
@@ -343,12 +356,12 @@ class TestBookingEndpoints(BaseMeetingsTest):
     def test_rate_limiting(self):
         """Test rate limiting on public endpoints."""
         from services.meetings.models import get_session
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Make many requests to trigger rate limiting
             for i in range(105):  # Exceed the 100 request limit
                 response = self.client.get(
@@ -359,11 +372,11 @@ class TestBookingEndpoints(BaseMeetingsTest):
                 else:
                     assert response.status_code in [200, 404]  # Normal responses
 
-    @patch('services.meetings.services.calendar_integration.get_user_availability')
+    @patch("services.meetings.services.calendar_integration.get_user_availability")
     async def test_availability_timezone_handling(self, mock_get_availability):
         """Test proper timezone handling in availability responses."""
         from services.meetings.models import get_session
-        
+
         # Mock response with timezone-aware datetimes
         mock_get_availability.return_value = {
             "data": {
@@ -371,25 +384,25 @@ class TestBookingEndpoints(BaseMeetingsTest):
                     {
                         "start": "2025-08-15T09:00:00+00:00",
                         "end": "2025-08-15T09:30:00+00:00",
-                        "duration_minutes": 30
+                        "duration_minutes": 30,
                     }
                 ],
                 "total_slots": 1,
                 "providers_used": ["microsoft"],
-                "request_metadata": {}
+                "request_metadata": {},
             }
         }
-        
+
         with get_session() as session:
             # Create test data
             booking_link = self.create_test_booking_link(session)
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
-            
+
             # Make request
             response = self.client.get(
                 f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
             )
-            
+
             # Verify response
             assert response.status_code == 200
             data = response.json()

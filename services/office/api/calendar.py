@@ -1697,7 +1697,7 @@ def find_available_slots(
         # Ensure event datetimes are timezone-aware and in UTC
         event_start = ensure_timezone_aware(event.start_time)
         event_end = ensure_timezone_aware(event.end_time)
-        
+
         # Skip events outside our range
         if event_end <= start_dt or event_start >= end_dt:
             continue
