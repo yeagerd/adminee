@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import gatewayClient from '../../../lib/gateway-client';
 
@@ -384,7 +384,9 @@ describe('Package Pagination E2E', () => {
             fireEvent.click(screen.getByText('Next'));
 
             // Fast-forward timers
-            jest.runAllTimers();
+            act(() => {
+                jest.runAllTimers();
+            });
 
             // Verify only one request was made
             await waitFor(() => {

@@ -44,21 +44,25 @@ describe('UserPreferencesProvider', () => {
         (getUserTimezone as jest.Mock).mockReturnValue('Browser/Zone');
         (gatewayClient.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'manual', manual_timezone: 'Europe/Paris' });
         (gatewayClient.updateUserPreferences as jest.Mock).mockResolvedValue({});
+        const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
         const { result } = renderHook(() => useUserPreferences(), { wrapper });
         await act(async () => {
             await result.current.setUserPreferences({ timezone_mode: 'manual', manual_timezone: 'Europe/Paris' });
         });
         expect(result.current.effectiveTimezone).toBe('Europe/Paris');
+        consoleLogSpy.mockRestore();
     });
 
     it('falls back to browser timezone if manual is empty', async () => {
         (getUserTimezone as jest.Mock).mockReturnValue('Browser/Zone');
         (gatewayClient.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'manual', manual_timezone: '' });
         (gatewayClient.updateUserPreferences as jest.Mock).mockResolvedValue({});
+        const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
         const { result } = renderHook(() => useUserPreferences(), { wrapper });
         await act(async () => {
             await result.current.setUserPreferences({ timezone_mode: 'manual', manual_timezone: '' });
         });
         expect(result.current.effectiveTimezone).toBe('Browser/Zone');
+        consoleLogSpy.mockRestore();
     });
 }); 
