@@ -273,5 +273,32 @@ export class OfficeClient extends GatewayClient {
         });
     }
 
+    // Additional methods for office integration
+    async sendEmail(request: {
+        to: string[];
+        cc?: string[];
+        bcc?: string[];
+        subject: string;
+        body: string;
+        reply_to_message_id?: string;
+        provider?: 'google' | 'microsoft';
+    }): Promise<{ messageId: string }> {
+        return this.request<{ messageId: string }>('/api/v1/email/send', {
+            method: 'POST',
+            body: request,
+        });
+    }
+
+    async saveDocument(request: {
+        title: string;
+        content: string;
+        type: 'document' | 'spreadsheet' | 'presentation';
+        provider?: 'google' | 'microsoft';
+    }): Promise<{ documentId: string }> {
+        return this.request<{ documentId: string }>('/api/v1/documents', {
+            method: 'POST',
+            body: request,
+        });
+    }
 
 }
