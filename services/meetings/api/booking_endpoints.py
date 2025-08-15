@@ -105,13 +105,16 @@ async def get_public_link(token: str, request: Request) -> PublicLinkDataRespons
         # Check if it's a one-time link
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if one_time_link is not None:
-            # Check if expired or used
-            if (
-                one_time_link.expires_at is not None  # type: ignore
-                and one_time_link.expires_at < datetime.now(timezone.utc)  # type: ignore
-            ):
-                raise NotFoundError("Link", "expired")
-            if one_time_link.status != "active":  # type: ignore
+            # Ensure expires_at is timezone-aware for comparison
+            expires_at = one_time_link.expires_at
+            if expires_at is not None:
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                
+                if expires_at < datetime.now(timezone.utc):
+                    raise NotFoundError("Link", "expired")
+            
+            if one_time_link.status != "active":
                 raise NotFoundError("Link", "already used")
 
             # Get the parent booking link
@@ -223,11 +226,15 @@ async def get_public_availability(
         # Check if it's a one-time link
         one_time_link = session.query(OneTimeLink).filter_by(token=token).first()
         if one_time_link is not None:
-            if (
-                one_time_link.expires_at is not None
-                and one_time_link.expires_at < datetime.now(timezone.utc)
-            ):
-                raise NotFoundError("Link", "expired")
+            # Ensure expires_at is timezone-aware for comparison
+            expires_at = one_time_link.expires_at
+            if expires_at is not None:
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                
+                if expires_at < datetime.now(timezone.utc):
+                    raise NotFoundError("Link", "expired")
+            
             if one_time_link.status != "active":
                 raise NotFoundError("Link", "already used")
 

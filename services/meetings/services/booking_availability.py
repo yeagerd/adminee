@@ -147,7 +147,13 @@ def _apply_booking_settings(
             logger.debug(f"Slot {i} is dict: start={slot_start}, end={slot_end}")
 
         # Check advance booking window
-        now = datetime.now(slot_start.tzinfo) if slot_start.tzinfo else datetime.now(timezone.utc)
+        # Ensure both datetimes are timezone-aware for comparison
+        if slot_start.tzinfo is None:
+            slot_start = slot_start.replace(tzinfo=timezone.utc)
+        if slot_end.tzinfo is None:
+            slot_end = slot_end.replace(tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
         days_until_slot = (slot_start - now).days
 
         if days_until_slot < advance_days:
