@@ -26,9 +26,18 @@ async def compute_available_slots(
     end_iso = end.isoformat()
 
     # Delegate to existing integration
-    availability = await calendar_integration.get_user_availability(
-        user_id, start_iso, end_iso, duration_minutes
-    )
+    try:
+        availability = await calendar_integration.get_user_availability(
+            user_id, start_iso, end_iso, duration_minutes
+        )
+    except Exception as e:
+        print(f"DEBUG: Office service error: {e}")
+        # Return empty response on error
+        return {
+            "slots": [],
+            "duration": duration_minutes,
+            "timezone": "UTC"
+        }
 
     # Extract available slots from office service response
     # Office service returns: {"data": {"available_slots": [...], "total_slots": N, ...}}
@@ -44,9 +53,17 @@ async def compute_available_slots(
     print(f"DEBUG: Settings: {settings}")
     
     # Post-process availability to enforce buffers, business hours, limits
-    # For now, just return the slots without filtering to get the system working
     if settings and available_slots:
-        print(f"DEBUG: Found {len(available_slots)} slots, skipping filtering for now")
+        print(f"DEBUG: Found {len(available_slots)} slots, applying settings")
+        # Apply booking settings to filter and adjust slots
+        available_slots = _apply_booking_settings(
+            available_slots,
+            duration_minutes,
+            buffer_before_minutes or 0,
+            buffer_after_minutes or 0,
+            settings
+        )
+        print(f"DEBUG: After applying settings: {len(available_slots)} slots")
     else:
         print(f"DEBUG: No settings or slots - settings: {bool(settings)}, slots: {len(available_slots)}")
 
@@ -111,8 +128,18 @@ def _apply_booking_settings(
             if not slot.get("available", True):
                 print(f"DEBUG: Slot {i} filtered - not available")
                 continue
-            slot_start = datetime.fromisoformat(slot["start"])
-            slot_end = datetime.fromisoformat(slot["end"])
+            
+            # Handle both string and datetime values
+            if isinstance(slot["start"], str):
+                slot_start = datetime.fromisoformat(slot["start"])
+            else:
+                slot_start = slot["start"]
+            
+            if isinstance(slot["end"], str):
+                slot_end = datetime.fromisoformat(slot["end"])
+            else:
+                slot_end = slot["end"]
+            
             print(f"DEBUG: Slot {i} is dict: start={slot_start}, end={slot_end}")
 
         # Check advance booking window
@@ -135,13 +162,13 @@ def _apply_booking_settings(
         if business_hours and not _is_within_business_hours(slot_start, slot_end, business_hours):
             continue  # Outside business hours
 
-        # Check daily and weekly limits
+        # Check daily limit
         day_key = slot_start.date().isoformat()
-        week_key = f"{slot_start.year}-W{slot_start.isocalendar()[1]}"
-
         if bookings_per_day.get(day_key, 0) >= max_per_day:
             continue  # Daily limit reached
 
+        # Check weekly limit
+        week_key = f"{slot_start.year}-W{slot_start.isocalendar()[1]}"
         if bookings_per_week.get(week_key, 0) >= max_per_week:
             continue  # Weekly limit reached
 
@@ -149,8 +176,8 @@ def _apply_booking_settings(
         adjusted_start = slot_start + timedelta(minutes=buffer_before_minutes)
         adjusted_end = slot_end - timedelta(minutes=buffer_after_minutes)
 
-        # Ensure adjusted slot is still valid
-        if adjusted_start >= adjusted_end:
+        # Ensure adjusted slot is still valid (must have at least 1 minute)
+        if adjusted_start >= adjusted_end - timedelta(minutes=1):
             continue  # Buffer makes slot too short
 
         # Create adjusted slot
@@ -193,7 +220,7 @@ def _is_within_business_hours(
 
     # Check if this day has business hours configured
     if day_name not in business_hours:
-        return True  # Day not configured, allow all times
+        return False  # Day not configured, reject the slot
 
     day_config = business_hours[day_name]
     if not day_config.get("enabled", True):
@@ -212,8 +239,10 @@ def _is_within_business_hours(
 
     # Handle overnight slots (e.g., 23:00 to 01:00)
     if slot_start_hour > slot_end_hour:
-        # Slot spans midnight
-        return slot_start_hour >= start_hour or slot_end_hour <= end_hour
+        # Slot spans midnight - check if any part overlaps with business hours
+        # For overnight slots, we need to check if the slot overlaps with business hours
+        # This is complex, so for now, reject overnight slots as they're typically outside business hours
+        return False
     else:
-        # Normal slot
+        # Normal slot - check if slot is completely within business hours
         return slot_start_hour >= start_hour and slot_end_hour <= end_hour

@@ -86,8 +86,6 @@ class TestBookingEndpoints(BaseMeetingsTest):
             id=self.test_booking_link_id,
             owner_user_id=self.test_user_id,
             slug="test-slug",
-            title="Test Booking Link",
-            description="Test description",
             is_active=True,
             settings={
                 "buffer_before": 0,
@@ -107,6 +105,8 @@ class TestBookingEndpoints(BaseMeetingsTest):
             id="one-time-123",
             token=self.test_token,
             booking_link_id=booking_link_id,
+            recipient_email="test@example.com",
+            recipient_name="Test User",
             expires_at=datetime.now() + timedelta(days=7),
             status="active"
         )

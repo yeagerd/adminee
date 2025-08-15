@@ -100,7 +100,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Import all models to ensure they're registered with metadata
         from services.meetings.models.base import Base
-
+        
+        # Import all model modules to register them with Base.metadata
+        import services.meetings.models.booking_entities
+        import services.meetings.models.meeting
+        
         # Debug: Check what tables are in the metadata
         print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
 

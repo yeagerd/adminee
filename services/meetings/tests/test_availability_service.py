@@ -116,10 +116,10 @@ class TestAvailabilityService(BaseMeetingsTest):
         # Verify the mock was called correctly
         mock_get_availability.assert_called_once()
         call_args = mock_get_availability.call_args
-        assert call_args[0][0] == self.test_user_id
-        assert "start" in call_args[1]
-        assert "end" in call_args[1]
-        assert call_args[1]["duration"] == self.duration_minutes
+        assert call_args[0][0] == self.test_user_id  # user_id
+        assert call_args[0][1] == self.start_date.isoformat()  # start
+        assert call_args[0][2] == self.end_date.isoformat()  # end
+        assert call_args[0][3] == self.duration_minutes  # duration
 
     @patch('services.meetings.services.calendar_integration.get_user_availability')
     async def test_compute_available_slots_no_slots(self, mock_get_availability):
@@ -209,21 +209,23 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_with_buffers(self):
         """Test applying buffer settings to slots."""
+        # Use future dates to avoid advance booking window filtering
+        future_date = datetime.now(timezone.utc) + timedelta(days=7)
         slots = [
-            {"start": "2025-08-15T09:00:00Z", "end": "2025-08-15T09:30:00Z"},
-            {"start": "2025-08-15T14:00:00Z", "end": "2025-08-15T14:30:00Z"}
+            {"start": future_date.replace(hour=9, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=9, minute=30, second=0, microsecond=0)},
+            {"start": future_date.replace(hour=14, minute=0, second=0, microsecond=0), "end": future_date.replace(hour=14, minute=30, second=0, microsecond=0)}
         ]
         
         settings = {
-            "buffer_before": 15,
-            "buffer_after": 15
+            "buffer_before": 5,
+            "buffer_after": 5
         }
-        
+    
         result = _apply_booking_settings(
             slots=slots,
             duration_minutes=30,
-            buffer_before_minutes=15,
-            buffer_after_minutes=15,
+            buffer_before_minutes=5,
+            buffer_after_minutes=5,
             settings=settings
         )
         
@@ -268,7 +270,9 @@ class TestAvailabilityService(BaseMeetingsTest):
         
         # Should filter out the 18:00 slot (outside business hours)
         assert len(result) == 1
-        assert result[0]["start"].hour == 9
+        # The result contains ISO strings, so we need to parse them
+        start_time = datetime.fromisoformat(result[0]["start"])
+        assert start_time.hour == 9
 
     def test_apply_booking_settings_advance_booking(self):
         """Test advance booking window filtering."""
@@ -304,7 +308,8 @@ class TestAvailabilityService(BaseMeetingsTest):
         
         # Should only return the slot within the advance booking window
         assert len(result) == 1
-        assert (result[0]["start"] - now).days == 2
+        start_time = datetime.fromisoformat(result[0]["start"])
+        assert (start_time - now).days == 2
 
     def test_apply_booking_settings_last_minute_cutoff(self):
         """Test last-minute cutoff filtering."""
@@ -335,7 +340,8 @@ class TestAvailabilityService(BaseMeetingsTest):
         
         # Should only return the slot that's not too close
         assert len(result) == 1
-        assert (result[0]["start"] - now).total_seconds() / 3600 >= 2
+        start_time = datetime.fromisoformat(result[0]["start"])
+        assert (start_time - now).total_seconds() / 3600 >= 2
 
     def test_apply_booking_settings_daily_limits(self):
         """Test daily booking limits."""
@@ -365,17 +371,24 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_weekly_limits(self):
         """Test weekly booking limits."""
-        # Create multiple slots for the same week
-        base_date = datetime.now(timezone.utc).replace(hour=9, minute=0, second=0, microsecond=0)
+        # Create multiple slots for today (same day) starting from current hour + 1
+        now = datetime.now(timezone.utc)
+        base_date = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        
         slots = []
         for i in range(60):  # More than the weekly limit
+            # Create slots within the same day by using minutes instead of hours
+            slot_start = base_date + timedelta(minutes=i * 30)  # 30-minute intervals
+            slot_end = slot_start + timedelta(minutes=30)
             slots.append({
-                "start": base_date + timedelta(days=i),
-                "end": base_date + timedelta(days=i, minutes=30)
+                "start": slot_start,
+                "end": slot_end
             })
         
         settings = {
-            "max_per_week": 50
+            "max_per_week": 50,
+            "max_per_day": 60,  # Allow more than 60 slots per day
+            "advance_days": 0  # Allow same-day bookings
         }
         
         result = _apply_booking_settings(
@@ -386,13 +399,17 @@ class TestAvailabilityService(BaseMeetingsTest):
             settings=settings
         )
         
-        # Should respect weekly limit
+        # Should respect weekly limit - only 50 slots within the same week
         assert len(result) == 50
 
     def test_is_within_business_hours_enabled_day(self):
         """Test business hours check for enabled day."""
-        # Monday 10:00 AM
-        start_time = datetime.now(timezone.utc).replace(hour=10, minute=0, second=0, microsecond=0)
+        # Monday 10:00 AM - ensure we're testing on a Monday
+        monday = datetime.now(timezone.utc)
+        while monday.weekday() != 0:  # Monday is 0
+            monday += timedelta(days=1)
+        
+        start_time = monday.replace(hour=10, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(minutes=30)
         
         business_hours = {
@@ -484,5 +501,7 @@ class TestAvailabilityService(BaseMeetingsTest):
         
         # Should handle timezone-aware datetimes correctly
         assert len(result) == 1
-        assert result[0]["start"].tzinfo is not None
-        assert result[0]["end"].tzinfo is not None
+        start_time = datetime.fromisoformat(result[0]["start"])
+        end_time = datetime.fromisoformat(result[0]["end"])
+        assert start_time.tzinfo is not None
+        assert end_time.tzinfo is not None

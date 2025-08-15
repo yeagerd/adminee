@@ -66,7 +66,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test successful availability request to office service."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response
         mock_response = MagicMock()
@@ -104,7 +104,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test availability request includes proper authentication headers."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response
         mock_response = MagicMock()
@@ -134,7 +134,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test handling of HTTP errors from office service."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock HTTP error response
         mock_response = MagicMock()
@@ -165,7 +165,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test handling of network errors."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock network error
         mock_client.get.side_effect = httpx.ConnectError("Connection failed")
@@ -193,7 +193,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test handling of timeout errors."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock timeout error
         mock_client.get.side_effect = httpx.TimeoutException("Request timed out")
@@ -221,7 +221,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test handling of unauthorized responses."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock unauthorized response
         mock_response = MagicMock()
@@ -252,7 +252,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test handling of bad request responses."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock bad request response
         mock_response = MagicMock()
@@ -283,7 +283,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test handling of malformed responses from office service."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response but with malformed JSON
         mock_response = MagicMock()
@@ -314,7 +314,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test availability requests with different meeting durations."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response
         mock_response = MagicMock()
@@ -341,7 +341,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test proper handling of date ranges."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response
         mock_response = MagicMock()
@@ -369,7 +369,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test proper timezone handling in requests."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response
         mock_response = MagicMock()
@@ -402,7 +402,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test that the HTTP client is properly cleaned up."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock successful response
         mock_response = MagicMock()
@@ -428,7 +428,7 @@ class TestCalendarIntegration(BaseMeetingsTest):
         """Test that the service handles transient failures gracefully."""
         # Mock the HTTP client
         mock_client = MagicMock()
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         
         # Mock first call fails, second call succeeds
         mock_response_fail = MagicMock()
