@@ -612,9 +612,6 @@ app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy
 app.use('/api/v1/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts/' }));
 app.use('/api/v1/contacts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts' }));
 
-// Fallback for other API routes (default to user service)
-app.use('/api/v1', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/users'], { '^/api/v1': '/v1' }));
-
 // Catch-all for undefined routes
 app.use('*', (req, res) => {
     res.status(404).json({ error: 'Route not found' });
