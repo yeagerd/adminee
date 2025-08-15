@@ -11,12 +11,7 @@ export interface EmailAddress {
     name?: string;
 }
 
-export interface IntegrationStatus {
-    active: string;
-    inactive: string;
-    error: string;
-    pending: string;
-}
+export type IntegrationStatus = 'ACTIVE' | 'INACTIVE' | 'ERROR' | 'PENDING' | 'EXPIRED';
 
 export interface Integration {
     id: number;

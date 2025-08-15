@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { INTEGRATION_STATUS } from '@/lib/constants';
-import { gatewayClient, Integration } from '@/lib/gateway-client';
+import { userApi, type Integration } from '@/api';
 import { Calendar, CheckCircle, Loader2, Mail, Shield } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 const OnboardingPage = () => {
     const router = useRouter();
     const { data: session, status } = useSession();
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [integrations, setIntegrations] = useState<Integration[]>([]); // Changed type to any[] as Integration type is removed
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
 
     useEffect(() => {
@@ -24,7 +24,7 @@ const OnboardingPage = () => {
 
     const loadIntegrations = async () => {
         try {
-            const data = await gatewayClient.getIntegrations();
+            const data = await userApi.getIntegrations();
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);
@@ -36,7 +36,7 @@ const OnboardingPage = () => {
     const handleConnectIntegration = async (provider: string, scopes: string[]) => {
         try {
             setConnectingProvider(provider);
-            const response = await gatewayClient.startOAuthFlow(provider, scopes) as { authorization_url: string };
+            const response = await userApi.startOAuthFlow(provider, scopes) as { authorization_url: string };
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
         } catch (error) {
@@ -48,7 +48,7 @@ const OnboardingPage = () => {
     const handleCompleteOnboarding = async () => {
         try {
             // Mark onboarding as completed in user service
-            await gatewayClient.updateUser({ onboarding_completed: true });
+            await userApi.updateUser({ onboarding_completed: true });
             router.push('/dashboard');
         } catch (error) {
             console.error('Failed to complete onboarding:', error);
