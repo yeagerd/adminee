@@ -1,5 +1,5 @@
 import { shipmentsApi } from '@/api';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import PackageDashboard from '../PackageDashboard';
@@ -67,12 +67,10 @@ describe('Debug Test', () => {
 
         (shipmentsApi.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
-        render(<PackageDashboard />);
-
-        // Wait for initial load
-        await waitFor(() => {
-            expect(screen.getByText('TRACK001')).toBeInTheDocument();
+        await act(async () => {
+            render(<PackageDashboard />);
         });
+
         // Wait for initial load
         await waitFor(() => {
             expect(screen.getByText('TRACK001')).toBeInTheDocument();

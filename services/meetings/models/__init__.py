@@ -13,6 +13,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from services.common import get_async_database_url
 from services.meetings.models.base import Base as Base
+from services.meetings.models.booking_entities import AnalyticsEvent as AnalyticsEvent
+from services.meetings.models.booking_entities import Booking as Booking
+from services.meetings.models.booking_entities import BookingLink as BookingLink
+from services.meetings.models.booking_entities import BookingTemplate as BookingTemplate
+from services.meetings.models.booking_entities import OneTimeLink as OneTimeLink
 from services.meetings.models.meeting import MeetingPoll as MeetingPoll
 from services.meetings.models.meeting import PollParticipant as PollParticipant
 from services.meetings.models.meeting import PollResponse as PollResponse
@@ -70,3 +75,11 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async_session_factory = get_async_sessionmaker()
     async with async_session_factory() as session:
         yield session
+
+
+async def create_all_tables_for_testing() -> None:
+    """Create all database tables for testing only. Use Alembic migrations in production."""
+    engine = get_engine()
+    from services.meetings.models.base import Base
+
+    Base.metadata.create_all(engine)

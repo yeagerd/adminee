@@ -13,6 +13,7 @@ export const TOOL_ROUTES: Record<Tool, string> = {
     insights: '/dashboard?tool=insights',
     drafts: '/dashboard?tool=drafts',
     meetings: '/dashboard?tool=meetings',
+    bookings: '/dashboard?tool=bookings',
 };
 
 // Tool display names
@@ -28,6 +29,7 @@ export const TOOL_NAMES: Record<Tool, string> = {
     insights: 'Insights',
     drafts: 'Drafts',
     meetings: 'Meetings',
+    bookings: 'Bookings',
 };
 
 // Tool descriptions
@@ -43,6 +45,7 @@ export const TOOL_DESCRIPTIONS: Record<Tool, string> = {
     insights: 'Analytics and insights',
     drafts: 'View and manage your drafts',
     meetings: 'View and manage your meetings',
+    bookings: 'Create and manage booking links',
 };
 
 // Get tool from URL
@@ -102,6 +105,7 @@ export function getToolFromPathname(pathname: string): Tool | null {
         'insights': 'insights',
         'drafts': 'drafts',
         'meetings': 'meetings',
+        'bookings': 'bookings',
     };
 
     return pathToTool[path] || null;
@@ -131,6 +135,7 @@ export function getToolIconName(tool: Tool): string {
         insights: 'BarChart3',
         drafts: 'Copy',
         meetings: 'Calendar',
+        bookings: 'Calendar',
     };
     return iconMap[tool];
 }
@@ -149,6 +154,7 @@ export function getToolColor(tool: Tool): string {
         insights: 'teal',
         drafts: 'gray',
         meetings: 'blue',
+        bookings: 'blue',
     };
     return colorMap[tool];
 }
@@ -167,6 +173,7 @@ export function getToolBadge(tool: Tool): string | null {
         insights: null,
         drafts: null,
         meetings: null,
+        bookings: null,
     };
     return badgeMap[tool];
 }

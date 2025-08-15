@@ -10,15 +10,44 @@ API_KEY = "test-email-sync-key"
 class TestEmailResponse(BaseMeetingsTest):
     """Test email response functionality."""
 
-    def create_poll_and_participant(self):
+    def setup_method(self, method):
+        """Set up each test method with clean database."""
+        super().setup_method(method)
+        # Clear any existing data
+        self._clear_test_data()
 
+    def teardown_method(self, method):
+        """Clean up after each test method."""
+        self._clear_test_data()
+        super().teardown_method(method)
+
+    def _clear_test_data(self):
+        """Clear all test data from the database."""
+        from services.meetings.models import (
+            MeetingPoll,
+            PollParticipant,
+            PollResponse,
+            TimeSlot,
+            get_session,
+        )
+
+        with get_session() as session:
+            # Delete in reverse order to avoid foreign key constraints
+            session.query(PollResponse).delete()
+            session.query(PollParticipant).delete()
+            session.query(TimeSlot).delete()
+            session.query(MeetingPoll).delete()
+            session.commit()
+
+    def create_poll_and_participant(self, num_slots=1):
+        """Create a poll with the specified number of time slots and a participant."""
         from services.meetings.models import MeetingPoll, PollParticipant, get_session
         from services.meetings.models.meeting import TimeSlot
 
         now = datetime.now(timezone.utc)
         poll_id = uuid4()
-        slot_id = uuid4()
         participant_id = uuid4()
+        slot_ids = []
 
         with get_session() as session:
             # Add a poll
@@ -37,15 +66,19 @@ class TestEmailResponse(BaseMeetingsTest):
                 poll_token=str(uuid4()),
             )
             session.add(poll)
-            # Add a time slot
-            slot = TimeSlot(
-                id=slot_id,
-                poll_id=poll_id,
-                start_time=now + timedelta(days=1),
-                end_time=now + timedelta(days=1, hours=1),
-                timezone="UTC",
-            )
-            session.add(slot)
+
+            # Add time slots
+            for i in range(num_slots):
+                slot = TimeSlot(
+                    id=uuid4(),
+                    poll_id=poll_id,
+                    start_time=now + timedelta(days=i + 1),
+                    end_time=now + timedelta(days=i + 1, hours=1),
+                    timezone="UTC",
+                )
+                session.add(slot)
+                slot_ids.append(str(slot.id))
+
             # Add a participant
             participant = PollParticipant(
                 id=participant_id,
@@ -59,13 +92,13 @@ class TestEmailResponse(BaseMeetingsTest):
             session.commit()
 
         # Return only the IDs to avoid detached object issues
-        return str(poll_id), str(slot_id), str(participant_id)
+        return str(poll_id), slot_ids, str(participant_id)
 
     def test_process_email_response_success(self):
 
         from services.meetings.models import PollParticipant, PollResponse, get_session
 
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time",
@@ -92,7 +125,7 @@ class TestEmailResponse(BaseMeetingsTest):
             response = (
                 session.query(PollResponse)
                 .filter_by(
-                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_ids[0])
                 )
                 .first()
             )
@@ -101,7 +134,7 @@ class TestEmailResponse(BaseMeetingsTest):
             assert "I prefer this time" in response.comment
 
     def test_process_email_response_invalid_key(self):
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
@@ -115,7 +148,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert resp.status_code == 401
 
     def test_process_email_response_unparseable_content(self):
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I am not following the format",
@@ -130,7 +163,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert "Could not parse any slot responses" in resp.text
 
     def test_process_email_response_unknown_sender(self):
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
@@ -154,19 +187,10 @@ class TestEmailResponse(BaseMeetingsTest):
             get_session,
         )
 
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
-
-        # Create a second time slot
-        with get_session() as session:
-            slot2 = TimeSlot(
-                id=uuid4(),
-                poll_id=UUID(poll_id),  # Convert string back to UUID
-                start_time=datetime.now(timezone.utc) + timedelta(days=4),
-                end_time=datetime.now(timezone.utc) + timedelta(days=4, minutes=30),
-                timezone="UTC",
-            )
-            session.add(slot2)
-            slot2_id = str(slot2.id)  # Get the ID as string before session closes
+        # Create a poll with 2 time slots
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=2
+        )
 
         payload = {
             "emailId": "irrelevant",
@@ -194,14 +218,14 @@ class TestEmailResponse(BaseMeetingsTest):
             slot1_responses = (
                 session.query(PollResponse)
                 .filter_by(
-                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_ids[0])
                 )
                 .all()
             )
             slot2_responses = (
                 session.query(PollResponse)
                 .filter_by(
-                    participant_id=UUID(participant_id), time_slot_id=UUID(slot2_id)
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_ids[1])
                 )
                 .all()
             )
@@ -216,7 +240,9 @@ class TestEmailResponse(BaseMeetingsTest):
     def test_process_email_response_malformed_slot_identifier(self):
         """Test that malformed slot identifiers don't cause errors."""
 
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test with malformed slot identifiers that should be skipped
         payload = {
@@ -237,7 +263,9 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollResponse, get_session
 
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test cases that would cause keyword position mismatch
         test_cases = [
@@ -267,7 +295,8 @@ class TestEmailResponse(BaseMeetingsTest):
                 response = (
                     session.query(PollResponse)
                     .filter_by(
-                        participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                        participant_id=UUID(participant_id),
+                        time_slot_id=UUID(slot_ids[0]),
                     )
                     .first()
                 )
@@ -292,7 +321,9 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollParticipant, PollResponse, get_session
 
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test with a valid slot response and an invalid slot number response
         payload = {
@@ -312,7 +343,7 @@ class TestEmailResponse(BaseMeetingsTest):
             response = (
                 session.query(PollResponse)
                 .filter_by(
-                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_ids[0])
                 )
                 .first()
             )
@@ -333,7 +364,9 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollResponse, get_session
 
-        poll_id, slot_id, participant_id = self.create_poll_and_participant()
+        poll_id, slot_ids, participant_id = self.create_poll_and_participant(
+            num_slots=1
+        )
 
         # Test cases that would have failed with the old split logic
         test_cases = [
@@ -382,7 +415,8 @@ class TestEmailResponse(BaseMeetingsTest):
                 response = (
                     session.query(PollResponse)
                     .filter_by(
-                        participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                        participant_id=UUID(participant_id),
+                        time_slot_id=UUID(slot_ids[0]),
                     )
                     .first()
                 )

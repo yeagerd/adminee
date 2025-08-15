@@ -5,7 +5,6 @@ Provides common setup and teardown for all meetings service tests,
 including required environment variables and database setup.
 """
 
-import importlib
 import os
 import tempfile
 from contextlib import contextmanager
@@ -30,98 +29,37 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         self._db_fd, self._db_path = tempfile.mkstemp(suffix=".sqlite3")
         db_url = f"sqlite:///{self._db_path}"
 
-        import services.meetings.settings as meetings_settings
-        from services.meetings.settings import Settings
-
-        test_settings = Settings(
-            db_url_meetings=db_url,
-            api_email_sync_meetings_key="test-email-sync-key",
-            api_meetings_office_key="test-meetings-office-key",
-            api_meetings_user_key="test-meetings-user-key",
-            api_frontend_meetings_key="test-frontend-meetings-key",
-            office_service_url="http://localhost:8003",
-            user_service_url="http://localhost:8001",
-            log_level="INFO",
-            log_format="json",
-            pagination_secret_key="test-pagination-secret-key",
-        )
-        self._original_settings = getattr(meetings_settings, "_settings", None)
-        meetings_settings._settings = test_settings
-
-        # Only reload models, not API modules to preserve mock patches
-        # This prevents breaking mock patches applied by test decorators
-        import services.meetings.models
-
-        importlib.reload(services.meetings.models)
-        import services.meetings.models.base
-
-        importlib.reload(services.meetings.models.base)
-        import services.meetings.models.meeting
-
-        importlib.reload(services.meetings.models.meeting)
-
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-
-        from services.meetings import models
-
-        # Ensure models are imported after reload
-
-        models._test_engine = create_engine(
-            db_url,
-            echo=False,
-            future=True,
-            connect_args={"check_same_thread": False},
-        )
-
-        self._test_sessionmaker = sessionmaker(
-            bind=models._test_engine,
-            autoflush=False,
-            autocommit=False,
-            future=True,
-        )
-
-        models.get_engine = lambda: models._test_engine
-
-        @contextmanager
-        def test_get_session():
-            session = self._test_sessionmaker()
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
-            finally:
-                session.close()
-
-        self._original_get_session = models.get_session
-        models.get_session = test_get_session
+        # Set environment variables for test settings instead of manipulating the module
+        os.environ["DB_URL_MEETINGS"] = db_url
+        os.environ["API_EMAIL_SYNC_MEETINGS_KEY"] = "test-email-sync-key"
+        os.environ["API_MEETINGS_OFFICE_KEY"] = "test-meetings-office-key"
+        os.environ["API_MEETINGS_USER_KEY"] = "test-meetings-user-key"
+        os.environ["API_FRONTEND_MEETINGS_KEY"] = "test-frontend-meetings-key"
+        os.environ["OFFICE_SERVICE_URL"] = "http://localhost:8003"
+        os.environ["USER_SERVICE_URL"] = "http://localhost:8001"
+        os.environ["LOG_LEVEL"] = "INFO"
+        os.environ["LOG_FORMAT"] = "json"
+        os.environ["PAGINATION_SECRET_KEY"] = "test-pagination-secret-key"
 
         # Import all models to ensure they're registered with metadata
+        import services.meetings.models.booking_entities
+        import services.meetings.models.meeting
+        from services.meetings.models import get_engine
+
+        # Create all tables directly
         from services.meetings.models.base import Base
 
-        # Create all tables in the database
-        Base.metadata.create_all(models._test_engine)
+        engine = get_engine()
+        Base.metadata.create_all(engine)
 
-        # Ensure the get_engine function is properly overridden
-        # This is crucial for the API to use the test engine
-        import services.meetings.models
-
-        services.meetings.models.get_engine = lambda: models._test_engine
-
-        # Reload API modules so their imported get_session binds to the fresh test session
-        import services.meetings.api.email as api_email
-        import services.meetings.api.invitations as api_invitations
-        import services.meetings.api.polls as api_polls
-        import services.meetings.api.public as api_public
-        import services.meetings.api.slots as api_slots
-
-        importlib.reload(api_polls)
-        importlib.reload(api_public)
-        importlib.reload(api_slots)
-        importlib.reload(api_invitations)
-        importlib.reload(api_email)
+        # Import API modules to ensure they're loaded with the test session
+        from services.meetings.api import (
+            email_router,
+            invitations_router,
+            polls_router,
+            public_router,
+            slots_router,
+        )
 
         # Create a new FastAPI app instance to avoid reloading the main module
         # This ensures the app uses the updated settings without breaking mocks
@@ -144,15 +82,6 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Register standardized exception handlers
         register_briefly_exception_handlers(app)
-
-        # Import and include routers after settings are configured
-        from services.meetings.api import (
-            email_router,
-            invitations_router,
-            polls_router,
-            public_router,
-            slots_router,
-        )
 
         app.include_router(
             polls_router, prefix="/api/v1/meetings/polls", tags=["polls"]
@@ -183,25 +112,23 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
     def teardown_method(self, method):
         """Clean up test environment."""
 
-        import services.meetings.models
+        # Clean up environment variables
+        env_vars_to_remove = [
+            "DB_URL_MEETINGS",
+            "API_EMAIL_SYNC_MEETINGS_KEY",
+            "API_MEETINGS_OFFICE_KEY",
+            "API_MEETINGS_USER_KEY",
+            "API_FRONTEND_MEETINGS_KEY",
+            "OFFICE_SERVICE_URL",
+            "USER_SERVICE_URL",
+            "LOG_LEVEL",
+            "LOG_FORMAT",
+            "PAGINATION_SECRET_KEY",
+        ]
 
-        if hasattr(self, "_original_get_session"):
-            services.meetings.models.get_session = self._original_get_session
-
-        import services.meetings.settings as meetings_settings
-
-        if hasattr(self, "_original_settings"):
-            if self._original_settings is None:
-                if hasattr(meetings_settings, "_settings"):
-                    delattr(meetings_settings, "_settings")
-            else:
-                meetings_settings._settings = self._original_settings
-
-        from services.meetings import models
-
-        if hasattr(models, "_test_engine"):
-            models._test_engine.dispose()
-            delattr(models, "_test_engine")
+        for var in env_vars_to_remove:
+            if var in os.environ:
+                del os.environ[var]
 
         # Remove the temp DB file
         if hasattr(self, "_db_fd"):

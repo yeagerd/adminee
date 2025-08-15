@@ -9,7 +9,8 @@ export type Tool =
     | 'research'
     | 'pulse'
     | 'insights'
-    | 'meetings';
+    | 'meetings'
+    | 'bookings';
 
 export type MeetingSubView = 'list' | 'view' | 'edit' | 'new';
 
