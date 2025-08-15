@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import gatewayClient from '../../../lib/gateway-client';
 
@@ -73,14 +73,18 @@ describe('Debug Test', () => {
         const { container } = render(<PackageDashboard />);
 
         // Wait for the API call to be made
-        await waitFor(() => {
-            expect(gatewayClient.getPackages).toHaveBeenCalled();
-        }, { timeout: 2000 });
+        await act(async () => {
+            await waitFor(() => {
+                expect(gatewayClient.getPackages).toHaveBeenCalled();
+            }, { timeout: 2000 });
+        });
 
         console.log('API call made with:', (gatewayClient.getPackages as jest.Mock).mock.calls[0]);
 
-        // Wait a bit more for the component to update
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for the component to update and stabilize
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        });
 
         // Debug: log what's actually rendered
         console.log('Rendered HTML:', container.innerHTML);
@@ -89,9 +93,11 @@ describe('Debug Test', () => {
         console.log('Container text content:', container.textContent);
 
         // Wait for initial load
-        await waitFor(() => {
-            expect(screen.getByText('TRACK001')).toBeInTheDocument();
-        }, { timeout: 5000 });
+        await act(async () => {
+            await waitFor(() => {
+                expect(screen.getByText('TRACK001')).toBeInTheDocument();
+            }, { timeout: 5000 });
+        });
     });
 
     it('should display packages when date range is set to all', async () => {
@@ -123,20 +129,28 @@ describe('Debug Test', () => {
 
         (gatewayClient.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
-        render(<PackageDashboard />);
+        await act(async () => {
+            render(<PackageDashboard />);
+        });
 
         // Wait for the API call to be made
-        await waitFor(() => {
-            expect(gatewayClient.getPackages).toHaveBeenCalled();
-        }, { timeout: 2000 });
+        await act(async () => {
+            await waitFor(() => {
+                expect(gatewayClient.getPackages).toHaveBeenCalled();
+            }, { timeout: 2000 });
+        });
 
-        // Wait for the component to update
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for the component to update and stabilize
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        });
 
         // Check if the package is now in the DOM
-        await waitFor(() => {
-            expect(screen.getByText('TRACK001')).toBeInTheDocument();
-        }, { timeout: 5000 });
+        await act(async () => {
+            await waitFor(() => {
+                expect(screen.getByText('TRACK001')).toBeInTheDocument();
+            }, { timeout: 5000 });
+        });
     });
 
     it('should display packages with date range bypass', async () => {
@@ -175,7 +189,9 @@ describe('Debug Test', () => {
             return component;
         };
 
-        render(<ModifiedPackageDashboard />);
+        await act(async () => {
+            render(<ModifiedPackageDashboard />);
+        });
 
         // Wait for the API call to be made
         await waitFor(() => {

@@ -1347,7 +1347,7 @@ export default function BookingsPage() {
                                     <Label className="text-xs font-medium text-gray-700">Booking Title</Label>
                                     <div className="flex items-center gap-2 mt-1">
                                         <code className="flex-1 text-sm bg-gray-100 px-2 py-1 rounded font-mono">
-                                            {successData.bookingTitle}
+                                            {successData?.bookingTitle}
                                         </code>
                                     </div>
                                 </div>
@@ -1356,12 +1356,12 @@ export default function BookingsPage() {
                                     <Label className="text-xs font-medium text-gray-700">Public Booking Link</Label>
                                     <div className="flex items-center gap-2 mt-1">
                                         <a
-                                            href={successData.publicUrl}
+                                            href={successData?.publicUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex-1 text-sm text-blue-600 hover:text-blue-800 underline truncate"
                                         >
-                                            {successData.publicUrl}
+                                            {successData?.publicUrl}
                                         </a>
                                         <button
                                             onClick={() => {

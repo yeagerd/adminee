@@ -23,4 +23,10 @@ module.exports = {
     transformIgnorePatterns: [
         '/node_modules/(?!(.*\\.css$))',
     ],
+    // Configure Jest for React 18
+    testEnvironmentOptions: {
+        customExportConditions: [''],
+    },
+    // Increase timeout for async operations
+    testTimeout: 10000,
 };
