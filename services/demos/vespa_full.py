@@ -10,11 +10,11 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import time
 
-from ..office.api.backfill import BackfillRequest
-from ..office.core.email_crawler import EmailCrawler
-from ..office.core.pubsub_publisher import PubSubPublisher
-from ..vespa_loader.vespa_client import VespaClient
-from ..vespa_query.search_engine import SearchEngine
+from services.office.api.backfill import BackfillRequest
+from services.office.core.email_crawler import EmailCrawler
+from services.office.core.pubsub_publisher import PubSubPublisher
+from services.vespa_loader.vespa_client import VespaClient
+from services.vespa_query.search_engine import SearchEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

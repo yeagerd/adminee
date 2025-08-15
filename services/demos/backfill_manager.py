@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 import json
 import uuid
 
-from ..office.api.backfill import BackfillRequest, BackfillStatus
-from ..office.core.email_crawler import EmailCrawler
-from ..office.core.pubsub_publisher import PubSubPublisher
+from services.office.api.backfill import BackfillRequest, BackfillStatus
+from services.office.core.email_crawler import EmailCrawler
+from services.office.core.pubsub_publisher import PubSubPublisher
 
 logger = logging.getLogger(__name__)
 

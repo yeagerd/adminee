@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 import time
 
-from ..vespa_query.search_engine import SearchEngine
-from ..chat.agents.llm_tools import VespaSearchTool, UserDataSearchTool, SemanticSearchTool
+from services.vespa_query.search_engine import SearchEngine
+from services.chat.agents.llm_tools import VespaSearchTool, UserDataSearchTool, SemanticSearchTool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
