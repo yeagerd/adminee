@@ -55,7 +55,26 @@ export default function BookingsPage() {
 
     // Real data state
     const [existingLinks, setExistingLinks] = useState<BookingLink[]>([]);
-    const [bookings] = useState<Array<{ link_id: string; status: string }>>([]);
+    const [bookings, setBookings] = useState<Array<{
+        id: string;
+        link_id: string;
+        status: string;
+        title: string;
+        startTime: string;
+        endTime: string;
+        attendeeEmail: string;
+    }>>([]);
+
+    // Analytics data state
+    const [analyticsData, setAnalyticsData] = useState<Array<{
+        linkId: string;
+        linkTitle: string;
+        views: number;
+        bookings: number;
+        conversionRate: string;
+        lastViewed: string;
+        topReferrers: string[];
+    }>>([]);
 
     // Filter state for bookings
     const [bookingsFilter, setBookingsFilter] = useState<string | null>(null); // link_id to filter by
@@ -90,7 +109,40 @@ export default function BookingsPage() {
         }
     };
 
+    const fetchAnalyticsData = async () => {
+        try {
+            // Mock analytics data for now - replace with actual API call when available
+            const mockAnalytics = existingLinks.map(link => ({
+                linkId: link.id,
+                linkTitle: link.settings?.title || 'Untitled Link',
+                views: link.total_views,
+                bookings: link.total_bookings,
+                conversionRate: link.conversion_rate,
+                lastViewed: link.updated_at,
+                topReferrers: ['Direct', 'Email', 'Social Media'].slice(0, Math.floor(Math.random() * 3) + 1),
+            }));
+            setAnalyticsData(mockAnalytics);
+        } catch (error) {
+            console.error('Error fetching analytics data:', error);
+        }
+    };
 
+    const generateMockBookings = () => {
+        // Generate mock booking data for demonstration
+        const mockBookings = existingLinks.flatMap(link => {
+            const numBookings = Math.floor(Math.random() * 5) + 1;
+            return Array.from({ length: numBookings }, (_, i) => ({
+                id: `booking-${link.id}-${i}`,
+                link_id: link.id,
+                status: Math.random() > 0.5 ? 'confirmed' : 'pending',
+                title: link.settings?.title || 'Untitled Meeting',
+                startTime: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
+                endTime: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
+                attendeeEmail: `attendee${i + 1}@example.com`,
+            }));
+        });
+        setBookings(mockBookings);
+    };
 
     // Load data when component mounts or tab changes
     useEffect(() => {
@@ -98,6 +150,14 @@ export default function BookingsPage() {
             fetchLinks();
         }
     }, [activeTab]);
+
+    // Load analytics data and generate mock bookings when links are loaded
+    useEffect(() => {
+        if (existingLinks.length > 0) {
+            fetchAnalyticsData();
+            generateMockBookings();
+        }
+    }, [existingLinks]);
 
     const steps: { key: Step; label: string }[] = [
         { key: "basics", label: "Basics" },
