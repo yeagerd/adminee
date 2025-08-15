@@ -1,5 +1,5 @@
 import { useIntegrations } from '@/contexts/integrations-context';
-import { gatewayClient } from '@/lib/gateway-client';
+import { officeApi } from '@/api';
 import type { Contact } from '@/types/office-service';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSession } from 'next-auth/react';
@@ -50,7 +50,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
       const userId = session?.user?.id;
       if (!userId) throw new Error('No user id found in session');
 
-      const resp = await gatewayClient.getContacts(activeProviders, 200, search || undefined, companyFilter || undefined, noCache);
+      const resp = await officeApi.getContacts(activeProviders, 200, search || undefined, companyFilter || undefined, noCache);
       if (resp.success && resp.data) {
         const list = (resp.data.contacts || []) as Contact[];
         setContacts(list);

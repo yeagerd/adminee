@@ -1,6 +1,6 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
-import { gatewayClient } from '@/lib/gateway-client';
+import { officeApi } from '@/api';
 import type { CalendarEvent } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -29,7 +29,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ toolDataLoading = false, ac
             const userId = session?.user?.id;
             if (!userId) throw new Error('No user id found in session');
 
-            const response = await gatewayClient.getCalendarEvents(
+            const response = await officeApi.getCalendarEvents(
                 activeProviders,
                 10,
                 new Date().toISOString().split('T')[0],

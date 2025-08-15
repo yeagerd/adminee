@@ -1,16 +1,16 @@
+import { shipmentsApi } from '@/api';
 import { PACKAGE_STATUS } from '@/lib/package-status';
-import { shipmentsClient } from '@/lib/shipments-client';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useShipmentEvents } from './use-shipment-events';
 
 // Mock the shipments client
-jest.mock('@/lib/shipments-client', () => ({
-    shipmentsClient: {
+jest.mock('@/api', () => ({
+    shipmentsApi: {
         getEventsByEmail: jest.fn(),
     },
 }));
 
-const mockShipmentsClient = shipmentsClient as jest.Mocked<typeof shipmentsClient>;
+const mockShipmentsApi = shipmentsApi as jest.Mocked<typeof shipmentsApi>;
 
 describe('useShipmentEvents', () => {
     beforeEach(() => {
@@ -38,7 +38,7 @@ describe('useShipmentEvents', () => {
             },
         ];
 
-        mockShipmentsClient.getEventsByEmail.mockResolvedValue(mockEvents);
+        mockShipmentsApi.getEventsByEmail.mockResolvedValue(mockEvents);
 
         const { result } = renderHook(() => useShipmentEvents('test-email-id'));
 
@@ -53,12 +53,12 @@ describe('useShipmentEvents', () => {
         expect(result.current.data).toEqual(mockEvents);
         expect(result.current.hasEvents).toBe(true);
         expect(result.current.error).toBeNull();
-        expect(mockShipmentsClient.getEventsByEmail).toHaveBeenCalledWith('test-email-id');
+        expect(mockShipmentsApi.getEventsByEmail).toHaveBeenCalledWith('test-email-id');
     });
 
     it('should handle errors when fetch fails', async () => {
         const errorMessage = 'Failed to fetch events';
-        mockShipmentsClient.getEventsByEmail.mockRejectedValue(new Error(errorMessage));
+        mockShipmentsApi.getEventsByEmail.mockRejectedValue(new Error(errorMessage));
 
         // Mock console.error to avoid logging during this test
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -78,7 +78,7 @@ describe('useShipmentEvents', () => {
     });
 
     it('should return hasEvents as false when no events are found', async () => {
-        mockShipmentsClient.getEventsByEmail.mockResolvedValue([]);
+        mockShipmentsApi.getEventsByEmail.mockResolvedValue([]);
 
         const { result } = renderHook(() => useShipmentEvents('test-email-id'));
 

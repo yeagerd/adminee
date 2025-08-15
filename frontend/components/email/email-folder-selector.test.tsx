@@ -6,16 +6,12 @@ import { EmailFolderSelector } from './email-folder-selector';
 jest.mock('@/contexts/integrations-context');
 const mockUseIntegrations = useIntegrations as jest.MockedFunction<typeof useIntegrations>;
 
-// Mock the gateway client with default and named exports
-jest.mock('@/lib/gateway-client', () => {
-    const mockGetEmailFolders = jest.fn().mockResolvedValue({ success: true, data: { folders: [] } });
-    return {
-        __esModule: true,
-        default: { getEmailFolders: mockGetEmailFolders },
-        gatewayClient: { getEmailFolders: mockGetEmailFolders },
-        GatewayClient: class {},
-    };
-});
+// Mock the new API structure
+jest.mock('@/api', () => ({
+    officeApi: {
+        getEmailFolders: jest.fn().mockResolvedValue({ success: true, data: { folders: [] } }),
+    },
+}));
 
 describe('EmailFolderSelector', () => {
     beforeEach(() => {

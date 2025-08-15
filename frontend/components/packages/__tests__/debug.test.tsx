@@ -1,6 +1,6 @@
+import { shipmentsApi } from '@/api';
 import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import gatewayClient from '../../../lib/gateway-client';
 
 import PackageDashboard from '../PackageDashboard';
 
@@ -10,10 +10,9 @@ jest.mock('next/navigation', () => ({
     useSearchParams: jest.fn(),
 }));
 
-// Mock the gateway client
-jest.mock('../../../lib/gateway-client', () => ({
-    __esModule: true,
-    default: {
+// Mock the shipments API
+jest.mock('@/api', () => ({
+    shipmentsApi: {
         getPackages: jest.fn(),
         updatePackage: jest.fn(),
         deletePackage: jest.fn(),
@@ -66,10 +65,14 @@ describe('Debug Test', () => {
             ...mockPaginationInfo,
         };
 
-        (gatewayClient.getPackages as jest.Mock).mockResolvedValue(mockResponse);
+        (shipmentsApi.getPackages as jest.Mock).mockResolvedValue(mockResponse);
 
         render(<PackageDashboard />);
 
+        // Wait for initial load
+        await waitFor(() => {
+            expect(screen.getByText('TRACK001')).toBeInTheDocument();
+        });
         // Wait for initial load
         await waitFor(() => {
             expect(screen.getByText('TRACK001')).toBeInTheDocument();

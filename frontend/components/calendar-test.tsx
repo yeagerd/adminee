@@ -1,8 +1,8 @@
 "use client"
 
+import { officeApi } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { gatewayClient } from "@/lib/gateway-client"
 import { CalendarEvent } from "@/types/office-service"
 import { useSession } from "next-auth/react"
 import { useState } from "react"
@@ -23,7 +23,7 @@ export function CalendarTest() {
         setError(null)
 
         try {
-            const response = await gatewayClient.getCalendarEvents(
+            const response = await officeApi.getCalendarEvents(
                 session.provider ? [session.provider] : ['google', 'microsoft'],
                 5,
                 new Date().toISOString().split('T')[0],

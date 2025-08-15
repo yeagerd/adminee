@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
+import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsApi } from '@/api';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
@@ -176,7 +176,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
         setIsCheckingPackage(true);
         try {
-            const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+            const existingPkg = await shipmentsApi.checkPackageExists(trackingNumber, carrier);
 
             setExistingPackage(existingPkg);
 
@@ -219,7 +219,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             setIsParsing(true);
             try {
                 // First, check if there's already a package associated with this email
-                const existingPackageByEmail = await shipmentsClient.getPackageByEmail(email.id);
+                const existingPackageByEmail = await shipmentsApi.getPackageByEmail(email.id);
 
                 if (existingPackageByEmail) {
                     // If we have an existing package, populate form with its data
@@ -393,7 +393,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             };
 
             console.log('Submitting data collection with user ID:', session?.user?.id);
-            await shipmentsClient.collectData(dataCollectionRequest);
+            await shipmentsApi.collectShipmentData(dataCollectionRequest);
             console.log('Data collection submitted successfully');
         } catch (error) {
             console.error('Failed to submit data collection:', error);
@@ -427,7 +427,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     email_message_id: email.id, // Include the email message ID to prevent duplicates
                 };
 
-                await shipmentsClient.createTrackingEvent(existingPackage.id, eventData);
+                await shipmentsApi.createTrackingEvent(existingPackage.id, eventData);
 
                 // Check if any package fields need to be updated
                 const packageUpdates: Partial<PackageCreateRequest> = {};
@@ -456,7 +456,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                 // Update package if there are any changes
                 if (Object.keys(packageUpdates).length > 0) {
-                    await shipmentsClient.updatePackage(existingPackage.id, packageUpdates);
+                    await shipmentsApi.updatePackage(existingPackage.id, packageUpdates);
                 }
             } else {
                 // Create new package

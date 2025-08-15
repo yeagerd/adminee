@@ -9,8 +9,8 @@ jest.mock('next-auth/react', () => ({
         status: 'authenticated',
     }),
 }));
-jest.mock('@/lib/gateway-client', () => ({
-    gatewayClient: {
+jest.mock('@/api', () => ({
+    userApi: {
         getUserPreferences: jest.fn(),
         updateUserPreferences: jest.fn(),
     },
@@ -19,7 +19,7 @@ jest.mock('@/lib/utils', () => ({
     getUserTimezone: jest.fn(),
 }));
 
-import { gatewayClient } from '@/lib/gateway-client';
+import { userApi } from '@/api';
 import { getUserTimezone } from '@/lib/utils';
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -33,7 +33,7 @@ describe('UserPreferencesProvider', () => {
 
     it('defaults to browser timezone if no manual override', async () => {
         (getUserTimezone as jest.Mock).mockReturnValue('Browser/Zone');
-        (gatewayClient.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'auto', manual_timezone: '' });
+        (userApi.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'auto', manual_timezone: '' });
         const { result } = renderHook(() => useUserPreferences(), { wrapper });
         // Wait for useEffect to run
         await act(async () => { });
@@ -42,8 +42,8 @@ describe('UserPreferencesProvider', () => {
 
     it('uses manual timezone if set', async () => {
         (getUserTimezone as jest.Mock).mockReturnValue('Browser/Zone');
-        (gatewayClient.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'manual', manual_timezone: 'Europe/Paris' });
-        (gatewayClient.updateUserPreferences as jest.Mock).mockResolvedValue({});
+        (userApi.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'manual', manual_timezone: 'Europe/Paris' });
+        (userApi.updateUserPreferences as jest.Mock).mockResolvedValue({});
         const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
         const { result } = renderHook(() => useUserPreferences(), { wrapper });
         await act(async () => {
@@ -55,8 +55,8 @@ describe('UserPreferencesProvider', () => {
 
     it('falls back to browser timezone if manual is empty', async () => {
         (getUserTimezone as jest.Mock).mockReturnValue('Browser/Zone');
-        (gatewayClient.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'manual', manual_timezone: '' });
-        (gatewayClient.updateUserPreferences as jest.Mock).mockResolvedValue({});
+        (userApi.getUserPreferences as jest.Mock).mockResolvedValue({ timezone_mode: 'manual', manual_timezone: '' });
+        (userApi.updateUserPreferences as jest.Mock).mockResolvedValue({});
         const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
         const { result } = renderHook(() => useUserPreferences(), { wrapper });
         await act(async () => {

@@ -8,7 +8,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { BulkActionType, gatewayClient } from '@/lib/gateway-client';
+import { BulkActionType } from '@/api/types/common';
+import { officeApi } from '@/api';
 import { safeParseDate } from '@/lib/utils';
 import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
@@ -158,7 +159,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 }
             }
 
-            const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache, labels, folderId) as { data?: { messages?: EmailMessage[] } };
+            const emailsResp = await officeApi.getEmails(activeProviders, 50, 0, noCache, labels, folderId) as { data?: { messages?: EmailMessage[] } };
 
             let messages = emailsResp.data?.messages || [];
 
@@ -295,7 +296,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         try {
             // Execute bulk action via API
-            const response = await gatewayClient.bulkAction(actionType, emailIds, activeProviders);
+            const response = await officeApi.bulkAction(actionType, emailIds, activeProviders);
 
             if (response.success) {
                 // Handle successful response with or without detailed data
@@ -388,7 +389,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setThreadError(null);
 
         try {
-            const response = await gatewayClient.getThread(threadId, true); // include body
+            const response = await officeApi.getThread(threadId, true); // include body
             if (response.data?.thread) {
                 setFullThread(response.data.thread);
                 // Auto-load provider drafts for this thread

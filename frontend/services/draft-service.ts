@@ -1,6 +1,5 @@
-import type { DraftApiResponse } from '@/lib/gateway-client';
-import { gatewayClient } from '@/lib/gateway-client';
-import { officeIntegration } from '@/lib/office-integration';
+import { chatApi, officeApi } from '@/api';
+import type { DraftApiResponse } from '@/api/types/common';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 
 export interface CreateDraftRequest {
@@ -48,7 +47,7 @@ export interface DraftActionResult {
 
 export class DraftService {
     async createDraft(request: CreateDraftRequest): Promise<Draft> {
-        const data = await gatewayClient.createDraft({
+        const data = await chatApi.createDraft({
             type: request.type,
             content: request.content,
             metadata: request.metadata,
@@ -59,7 +58,7 @@ export class DraftService {
     }
 
     async createEmailProviderDraft(args: CreateEmailProviderDraftArgs) {
-        const resp = await gatewayClient.createEmailDraft({
+        const resp = await officeApi.createEmailDraft({
             action: args.action,
             to: args.to,
             cc: args.cc,
@@ -74,7 +73,7 @@ export class DraftService {
     }
 
     async updateEmailProviderDraft(args: UpdateEmailProviderDraftArgs) {
-        const resp = await gatewayClient.updateEmailDraft(args.draftId, {
+        const resp = await officeApi.updateEmailDraft(args.draftId, {
             to: args.to,
             cc: args.cc,
             bcc: args.bcc,
@@ -86,15 +85,15 @@ export class DraftService {
     }
 
     async deleteEmailProviderDraft(draftId: string, provider: 'google' | 'microsoft') {
-        return gatewayClient.deleteEmailDraft(draftId, provider);
+        return officeApi.deleteEmailDraft(draftId, provider);
     }
 
     async listProviderDraftsForThread(threadId: string) {
-        return gatewayClient.listThreadDrafts(threadId);
+        return officeApi.listThreadDrafts(threadId);
     }
 
     async updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
-        const data = await gatewayClient.updateDraft(draftId, {
+        const data = await chatApi.updateDraft(draftId, {
             content: request.content,
             metadata: request.metadata,
             status: request.status,
@@ -109,7 +108,7 @@ export class DraftService {
         // Only call backend if draftId is an integer
         if (/^\d+$/.test(draftId)) {
             console.log('[DraftService] draftId is integer, calling backend to delete.');
-            await gatewayClient.deleteDraft(draftId);
+            await chatApi.deleteDraft(draftId);
             return true;
         } else {
             console.log('[DraftService] draftId is not integer, treating as local/unsaved draft. No backend call.');
@@ -119,7 +118,7 @@ export class DraftService {
     }
 
     async getDraft(draftId: string): Promise<Draft> {
-        const data = await gatewayClient.getDraft(draftId);
+        const data = await chatApi.getDraft(draftId);
         return this.mapDraftFromApi(data as DraftApiResponse);
     }
 
@@ -128,7 +127,7 @@ export class DraftService {
         totalCount: number;
         hasMore: boolean;
     }> {
-        const data = await gatewayClient.listDrafts({
+        const data = await chatApi.listDrafts({
             type: filters?.type,
             status: filters?.status,
             search: filters?.search,
@@ -149,7 +148,7 @@ export class DraftService {
                 const providerDraftId = draft.metadata.providerDraftId as string | undefined;
 
                 // If we have a provider, let the send endpoint know to avoid account mismatches
-                const result = await officeIntegration.sendEmail({
+                const result = await officeApi.sendEmail({
                     to: draft.metadata.recipients || [],
                     cc: Array.isArray(draft.metadata.cc) ? draft.metadata.cc : (draft.metadata.cc ? [draft.metadata.cc] : []),
                     bcc: Array.isArray(draft.metadata.bcc) ? draft.metadata.bcc : (draft.metadata.bcc ? [draft.metadata.bcc] : []),
@@ -182,8 +181,25 @@ export class DraftService {
                 };
             }
 
-            // Non-email fallback: Execute through integration
-            const result = await officeIntegration.executeDraftAction(draft);
+            // Non-email fallback: Execute through appropriate API methods
+            let result: { success: boolean; result?: unknown; error?: string } = { success: false, error: 'Unsupported draft type' };
+
+            if (draft.type === 'calendar' || draft.type === 'calendar_event' || draft.type === 'calendar_change') {
+                result = await officeApi.createCalendarEventWithValidation({
+                    title: draft.metadata.title || 'New Event',
+                    startTime: typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime || new Date().toISOString(),
+                    endTime: typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime || new Date(Date.now() + 3600000).toISOString(),
+                    location: draft.metadata.location,
+                    description: draft.content,
+                    attendees: Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees : (draft.metadata.attendees ? [draft.metadata.attendees] : []),
+                });
+            } else if (draft.type === 'document') {
+                result = await officeApi.saveDocument({
+                    title: draft.metadata.title || 'Untitled Document',
+                    content: draft.content,
+                    type: 'document',
+                });
+            }
 
             if (result.success) {
                 // Update draft status to 'sent' or 'ready' depending on type
@@ -297,7 +313,7 @@ export class DraftService {
 
             // For documents and calendar, use previous logic
             if (draft.type === 'document') {
-                const result = await officeIntegration.saveDocument({
+                const result = await officeApi.saveDocument({
                     title: draft.metadata.title || 'Untitled Document',
                     content: draft.content,
                     type: 'document',
