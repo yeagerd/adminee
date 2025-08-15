@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { gatewayClient } from "@/lib/gateway-client";
 import type { BookingLink } from "@/types/bookings";
 import { CheckCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Step = "basics" | "availability" | "duration" | "limits" | "template" | "review";
 
@@ -95,7 +95,7 @@ export default function BookingsPage() {
     } | null>(null);
 
     // Data fetching functions
-    const fetchLinks = async () => {
+    const fetchLinks = useCallback(async () => {
         try {
             setIsLoadingLinks(true);
             setLinksError(null);
@@ -107,9 +107,9 @@ export default function BookingsPage() {
         } finally {
             setIsLoadingLinks(false);
         }
-    };
+    }, []);
 
-    const fetchAnalyticsData = async () => {
+    const fetchAnalyticsData = useCallback(async () => {
         try {
             // Mock analytics data for now - replace with actual API call when available
             const mockAnalytics = existingLinks.map(link => ({
@@ -125,9 +125,9 @@ export default function BookingsPage() {
         } catch (error) {
             console.error('Error fetching analytics data:', error);
         }
-    };
+    }, [existingLinks]);
 
-    const generateMockBookings = () => {
+    const generateMockBookings = useCallback(() => {
         // Generate mock booking data for demonstration
         const mockBookings = existingLinks.flatMap(link => {
             const numBookings = Math.floor(Math.random() * 5) + 1;
@@ -142,14 +142,14 @@ export default function BookingsPage() {
             }));
         });
         setBookings(mockBookings);
-    };
+    }, [existingLinks]);
 
     // Load data when component mounts or tab changes
     useEffect(() => {
         if (activeTab === "manage") {
             fetchLinks();
         }
-    }, [activeTab]);
+    }, [activeTab, fetchLinks]);
 
     // Load analytics data and generate mock bookings when links are loaded
     useEffect(() => {
@@ -157,7 +157,7 @@ export default function BookingsPage() {
             fetchAnalyticsData();
             generateMockBookings();
         }
-    }, [existingLinks]);
+    }, [existingLinks, fetchAnalyticsData, generateMockBookings]);
 
     const steps: { key: Step; label: string }[] = [
         { key: "basics", label: "Basics" },
