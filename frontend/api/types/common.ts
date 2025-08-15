@@ -99,3 +99,18 @@ export enum BulkActionType {
     MARK_READ = 'mark_read',
     MARK_UNREAD = 'mark_unread'
 }
+
+// Email Draft Response Types
+export interface EmailDraftResponse {
+    success: boolean;
+    data?: {
+        provider?: 'google' | 'microsoft';
+        draft?: Record<string, unknown>;
+        drafts?: unknown[];
+        deleted?: boolean;
+    };
+    error?: {
+        message?: string;
+    };
+    request_id: string;
+}
