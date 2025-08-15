@@ -1,5 +1,9 @@
+import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
+
+# Set up logger for this module
+logger = logging.getLogger(__name__)
 
 from services.meetings.services import email_integration
 
@@ -59,8 +63,7 @@ async def send_confirmation_email(booking: Any) -> bool:
 
     except Exception as e:
         # Log the error but don't fail the booking creation
-        # In production, this should use proper logging
-        print(f"Failed to send confirmation email for booking {booking.id}: {e}")
+        logger.error(f"Failed to send confirmation email for booking {booking.id}: {e}")
         return False
 
 
@@ -112,8 +115,7 @@ async def send_follow_up_email(booking: Any) -> bool:
 
     except Exception as e:
         # Log the error but don't fail the booking creation
-        # In production, this should use proper logging
-        print(f"Failed to send follow-up email for booking {booking.id}: {e}")
+        logger.error(f"Failed to send follow-up email for booking {booking.id}: {e}")
         return False
 
 

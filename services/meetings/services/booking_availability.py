@@ -1,5 +1,9 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
+
+# Set up logger for this module
+logger = logging.getLogger(__name__)
 
 from services.meetings.services import calendar_integration
 
@@ -31,7 +35,7 @@ async def compute_available_slots(
             user_id, start_iso, end_iso, duration_minutes
         )
     except Exception as e:
-        print(f"DEBUG: Office service error: {e}")
+        logger.error(f"Office service error: {e}")
         # Return empty response on error
         return {"slots": [], "duration": duration_minutes, "timezone": "UTC"}
 
@@ -39,18 +43,18 @@ async def compute_available_slots(
     # Office service returns: {"data": {"available_slots": [...], "total_slots": N, ...}}
     # We need to transform this to: {"slots": [...], "duration": N, "timezone": "UTC"}
 
-    print(f"DEBUG: Raw availability response: {availability}")
+    logger.debug(f"Raw availability response: {availability}")
 
     available_slots = []
     if availability.get("data", {}).get("available_slots"):
         available_slots = availability["data"]["available_slots"]
 
-    print(f"DEBUG: Extracted {len(available_slots)} available slots")
-    print(f"DEBUG: Settings: {settings}")
+    logger.debug(f"Extracted {len(available_slots)} available slots")
+    logger.debug(f"Settings: {settings}")
 
     # Post-process availability to enforce buffers, business hours, limits
     if settings and available_slots:
-        print(f"DEBUG: Found {len(available_slots)} slots, applying settings")
+        logger.debug(f"Found {len(available_slots)} slots, applying settings")
         # Apply booking settings to filter and adjust slots
         available_slots = _apply_booking_settings(
             available_slots,
@@ -59,15 +63,15 @@ async def compute_available_slots(
             buffer_after_minutes or 0,
             settings,
         )
-        print(f"DEBUG: After applying settings: {len(available_slots)} slots")
+        logger.debug(f"After applying settings: {len(available_slots)} slots")
     else:
-        print(
-            f"DEBUG: No settings or slots - settings: {bool(settings)}, slots: {len(available_slots)}"
+        logger.debug(
+            f"No settings or slots - settings: {bool(settings)}, slots: {len(available_slots)}"
         )
 
     # Return transformed format that matches meetings service schema
     result = {"slots": available_slots, "duration": duration_minutes, "timezone": "UTC"}
-    print(f"DEBUG: Returning result: {result}")
+    logger.debug(f"Returning result: {result}")
     return result
 
 
@@ -94,9 +98,9 @@ def _apply_booking_settings(
     if not slots:
         return []
 
-    print(f"DEBUG: Processing {len(slots)} slots with settings: {settings}")
-    print(
-        f"DEBUG: Buffer before: {buffer_before_minutes}, after: {buffer_after_minutes}"
+    logger.debug(f"Processing {len(slots)} slots with settings: {settings}")
+    logger.debug(
+        f"Buffer before: {buffer_before_minutes}, after: {buffer_after_minutes}"
     )
 
     filtered_slots = []
@@ -114,19 +118,19 @@ def _apply_booking_settings(
     bookings_per_week: Dict[str, int] = {}
 
     for i, slot in enumerate(slots):
-        print(f"DEBUG: Processing slot {i}: {slot}")
+        logger.debug(f"Processing slot {i}: {slot}")
         # Handle both dict format and AvailableSlot objects from office service
         if hasattr(slot, "start") and hasattr(slot, "end"):
             # AvailableSlot object from office service
             slot_start = slot.start
             slot_end = slot.end
-            print(
-                f"DEBUG: Slot {i} is AvailableSlot object: start={slot_start}, end={slot_end}"
+            logger.debug(
+                f"Slot {i} is AvailableSlot object: start={slot_start}, end={slot_end}"
             )
         else:
             # Dict format
             if not slot.get("available", True):
-                print(f"DEBUG: Slot {i} filtered - not available")
+                logger.debug(f"Slot {i} filtered - not available")
                 continue
 
             # Handle both string and datetime values
@@ -140,20 +144,20 @@ def _apply_booking_settings(
             else:
                 slot_end = slot["end"]
 
-            print(f"DEBUG: Slot {i} is dict: start={slot_start}, end={slot_end}")
+            logger.debug(f"Slot {i} is dict: start={slot_start}, end={slot_end}")
 
         # Check advance booking window
         now = datetime.now(slot_start.tzinfo) if slot_start.tzinfo else datetime.now(timezone.utc)
         days_until_slot = (slot_start - now).days
 
         if days_until_slot < advance_days:
-            print(
-                f"DEBUG: Slot filtered - too soon: {slot_start} (days until: {days_until_slot}, min: {advance_days})"
+            logger.debug(
+                f"Slot filtered - too soon: {slot_start} (days until: {days_until_slot}, min: {advance_days})"
             )
             continue  # Too soon
         if days_until_slot > max_advance_days:
-            print(
-                f"DEBUG: Slot filtered - too far: {slot_start} (days until: {days_until_slot}, max: {max_advance_days})"
+            logger.debug(
+                f"Slot filtered - too far: {slot_start} (days until: {days_until_slot}, max: {max_advance_days})"
             )
             continue  # Too far in advance
 
