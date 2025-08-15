@@ -24,6 +24,13 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0", validation_alias="CELERY_RESULT_BACKEND"
     )
 
+    # LLM Configuration
+    llm_provider: str = Field(default="openai", description="LLM provider")
+    llm_model: str = Field(default="gpt-4.1-nano", description="LLM model")
+    openai_api_key: str = Field(default=None, description="OpenAI API key")
+    anthropic_api_key: str = Field(default=None, description="Anthropic API key")
+    use_llm_cache: bool = Field(default=True, description="Enable LLM response caching")
+
     # JWT Authentication settings (optional - for direct JWT token support)
     jwt_verify_signature: bool = Field(
         default=True, validation_alias="JWT_VERIFY_SIGNATURE"
