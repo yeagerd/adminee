@@ -214,9 +214,9 @@ class OfficeDemoService:
 
 def print_section_header(title: str) -> None:
     """Print a formatted section header."""
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f" {title}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
 
 def print_email_summary(emails: Dict[str, List[EmailMessage]]) -> None:

@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy the entire project first
+COPY . .
+
+# Install common service first
+RUN pip install --no-cache-dir -e services/common/
+
+# Install email_sync service
+RUN pip install --no-cache-dir -e services/email_sync/
+
+# Add the app directory to Python path
+ENV PYTHONPATH=/app:$PYTHONPATH
+ENV PYTHONUNBUFFERED=1
+
+CMD ["uvicorn", "services.email_sync.app:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -71,6 +71,7 @@ if [ -n "$ENV_FILE" ]; then
     export DB_URL_OFFICE=postgresql://briefly_office_service:${BRIEFLY_OFFICE_SERVICE_PASSWORD:-briefly_office_pass}@localhost:5432/briefly_office
     export DB_URL_CHAT=postgresql://briefly_chat_service:${BRIEFLY_CHAT_SERVICE_PASSWORD:-briefly_chat_pass}@localhost:5432/briefly_chat
     export DB_URL_VECTOR=postgresql://briefly_vector_service:${BRIEFLY_VECTOR_SERVICE_PASSWORD:-briefly_vector_pass}@localhost:5432/briefly_vector
+    export DB_URL_EMAIL_SYNC=postgresql://briefly_sync_service:${BRIEFLY_SYNC_SERVICE_PASSWORD:-briefly_sync_pass}@localhost:5432/briefly_sync
     
     # For Alembic migrations (using admin user from env file)
     export DB_URL_USER_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_user
@@ -79,6 +80,7 @@ if [ -n "$ENV_FILE" ]; then
     export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
     export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
     export DB_URL_VECTOR_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_vector
+    export DB_URL_EMAIL_SYNC_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_sync
     
     echo "✅ Environment variables loaded from $ENV_FILE"
 else
@@ -203,6 +205,7 @@ if check_postgres_running; then
         "office:$DB_URL_OFFICE_MIGRATIONS"
         "chat:$DB_URL_CHAT_MIGRATIONS"
         "vector_db:$DB_URL_VECTOR_MIGRATIONS"
+        "email_sync:$DB_URL_EMAIL_SYNC_MIGRATIONS"
     )
 
     for service_config in "${services[@]}"; do

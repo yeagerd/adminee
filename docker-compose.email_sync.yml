@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  pubsub:
+    image: google/cloud-sdk:latest
+    command: ["gcloud", "beta", "emulators", "pubsub", "start", "--host-port=0.0.0.0:8085"]
+    ports:
+      - "8085:8085"
+    environment:
+      - PUBSUB_PROJECT_ID=local-project
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  email_sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.email_sync
+    depends_on:
+      - pubsub
+    environment:
+      - GOOGLE_CLOUD_PROJECT=local-project
+      - PUBSUB_EMULATOR_HOST=pubsub:8085
+      - GMAIL_WEBHOOK_SECRET=dev-gmail-secret
+      - MICROSOFT_WEBHOOK_SECRET=dev-microsoft-secret
+      - MS_GRAPH_ACCESS_TOKEN=dev-ms-token
+      - GMAIL_ACCESS_TOKEN=dev-gmail-token
+      - GMAIL_REFRESH_TOKEN=dev-gmail-refresh
+      - GMAIL_CLIENT_ID=dev-gmail-client-id
+      - GMAIL_CLIENT_SECRET=dev-gmail-client-secret
+      - GMAIL_TOKEN_URI=https://oauth2.googleapis.com/token
+    ports:
+      - "8080:8080"
+    command: ["uvicorn", "services.email_sync.app:app", "--host", "0.0.0.0", "--port", "8080"]

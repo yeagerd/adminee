@@ -79,7 +79,7 @@ class FastAPICallbackServer:
                 return HTMLResponse(
                     f"""
                 <html><head><meta charset='UTF-8'><title>OAuth Error</title></head>
-                <body><h1>❌ OAuth Error</h1><p>{self.error}: {self.error_description or ''}</p></body></html>""",
+                <body><h1>❌ OAuth Error</h1><p>{self.error}: {self.error_description or ""}</p></body></html>""",
                     status_code=400,
                 )
             elif self.code:
