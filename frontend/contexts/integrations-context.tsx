@@ -3,7 +3,8 @@
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { INTEGRATION_STATUS } from '../lib/constants';
-import gatewayClient, { Integration } from '../lib/gateway-client';
+import { UserClient } from '@/api/clients/user-client';
+import type { Integration } from '@/api/types/common';
 
 interface IntegrationsContextType {
     integrations: Integration[];
@@ -22,6 +23,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { status } = useSession();
+    const userClient = useMemo(() => new UserClient(), []);
 
     // NEW: Track refresh state to prevent infinite loops and race conditions
     const isRefreshingRef = useRef(false);
@@ -31,14 +33,14 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setLoading(true);
         setError(null);
         try {
-            const resp = await gatewayClient.getIntegrations();
+            const resp = await userClient.getIntegrations();
             setIntegrations(resp.integrations || []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load integrations');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [userClient]);
 
     useEffect(() => {
         if (status === 'authenticated') {
@@ -85,7 +87,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return integrations.some(isExpiredButRefreshableIntegration);
     }, [integrations, isExpiredButRefreshableIntegration]);
 
-    const triggerAutoRefreshIfNeeded = useCallback(() => {
+    const triggerAutoRefreshIfNeeded = useCallback(async () => {
         const expiredIntegrations = integrations.filter(isExpiredButRefreshableIntegration);
         // For 'expired' status, only try once; for 'active', allow up to 3 attempts
         const shouldRetry = expiredIntegrations.some(i =>
@@ -102,34 +104,30 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         ) {
             return;
         }
+
         isRefreshingRef.current = true;
-        const refreshExpiredTokens = async () => {
-            try {
-                for (const integration of expiredIntegrations) {
-                    // For 'expired' status, only try once; for 'active', allow up to 3 attempts
-                    const maxAttempts = integration.status === INTEGRATION_STATUS.EXPIRED ? 1 : 3;
-                    if ((refreshAttemptsRef.current[integration.provider] || 0) >= maxAttempts) {
-                        continue;
-                    }
+        try {
+            for (const integration of expiredIntegrations) {
+                const attempts = refreshAttemptsRef.current[integration.provider] || 0;
+                if (
+                    (integration.status === INTEGRATION_STATUS.EXPIRED && attempts < 1) ||
+                    (integration.status === INTEGRATION_STATUS.ACTIVE && attempts < 3)
+                ) {
                     try {
-                        await gatewayClient.refreshIntegrationTokens(integration.provider);
-                        // Reset attempt counter on success
-                        refreshAttemptsRef.current[integration.provider] = 0;
-                    } catch {
-                        // Increment attempt counter on failure
-                        refreshAttemptsRef.current[integration.provider] =
-                            (refreshAttemptsRef.current[integration.provider] || 0) + 1;
+                        await userClient.refreshIntegrationTokens(integration.provider);
+                        refreshAttemptsRef.current[integration.provider] = (attempts || 0) + 1;
+                        // Wait a bit before trying the next one to avoid overwhelming the server
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } catch (e) {
+                        console.error(`Failed to refresh ${integration.provider} integration:`, e);
+                        refreshAttemptsRef.current[integration.provider] = (attempts || 0) + 1;
                     }
                 }
-                // Refresh the integrations list to get updated token data
-                await fetchIntegrations();
-            } catch {
-            } finally {
-                isRefreshingRef.current = false;
             }
-        };
-        refreshExpiredTokens();
-    }, [integrations, isExpiredButRefreshableIntegration, loading, hasExpiredButRefreshableTokens, activeProviders, fetchIntegrations]);
+        } finally {
+            isRefreshingRef.current = false;
+        }
+    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, userClient]);
 
     // Remove the auto-refresh useEffect (now handled by triggerAutoRefreshIfNeeded)
 
