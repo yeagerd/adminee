@@ -237,10 +237,12 @@ class CreateOneTimeLinkRequest(BaseModel):
 
 class CreatePublicBookingRequest(BaseModel):
     start: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="Start time of the meeting"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Start time of the meeting",
     )
     end: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="End time of the meeting"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="End time of the meeting",
     )
     attendee_email: EmailStr = Field(
         default="", description="Email address of the attendee"
@@ -266,7 +268,9 @@ class CreatePublicBookingRequest(BaseModel):
     @model_validator(mode="after")
     def validate_booking_window(self) -> "CreatePublicBookingRequest":
         # Ensure booking is not too far in the future (e.g., 2 years)
-        max_future = datetime.now(timezone.utc).replace(year=datetime.now(timezone.utc).year + 2)
+        max_future = datetime.now(timezone.utc).replace(
+            year=datetime.now(timezone.utc).year + 2
+        )
         if self.start > max_future:
             raise ValueError("Booking cannot be more than 2 years in the future")
         return self
@@ -439,7 +443,9 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     data: Dict[str, Any]
     message: str
-    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
 
 # List Response Models

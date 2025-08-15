@@ -152,7 +152,7 @@ def _apply_booking_settings(
             slot_start = slot_start.replace(tzinfo=timezone.utc)
         if slot_end.tzinfo is None:
             slot_end = slot_end.replace(tzinfo=timezone.utc)
-        
+
         now = datetime.now(timezone.utc)
         days_until_slot = (slot_start - now).days
 

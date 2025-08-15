@@ -110,10 +110,10 @@ async def get_public_link(token: str, request: Request) -> PublicLinkDataRespons
             if expires_at is not None:
                 if expires_at.tzinfo is None:
                     expires_at = expires_at.replace(tzinfo=timezone.utc)
-                
+
                 if expires_at < datetime.now(timezone.utc):
                     raise NotFoundError("Link", "expired")
-            
+
             if one_time_link.status != "active":
                 raise NotFoundError("Link", "already used")
 
@@ -231,10 +231,10 @@ async def get_public_availability(
             if expires_at is not None:
                 if expires_at.tzinfo is None:
                     expires_at = expires_at.replace(tzinfo=timezone.utc)
-                
+
                 if expires_at < datetime.now(timezone.utc):
                     raise NotFoundError("Link", "expired")
-            
+
             if one_time_link.status != "active":
                 raise NotFoundError("Link", "already used")
 
@@ -1397,7 +1397,8 @@ async def list_one_time_links(
         for one_time_link in one_time_links:
             # Check if expired
             is_expired = (
-                one_time_link.expires_at and one_time_link.expires_at < datetime.now(timezone.utc)
+                one_time_link.expires_at
+                and one_time_link.expires_at < datetime.now(timezone.utc)
             )
 
             links_data.append(
@@ -1469,7 +1470,8 @@ async def get_one_time_link_details(
 
         # Check if expired
         is_expired = (
-            one_time_link.expires_at and one_time_link.expires_at < datetime.now(timezone.utc)
+            one_time_link.expires_at
+            and one_time_link.expires_at < datetime.now(timezone.utc)
         )
 
         return {

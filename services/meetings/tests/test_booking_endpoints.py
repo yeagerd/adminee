@@ -254,7 +254,8 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
                 booking_link_id=booking_link.id,
                 recipient_email="expired@example.com",
                 recipient_name="Expired User",
-                expires_at=datetime.now(timezone.utc) - timedelta(days=1),  # Expired yesterday
+                expires_at=datetime.now(timezone.utc)
+                - timedelta(days=1),  # Expired yesterday
                 status="active",
             )
             session.add(expired_link)
