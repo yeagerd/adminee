@@ -165,11 +165,11 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 4.2 Create Chatbot Demo Enhancement
 **Goal**: Enhanced chat experience using Vespa data
-- [ ] Create specialized demo: `services/demos/vespa_chat.py`
-- [ ] Implement semantic search queries through chat interface
-- [ ] Add mixed result types in chat responses
-- [ ] Include relevance explanations and source attribution
-- [ ] Support follow-up questions and refinement
+- [x] Create specialized demo: `services/demos/vespa_chat.py`
+- [x] Implement semantic search queries through chat interface
+- [x] Add mixed result types in chat responses
+- [x] Include relevance explanations and source attribution
+- [x] Support follow-up questions and refinement
 
 **Files to create**:
 - `services/demos/vespa_chat.py` - Vespa-powered chat demo
