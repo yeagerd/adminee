@@ -107,6 +107,8 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         isRefreshingRef.current = true;
         try {
+            let hasSuccessfulRefreshes = false;
+
             for (const integration of expiredIntegrations) {
                 const attempts = refreshAttemptsRef.current[integration.provider] || 0;
                 if (
@@ -117,6 +119,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         await userClient.refreshIntegrationTokens(integration.provider);
                         // Reset counter on successful refresh
                         refreshAttemptsRef.current[integration.provider] = 0;
+                        hasSuccessfulRefreshes = true;
                         // Wait a bit before trying the next one to avoid overwhelming the server
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     } catch (e) {
@@ -126,10 +129,15 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     }
                 }
             }
+
+            // Update local state if any tokens were successfully refreshed
+            if (hasSuccessfulRefreshes) {
+                await fetchIntegrations();
+            }
         } finally {
             isRefreshingRef.current = false;
         }
-    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, userClient]);
+    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, userClient, fetchIntegrations]);
 
     // Remove the auto-refresh useEffect (now handled by triggerAutoRefreshIfNeeded)
 
