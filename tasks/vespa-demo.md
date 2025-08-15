@@ -132,12 +132,12 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 3.2 Enhance Chat Service for Vespa Integration
 **Goal**: Integrate Vespa search into chat workflows
-- [ ] Add Vespa search tools to existing agents
-- [ ] Create user-data search tool using Vespa instead of office service
-- [ ] Implement semantic search capabilities for chat queries
-- [ ] Add mixed result presentation (emails + calendar + files + contacts + ...)
-- [ ] Include relevance scoring and snippet generation
-- [ ] Maintain fallback to office service to read a specific email, eg.
+- [x] Add Vespa search tools to existing agents
+- [x] Create user-data search tool using Vespa instead of office service
+- [x] Implement semantic search capabilities for chat queries
+- [x] Add mixed result presentation (emails + calendar + files + contacts + ...)
+- [x] Include relevance scoring and snippet generation
+- [x] Maintain fallback to office service to read a specific email, eg.
 
 **Files to modify**:
 - `services/chat/agents/llm_tools.py` - Add Vespa search tools
