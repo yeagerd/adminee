@@ -1,5 +1,5 @@
 import { env } from '../../lib/env';
-import { DraftApiResponse, DraftListResponse, EmailDraftResponse } from '../types/common';
+import { DraftApiResponse, DraftListResponse } from '../types/common';
 import { GatewayClient } from './gateway-client';
 
 export class ChatClient extends GatewayClient {
@@ -97,46 +97,5 @@ export class ChatClient extends GatewayClient {
         return env.GATEWAY_URL;
     }
 
-    // Email Provider Draft Methods
-    async createEmailDraft(draftData: {
-        action?: 'new' | 'reply' | 'reply_all' | 'forward';
-        to?: { email: string; name?: string }[];
-        cc?: { email: string; name?: string }[];
-        bcc?: { email: string; name?: string }[];
-        subject?: string;
-        body?: string;
-        thread_id?: string;
-        reply_to_message_id?: string;
-        provider: 'google' | 'microsoft';
-    }): Promise<EmailDraftResponse> {
-        return this.request<EmailDraftResponse>('/api/v1/chat/email-drafts', {
-            method: 'POST',
-            body: draftData,
-        });
-    }
 
-    async updateEmailDraft(draftId: string, draftData: {
-        to?: { email: string; name?: string }[];
-        cc?: { email: string; name?: string }[];
-        bcc?: { email: string; name?: string }[];
-        subject?: string;
-        body?: string;
-        provider: 'google' | 'microsoft';
-    }): Promise<EmailDraftResponse> {
-        return this.request<EmailDraftResponse>(`/api/v1/chat/email-drafts/${encodeURIComponent(draftId)}`, {
-            method: 'PUT',
-            body: draftData,
-        });
-    }
-
-    async deleteEmailDraft(draftId: string, provider: 'google' | 'microsoft'): Promise<void> {
-        const params = new URLSearchParams({ provider });
-        return this.request<void>(`/api/v1/chat/email-drafts/${encodeURIComponent(draftId)}`, {
-            method: 'DELETE',
-        });
-    }
-
-    async listThreadDrafts(threadId: string): Promise<EmailDraftResponse> {
-        return this.request<EmailDraftResponse>(`/api/v1/chat/threads/${encodeURIComponent(threadId)}/drafts`);
-    }
 }

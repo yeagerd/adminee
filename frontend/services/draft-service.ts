@@ -1,5 +1,5 @@
+import { chatApi, officeApi } from '@/api';
 import type { DraftApiResponse } from '@/api/types/common';
-import { chatApi } from '@/api';
 import { officeIntegration } from '@/lib/office-integration';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 
@@ -59,7 +59,7 @@ export class DraftService {
     }
 
     async createEmailProviderDraft(args: CreateEmailProviderDraftArgs) {
-        const resp = await chatApi.createEmailDraft({
+        const resp = await officeApi.createEmailDraft({
             action: args.action,
             to: args.to,
             cc: args.cc,
@@ -74,7 +74,7 @@ export class DraftService {
     }
 
     async updateEmailProviderDraft(args: UpdateEmailProviderDraftArgs) {
-        const resp = await chatApi.updateEmailDraft(args.draftId, {
+        const resp = await officeApi.updateEmailDraft(args.draftId, {
             to: args.to,
             cc: args.cc,
             bcc: args.bcc,
@@ -86,11 +86,11 @@ export class DraftService {
     }
 
     async deleteEmailProviderDraft(draftId: string, provider: 'google' | 'microsoft') {
-        return chatApi.deleteEmailDraft(draftId, provider);
+        return officeApi.deleteEmailDraft(draftId, provider);
     }
 
     async listProviderDraftsForThread(threadId: string) {
-        return chatApi.listThreadDrafts(threadId);
+        return officeApi.listThreadDrafts(threadId);
     }
 
     async updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
