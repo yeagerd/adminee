@@ -117,12 +117,12 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ### 3.1 Create Vespa Query Service
 **Goal**: Query interface for hybrid search capabilities
-- [ ] Create query service: `services/vespa_query/`
-- [ ] Implement hybrid search (BM25 + vector similarity)
-- [ ] Add user isolation filtering to all queries
-- [ ] Support faceting by source_type, provider, date ranges
-- [ ] Implement result ranking and relevance tuning
-- [ ] Add query analytics and performance monitoring
+- [x] Create query service: `services/vespa_query/`
+- [x] Implement hybrid search (BM25 + vector similarity)
+- [x] Add user isolation filtering to all queries
+- [x] Support faceting by source_type, provider, date ranges
+- [x] Implement result ranking and relevance tuning
+- [x] Add query analytics and performance monitoring
 
 **Files to create**:
 - `services/vespa_query/main.py` - Query service
@@ -151,9 +151,9 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 ### 4.1 Create Vespa Demo Scripts
 **Goal**: End-to-end demo showcasing Vespa capabilities
 - [ ] Create comprehensive demo: `services/demos/vespa_full.py`
-- [ ] Implement data seeding for Microsoft and Google test accounts
+- [ ] Implement backfill-based data seeding for Microsoft and Google test accounts
 - [ ] Add demo queries showcasing hybrid search capabilities
-- [ ] Include performance benchmarking and comparison tools
+- [ ] Include performance benchmarking
 - [ ] Add data quality validation and verification
 - [ ] Create cleanup and teardown procedures
 
@@ -170,7 +170,6 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 - [ ] Add mixed result types in chat responses
 - [ ] Include relevance explanations and source attribution
 - [ ] Support follow-up questions and refinement
-- [ ] Add comparison mode (office service vs Vespa results)
 
 **Files to create**:
 - `services/demos/vespa_chat.py` - Vespa-powered chat demo
