@@ -477,7 +477,7 @@ class ChatServiceClient(ServiceClient):
                 },
                 headers={
                     "X-API-Key": settings.API_FRONTEND_CHAT_KEY,
-                    "X-User-Id": user_id
+                    "X-User-Id": user_id,
                 },
                 timeout=self.timeout,
             )
@@ -488,7 +488,9 @@ class ChatServiceClient(ServiceClient):
                 if messages:
                     return messages[-1].get("content")
             else:
-                logger.error(f"Chat service returned status {response.status_code}: {response.text}")
+                logger.error(
+                    f"Chat service returned status {response.status_code}: {response.text}"
+                )
         except Exception as e:
             logger.error(f"Chat service error: {e}")
         return None
@@ -570,7 +572,7 @@ class FullDemo:
         self.chat_client = ChatServiceClient(chat_url)
         self.office_client = OfficeServiceClient(office_url)
         self.user_client = UserServiceClient(user_url)
-        
+
         # Health check clients (direct to services)
         self.chat_health_client = ServiceClient(chat_health_url)
         self.office_health_client = ServiceClient(office_health_url)
@@ -613,7 +615,9 @@ class FullDemo:
 
         # Check main services
         self.services_available["chat"] = await self.chat_health_client.health_check()
-        self.services_available["office"] = await self.office_health_client.health_check()
+        self.services_available["office"] = (
+            await self.office_health_client.health_check()
+        )
         self.services_available["user"] = await self.user_health_client.health_check()
 
         # Check NextAuth test server
@@ -650,7 +654,9 @@ class FullDemo:
 
         try:
             # Use the new email resolution endpoint to get external_auth_id
-            logger.info(f"🔍 authenticate() calling _resolve_email_to_user_id with auth_email: '{auth_email}'")
+            logger.info(
+                f"🔍 authenticate() calling _resolve_email_to_user_id with auth_email: '{auth_email}'"
+            )
             user_id = await self._resolve_email_to_user_id(auth_email)
             logger.info(f"🔍 authenticate() received user_id: '{user_id}'")
             if not user_id:
@@ -718,9 +724,11 @@ class FullDemo:
         """
         try:
             # Debug logging to see what's being passed
-            logger.info(f"🔍 _resolve_email_to_user_id called with email: '{email}' (type: {type(email)})")
+            logger.info(
+                f"🔍 _resolve_email_to_user_id called with email: '{email}' (type: {type(email)})"
+            )
             logger.info(f"🔍 Current preferred_provider: {self.preferred_provider}")
-            
+
             # Use the new RESTful lookup endpoint
             params = {"email": email}
             if self.preferred_provider:
@@ -770,7 +778,9 @@ class FullDemo:
                             logger.info(
                                 f"Successfully resolved email {email} to external_auth_id {external_auth_id}"
                             )
-                            logger.info(f"🔍 Returning external_auth_id: {external_auth_id}")
+                            logger.info(
+                                f"🔍 Returning external_auth_id: {external_auth_id}"
+                            )
                             return external_auth_id
                         else:
                             logger.error(
@@ -847,7 +857,7 @@ class FullDemo:
                     json=user_create_payload,
                     headers={
                         "Content-Type": "application/json",
-                        "X-API-Key": self.settings.API_FRONTEND_USER_KEY
+                        "X-API-Key": self.settings.API_FRONTEND_USER_KEY,
                     },
                 )
 
@@ -922,7 +932,7 @@ class FullDemo:
                         json=user_create_payload,
                         headers={
                             "Content-Type": "application/json",
-                            "X-API-Key": self.settings.API_FRONTEND_USER_KEY
+                            "X-API-Key": self.settings.API_FRONTEND_USER_KEY,
                         },
                     )
                     if response.status_code in [200, 201]:
@@ -1354,7 +1364,7 @@ class FullDemo:
                             if not success:
                                 print("\n❌ Authentication failed, cannot set up OAuth")
                                 continue
-                        
+
                         # User is authenticated, proceed with OAuth setup
                         oauth_success = await self.setup_oauth_integration(provider)
                         result = (
@@ -1504,12 +1514,12 @@ async def main() -> None:
     chat_url = "http://localhost:8002/v1/chat"
     office_url = "http://localhost:8003"
     user_url = "http://localhost:8001"
-    
+
     # Direct service URLs for health checks
     chat_health_url = "http://localhost:8002"
     office_health_url = "http://localhost:8003"
     user_health_url = "http://localhost:8001"
-    
+
     user_id = args.email or DEFAULT_USER_ID
 
     demo = FullDemo(
