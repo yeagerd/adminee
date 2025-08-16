@@ -6,7 +6,7 @@ Vespa-Powered Chat Demo - Enhanced chat experience using Vespa data
 import asyncio
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 import time
 
@@ -80,7 +80,7 @@ class VespaChatDemo:
         
         demo_start = time.time()
         demo_results = {
-            "start_time": datetime.now(datetime.UTC).isoformat(),
+            "start_time": datetime.now(timezone.utc).isoformat(),
             "conversation_scenarios": [],
             "performance_metrics": {},
             "search_quality": {},
@@ -103,7 +103,7 @@ class VespaChatDemo:
             # Evaluate user experience
             demo_results["user_experience"] = self._evaluate_user_experience(demo_results["conversation_scenarios"])
             
-            demo_results["end_time"] = datetime.now(datetime.UTC).isoformat()
+            demo_results["end_time"] = datetime.now(timezone.utc).isoformat()
             demo_results["status"] = "completed"
             
             demo_duration = time.time() - demo_start
@@ -113,7 +113,7 @@ class VespaChatDemo:
             logger.error(f"Chat demo failed: {e}")
             demo_results["status"] = "failed"
             demo_results["error"] = str(e)
-            demo_results["end_time"] = datetime.now(datetime.UTC).isoformat()
+            demo_results["end_time"] = datetime.now(timezone.utc).isoformat()
         
         return demo_results
     
