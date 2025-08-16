@@ -288,6 +288,27 @@ DEMO_PROVIDERS=microsoft,google
 
 ### Quick Start
 
+#### **Option 1: Automated Service Startup**
+Use the provided script to start all Vespa backend services automatically:
+
+```bash
+# Start all Vespa services (Docker + Python services)
+python services/demos/vespa_start_be.py
+```
+
+This script will:
+- Start Vespa engine (Docker)
+- Start Pub/Sub emulator (Docker)  
+- Start Vespa Loader Service (Port 9001)
+- Start Vespa Query Service (Port 9002)
+- Verify Office Service is running (Port 8001)
+
+#### **Option 2: Manual Service Startup**
+Start services individually as described in the Prerequisites section above.
+
+#### **Running the Demos**
+Once all services are running:
+
 1. **Seed demo data**:
    ```bash
    python scripts/seed-demo-data.py --user-id demo_user_1
