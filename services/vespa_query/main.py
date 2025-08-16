@@ -9,10 +9,10 @@ import uvicorn
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 
-from .search_engine import SearchEngine
-from .query_builder import QueryBuilder
-from .result_processor import ResultProcessor
-from .settings import Settings
+from services.vespa_query.search_engine import SearchEngine
+from services.vespa_query.query_builder import QueryBuilder
+from services.vespa_query.result_processor import ResultProcessor
+from services.vespa_query.settings import Settings
 from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.telemetry import setup_telemetry, get_tracer
@@ -91,7 +91,7 @@ app.add_middleware(
 register_briefly_exception_handlers(app)
 
 # Add request logging middleware
-app.middleware("http")(create_request_logging_middleware(logger, tracer))
+app.middleware("http")(create_request_logging_middleware())
 
 @app.get("/health")
 async def health_check():

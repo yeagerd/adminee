@@ -92,7 +92,7 @@ app.add_middleware(
 register_briefly_exception_handlers(app)
 
 # Add request logging middleware
-app.middleware("http")(create_request_logging_middleware(logger, tracer))
+app.middleware("http")(create_request_logging_middleware())
 
 @app.get("/health")
 async def health_check():
