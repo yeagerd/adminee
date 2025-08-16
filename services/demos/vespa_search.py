@@ -382,6 +382,95 @@ class VespaSearchDemo:
         
         return quality_metrics
 
+    async def run_single_query(self, query: str) -> Dict[str, Any]:
+        """Run a single query and return results"""
+        try:
+            start_time = time.time()
+            
+            # Use user data search for comprehensive results
+            results = await self.user_data_search.search_all_data(query, max_results=20)
+            
+            response_time = (time.time() - start_time) * 1000
+            
+            return {
+                "query": query,
+                "status": results.get("status", "unknown"),
+                "response_time_ms": round(response_time, 2),
+                "total_found": results.get("total_found", 0),
+                "results": results.get("results", []),
+                "success": results.get("status") == "success"
+            }
+            
+        except Exception as e:
+            logger.error(f"Query '{query}' failed: {e}")
+            return {
+                "query": query,
+                "status": "error",
+                "error": str(e),
+                "success": False
+            }
+
+    def print_query_results(self, results: Dict[str, Any]):
+        """Print query results in a formatted way"""
+        print(f"\n{'='*60}")
+        print(f"QUERY RESULTS: {results['query']}")
+        print(f"{'='*60}")
+        print(f"Status: {results['status']}")
+        print(f"Response Time: {results.get('response_time_ms', 0):.2f}ms")
+        print(f"Total Found: {results.get('total_found', 0)}")
+        
+        if results.get("success") and results.get("results"):
+            print(f"\nTop Results:")
+            for i, result in enumerate(results["results"][:5], 1):
+                print(f"\n{i}. {result.get('title', 'No title')}")
+                print(f"   Type: {result.get('source_type', 'Unknown')}")
+                print(f"   Relevance: {result.get('relevance', 'N/A')}")
+                if result.get('snippet'):
+                    print(f"   Snippet: {result['snippet'][:100]}...")
+        elif results.get("error"):
+            print(f"Error: {results['error']}")
+        
+        print(f"{'='*60}")
+
+    async def run_interactive_mode(self):
+        """Run interactive search mode"""
+        print("\n" + "="*60)
+        print("VESPA INTERACTIVE SEARCH MODE")
+        print("="*60)
+        print("Type your search queries below. Type 'quit', 'exit', or 'q' to exit.")
+        print("Type 'help' for search tips.")
+        print("="*60)
+        
+        while True:
+            try:
+                query = input("\nSearch query: ").strip()
+                
+                if query.lower() in ['quit', 'exit', 'q']:
+                    print("Goodbye!")
+                    break
+                elif query.lower() == 'help':
+                    print("\nSearch Tips:")
+                    print("- Use quotes for exact phrases: \"meeting notes\"")
+                    print("- Search by type: emails, calendar events, contacts")
+                    print("- Use natural language: \"emails from last week\"")
+                    print("- Try semantic search: \"project collaboration\"")
+                    continue
+                elif not query:
+                    continue
+                
+                print(f"\nSearching for: {query}")
+                results = await self.run_single_query(query)
+                self.print_query_results(results)
+                
+            except KeyboardInterrupt:
+                print("\n\nGoodbye!")
+                break
+            except EOFError:
+                print("\n\nGoodbye!")
+                break
+            except Exception as e:
+                print(f"\nError: {e}")
+
 async def main():
     """Main function for running the Vespa search demo"""
     import argparse
@@ -390,6 +479,8 @@ async def main():
     parser.add_argument("--vespa-endpoint", default="http://localhost:8080", help="Vespa endpoint")
     parser.add_argument("--demo-user-id", default="demo_user_1", help="Demo user ID")
     parser.add_argument("--output-file", help="Output file for demo results")
+    parser.add_argument("--demo", action="store_true", help="Run the comprehensive demo instead of interactive mode")
+    parser.add_argument("--query", help="Run a single query non-interactively")
     
     args = parser.parse_args()
     
@@ -399,57 +490,69 @@ async def main():
         "demo_user_id": args.demo_user_id
     }
     
-    # Create and run demo with proper resource cleanup
     try:
         async with VespaSearchDemo(config) as demo:
-            results = await demo.run_search_demo()
-            
-            # Print summary
-            print("\n" + "="*60)
-            print("VESPA SEARCH DEMO RESULTS SUMMARY")
-            print("="*60)
-            print(f"Status: {results['status']}")
-            
-            if results["status"] == "completed":
-                performance = results.get("performance_metrics", {})
-                print(f"Total Queries: {performance.get('total_queries', 0)}")
-                print(f"Success Rate: {performance.get('success_rate', 0):.1f}%")
-                print(f"Average Response Time: {performance.get('average_response_time_ms', 0):.2f}ms")
-                print(f"Total Scenarios: {performance.get('total_scenarios', 0)}")
+            if args.demo:
+                # Run the comprehensive demo
+                results = await demo.run_search_demo()
                 
-                search_quality = results.get("search_quality", {})
-                print(f"Overall Success Rate: {search_quality.get('overall_success_rate', 0):.1f}%")
+                # Print summary
+                print("\n" + "="*60)
+                print("VESPA SEARCH DEMO RESULTS SUMMARY")
+                print("="*60)
+                print(f"Status: {results['status']}")
                 
-                # Show scenario success rates
-                print("\nScenario Success Rates:")
-                for scenario, rate in search_quality.get("scenario_success_rates", {}).items():
-                    print(f"  {scenario}: {rate:.1f}%")
+                if results["status"] == "completed":
+                    performance = results.get("performance_metrics", {})
+                    print(f"Total Queries: {performance.get('total_queries', 0)}")
+                    print(f"Success Rate: {performance.get('success_rate', 0):.1f}%")
+                    print(f"Average Response Time: {performance.get('average_response_time_ms', 0):.2f}ms")
+                    print(f"Total Scenarios: {performance.get('total_scenarios', 0)}")
+                    
+                    search_quality = results.get("search_quality", {})
+                    print(f"Overall Success Rate: {search_quality.get('overall_success_rate', 0):.1f}%")
+                    
+                    # Show scenario success rates
+                    print("\nScenario Success Rates:")
+                    for scenario, rate in search_quality.get("scenario_success_rates", {}).items():
+                        print(f"  {scenario}: {rate:.1f}%")
+                    
+                    # Show response time distribution
+                    time_dist = search_quality.get("response_time_distribution", {})
+                    if time_dist:
+                        print(f"\nResponse Time Distribution:")
+                        print(f"  Fast (<10ms): {time_dist.get('fast', 0)}")
+                        print(f"  Medium (10-50ms): {time_dist.get('medium', 0)}")
+                        print(f"  Slow (≥50ms): {time_dist.get('slow', 0)}")
+                    
+                    # Show ranking profile performance
+                    ranking_perf = search_quality.get("ranking_profile_performance", {})
+                    if ranking_perf:
+                        print(f"\nRanking Profile Performance:")
+                        for profile, rate in ranking_perf.items():
+                            print(f"  {profile}: {rate:.1f}%")
                 
-                # Show response time distribution
-                time_dist = search_quality.get("response_time_distribution", {})
-                if time_dist:
-                    print(f"\nResponse Time Distribution:")
-                    print(f"  Fast (<10ms): {time_dist.get('fast', 0)}")
-                    print(f"  Medium (10-50ms): {time_dist.get('medium', 0)}")
-                    print(f"  Slow (≥50ms): {time_dist.get('slow', 0)}")
+                print("="*60)
                 
-                # Show ranking profile performance
-                ranking_perf = search_quality.get("ranking_profile_performance", {})
-                if ranking_perf:
-                    print(f"\nRanking Profile Performance:")
-                    for profile, rate in ranking_perf.items():
-                        print(f"  {profile}: {rate:.1f}%")
-            
-            print("="*60)
-            
-            # Save results to file
-            if args.output_file:
-                with open(args.output_file, 'w') as f:
-                    json.dump(results, f, indent=2, default=str)
-                print(f"\nDetailed results saved to: {args.output_file}")
-            
-            return results
-            
+                # Save results to file
+                if args.output_file:
+                    with open(args.output_file, 'w') as f:
+                        json.dump(results, f, indent=2, default=str)
+                    print(f"\nDetailed results saved to: {args.output_file}")
+                
+                return results
+                
+            elif args.query:
+                # Run a single query non-interactively
+                print(f"Running query: {args.query}")
+                results = await demo.run_single_query(args.query)
+                demo.print_query_results(results)
+                return results
+                
+            else:
+                # Interactive mode (default)
+                await demo.run_interactive_mode()
+                
     except Exception as e:
         logger.error(f"Demo failed with error: {e}")
         raise
