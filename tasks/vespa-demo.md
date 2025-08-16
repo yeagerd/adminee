@@ -345,3 +345,252 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 - Add comprehensive tests for new services
 - Document configuration options and environment variables
 - Keep services stateless and horizontally scalable
+
+---
+
+## Phase 6: Service-to-Service Backfill Communication
+
+### 6.1 Implement Internal Backfill Endpoints
+**Goal**: Create service-to-service communication endpoints that bypass JWT authentication for backend jobs
+
+#### 6.1.1 Add Internal Backfill Endpoints to Office Service
+**Files to modify**: `services/office/api/backfill.py`
+
+**New Endpoints to Add**:
+- [ ] `POST /internal/backfill/start?user_id={email}` - Start backfill job for specific user
+- [ ] `GET /internal/backfill/status/{job_id}?user_id={email}` - Get job status
+- [ ] `DELETE /internal/backfill/{job_id}?user_id={email}` - Cancel job
+- [ ] `GET /internal/backfill/status?user_id={email}` - List user's jobs
+
+**Authentication**: API key only (no JWT required)
+**User Identification**: Via `user_id` query parameter (email address)
+**Security**: API key must have `backfill` permission
+
+**Implementation Details**:
+```python
+@router.post("/internal/start", response_model=BackfillResponse)
+async def start_internal_backfill(
+    request: BackfillRequest,
+    user_id: str = Query(..., description="User email address"),
+    background_tasks: BackgroundTasks,
+    api_key: str = Depends(verify_backfill_api_key)
+):
+    """Internal endpoint for starting backfill jobs (service-to-service)"""
+    # Validate user_id format (email)
+    # Check if user exists and has valid integrations
+    # Start backfill job with specified user_id
+    # Return job_id and status
+```
+
+#### 6.1.2 Update BackfillRequest Model
+**Files to modify**: `services/office/models/backfill.py`
+
+**Add New Fields**:
+- [ ] Add `max_emails: Optional[int]` field with validation (ge=1, le=10000)
+- [ ] Add `user_id: Optional[str]` field for internal endpoints
+- [ ] Update model validation and documentation
+
+#### 6.1.3 Create Internal API Key Authentication
+**Files to modify**: `services/office/core/auth.py`
+
+**Add New API Key Type**:
+- [ ] Add `api_backfill_key` configuration with `backfill` permission
+- [ ] Include permissions: `backfill`, `read_emails`, `read_calendar`, `read_contacts`, `health`
+- [ ] Add `verify_backfill_api_key` function for permission checking
+
+### 6.2 Update Demo Scripts to Use Internal Endpoints
+
+#### 6.2.1 Modify VespaBackfillDemo Class
+**Files to modify**: `services/demos/vespa_backfill.py`
+
+**Changes Required**:
+- [ ] Remove user_id parameter from API calls - Use query parameter instead
+- [ ] Update API endpoints - Change from `/v1/api/backfill/start` to `/internal/backfill/start`
+- [ ] Add user_id to query params - Pass email as `user_id` query parameter
+- [ ] Update API key - Use backfill API key instead of frontend key
+- [ ] Pass `max_emails` parameter to API request
+
+#### 6.2.2 Update API Key Configuration
+**Files to modify**: `services/demos/settings_demos.py`
+
+**Add Backfill API Key**:
+- [ ] Add `api_backfill_key` property to DemoSettings class
+- [ ] Update `get_api_keys()` method to include backfill key
+- [ ] Set default value to `test-BACKFILL_KEY`
+
+#### 6.2.3 Update VespaSearchDemo Class
+**Files to modify**: `services/demos/vespa_search.py`
+
+**Changes Required**:
+- [ ] Use internal endpoints - Change from public API to internal endpoints
+- [ ] Pass user_id as query param - Include email in query parameters
+- [ ] Update API key - Use appropriate service API key
+
+### 6.3 Update Office Service Backfill Logic
+
+#### 6.3.1 Modify EmailCrawler to Respect max_emails
+**Files to modify**: `services/office/core/email_crawler.py`
+
+**Changes Required**:
+- [ ] Accept `max_emails` parameter in `crawl_emails` method
+- [ ] Respect email limit - Stop crawling after reaching max_emails
+- [ ] Update progress tracking - Show progress relative to max_emails
+- [ ] Add early termination logic when max_emails is reached
+
+#### 6.3.2 Update Backfill Job Execution
+**Files to modify**: `services/office/api/backfill.py`
+
+**Changes Required**:
+- [ ] Pass `max_emails` to EmailCrawler constructor
+- [ ] Update progress calculation - Use max_emails for progress percentage
+- [ ] Respect email limits - Stop processing after reaching max_emails
+- [ ] Update job status tracking with max_emails information
+
+### 6.4 Environment Configuration Updates
+
+#### 6.4.1 Add Backfill API Key to Environment
+**Files to modify**: `.env.example`, `docker-compose.yml`, deployment configs
+
+**New Environment Variable**:
+- [ ] Add `API_BACKFILL_KEY=your-backfill-api-key-here` to `.env.example`
+- [ ] Update deployment configurations with new environment variable
+
+#### 6.4.2 Update Docker Compose Configuration
+**Files to modify**: `docker-compose.yml`
+
+**Add Backfill API Key**:
+- [ ] Add `API_BACKFILL_KEY` environment variable to office service
+- [ ] Ensure environment variable is properly passed through
+
+### 6.5 Testing and Validation
+
+#### 6.5.1 Test Internal Endpoints
+**Test Cases**:
+- [ ] Valid API Key + Valid User - Should start backfill job
+- [ ] Valid API Key + Invalid User - Should return 404 for user not found
+- [ ] Invalid API Key + Valid User - Should return 401 unauthorized
+- [ ] Missing user_id Parameter - Should return 400 bad request
+- [ ] Max Emails Limit - Should respect max_emails parameter
+
+#### 6.5.2 Test Demo Scripts
+**Test Cases**:
+- [ ] Email Parameter Required - Script should fail without email
+- [ ] Max Emails Override - `--max-emails 5` should process only 5 emails
+- [ ] Real User Authentication - Should use actual user email, not API key client name
+- [ ] Progress Tracking - Should show progress relative to max_emails
+
+#### 6.5.3 Integration Testing
+**Test Cases**:
+- [ ] End-to-End Flow - Demo script → Internal API → Backfill job → Pub/Sub → Vespa
+- [ ] User Isolation - Different users should see only their data
+- [ ] Error Handling - Invalid users, API failures, etc.
+- [ ] Performance - Respect rate limits and batch sizes
+
+### 6.6 Security Considerations
+
+#### 6.6.1 API Key Permissions
+- [ ] Backfill API Key - Limited to backfill operations only
+- [ ] No User Data Access - Cannot read emails, only trigger backfill jobs
+- [ ] Audit Logging - Log all backfill job requests and completions
+
+#### 6.6.2 User Validation
+- [ ] Email Format Validation - Ensure user_id is valid email format
+- [ ] User Existence Check - Verify user exists before starting backfill
+- [ ] Integration Validation - Check user has valid OAuth integrations
+
+#### 6.6.3 Rate Limiting
+- [ ] Per-User Limits - Prevent abuse by limiting jobs per user
+- [ ] Global Limits - Prevent system overload with global job limits
+- [ ] Cooldown Periods - Require time between backfill jobs
+
+### 6.7 Migration Strategy
+
+#### 6.7.1 Phase 1: Add Internal Endpoints
+- [ ] Add new internal endpoints alongside existing ones
+- [ ] Keep existing JWT-based endpoints for frontend use
+- [ ] Test internal endpoints with demo scripts
+
+#### 6.7.2 Phase 2: Update Demo Scripts
+- [ ] Modify demo scripts to use internal endpoints
+- [ ] Test with real user emails
+- [ ] Verify max_emails parameter works correctly
+
+#### 6.7.3 Phase 3: Deprecate Old Demo Logic
+- [ ] Remove hardcoded demo user logic
+- [ ] Clean up API key client name usage
+- [ ] Update documentation and examples
+
+### 6.8 Success Criteria
+
+#### 6.8.1 Functional Requirements
+- [ ] Internal backfill endpoints accept user_id as query parameter
+- [ ] Demo scripts require real email addresses as first argument
+- [ ] Max emails parameter is respected and passed through to EmailCrawler
+- [ ] User isolation works correctly with real user emails
+- [ ] API key authentication works for service-to-service communication
+
+#### 6.8.2 Security Requirements
+- [ ] Only backfill API keys can access internal endpoints
+- [ ] User validation prevents unauthorized access
+- [ ] Audit logging captures all backfill operations
+- [ ] Rate limiting prevents abuse
+
+#### 6.8.3 Performance Requirements
+- [ ] Internal endpoints respond within 100ms
+- [ ] Max emails parameter is enforced efficiently
+- [ ] Progress tracking updates in real-time
+- [ ] Error handling doesn't impact performance
+
+### 6.9 Implementation Timeline
+
+#### Week 1: Internal Endpoints
+- [ ] Add internal backfill endpoints to office service
+- [ ] Implement backfill API key authentication
+- [ ] Add max_emails to BackfillRequest model
+
+#### Week 2: Demo Script Updates
+- [ ] Update vespa_backfill.py to use internal endpoints
+- [ ] Update vespa_search.py to use internal endpoints
+- [ ] Test with real user emails
+
+#### Week 3: Integration and Testing
+- [ ] End-to-end testing of backfill flow
+- [ ] Performance and security validation
+- [ ] Documentation updates
+
+#### Week 4: Cleanup and Migration
+- [ ] Remove old demo user logic
+- [ ] Clean up API key client name usage
+- [ ] Update all documentation and examples
+
+---
+
+## Notes for Implementation
+
+### Key Benefits of This Approach
+1. **Service-to-Service Communication** - Backend jobs can trigger backfill without JWT
+2. **Real User Authentication** - Uses actual user emails instead of fake IDs
+3. **Flexible Email Limits** - Command line can control max_emails per job
+4. **Security** - API key-based authentication with proper permissions
+5. **Scalability** - Internal endpoints designed for high-throughput backend use
+
+### Common Pitfalls to Avoid
+1. **Missing user_id Parameter** - Always validate user_id is present
+2. **API Key Permissions** - Ensure backfill API key has correct permissions
+3. **User Validation** - Check user exists and has valid integrations
+4. **Progress Tracking** - Update progress relative to max_emails, not total emails
+5. **Error Handling** - Gracefully handle invalid users and API failures
+
+### Testing Strategy
+1. **Unit Tests** - Test internal endpoint logic and validation
+2. **Integration Tests** - Test complete backfill flow
+3. **Security Tests** - Verify API key permissions and user isolation
+4. **Performance Tests** - Ensure endpoints meet performance requirements
+5. **Demo Script Tests** - Verify scripts work with real user emails
+
+### Monitoring and Observability
+1. **API Key Usage** - Track which API keys are accessing internal endpoints
+2. **User Backfill Jobs** - Monitor backfill job creation and completion
+3. **Error Rates** - Track failures and identify common issues
+4. **Performance Metrics** - Monitor response times and throughput
+5. **Security Events** - Log unauthorized access attempts and suspicious activity
