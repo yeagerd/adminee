@@ -9,8 +9,10 @@ import json
 from datetime import datetime
 import time
 from services.common.logging_config import get_logger
+from services.common.telemetry import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer(__name__)
 
 class SearchEngine:
     """Core search engine for Vespa queries"""
@@ -34,52 +36,81 @@ class SearchEngine:
     
     async def test_connection(self) -> bool:
         """Test connection to Vespa"""
-        try:
-            if not self.session:
-                await self.start()
+        with tracer.start_as_current_span("vespa.test_connection") as span:
+            span.set_attribute("vespa.endpoint", self.vespa_endpoint)
             
-            async with self.session.get(f"{self.vespa_endpoint}/application/v2/status") as response:
-                if response.status == 200:
-                    logger.info("Vespa connection test successful")
-                    return True
-                else:
-                    logger.error(f"Vespa connection test failed with status {response.status}")
-                    return False
-        except Exception as e:
-            logger.error(f"Vespa connection test failed: {e}")
-            return False
+            try:
+                if not self.session:
+                    await self.start()
+                
+                async with self.session.get(f"{self.vespa_endpoint}/application/v2/status") as response:
+                    span.set_attribute("vespa.response.status", response.status)
+                    
+                    if response.status == 200:
+                        logger.info("Vespa connection test successful")
+                        span.set_attribute("vespa.connection.success", True)
+                        return True
+                    else:
+                        logger.error(f"Vespa connection test failed with status {response.status}")
+                        span.set_attribute("vespa.connection.success", False)
+                        span.set_attribute("vespa.error.status", response.status)
+                        return False
+            except Exception as e:
+                logger.error(f"Vespa connection test failed: {e}")
+                span.set_attribute("vespa.connection.success", False)
+                span.set_attribute("vespa.error.message", str(e))
+                span.record_exception(e)
+                return False
     
     async def search(self, search_query: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a search query"""
-        if not self.session:
-            await self.start()
-        
-        try:
-            start_time = time.time()
+        with tracer.start_as_current_span("vespa.search") as span:
+            span.set_attribute("vespa.query.type", "search")
+            span.set_attribute("vespa.query.ranking", search_query.get("ranking", "unknown"))
+            span.set_attribute("vespa.query.hits", search_query.get("hits", 0))
             
-            # Execute search
-            url = f"{self.vespa_endpoint}/search/"
-            async with self.session.post(url, json=search_query) as response:
-                if response.status == 200:
-                    results = await response.json()
+            if not self.session:
+                await self.start()
+            
+            try:
+                start_time = time.time()
+                
+                # Execute search
+                url = f"{self.vespa_endpoint}/search/"
+                span.set_attribute("vespa.request.url", url)
+                
+                async with self.session.post(url, json=search_query) as response:
+                    span.set_attribute("vespa.response.status", response.status)
                     
-                    # Add performance metrics
-                    query_time = time.time() - start_time
-                    results["performance"] = {
-                        "query_time_ms": round(query_time * 1000, 2),
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    
-                    logger.info(f"Search query executed in {query_time:.3f}s")
-                    return results
-                else:
-                    error_text = await response.text()
-                    logger.error(f"Search query failed: {response.status} - {error_text}")
-                    raise Exception(f"Search failed: {response.status} - {error_text}")
-                    
-        except Exception as e:
-            logger.error(f"Error executing search query: {e}")
-            raise
+                    if response.status == 200:
+                        results = await response.json()
+                        
+                        # Add performance metrics
+                        query_time = time.time() - start_time
+                        span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
+                        
+                        results["performance"] = {
+                            "query_time_ms": round(query_time * 1000, 2),
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        
+                        logger.info(f"Search query executed in {query_time:.3f}s")
+                        span.set_attribute("vespa.search.success", True)
+                        return results
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"Search query failed: {response.status} - {error_text}")
+                        span.set_attribute("vespa.search.success", False)
+                        span.set_attribute("vespa.error.status", response.status)
+                        span.set_attribute("vespa.error.message", error_text)
+                        raise Exception(f"Search failed: {response.status} - {error_text}")
+                        
+            except Exception as e:
+                logger.error(f"Error executing search query: {e}")
+                span.set_attribute("vespa.search.success", False)
+                span.set_attribute("vespa.error.message", str(e))
+                span.record_exception(e)
+                raise
     
     async def autocomplete(self, autocomplete_query: Dict[str, Any]) -> Dict[str, Any]:
         """Execute an autocomplete query"""

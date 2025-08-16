@@ -8,8 +8,10 @@ from typing import Dict, Any, Optional, List
 import json
 from datetime import datetime
 from services.common.logging_config import get_logger
+from services.common.telemetry import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer(__name__)
 
 class VespaClient:
     """Client for interacting with Vespa HTTP API"""
@@ -33,53 +35,79 @@ class VespaClient:
     
     async def test_connection(self) -> bool:
         """Test connection to Vespa"""
-        try:
-            if not self.session:
-                await self.start()
+        with tracer.start_as_current_span("vespa.test_connection") as span:
+            span.set_attribute("vespa.endpoint", self.vespa_endpoint)
             
-            async with self.session.get(f"{self.vespa_endpoint}/application/v2/status") as response:
-                if response.status == 200:
-                    logger.info("Vespa connection test successful")
-                    return True
-                else:
-                    logger.error(f"Vespa connection test failed with status {response.status}")
-                    return False
-        except Exception as e:
-            logger.error(f"Vespa connection test failed: {e}")
-            return False
+            try:
+                if not self.session:
+                    await self.start()
+                
+                async with self.session.get(f"{self.vespa_endpoint}/application/v2/status") as response:
+                    span.set_attribute("vespa.response.status", response.status)
+                    
+                    if response.status == 200:
+                        logger.info("Vespa connection test successful")
+                        span.set_attribute("vespa.connection.success", True)
+                        return True
+                    else:
+                        logger.error(f"Vespa connection test failed with status {response.status}")
+                        span.set_attribute("vespa.connection.success", False)
+                        span.set_attribute("vespa.error.status", response.status)
+                        return False
+            except Exception as e:
+                logger.error(f"Vespa connection test failed: {e}")
+                span.set_attribute("vespa.connection.success", False)
+                span.set_attribute("vespa.error.message", str(e))
+                span.record_exception(e)
+                return False
     
     async def index_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
         """Index a document into Vespa"""
-        if not self.session:
-            await self.start()
-        
-        try:
-            # Prepare document for Vespa
-            vespa_doc = self._prepare_document_for_indexing(document)
+        with tracer.start_as_current_span("vespa.index_document") as span:
+            span.set_attribute("vespa.document.type", document.get("source_type", "unknown"))
+            span.set_attribute("vespa.document.user_id", document.get("user_id", "unknown"))
             
-            # Generate document ID
-            doc_id = self._generate_document_id(document)
+            if not self.session:
+                await self.start()
             
-            # Index document
-            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{doc_id}"
-            
-            async with self.session.post(url, json=vespa_doc) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    logger.info(f"Successfully indexed document {doc_id}")
-                    return {
-                        "id": doc_id,
-                        "status": "success",
-                        "result": result
-                    }
-                else:
-                    error_text = await response.text()
-                    logger.error(f"Failed to index document {doc_id}: {response.status} - {error_text}")
-                    raise Exception(f"Indexing failed: {response.status} - {error_text}")
+            try:
+                # Prepare document for Vespa
+                vespa_doc = self._prepare_document_for_indexing(document)
+                
+                # Generate document ID
+                doc_id = self._generate_document_id(document)
+                span.set_attribute("vespa.document.id", doc_id)
+                
+                # Index document
+                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{doc_id}"
+                span.set_attribute("vespa.request.url", url)
+                
+                async with self.session.post(url, json=vespa_doc) as response:
+                    span.set_attribute("vespa.response.status", response.status)
                     
-        except Exception as e:
-            logger.error(f"Error indexing document: {e}")
-            raise
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.info(f"Successfully indexed document {doc_id}")
+                        span.set_attribute("vespa.indexing.success", True)
+                        return {
+                            "id": doc_id,
+                            "status": "success",
+                            "result": result
+                        }
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"Failed to index document {doc_id}: {response.status} - {error_text}")
+                        span.set_attribute("vespa.indexing.success", False)
+                        span.set_attribute("vespa.error.status", response.status)
+                        span.set_attribute("vespa.error.message", error_text)
+                        raise Exception(f"Indexing failed: {response.status} - {error_text}")
+                        
+            except Exception as e:
+                logger.error(f"Error indexing document: {e}")
+                span.set_attribute("vespa.indexing.success", False)
+                span.set_attribute("vespa.error.message", str(e))
+                span.record_exception(e)
+                raise
     
     async def delete_document(self, user_id: str, doc_id: str) -> Dict[str, Any]:
         """Delete a document from Vespa"""

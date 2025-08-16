@@ -6,8 +6,10 @@ Result processor for handling and formatting Vespa search results
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from services.common.logging_config import get_logger
+from services.common.telemetry import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer(__name__)
 
 class ResultProcessor:
     """Processes and formats Vespa search results"""
@@ -25,47 +27,61 @@ class ResultProcessor:
         include_facets: bool = True
     ) -> Dict[str, Any]:
         """Process raw Vespa search results into formatted output"""
-        try:
-            if not vespa_results:
-                logger.warning("Empty Vespa results received")
-                return self._create_empty_results(query, user_id)
+        with tracer.start_as_current_span("result_processor.process_search_results") as span:
+            span.set_attribute("result.query", query)
+            span.set_attribute("result.user_id", user_id)
+            span.set_attribute("result.include_highlights", include_highlights)
+            span.set_attribute("result.include_facets", include_facets)
             
-            # Extract basic result info
-            total_hits = vespa_results.get("root", {}).get("fields", {}).get("totalCount", 0)
-            coverage = vespa_results.get("root", {}).get("coverage", {})
-            
-            # Process documents
-            documents = self._process_documents(
-                vespa_results.get("root", {}).get("children", []),
-                include_highlights
-            )
-            
-            # Process facets if available
-            facets = {}
-            if include_facets:
-                facets = self._process_facets(vespa_results.get("root", {}).get("children", []))
-            
-            # Process performance metrics
-            performance = self._extract_performance_metrics(vespa_results)
-            
-            # Create processed results
-            processed_results = {
-                "query": query,
-                "user_id": user_id,
-                "total_hits": total_hits,
-                "documents": documents,
-                "facets": facets,
-                "performance": performance,
-                "coverage": coverage,
-                "processed_at": datetime.utcnow().isoformat()
-            }
-            
-            logger.info(f"Processed {len(documents)} results for query '{query}'")
-            return processed_results
-            
-        except Exception as e:
-            logger.error(f"Error processing search results: {e}")
-            return self._create_error_results(query, user_id, str(e))
+            try:
+                if not vespa_results:
+                    logger.warning("Empty Vespa results received")
+                    span.set_attribute("result.empty", True)
+                    return self._create_empty_results(query, user_id)
+                
+                # Extract basic result info
+                total_hits = vespa_results.get("root", {}).get("fields", {}).get("totalCount", 0)
+                coverage = vespa_results.get("root", {}).get("coverage", {})
+                span.set_attribute("result.total_hits", total_hits)
+                
+                # Process documents
+                documents = self._process_documents(
+                    vespa_results.get("root", {}).get("children", []),
+                    include_highlights
+                )
+                span.set_attribute("result.documents_processed", len(documents))
+                
+                # Process facets if available
+                facets = {}
+                if include_facets:
+                    facets = self._process_facets(vespa_results.get("root", {}).get("children", []))
+                    span.set_attribute("result.facets_count", len(facets))
+                
+                # Process performance metrics
+                performance = self._extract_performance_metrics(vespa_results)
+                
+                # Create processed results
+                processed_results = {
+                    "query": query,
+                    "user_id": user_id,
+                    "total_hits": total_hits,
+                    "documents": documents,
+                    "facets": facets,
+                    "performance": performance,
+                    "coverage": coverage,
+                    "processed_at": datetime.utcnow().isoformat()
+                }
+                
+                logger.info(f"Processed {len(documents)} results for query '{query}'")
+                span.set_attribute("result.processing.success", True)
+                return processed_results
+                
+            except Exception as e:
+                logger.error(f"Error processing search results: {e}")
+                span.set_attribute("result.processing.success", False)
+                span.set_attribute("result.error.message", str(e))
+                span.record_exception(e)
+                return self._create_error_results(query, user_id, str(e))
     
     def process_autocomplete_results(
         self,

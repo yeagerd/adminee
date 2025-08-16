@@ -12,7 +12,9 @@ from services.vespa_loader.content_normalizer import ContentNormalizer
 from services.vespa_loader.embeddings import EmbeddingGenerator
 from services.vespa_loader.mapper import DocumentMapper
 from services.vespa_loader.settings import Settings
-from services.common.logging_config import setup_service_logging, get_logger
+from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware
+from services.common.http_errors import register_briefly_exception_handlers
+from services.common.telemetry import setup_telemetry, get_tracer
 
 # Setup service logging
 setup_service_logging(
@@ -21,8 +23,12 @@ setup_service_logging(
     log_format="json"
 )
 
-# Get logger for this module
+# Setup telemetry
+setup_telemetry("vespa-loader", "1.0.0")
+
+# Get logger and tracer for this module
 logger = get_logger(__name__)
+tracer = get_tracer(__name__)
 
 # Global service instances
 vespa_client: VespaClient | None = None
@@ -82,6 +88,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register exception handlers
+register_briefly_exception_handlers(app)
+
+# Add request logging middleware
+app.middleware("http")(create_request_logging_middleware(logger, tracer))
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -94,25 +106,36 @@ async def health_check():
 @app.post("/ingest")
 async def ingest_document(document_data: dict):
     """Ingest a document into Vespa"""
-    if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
-        raise HTTPException(status_code=503, detail="Service not ready")
-    
-    try:
-        # Process the document
-        processed_doc = await process_document(document_data)
+    with tracer.start_as_current_span("api.ingest_document") as span:
+        span.set_attribute("api.document.type", document_data.get("source_type", "unknown"))
+        span.set_attribute("api.document.user_id", document_data.get("user_id", "unknown"))
         
-        # Index into Vespa
-        result = await vespa_client.index_document(processed_doc)
+        if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
+            span.set_attribute("api.error", "Service not ready")
+            raise HTTPException(status_code=503, detail="Service not ready")
         
-        return {
-            "status": "success",
-            "document_id": result.get("id"),
-            "message": "Document indexed successfully"
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to ingest document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        try:
+            # Process the document
+            processed_doc = await process_document(document_data)
+            
+            # Index into Vespa
+            result = await vespa_client.index_document(processed_doc)
+            
+            span.set_attribute("api.ingest.success", True)
+            span.set_attribute("api.document.id", result.get("id"))
+            
+            return {
+                "status": "success",
+                "document_id": result.get("id"),
+                "message": "Document indexed successfully"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to ingest document: {e}")
+            span.set_attribute("api.ingest.success", False)
+            span.set_attribute("api.error.message", str(e))
+            span.record_exception(e)
+            raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ingest/batch")
 async def ingest_batch_documents(documents: list[dict]):

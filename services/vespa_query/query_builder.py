@@ -5,8 +5,10 @@ Query builder for constructing Vespa search queries
 
 from typing import Dict, Any, Optional, List
 from services.common.logging_config import get_logger
+from services.common.telemetry import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer(__name__)
 
 class QueryBuilder:
     """Builds Vespa search queries with various options"""
@@ -31,33 +33,46 @@ class QueryBuilder:
         include_facets: bool = True
     ) -> Dict[str, Any]:
         """Build a complete Vespa search query"""
-        try:
-            # Validate inputs
-            self._validate_query_inputs(query, user_id, max_hits, offset)
+        with tracer.start_as_current_span("query_builder.build_search_query") as span:
+            span.set_attribute("query.user_id", user_id)
+            span.set_attribute("query.ranking_profile", ranking_profile)
+            span.set_attribute("query.max_hits", max_hits)
+            span.set_attribute("query.offset", offset)
+            span.set_attribute("query.include_facets", include_facets)
+            span.set_attribute("query.source_types", str(source_types) if source_types else "none")
+            span.set_attribute("query.providers", str(providers) if providers else "none")
             
-            # Build base query
-            vespa_query = {
-                "yql": self._build_yql_query(
-                    query, user_id, source_types, providers, 
-                    date_from, date_to, folders
-                ),
-                "ranking": ranking_profile,
-                "hits": min(max_hits, self.max_max_hits),
-                "offset": offset,
-                "timeout": "10s"
-            }
-            
-            # Add faceting if requested
-            if include_facets:
-                vespa_query["presentation.timing"] = True
-                vespa_query["presentation.summary"] = "default"
+            try:
+                # Validate inputs
+                self._validate_query_inputs(query, user_id, max_hits, offset)
                 
-            logger.info(f"Built search query for user {user_id} with {max_hits} hits")
-            return vespa_query
-            
-        except Exception as e:
-            logger.error(f"Error building search query: {e}")
-            raise
+                # Build base query
+                vespa_query = {
+                    "yql": self._build_yql_query(
+                        query, user_id, source_types, providers, 
+                        date_from, date_to, folders
+                    ),
+                    "ranking": ranking_profile,
+                    "hits": min(max_hits, self.max_max_hits),
+                    "offset": offset,
+                    "timeout": "10s"
+                }
+                
+                # Add faceting if requested
+                if include_facets:
+                    vespa_query["presentation.timing"] = True
+                    vespa_query["presentation.summary"] = "default"
+                    
+                logger.info(f"Built search query for user {user_id} with {max_hits} hits")
+                span.set_attribute("query.build.success", True)
+                return vespa_query
+                
+            except Exception as e:
+                logger.error(f"Error building search query: {e}")
+                span.set_attribute("query.build.success", False)
+                span.set_attribute("query.error.message", str(e))
+                span.record_exception(e)
+                raise
     
     def build_autocomplete_query(
         self,

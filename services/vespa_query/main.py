@@ -13,7 +13,9 @@ from .search_engine import SearchEngine
 from .query_builder import QueryBuilder
 from .result_processor import ResultProcessor
 from .settings import Settings
-from services.common.logging_config import setup_service_logging, get_logger
+from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware
+from services.common.http_errors import register_briefly_exception_handlers
+from services.common.telemetry import setup_telemetry, get_tracer
 
 # Setup service logging
 setup_service_logging(
@@ -22,8 +24,12 @@ setup_service_logging(
     log_format="json"
 )
 
-# Get logger for this module
+# Setup telemetry
+setup_telemetry("vespa-query", "1.0.0")
+
+# Get logger and tracer for this module
 logger = get_logger(__name__)
+tracer = get_tracer(__name__)
 
 # Global service instances
 search_engine: SearchEngine | None = None
@@ -81,6 +87,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register exception handlers
+register_briefly_exception_handlers(app)
+
+# Add request logging middleware
+app.middleware("http")(create_request_logging_middleware(logger, tracer))
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -105,46 +117,63 @@ async def search_documents(
     include_facets: bool = Query(True, description="Whether to include faceted results")
 ):
     """Search documents using hybrid search"""
-    if not all([search_engine, query_builder, result_processor]):
-        raise HTTPException(status_code=503, detail="Service not ready")
-    
-    try:
-        # Parse filter parameters
-        source_type_list = source_types.split(",") if source_types else None
-        provider_list = providers.split(",") if providers else None
-        folder_list = folders.split(",") if folders else None
+    with tracer.start_as_current_span("api.search_documents") as span:
+        span.set_attribute("api.query", query)
+        span.set_attribute("api.user_id", user_id)
+        span.set_attribute("api.ranking_profile", ranking_profile)
+        span.set_attribute("api.max_hits", max_hits)
+        span.set_attribute("api.offset", offset)
         
-        # Build search query
-        search_query = query_builder.build_search_query(
-            query=query,
-            user_id=user_id,
-            ranking_profile=ranking_profile,
-            max_hits=max_hits,
-            offset=offset,
-            source_types=source_type_list,
-            providers=provider_list,
-            date_from=date_from,
-            date_to=date_to,
-            folders=folder_list,
-            include_facets=include_facets
-        )
+        if not all([search_engine, query_builder, result_processor]):
+            span.set_attribute("api.error", "Service not ready")
+            raise HTTPException(status_code=503, detail="Service not ready")
         
-        # Execute search
-        search_results = await search_engine.search(search_query)
-        
-        # Process and format results
-        processed_results = result_processor.process_search_results(
-            search_results,
-            query=query,
-            user_id=user_id,
-            include_facets=include_facets
-        )
-        
-        return processed_results
-        
-    except Exception as e:
-        logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        try:
+            # Parse filter parameters
+            source_type_list = source_types.split(",") if source_types else None
+            provider_list = providers.split(",") if providers else None
+            folder_list = folders.split(",") if folders else None
+            
+            span.set_attribute("api.source_types", str(source_type_list) if source_type_list else "none")
+            span.set_attribute("api.providers", str(provider_list) if provider_list else "none")
+            span.set_attribute("api.folders", str(folder_list) if folder_list else "none")
+            
+            # Build search query
+            search_query = query_builder.build_search_query(
+                query=query,
+                user_id=user_id,
+                ranking_profile=ranking_profile,
+                max_hits=max_hits,
+                offset=offset,
+                source_types=source_type_list,
+                providers=provider_list,
+                date_from=date_from,
+                date_to=date_to,
+                folders=folder_list,
+                include_facets=include_facets
+            )
+            
+            # Execute search
+            search_results = await search_engine.search(search_query)
+            
+            # Process and format results
+            processed_results = result_processor.process_search_results(
+                search_results,
+                query=query,
+                user_id=user_id,
+                include_facets=include_facets
+            )
+            
+            span.set_attribute("api.search.success", True)
+            span.set_attribute("api.results.total_hits", processed_results.get("total_hits", 0))
+            return processed_results
+            
+        except Exception as e:
+            logger.error(f"Search failed: {e}")
+            span.set_attribute("api.search.success", False)
+            span.set_attribute("api.error.message", str(e))
+            span.record_exception(e)
+            raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search/autocomplete")
 async def autocomplete_search(
