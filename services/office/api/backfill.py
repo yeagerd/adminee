@@ -243,7 +243,7 @@ async def run_backfill_job(
         job.status = "running"
         
         # Initialize email crawler and pubsub publisher
-        email_crawler = EmailCrawler(user_id, request.provider)
+        email_crawler = EmailCrawler(user_id, request.provider, max_email_count=10)  # Limit to 10 emails for testing
         pubsub_publisher = PubSubPublisher()
         
         # Start crawling emails

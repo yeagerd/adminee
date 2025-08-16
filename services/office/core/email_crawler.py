@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 class EmailCrawler:
     """Crawls emails from email providers for backfill operations"""
     
-    def __init__(self, user_id: str, provider: str):
+    def __init__(self, user_id: str, provider: str, max_email_count: int = 10):
         self.user_id = user_id
         self.provider = provider
+        self.max_email_count = max_email_count  # Add max email count parameter
         self.rate_limit_delay = 1.0  # Default 1 second between batches
         
     async def get_total_email_count(self) -> int:
@@ -74,7 +75,7 @@ class EmailCrawler:
         # client = MicrosoftGraphClient(self.user_id)
         # return await client.get_email_count()
         
-        return 10  # Changed from 1000 to 10 for testing
+        return self.max_email_count  # Use parameter instead of hardcoded value
     
     async def _get_google_email_count(self) -> int:
         """Get email count from Gmail API"""
@@ -90,7 +91,7 @@ class EmailCrawler:
         # client = GmailClient(self.user_id)
         # return await client.get_email_count()
         
-        return 10  # Changed from 800 to 10 for testing
+        return self.max_email_count  # Use parameter instead of hardcoded value
     
     async def _crawl_microsoft_emails(
         self,

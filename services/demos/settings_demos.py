@@ -118,7 +118,7 @@ class DemoSettings:
     @property
     def demo_max_emails(self) -> int:
         """Default demo max emails per user."""
-        return int(os.getenv("DEMO_MAX_EMAILS", "1000"))
+        return int(os.getenv("DEMO_MAX_EMAILS", "10"))  # Changed from 1000 to 10 for testing
     
     @property
     def demo_folders(self) -> list[str]:

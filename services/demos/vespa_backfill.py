@@ -41,7 +41,7 @@ class VespaBackfillDemo:
         self.providers = config.get("providers", ["microsoft"])  # Start with just Microsoft
         self.batch_size = config.get("batch_size", 10)  # Small batch size for testing
         self.rate_limit = config.get("rate_limit", 2.0)  # Slower rate for testing
-        self.max_emails_per_user = config.get("max_emails_per_user", 10)  # Limit to 10 emails
+        self.max_emails_per_user = config.get("max_emails_per_user", self.settings.demo_max_emails)  # Use centralized setting
         self.start_date = config.get("start_date")
         self.end_date = config.get("end_date")
         self.folders = config.get("folders", ["INBOX"])  # Just INBOX for testing
@@ -358,7 +358,7 @@ class VespaBackfillDemo:
         """Publish user data to Pub/Sub for Vespa ingestion"""
         try:
             # Initialize email crawler
-            email_crawler = EmailCrawler(user_id, provider)
+            email_crawler = EmailCrawler(user_id, provider, max_email_count=self.max_emails_per_user)
             
             # Set rate limit
             email_crawler.rate_limit_delay = self.rate_limit

@@ -82,7 +82,7 @@ class BackfillManager:
             job = self.active_jobs[job_id]
             
             # Initialize components
-            email_crawler = EmailCrawler(user_id, request.provider)
+            email_crawler = EmailCrawler(user_id, request.provider, max_email_count=10)  # Limit to 10 emails for testing
             pubsub_publisher = PubSubPublisher()
             
             # Set rate limit if specified
