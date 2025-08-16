@@ -8,10 +8,10 @@ from typing import Dict, Any, Optional, List
 import logging
 from datetime import datetime, timedelta
 
-from ..core.email_crawler import EmailCrawler
-from ..core.pubsub_publisher import PubSubPublisher
-from ..models.backfill import BackfillRequest, BackfillResponse, BackfillStatus
-from ..auth import get_current_user
+from services.office.core.email_crawler import EmailCrawler
+from services.office.core.pubsub_publisher import PubSubPublisher
+from services.office.models.backfill import BackfillRequest, BackfillResponse, BackfillStatus
+from services.office.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

@@ -29,6 +29,7 @@ dependencies = [
     "redis",
     # GCP
     "google-cloud-secret-manager",
+    "google-cloud-pubsub",
     # OpenTelemetry
     "opentelemetry-api",
     "opentelemetry-sdk",
