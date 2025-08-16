@@ -30,9 +30,9 @@ class PubSubPublisher:
         self.publisher = None
         # Fix topic names to match actual Pub/Sub setup
         self.topics = {
-            "emails": "email-backfill",  # Changed from "backfill-emails"
-            "calendar": "calendar-updates",  # Changed from "backfill-calendar"
-            "contacts": "contact-updates"  # Changed from "backfill-contacts"
+            "emails": "email-backfill",  # Short name
+            "calendar": "calendar-updates",  # Short name
+            "contacts": "contact-updates"  # Short name
         }
         
         if PUBSUB_AVAILABLE:
@@ -84,7 +84,7 @@ class PubSubPublisher:
             message_data = json.dumps(sanitized_data).encode("utf-8")
             
             # Publish to emails topic
-            future = self.publisher.publish(self.topics["emails"], message_data)
+            future = self.publisher.publish(f"projects/{self.project_id}/topics/{self.topics['emails']}", message_data)
             message_id = future.result()
             
             logger.debug(f"Published email {sanitized_data.get('id')} to Pub/Sub: {message_id}")
@@ -118,7 +118,7 @@ class PubSubPublisher:
             message_data = json.dumps(sanitized_data).encode("utf-8")
             
             # Publish to calendar topic
-            future = self.publisher.publish(self.topics["calendar"], message_data)
+            future = self.publisher.publish(f"projects/{self.project_id}/topics/{self.topics['calendar']}", message_data)
             message_id = future.result()
             
             logger.debug(f"Published calendar event {sanitized_data.get('id')} to Pub/Sub: {message_id}")
@@ -152,7 +152,7 @@ class PubSubPublisher:
             message_data = json.dumps(sanitized_data).encode("utf-8")
             
             # Publish to contacts topic
-            future = self.publisher.publish(self.topics["contacts"], message_data)
+            future = self.publisher.publish(f"projects/{self.project_id}/topics/{self.topics['contacts']}", message_data)
             message_id = future.result()
             
             logger.debug(f"Published contact {sanitized_data.get('id')} to Pub/Sub: {message_id}")
