@@ -394,7 +394,7 @@ async def start_internal_backfill(
 **Files to modify**: `services/office/core/auth.py`
 
 **Add New API Key Type**:
-- [ ] Add `api_backfill_key` configuration with `backfill` permission
+- [ ] Add `api_backfill_office_key` configuration with `backfill` permission
 - [ ] Include permissions: `backfill`, `read_emails`, `read_calendar`, `read_contacts`, `health`
 - [ ] Add `verify_backfill_api_key` function for permission checking
 
@@ -414,7 +414,7 @@ async def start_internal_backfill(
 **Files to modify**: `services/demos/settings_demos.py`
 
 **Add Backfill API Key**:
-- [ ] Add `api_backfill_key` property to DemoSettings class
+- [ ] Add `api_backfill_office_key` property to DemoSettings class
 - [ ] Update `get_api_keys()` method to include backfill key
 - [ ] Set default value to `test-BACKFILL_KEY`
 
@@ -452,14 +452,14 @@ async def start_internal_backfill(
 **Files to modify**: `.env.example`, `docker-compose.yml`, deployment configs
 
 **New Environment Variable**:
-- [ ] Add `API_BACKFILL_KEY=your-backfill-api-key-here` to `.env.example`
+- [ ] Add `api_backfill_office_key=your-backfill-api-key-here` to `.env.example`
 - [ ] Update deployment configurations with new environment variable
 
 #### 6.4.2 Update Docker Compose Configuration
 **Files to modify**: `docker-compose.yml`
 
 **Add Backfill API Key**:
-- [ ] Add `API_BACKFILL_KEY` environment variable to office service
+- [ ] Add `API_BACKFILL_OFFICE_KEY` environment variable to office service
 - [ ] Ensure environment variable is properly passed through
 
 ### 6.5 Testing and Validation
@@ -540,57 +540,3 @@ async def start_internal_backfill(
 - [ ] Max emails parameter is enforced efficiently
 - [ ] Progress tracking updates in real-time
 - [ ] Error handling doesn't impact performance
-
-### 6.9 Implementation Timeline
-
-#### Week 1: Internal Endpoints
-- [ ] Add internal backfill endpoints to office service
-- [ ] Implement backfill API key authentication
-- [ ] Add max_emails to BackfillRequest model
-
-#### Week 2: Demo Script Updates
-- [ ] Update vespa_backfill.py to use internal endpoints
-- [ ] Update vespa_search.py to use internal endpoints
-- [ ] Test with real user emails
-
-#### Week 3: Integration and Testing
-- [ ] End-to-end testing of backfill flow
-- [ ] Performance and security validation
-- [ ] Documentation updates
-
-#### Week 4: Cleanup and Migration
-- [ ] Remove old demo user logic
-- [ ] Clean up API key client name usage
-- [ ] Update all documentation and examples
-
----
-
-## Notes for Implementation
-
-### Key Benefits of This Approach
-1. **Service-to-Service Communication** - Backend jobs can trigger backfill without JWT
-2. **Real User Authentication** - Uses actual user emails instead of fake IDs
-3. **Flexible Email Limits** - Command line can control max_emails per job
-4. **Security** - API key-based authentication with proper permissions
-5. **Scalability** - Internal endpoints designed for high-throughput backend use
-
-### Common Pitfalls to Avoid
-1. **Missing user_id Parameter** - Always validate user_id is present
-2. **API Key Permissions** - Ensure backfill API key has correct permissions
-3. **User Validation** - Check user exists and has valid integrations
-4. **Progress Tracking** - Update progress relative to max_emails, not total emails
-5. **Error Handling** - Gracefully handle invalid users and API failures
-
-### Testing Strategy
-1. **Unit Tests** - Test internal endpoint logic and validation
-2. **Integration Tests** - Test complete backfill flow
-3. **Security Tests** - Verify API key permissions and user isolation
-4. **Performance Tests** - Ensure endpoints meet performance requirements
-5. **Demo Script Tests** - Verify scripts work with real user emails
-
-### Monitoring and Observability
-1. **API Key Usage** - Track which API keys are accessing internal endpoints
-2. **User Backfill Jobs** - Monitor backfill job creation and completion
-3. **Error Rates** - Track failures and identify common issues
-4. **Performance Metrics** - Monitor response times and throughput
-5. **Security Events** - Log unauthorized access attempts and suspicious activity

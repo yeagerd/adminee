@@ -61,6 +61,7 @@ class VespaBackfillDemo:
         self.api_keys = {
             "office": getattr(self.settings, "api_frontend_office_key", "test-FRONTEND_OFFICE_KEY"),
             "user": getattr(self.settings, "api_frontend_user_key", "test-FRONTEND_USER_KEY"),
+            "backfill": getattr(self.settings, "api_backfill_office_key", "test-BACKFILL-OFFICE-KEY"),
         }
     
     async def clear_pubsub_topics(self):
@@ -294,7 +295,8 @@ class VespaBackfillDemo:
                 "end_date": request.end_date.isoformat() if request.end_date else None,
                 "folders": request.folders,
                 "include_attachments": request.include_attachments,
-                "include_deleted": request.include_deleted
+                "include_deleted": request.include_deleted,
+                "max_emails": self.max_emails_per_user  # Pass max_emails to API
             }
             
             # Remove None values
@@ -302,10 +304,10 @@ class VespaBackfillDemo:
             
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
-                    f"{self.office_service_url}/v1/api/backfill/start",
+                    f"{self.office_service_url}/internal/backfill/start?user_id={user_id}",
                     json=request_data,
                     headers={
-                        "X-API-Key": self.api_keys["office"],
+                        "X-API-Key": self.api_keys["backfill"],  # Use backfill API key
                         "Content-Type": "application/json"
                     }
                 )
@@ -336,8 +338,8 @@ class VespaBackfillDemo:
                 # Check job status via API
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     response = await client.get(
-                        f"{self.office_service_url}/v1/api/backfill/status/{job_id}",
-                        headers={"X-API-Key": self.api_keys["office"]}
+                        f"{self.office_service_url}/internal/backfill/status/{job_id}?user_id={user_id}",
+                        headers={"X-API-Key": self.api_keys["backfill"]}
                     )
                     
                     if response.status_code == 200:

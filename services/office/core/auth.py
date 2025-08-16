@@ -70,6 +70,19 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
         ],  # Send emails, read/write calendar, and health check
         settings_key="api_meetings_office_key",
     ),
+    # Backfill service key - can trigger backfill jobs for any user
+    "api_backfill_office_key": APIKeyConfig(
+        client="backfill-service",
+        service="office-service-access",
+        permissions=[
+            "backfill",  # New permission for backfill operations
+            "read_emails",
+            "read_calendar", 
+            "read_contacts",
+            "health",
+        ],
+        settings_key="api_backfill_office_key",  # This maps to the settings field
+    ),
 }
 
 # Service-level permissions fallback (optional, for legacy support)
@@ -84,6 +97,7 @@ SERVICE_PERMISSIONS = {
         "read_contacts",
         "write_contacts",
         "health",
+        "backfill",  # Add backfill permission
     ],
 }
 
@@ -105,6 +119,40 @@ def service_permission_required(
 
 
 
+
+
+def verify_backfill_api_key(request: Request) -> str:
+    """Verify API key has backfill permission"""
+    try:
+        # Extract API key from request headers
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise AuthError("API key required")
+        
+        # Build API key mapping and verify API key
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        service_name = verify_api_key(api_key, api_key_mapping)
+        
+        if not service_name:
+            raise AuthError("Invalid API key")
+        
+        # Get client and permissions from the API key
+        client_name = get_client_from_api_key(api_key, api_key_mapping)
+        permissions = get_permissions_from_api_key(api_key, api_key_mapping)
+        
+        # Check if API key has backfill permission
+        if "backfill" not in permissions:
+            raise AuthError("API key does not have backfill permission")
+        
+        # Ensure client_name is not None
+        if not client_name:
+            raise AuthError("Invalid client name from API key")
+        
+        return client_name
+        
+    except Exception as e:
+        logger.error(f"Backfill API key verification failed: {e}")
+        raise AuthError(f"Backfill API key verification failed: {str(e)}")
 
 
 def get_current_user(request: Request) -> Dict[str, Any]:

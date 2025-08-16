@@ -20,7 +20,7 @@ class DemoSettings:
     
     def _load_env_file(self):
         """Load environment variables from .env file in project root."""
-        env_file = Path(__file__).parent.parent / ".env"
+        env_file = Path(__file__).parent.parent.parent / ".env"
         if env_file.exists():
             with open(env_file) as f:
                 for line in f:
@@ -90,6 +90,11 @@ class DemoSettings:
         return os.getenv("API_FRONTEND_CHAT_KEY", "test-FRONTEND_CHAT_KEY")
     
     @property
+    def api_backfill_office_key(self) -> str:
+        """Backfill API key for internal service communication."""
+        return os.getenv("API_BACKFILL_OFFICE_KEY", "test-BACKFILL_OFFICE_KEY")
+    
+    @property
     def demo_user_id(self) -> str:
         """Default demo user ID."""
         return os.getenv("DEMO_USER_ID", "demo_user_1")
@@ -137,6 +142,7 @@ class DemoSettings:
             "office": self.api_frontend_office_key,
             "user": self.api_frontend_user_key,
             "chat": self.api_frontend_chat_key,
+            "backfill": self.api_backfill_office_key,  # Add backfill key
         }
     
     def get_demo_config(self) -> Dict[str, Any]:

@@ -32,6 +32,8 @@ class BackfillRequest(BaseModel):
     rate_limit: Optional[int] = Field(100, ge=1, le=1000, description="Emails per second limit")
     include_attachments: bool = Field(False, description="Whether to include attachment metadata")
     include_deleted: bool = Field(False, description="Whether to include deleted emails")
+    max_emails: Optional[int] = Field(None, ge=1, le=10000, description="Maximum emails to process")
+    user_id: Optional[str] = Field(None, description="User email (for internal endpoints)")
     
     class Config:
         extra = "forbid"

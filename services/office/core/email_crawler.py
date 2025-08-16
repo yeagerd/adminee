@@ -40,20 +40,52 @@ class EmailCrawler:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         folders: Optional[List[str]] = None,
-        resume_from: int = 0
+        resume_from: int = 0,
+        max_emails: Optional[int] = None
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Crawl emails in batches"""
+        """Crawl emails in batches with optional maximum limit"""
         try:
+            total_processed = 0
+            
             if self.provider == "microsoft":
                 async for batch in self._crawl_microsoft_emails(
                     batch_size, start_date, end_date, folders, resume_from
                 ):
+                    # Check if we've reached the max_emails limit
+                    if max_emails and total_processed >= max_emails:
+                        break
+                    
+                    # Limit batch size if it would exceed max_emails
+                    if max_emails and total_processed + len(batch) > max_emails:
+                        remaining = max_emails - total_processed
+                        batch = batch[:remaining]
+                    
                     yield batch
+                    total_processed += len(batch)
+                    
+                    # Check if we've reached the limit after this batch
+                    if max_emails and total_processed >= max_emails:
+                        break
+                        
             elif self.provider == "google":
                 async for batch in self._crawl_google_emails(
                     batch_size, start_date, end_date, folders, resume_from
                 ):
+                    # Check if we've reached the max_emails limit
+                    if max_emails and total_processed >= max_emails:
+                        break
+                    
+                    # Limit batch size if it would exceed max_emails
+                    if max_emails and total_processed + len(batch) > max_emails:
+                        remaining = max_emails - total_processed
+                        batch = batch[:remaining]
+                    
                     yield batch
+                    total_processed += len(batch)
+                    
+                    # Check if we've reached the limit after this batch
+                    if max_emails and total_processed >= max_emails:
+                        break
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
                 
