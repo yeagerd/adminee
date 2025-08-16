@@ -240,24 +240,42 @@ DEMO_PROVIDERS=microsoft,google
 
 ## Starting Backend Services
 
-### Option 1: Use the Management Script (Recommended)
+### Option 1: Use the Management Scripts (Recommended)
 
-The `vespa_be.py` script manages the core Vespa services:
+The `local_vespa.sh` script manages the core Vespa services:
 
 ```bash
 # Start all Vespa services (Vespa Engine, Loader Service, Query Service)
-python services/demos/vespa_be.py
+./scripts/local_vespa.sh
 
 # Check status
-python services/demos/vespa_be.py --status
+./scripts/local_vespa.sh --status
 
 # Stop all services
+./scripts/local_vespa.sh --stop
+
+# Clean up container
+./scripts/local_vespa.sh --cleanup
+```
+
+**Note**: The Pub/Sub emulator is managed separately by `scripts/local_pubsub.sh` to avoid conflicts and provide better isolation.
+
+### Option 2: Legacy Python Script (Deprecated)
+
+⚠️ **DEPRECATED**: The `vespa_be.py` script is deprecated in favor of `local_vespa.sh`:
+
+```bash
+# DEPRECATED - Use local_vespa.sh instead
+python services/demos/vespa_be.py
+
+# DEPRECATED - Use local_vespa.sh --status instead
+python services/demos/vespa_be.py --status
+
+# DEPRECATED - Use local_vespa.sh --stop instead
 python services/demos/vespa_be.py --stop
 ```
 
-**Note**: The Pub/Sub emulator is now managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
-
-### Option 2: Start Services Individually
+### Option 3: Start Services Individually
 
 #### Start Pub/Sub Emulator
 ```bash

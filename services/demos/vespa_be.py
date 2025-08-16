@@ -1,3 +1,4 @@
+# DEPRECATED: Use scripts/local_vespa.sh instead
 #!/usr/bin/env python3
 """
 Vespa Backend Services Manager
