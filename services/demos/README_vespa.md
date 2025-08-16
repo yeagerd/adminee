@@ -11,56 +11,57 @@ The Vespa demo services provide:
 - **Data quality validation** and consistency checks
 - **Real-world usage scenarios** for testing and development
 
-## Demo Services
+## Demo Scripts
 
-### 1. Vespa Full Demo (`vespa_full.py`)
+### 1. Vespa Backfill Demo (`vespa_backfill.py`)
+**Purpose**: Data ingestion and backfill job testing
+**Features**: 
+- Backfill job management
+- Email crawling from Microsoft Graph and Gmail
+- Document indexing to Vespa
+- Pub/Sub integration
+- Progress monitoring
 
-**Purpose**: End-to-end demonstration of the complete Vespa system
+**Usage**:
+```bash
+python services/demos/vespa_backfill.py
+```
 
-**Features**:
-- Data seeding across multiple users and providers
-- Vespa indexing verification
-- Comprehensive search testing
+**Note**: This demo runs once to populate Vespa with data, then `vespa_search.py` can be run multiple times to test search capabilities.
+
+### 2. Vespa Search Demo (`vespa_search.py`)
+**Purpose**: Comprehensive search capabilities testing and benchmarking
+**Features**: 
+- Basic search functionality testing
+- User isolation testing
+- Source type filtering
+- Semantic search testing
 - Performance benchmarking
-- Data quality validation
-
-**Usage**:
-```bash
-cd services/demos
-python vespa_full.py --config config.json
-```
-
-**Configuration**:
-```json
-{
-  "vespa_endpoint": "http://localhost:8080",
-  "demo_users": ["demo_user_1", "demo_user_2"],
-  "demo_providers": ["microsoft", "google"],
-  "data_counts": {
-    "emails": 100,
-    "calendar_events": 50,
-    "contacts": 25
-  }
-}
-```
-
-**Output**: Comprehensive report with performance metrics, search results, and data quality scores
-
-### 2. Vespa Chat Demo (`vespa_synthetic.py`)
-
-**Purpose**: Interactive chat experience with Vespa search integration
-
-**Features**:
-- Simulated conversation scenarios
-- Real-time search integration
-- Context-aware follow-up handling
+- Advanced ranking profiles (hybrid, BM25, semantic)
+- Response time analysis
 - Search quality assessment
-- User experience metrics
 
 **Usage**:
 ```bash
-cd services/demos
-python vespa_synthetic.py --config vespa_config.json
+python services/demos/vespa_search.py
+```
+
+**Note**: This demo can be run multiple times to test different search scenarios and measure performance.
+
+### 3. Vespa Synthetic Demo (`vespa_synthetic.py`)
+**Purpose**: Conversational search experience with follow-up questions
+**Features**:
+- Multi-turn conversation scenarios
+- Context-aware follow-up questions
+- Cross-platform data search
+- Person-centric search
+- Time-scoped search
+- Relevance scoring
+- Performance metrics
+
+**Usage**:
+```bash
+python services/demos/vespa_synthetic.py
 ```
 
 **Configuration**:
@@ -237,100 +238,77 @@ DEMO_PROVIDERS=microsoft,google
 }
 ```
 
-## Running Demos
+## Quick Start
 
-### Port Configuration
-
-**Note**: The Vespa services use different ports to avoid conflicts with existing Briefly services:
-
-- **Vespa Loader Service**: Port 9001 (avoids conflict with Office Service on 8001)
-- **Vespa Query Service**: Port 9002 (avoids conflict with Chat Service on 8002)
-- **Office Service**: Port 8001 (existing)
-- **Chat Service**: Port 8002 (existing)
-- **User Service**: Port 8003 (existing)
-- **Shipments Service**: Port 8004 (existing)
-- **Meetings Service**: Port 8005 (existing)
-
-### Prerequisites
-
-1. **Vespa running locally**:
-   ```bash
-   docker run -d --name vespa --hostname vespa-container \
-     -p 8080:8080 -p 19092:19092 \
-     vespaengine/vespa
-   ```
-
-2. **Pub/Sub emulator**:
-   ```bash
-   docker run -d --name pubsub-emulator \
-     -p 8085:8085 \
-     gcr.io/google.com/cloudsdktool/google-cloud-cli:latest \
-     gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
-   ```
-
-3. **Office service running**:
-   ```bash
-   cd services/office
-   python -m uvicorn app.main:app --reload --port 8001
-   ```
-
-4. **Vespa loader service running**:
-   ```bash
-   cd services/vespa_loader
-   python -m uvicorn main:app --reload --port 9001
-   ```
-
-5. **Vespa query service running**:
-   ```bash
-   cd services/vespa_query
-   python -m uvicorn main:app --reload --port 9002
-   ```
-
-### Quick Start
-
-#### **Option 1: Automated Service Management**
-Use the provided script to manage all Vespa backend services:
+### Option 1: Automated Service Startup
+Use the `vespa_be.py` script to start all dependent services:
 
 ```bash
-# Start all Vespa services (Docker + Python services) - default action
 python services/demos/vespa_be.py
-
-# Check service status and health
-python services/demos/vespa_be.py --status
-
-# Stop all Vespa services
-python services/demos/vespa_be.py --stop
 ```
 
-This script will:
-- Start Vespa engine (Docker)
-- Start Pub/Sub emulator (Docker)  
-- Start Vespa Loader Service (Port 9001)
-- Start Vespa Query Service (Port 9002)
-- Verify Office Service is running (Port 8001)
-- Check if services are already running before starting
-- Provide health status monitoring
+This will start:
+- Vespa Engine (Docker)
+- Pub/Sub Emulator (Docker)  
+- Vespa Loader Service (port 9001)
+- Vespa Query Service (port 9002)
 
-#### **Option 2: Manual Service Startup**
-Start services individually as described in the Prerequisites section above.
+### Option 2: Manual Service Startup
+Start services individually:
 
-#### **Running the Demos**
-Once all services are running:
+```bash
+# Start Vespa Engine
+docker run -d --name vespa \
+  -p 8080:8080 -p 19092:19092 \
+  vespaengine/vespa
 
-1. **Seed demo data**:
-   ```bash
-   python scripts/seed-demo-data.py --user-id demo_user_1
-   ```
+# Start Pub/Sub Emulator
+docker run -d --name pubsub-emulator \
+  -p 8085:8085 \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:latest \
+  gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
 
-2. **Run full demo**:
-   ```bash
-   python services/demos/vespa_full.py
-   ```
+# Start Vespa Loader Service
+uv run python -m uvicorn services.vespa_loader.main:app --port 9001 --reload
 
-3. **Test chat integration**:
-   ```bash
-   python services/demos/vespa_synthetic.py
-   ```
+# Start Vespa Query Service  
+uv run python -m uvicorn services.vespa_query.main:app --port 9002 --reload
+```
+
+### Option 3: Deploy Vespa Application
+Deploy the Vespa application package:
+
+```bash
+./scripts/deploy-vespa.sh
+```
+
+## Running Demos
+
+### Workflow
+1. **First time setup**: Run `vespa_backfill.py` once to populate Vespa with data
+2. **Search testing**: Run `vespa_search.py` multiple times to test different scenarios
+3. **Conversational testing**: Run `vespa_synthetic.py` to test chat-like interactions
+
+### 1. Data Ingestion (`vespa_backfill.py`)
+Populate Vespa with data (run once):
+
+```bash
+python services/demos/vespa_backfill.py
+```
+
+### 2. Search Testing (`vespa_search.py`)
+Test comprehensive search capabilities (run multiple times):
+
+```bash
+python services/demos/vespa_search.py
+```
+
+### 3. Conversational Search (`vespa_synthetic.py`)
+Test conversational search with follow-up questions:
+
+```bash
+python services/demos/vespa_synthetic.py
+```
 
 ## Performance Metrics
 

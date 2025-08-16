@@ -87,6 +87,25 @@ class VespaServiceManager:
                 "url": "http://localhost:8001/health"
             }
         }
+
+        # Demo scripts
+        self.demo_scripts = {
+            "vespa_backfill": {
+                "type": "script",
+                "path": "services/demos/vespa_backfill.py",
+                "description": "Vespa Backfill Demo - Data ingestion (run once)"
+            },
+            "vespa_search": {
+                "type": "script", 
+                "path": "services/demos/vespa_search.py",
+                "description": "Vespa Search Demo - Search testing (run multiple times)"
+            },
+            "vespa_synthetic": {
+                "type": "script",
+                "path": "services/demos/vespa_synthetic.py", 
+                "description": "Vespa Synthetic Demo - Conversational search"
+            }
+        }
     
     def log(self, message: str, color: str = Colors.NC):
         """Print colored log message"""
