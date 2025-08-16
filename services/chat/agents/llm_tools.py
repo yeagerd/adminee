@@ -201,7 +201,7 @@ class UserDataSearchTool:
                 "search_time_ms": results["search_time_ms"]
             }
             
-        except Exception as e:
+    except Exception as e:
             logger.error(f"User data search failed: {e}")
             return {
                 "status": "error",
@@ -302,8 +302,8 @@ class SemanticSearchTool:
             
             # Process results
             processed_results = self._process_semantic_results(results, query)
-            
-            return {
+
+    return {
                 "status": "success",
                 "query": query,
                 "search_type": "semantic",
