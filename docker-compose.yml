@@ -61,6 +61,7 @@ services:
       - USER_SERVICE_URL=http://user-service:8001
       - API_FRONTEND_OFFICE_KEY=${API_FRONTEND_OFFICE_KEY}
       - API_OFFICE_USER_KEY=${API_OFFICE_USER_KEY}
+      - API_BACKFILL_OFFICE_KEY=${API_BACKFILL_OFFICE_KEY}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
     restart: unless-stopped
