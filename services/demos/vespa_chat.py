@@ -628,6 +628,68 @@ class VespaChatDemo:
         except Exception as e:
             logger.error(f"Error assessing context utilization: {e}")
             return 0.0
+    
+    def _calculate_relevance_improvement(self, initial_search: Dict[str, Any], enhanced_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Calculate how much relevance has improved from initial search to enhanced results"""
+        try:
+            if not initial_search or not enhanced_results:
+                return {
+                    "improvement_score": 0.0,
+                    "relevance_gain": 0.0,
+                    "result_enhancement": 0.0,
+                    "context_enhancement": 0.0
+                }
+            
+            initial_results = initial_search.get("results", [])
+            enhanced_results_list = enhanced_results.get("results", [])
+            
+            if not initial_results or not enhanced_results_list:
+                return {
+                    "improvement_score": 0.0,
+                    "relevance_gain": 0.0,
+                    "result_enhancement": 0.0,
+                    "context_enhancement": 0.0
+                }
+            
+            # Calculate base metrics
+            initial_count = len(initial_results)
+            enhanced_count = len(enhanced_results_list)
+            
+            # Result enhancement: how many more results we got
+            result_enhancement = max(0, (enhanced_count - initial_count) / max(initial_count, 1))
+            
+            # Context enhancement: additional features like suggestions and actions
+            context_enhancement = 0.0
+            if enhanced_results.get("chat_suggestions"):
+                context_enhancement += 0.3
+            if enhanced_results.get("quick_actions"):
+                context_enhancement += 0.3
+            if enhanced_results.get("grouped_results"):
+                context_enhancement += 0.4
+            
+            # Relevance gain: improvement in result quality
+            initial_relevance = sum(r.get("relevance_score", 0.0) for r in initial_results) / max(len(initial_results), 1)
+            enhanced_relevance = sum(r.get("relevance_score", 0.0) for r in enhanced_results_list) / max(len(enhanced_results_list), 1)
+            relevance_gain = max(0, enhanced_relevance - initial_relevance)
+            
+            # Overall improvement score
+            improvement_score = (result_enhancement * 0.3) + (context_enhancement * 0.4) + (relevance_gain * 0.3)
+            
+            return {
+                "improvement_score": round(improvement_score, 3),
+                "relevance_gain": round(relevance_gain, 3),
+                "result_enhancement": round(result_enhancement, 3),
+                "context_enhancement": round(context_enhancement, 3)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating relevance improvement: {e}")
+            return {
+                "improvement_score": 0.0,
+                "relevance_gain": 0.0,
+                "result_enhancement": 0.0,
+                "context_enhancement": 0.0
+            }
 
 async def main():
     """Main function for running the Vespa chat demo"""
