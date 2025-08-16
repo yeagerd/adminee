@@ -74,6 +74,34 @@ class VespaChatDemo:
             }
         ]
     
+    async def cleanup(self):
+        """Clean up resources and close aiohttp sessions"""
+        try:
+            logger.info("Cleaning up resources...")
+            
+            # Close search engine sessions - handle all nested instances
+            if hasattr(self.vespa_search, 'search_engine'):
+                await self.vespa_search.search_engine.close()
+            
+            # UserDataSearchTool has a VespaSearchTool which has a SearchEngine
+            if hasattr(self.user_data_search, 'vespa_search') and hasattr(self.user_data_search.vespa_search, 'search_engine'):
+                await self.user_data_search.vespa_search.search_engine.close()
+            
+            if hasattr(self.semantic_search, 'search_engine'):
+                await self.semantic_search.search_engine.close()
+                
+            logger.info("Resource cleanup completed")
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+    
+    async def __aenter__(self):
+        """Async context manager entry"""
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit with cleanup"""
+        await self.cleanup()
+    
     async def run_chat_demo(self) -> Dict[str, Any]:
         """Run the complete chat demo"""
         logger.info("Starting Vespa-powered chat demo...")
@@ -114,6 +142,9 @@ class VespaChatDemo:
             demo_results["status"] = "failed"
             demo_results["error"] = str(e)
             demo_results["end_time"] = datetime.now(timezone.utc).isoformat()
+        finally:
+            # Ensure cleanup happens even if there's an exception
+            await self.cleanup()
         
         return demo_results
     
@@ -708,39 +739,44 @@ async def main():
         "demo_user_id": args.demo_user_id
     }
     
-    # Create and run demo
-    demo = VespaChatDemo(config)
-    results = await demo.run_chat_demo()
-    
-    # Print summary
-    print("\n" + "="*60)
-    print("VESPA CHAT DEMO RESULTS SUMMARY")
-    print("="*60)
-    print(f"Status: {results['status']}")
-    
-    if results["status"] == "completed":
-        performance = results.get("performance_metrics", {})
-        print(f"Scenarios: {performance.get('successful_scenarios', 0)}/{performance.get('total_scenarios', 0)} successful")
-        print(f"Success Rate: {performance.get('success_rate', 0):.1f}%")
-        print(f"Average Search Time: {performance.get('average_search_time_ms', 0):.2f}ms")
-        print(f"Average Relevance: {performance.get('average_relevance_score', 0):.2f}")
-        
-        search_quality = results.get("search_quality", {})
-        print(f"Result Coverage: {search_quality.get('result_coverage', 0):.1%}")
-        print(f"Context Utilization: {search_quality.get('context_utilization', 0):.1%}")
-        
-        ux = results.get("user_experience", {})
-        print(f"Overall Satisfaction: {ux.get('overall_satisfaction', 0):.1%}")
-    
-    print("="*60)
-    
-    # Save results to file
-    if args.output_file:
-        with open(args.output_file, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
-        print(f"\nDetailed results saved to: {args.output_file}")
-    
-    return results
+    # Create and run demo with proper resource cleanup
+    try:
+        async with VespaChatDemo(config) as demo:
+            results = await demo.run_chat_demo()
+            
+            # Print summary
+            print("\n" + "="*60)
+            print("VESPA CHAT DEMO RESULTS SUMMARY")
+            print("="*60)
+            print(f"Status: {results['status']}")
+            
+            if results["status"] == "completed":
+                performance = results.get("performance_metrics", {})
+                print(f"Scenarios: {performance.get('successful_scenarios', 0)}/{performance.get('total_scenarios', 0)} successful")
+                print(f"Success Rate: {performance.get('success_rate', 0):.1f}%")
+                print(f"Average Search Time: {performance.get('average_search_time_ms', 0):.2f}ms")
+                print(f"Average Relevance: {performance.get('average_relevance_score', 0):.2f}")
+                
+                search_quality = results.get("search_quality", {})
+                print(f"Result Coverage: {search_quality.get('result_coverage', 0):.1%}")
+                print(f"Context Utilization: {search_quality.get('context_utilization', 0):.1%}")
+                
+                ux = results.get("user_experience", {})
+                print(f"Overall Satisfaction: {ux.get('overall_satisfaction', 0):.1%}")
+            
+            print("="*60)
+            
+            # Save results to file
+            if args.output_file:
+                with open(args.output_file, 'w') as f:
+                    json.dump(results, f, indent=2, default=str)
+                print(f"\nDetailed results saved to: {args.output_file}")
+            
+            return results
+            
+    except Exception as e:
+        logger.error(f"Demo failed with error: {e}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())
