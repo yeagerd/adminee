@@ -79,7 +79,8 @@ class VespaBackfillDemo:
         try:
             import requests
             
-            topics = ["backfill-emails", "backfill-calendar", "backfill-contacts"]
+            # Create required topics
+            topics = ["email-backfill", "calendar-updates", "contact-updates"]
             project_id = self.settings.pubsub_project_id
             emulator_host = self.settings.pubsub_emulator_host
             

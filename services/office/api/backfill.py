@@ -271,6 +271,13 @@ async def run_backfill_job(
                     job.processed_emails = processed_count
                     job.progress = (processed_count / total_emails) * 100
                     
+                except RuntimeError as e:
+                    # Fatal error (e.g., topic not found) - halt the job
+                    logger.error(f"Fatal error in backfill job {job_id}: {e}")
+                    job.status = "failed"
+                    job.end_time = datetime.now(timezone.utc)
+                    job.error_message = f"Fatal Pub/Sub error: {e}"
+                    return
                 except Exception as e:
                     logger.error(f"Failed to publish email {email.get('id')}: {e}")
                     job.failed_emails += 1

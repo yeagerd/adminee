@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Set up Google Cloud Pubsub topics and subscriptions for the office router
+# Fix Pub/Sub topics script - creates the correct topic names
 set -e
 
 # Check if environment variables are set
@@ -16,60 +16,44 @@ if [ -z "$PUBSUB_PROJECT_ID" ]; then
     exit 1
 fi
 
-echo "Setting up PubSub topics and subscriptions..."
+echo "Fixing Pub/Sub topics with correct names..."
 echo "Project ID: $PUBSUB_PROJECT_ID"
 echo "Emulator Host: $PUBSUB_EMULATOR_HOST"
 
-# Create topics
-echo "Creating topics..."
+# Delete old topics if they exist
+echo "Cleaning up old topics..."
+old_topics=("backfill-emails" "backfill-calendar" "backfill-contacts")
+for topic in "${old_topics[@]}"; do
+    if gcloud pubsub topics list --project=$PUBSUB_PROJECT_ID | grep -q "$topic"; then
+        echo "Deleting old topic: $topic"
+        gcloud pubsub topics delete "$topic" --project=$PUBSUB_PROJECT_ID --quiet || true
+    fi
+done
 
-# Email backfill topic
-echo "Creating email-backfill topic..."
-gcloud pubsub topics create email-backfill \
-    --project=$PUBSUB_PROJECT_ID \
-    --quiet
-
-# Email updates topic
-echo "Creating email-updates topic..."
-gcloud pubsub topics create email-updates \
-    --project=$PUBSUB_PROJECT_ID \
-    --quiet
-
-# Calendar updates topic
-echo "Creating calendar-updates topic..."
-gcloud pubsub topics create calendar-updates \
-    --project=$PUBSUB_PROJECT_ID \
-    --quiet
-
-# Contact updates topic
-echo "Creating contact-updates topic..."
-gcloud pubsub topics create contact-updates \
-    --project=$PUBSUB_PROJECT_ID \
-    --quiet
+# Create correct topics
+echo "Creating correct topics..."
+correct_topics=("email-backfill" "calendar-updates" "contact-updates")
+for topic in "${correct_topics[@]}"; do
+    echo "Creating topic: $topic"
+    gcloud pubsub topics create "$topic" --project=$PUBSUB_PROJECT_ID --quiet || echo "Topic $topic may already exist"
+done
 
 # Create subscriptions
 echo "Creating subscriptions..."
-
-# Email router subscription
-echo "Creating email-router-subscription..."
 gcloud pubsub subscriptions create email-router-subscription \
     --topic=email-backfill \
     --project=$PUBSUB_PROJECT_ID \
-    --quiet
+    --quiet || echo "Subscription may already exist"
 
-# Calendar router subscription
-echo "Creating calendar-router-subscription..."
 gcloud pubsub subscriptions create calendar-router-subscription \
     --topic=calendar-updates \
     --project=$PUBSUB_PROJECT_ID \
-    --quiet
+    --quiet || echo "Subscription may already exist"
 
-# Contact router subscription
-echo "Creating contact-router-subscription..."
 gcloud pubsub subscriptions create contact-router-subscription \
     --topic=contact-updates \
     --project=$PUBSUB_PROJECT_ID \
-    --quiet
+    --quiet || echo "Subscription may already exist"
 
 # List all topics and subscriptions
 echo ""
@@ -81,5 +65,5 @@ echo "Subscriptions created:"
 gcloud pubsub subscriptions list --project=$PUBSUB_PROJECT_ID
 
 echo ""
-echo "PubSub setup complete!"
-echo "Topics and subscriptions are ready for the office router service."
+echo "✅ Pub/Sub topics fixed successfully!"
+echo "The chat service should now be able to publish emails without 404 errors."

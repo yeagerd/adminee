@@ -46,6 +46,11 @@ class DemoDataSeeder:
                 if (i + 1) % 10 == 0:
                     logger.info(f"Published {i + 1}/{count} demo emails")
                     
+            except RuntimeError as e:
+                # Fatal error (e.g., topic not found) - halt the process
+                logger.error(f"Fatal error publishing demo email {i}: {e}")
+                logger.error("Halting demo email seeding due to fatal Pub/Sub error")
+                break
             except Exception as e:
                 logger.error(f"Failed to publish demo email {i}: {e}")
         
@@ -72,6 +77,11 @@ class DemoDataSeeder:
                 if (i + 1) % 10 == 0:
                     logger.info(f"Published {i + 1}/{count} demo calendar events")
                     
+            except RuntimeError as e:
+                # Fatal error (e.g., topic not found) - halt the process
+                logger.error(f"Fatal error publishing demo calendar event {i}: {e}")
+                logger.error("Halting demo calendar seeding due to fatal Pub/Sub error")
+                break
             except Exception as e:
                 logger.error(f"Failed to publish demo calendar event {i}: {e}")
         
@@ -98,6 +108,11 @@ class DemoDataSeeder:
                 if (i + 1) % 5 == 0:
                     logger.info(f"Published {i + 1}/{count} demo contacts")
                     
+            except RuntimeError as e:
+                # Fatal error (e.g., topic not found) - halt the process
+                logger.error(f"Fatal error publishing demo contact {i}: {e}")
+                logger.error("Halting demo contact seeding due to fatal Pub/Sub error")
+                break
             except Exception as e:
                 logger.error(f"Failed to publish demo contact {i}: {e}")
         

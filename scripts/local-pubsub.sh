@@ -132,7 +132,7 @@ setup_topics() {
     sleep 2
     
     # Create required topics
-    local topics=("backfill-emails" "backfill-calendar" "backfill-contacts")
+    local topics=("email-backfill" "calendar-updates" "contact-updates")
     
     for topic in "${topics[@]}"; do
         log_info "Creating topic: ${topic}"

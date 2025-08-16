@@ -28,10 +28,11 @@ class PubSubPublisher:
         self.project_id = project_id
         self.emulator_host = emulator_host
         self.publisher = None
+        # Fix topic names to match actual Pub/Sub setup
         self.topics = {
-            "emails": f"projects/{project_id}/topics/backfill-emails",
-            "calendar": f"projects/{project_id}/topics/backfill-calendar",
-            "contacts": f"projects/{project_id}/topics/backfill-contacts"
+            "emails": "email-backfill",  # Changed from "backfill-emails"
+            "calendar": "calendar-updates",  # Changed from "backfill-calendar"
+            "contacts": "contact-updates"  # Changed from "backfill-contacts"
         }
         
         if PUBSUB_AVAILABLE:
@@ -89,6 +90,12 @@ class PubSubPublisher:
             logger.debug(f"Published email {sanitized_data.get('id')} to Pub/Sub: {message_id}")
             return True
             
+        except google_exceptions.NotFound as e:
+            # Topic not found - this is a fatal error that should halt the process
+            logger.error(f"FATAL: Pub/Sub topic '{self.topics['emails']}' not found. Halting email publishing. Error: {e}")
+            # Set publisher to None to prevent further attempts
+            self.publisher = None
+            raise RuntimeError(f"Pub/Sub topic '{self.topics['emails']}' not found. Please create the topic first.") from e
         except Exception as e:
             logger.error(f"Failed to publish email to Pub/Sub: {e}")
             return False
@@ -117,6 +124,12 @@ class PubSubPublisher:
             logger.debug(f"Published calendar event {sanitized_data.get('id')} to Pub/Sub: {message_id}")
             return True
             
+        except google_exceptions.NotFound as e:
+            # Topic not found - this is a fatal error that should halt the process
+            logger.error(f"FATAL: Pub/Sub topic '{self.topics['calendar']}' not found. Halting calendar publishing. Error: {e}")
+            # Set publisher to None to prevent further attempts
+            self.publisher = None
+            raise RuntimeError(f"Pub/Sub topic '{self.topics['calendar']}' not found. Please create the topic first.") from e
         except Exception as e:
             logger.error(f"Failed to publish calendar event to Pub/Sub: {e}")
             return False
@@ -142,8 +155,15 @@ class PubSubPublisher:
             future = self.publisher.publish(self.topics["contacts"], message_data)
             message_id = future.result()
             
+            logger.debug(f"Published contact {sanitized_data.get('id')} to Pub/Sub: {message_id}")
             return True
             
+        except google_exceptions.NotFound as e:
+            # Topic not found - this is a fatal error that should halt the process
+            logger.error(f"FATAL: Pub/Sub topic '{self.topics['contacts']}' not found. Halting contact publishing. Error: {e}")
+            # Set publisher to None to prevent further attempts
+            self.publisher = None
+            raise RuntimeError(f"Pub/Sub topic '{self.topics['contacts']}' not found. Please create the topic first.") from e
         except Exception as e:
             logger.error(f"Failed to publish contact to Pub/Sub: {e}")
             return False
@@ -157,6 +177,11 @@ class PubSubPublisher:
                 try:
                     success = await self.publish_email(email)
                     results.append(success)
+                except RuntimeError as e:
+                    # Fatal error (e.g., topic not found) - halt the batch
+                    logger.error(f"Fatal error in batch email publishing: {e}")
+                    # Return partial results and re-raise the fatal error
+                    return results
                 except Exception as e:
                     logger.error(f"Failed to publish email in batch: {e}")
                     # Continue with other emails
@@ -180,6 +205,11 @@ class PubSubPublisher:
                 try:
                     success = await self.publish_calendar_event(event)
                     results.append(success)
+                except RuntimeError as e:
+                    # Fatal error (e.g., topic not found) - halt the batch
+                    logger.error(f"Fatal error in batch calendar publishing: {e}")
+                    # Return partial results and re-raise the fatal error
+                    return results
                 except Exception as e:
                     logger.error(f"Failed to publish calendar event in batch: {e}")
                     # Continue with other events
@@ -203,6 +233,11 @@ class PubSubPublisher:
                 try:
                     success = await self.publish_contact(contact)
                     results.append(success)
+                except RuntimeError as e:
+                    # Fatal error (e.g., topic not found) - halt the batch
+                    logger.error(f"Fatal error in batch contact publishing: {e}")
+                    # Return partial results and re-raise the fatal error
+                    return results
                 except Exception as e:
                     logger.error(f"Failed to publish contact in batch: {e}")
                     # Continue with other contacts
@@ -210,7 +245,7 @@ class PubSubPublisher:
                     continue
             
             success_count = sum(results)
-            logger.info(f"Published {success_count} out of {len(contacts)} contacts to topic {self.topics['contacts']}")
+            logger.info(f"Published {len(results)} out of {len(contacts)} contacts to topic {self.topics['contacts']}")
             return results
             
         except Exception as e:

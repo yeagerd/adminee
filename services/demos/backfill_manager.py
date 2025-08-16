@@ -119,6 +119,13 @@ class BackfillManager:
                     
                     logger.debug(f"Job {job_id}: Processed {processed_count}/{total_emails} emails ({job.progress:.1f}%)")
                     
+                except RuntimeError as e:
+                    # Fatal error (e.g., topic not found) - halt the job
+                    logger.error(f"Fatal error in backfill job {job_id}: {e}")
+                    job.status = "failed"
+                    job.end_time = datetime.now(timezone.utc)
+                    job.error_message = f"Fatal Pub/Sub error: {e}"
+                    break
                 except Exception as e:
                     logger.error(f"Failed to publish email batch in job {job_id}: {e}")
                     job.failed_emails += len(email_batch)
