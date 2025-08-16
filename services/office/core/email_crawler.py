@@ -74,7 +74,7 @@ class EmailCrawler:
         # client = MicrosoftGraphClient(self.user_id)
         # return await client.get_email_count()
         
-        return 1000  # Placeholder count
+        return 10  # Changed from 1000 to 10 for testing
     
     async def _get_google_email_count(self) -> int:
         """Get email count from Gmail API"""
@@ -90,7 +90,7 @@ class EmailCrawler:
         # client = GmailClient(self.user_id)
         # return await client.get_email_count()
         
-        return 800  # Placeholder count
+        return 10  # Changed from 800 to 10 for testing
     
     async def _crawl_microsoft_emails(
         self,
