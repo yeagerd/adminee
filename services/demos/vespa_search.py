@@ -26,12 +26,12 @@ class VespaSearchDemo:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.vespa_endpoint = config["vespa_endpoint"]
-        self.demo_user_id = config.get("demo_user_id", "demo_user_1")
+        self.user_email = config.get("user_email", "trybriefly@outlook.com")
         
         # Initialize search tools
-        self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.demo_user_id)
-        self.user_data_search = UserDataSearchTool(self.vespa_endpoint, self.demo_user_id)
-        self.semantic_search = SemanticSearchTool(self.vespa_endpoint, self.demo_user_id)
+        self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.user_email)
+        self.user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_email)
+        self.semantic_search = SemanticSearchTool(self.vespa_endpoint, self.user_email)
         
         # Comprehensive search test scenarios
         self.search_scenarios = [
@@ -47,7 +47,7 @@ class VespaSearchDemo:
             {
                 "name": "User Isolation Testing",
                 "queries": [
-                    f"user {self.demo_user_id} data",
+                    f"user {self.user_email} data",
                     "personal documents",
                     "my emails"
                 ],
@@ -475,9 +475,12 @@ async def main():
     """Main function for running the Vespa search demo"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Run Vespa search capabilities demo")
+    parser = argparse.ArgumentParser(
+        description="Run Vespa search capabilities demo with real user data",
+        epilog="Example: python3 vespa_search.py trybriefly@outlook.com --demo"
+    )
+    parser.add_argument("email", help="Email address of the user to search (e.g., trybriefly@outlook.com)")
     parser.add_argument("--vespa-endpoint", default="http://localhost:8080", help="Vespa endpoint")
-    parser.add_argument("--demo-user-id", default="demo_user_1", help="Demo user ID")
     parser.add_argument("--output-file", help="Output file for demo results")
     parser.add_argument("--demo", action="store_true", help="Run the comprehensive demo instead of interactive mode")
     parser.add_argument("--query", help="Run a single query non-interactively")
@@ -487,7 +490,7 @@ async def main():
     # Demo configuration
     config = {
         "vespa_endpoint": args.vespa_endpoint,
-        "demo_user_id": args.demo_user_id
+        "user_email": args.email
     }
     
     try:

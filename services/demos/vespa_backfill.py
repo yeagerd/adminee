@@ -37,7 +37,7 @@ class VespaBackfillDemo:
         self.settings = get_demo_settings()
         
         # Demo configuration with sensible limits for testing
-        self.demo_users = config.get("demo_users", ["demo_user_1"])
+        self.user_email = config.get("user_email", "trybriefly@outlook.com")
         self.providers = config.get("providers", ["microsoft"])  # Start with just Microsoft
         self.batch_size = config.get("batch_size", 10)  # Small batch size for testing
         self.rate_limit = config.get("rate_limit", 2.0)  # Slower rate for testing
@@ -182,34 +182,33 @@ class VespaBackfillDemo:
         }
         
         try:
-            # Process each demo user
-            for user_id in self.demo_users:
-                logger.info(f"Starting backfill for user: {user_id}")
+            # Process the specified user
+            logger.info(f"Starting backfill for user: {self.user_email}")
+            
+            try:
+                # Process each provider for the user
+                for provider in self.providers:
+                    job_result = await self._run_user_provider_backfill(self.user_email, provider)
+                    
+                    if job_result["status"] == "success":
+                        results["successful_jobs"] += 1
+                        results["total_data_published"] += job_result.get("total_published", 0)
+                    else:
+                        results["failed_jobs"] += 1
+                    
+                    results["job_details"].append(job_result)
                 
-                try:
-                    # Process each provider for the user
-                    for provider in self.providers:
-                        job_result = await self._run_user_provider_backfill(user_id, provider)
-                        
-                        if job_result["status"] == "success":
-                            results["successful_jobs"] += 1
-                            results["total_data_published"] += job_result.get("total_published", 0)
-                        else:
-                            results["failed_jobs"] += 1
-                        
-                        results["job_details"].append(job_result)
-                    
-                    results["users_processed"] += 1
-                    
-                except Exception as e:
-                    logger.error(f"Failed to process user {user_id}: {e}")
-                    results["failed_jobs"] += 1
-                    results["job_details"].append({
-                        "user_id": user_id,
-                        "provider": "unknown",
-                        "status": "failed",
-                        "error": str(e)
-                    })
+                results["users_processed"] += 1
+                
+            except Exception as e:
+                logger.error(f"Failed to process user {self.user_email}: {e}")
+                results["failed_jobs"] += 1
+                results["job_details"].append({
+                    "user_id": self.user_email,
+                    "provider": "unknown",
+                    "status": "failed",
+                    "error": str(e)
+                })
             
             # Wait for all jobs to complete
             await self._wait_for_jobs_completion(timeout_minutes=30)
@@ -509,9 +508,12 @@ class VespaBackfillDemo:
 
 async def main():
     """Main function for running the Vespa backfill demo"""
-    parser = argparse.ArgumentParser(description="Vespa Real Backfill Demo")
+    parser = argparse.ArgumentParser(
+        description="Vespa Real Backfill Demo - Backfill real user data from email providers",
+        epilog="Example: python3 vespa_backfill.py trybriefly@outlook.com --max-emails 10"
+    )
+    parser.add_argument("email", help="Email address of the user to backfill (e.g., trybriefly@outlook.com)")
     parser.add_argument("--config", help="Path to config file")
-    parser.add_argument("--users", nargs="+", help="Demo user IDs")
     parser.add_argument("--providers", nargs="+", help="Email providers to backfill")
     parser.add_argument("--batch-size", type=int, help="Batch size for processing")
     parser.add_argument("--rate-limit", type=float, help="Rate limit delay between batches (seconds)")
@@ -532,8 +534,8 @@ async def main():
             config = json.load(f)
     
     # Override with command line arguments
-    if args.users:
-        config["demo_users"] = args.users
+    if args.email:
+        config["user_email"] = args.email
     if args.providers:
         config["providers"] = args.providers
     if args.batch_size:
