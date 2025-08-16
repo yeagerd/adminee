@@ -60,7 +60,7 @@ python vespa_full.py --config config.json
 **Usage**:
 ```bash
 cd services/demos
-python vespa_chat.py --config config.json
+python vespa_chat.py --config vespa_config.json
 ```
 
 **Configuration**:
