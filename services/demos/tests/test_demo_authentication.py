@@ -33,6 +33,9 @@ class TestDemoAuthentication:
             chat_url="http://localhost:8002",
             office_url="http://localhost:8003",
             user_url="http://localhost:8001",
+            chat_health_url="http://localhost:8002",
+            office_health_url="http://localhost:8003",
+            user_health_url="http://localhost:8001",
             user_id="test_demo_user",
             skip_auth=False,
         )
@@ -294,6 +297,9 @@ class TestDemoAuthentication:
             chat_url="http://localhost:8002",
             office_url="http://localhost:8003",
             user_url="http://localhost:8001",
+            chat_health_url="http://localhost:8002",
+            office_health_url="http://localhost:8003",
+            user_health_url="http://localhost:8001",
             user_id="test_user",
         )
 

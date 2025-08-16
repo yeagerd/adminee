@@ -470,13 +470,15 @@ class ChatServiceClient(ServiceClient):
         """Send a message to the chat service."""
         try:
             response = requests.post(
-                f"{self.base_url}/chat",
+                f"{self.base_url}/completions",
                 json={
-                    "user_id": user_id,
                     "message": message,
                     "thread_id": thread_id,
                 },
-                headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
+                headers={
+                    "X-API-Key": settings.API_FRONTEND_CHAT_KEY,
+                    "X-User-Id": user_id,
+                },
                 timeout=self.timeout,
             )
             if response.status_code == 200:
@@ -485,6 +487,10 @@ class ChatServiceClient(ServiceClient):
                 messages = data.get("messages", [])
                 if messages:
                     return messages[-1].get("content")
+            else:
+                logger.error(
+                    f"Chat service returned status {response.status_code}: {response.text}"
+                )
         except Exception as e:
             logger.error(f"Chat service error: {e}")
         return None
@@ -493,7 +499,7 @@ class ChatServiceClient(ServiceClient):
         """Delete the current draft."""
         try:
             response = requests.delete(
-                f"{self.base_url}/chat/draft",
+                f"{self.base_url}/drafts",
                 json={"user_id": user_id, "thread_id": thread_id},
                 headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
                 timeout=self.timeout,
@@ -507,7 +513,7 @@ class ChatServiceClient(ServiceClient):
         """Get all chat threads for a user."""
         try:
             response = requests.get(
-                f"{self.base_url}/chat/threads",
+                f"{self.base_url}/threads",
                 params={"user_id": user_id},
                 headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
                 timeout=self.timeout,
@@ -549,6 +555,9 @@ class FullDemo:
         chat_url: str,
         office_url: str,
         user_url: str,
+        chat_health_url: str,
+        office_health_url: str,
+        user_health_url: str,
         user_id: str,
         skip_auth: bool = False,
     ):
@@ -557,11 +566,17 @@ class FullDemo:
         self.skip_auth = skip_auth
         self.user_timezone = "UTC"
         self.timeout = 30.0  # Default timeout for HTTP requests
+        self.settings = settings  # Add access to global settings
 
-        # Service clients
+        # Service clients for API calls (through gateway)
         self.chat_client = ChatServiceClient(chat_url)
         self.office_client = OfficeServiceClient(office_url)
         self.user_client = UserServiceClient(user_url)
+
+        # Health check clients (direct to services)
+        self.chat_health_client = ServiceClient(chat_health_url)
+        self.office_health_client = ServiceClient(office_health_url)
+        self.user_health_client = ServiceClient(user_health_url)
 
         # Service availability
         self.services_available = {
@@ -599,9 +614,11 @@ class FullDemo:
         print("🔍 Checking service availability...")
 
         # Check main services
-        self.services_available["chat"] = await self.chat_client.health_check()
-        self.services_available["office"] = await self.office_client.health_check()
-        self.services_available["user"] = await self.user_client.health_check()
+        self.services_available["chat"] = await self.chat_health_client.health_check()
+        self.services_available["office"] = (
+            await self.office_health_client.health_check()
+        )
+        self.services_available["user"] = await self.user_health_client.health_check()
 
         # Check NextAuth test server
         if NEXTAUTH_AVAILABLE:
@@ -637,13 +654,18 @@ class FullDemo:
 
         try:
             # Use the new email resolution endpoint to get external_auth_id
+            logger.info(
+                f"🔍 authenticate() calling _resolve_email_to_user_id with auth_email: '{auth_email}'"
+            )
             user_id = await self._resolve_email_to_user_id(auth_email)
+            logger.info(f"🔍 authenticate() received user_id: '{user_id}'")
             if not user_id:
                 print(f"❌ Failed to resolve email {auth_email} to user ID")
                 return False
 
             # ALWAYS update user_id to use the resolved external_auth_id
             # This ensures we use the correct ID even if OAuth setup fails
+            logger.info(f"🔍 Setting self.user_id = '{user_id}'")
             self.user_id = user_id
             self.user_client.user_id = user_id
 
@@ -701,6 +723,12 @@ class FullDemo:
             external_auth_id if found, None otherwise
         """
         try:
+            # Debug logging to see what's being passed
+            logger.info(
+                f"🔍 _resolve_email_to_user_id called with email: '{email}' (type: {type(email)})"
+            )
+            logger.info(f"🔍 Current preferred_provider: {self.preferred_provider}")
+
             # Use the new RESTful lookup endpoint
             params = {"email": email}
             if self.preferred_provider:
@@ -711,21 +739,26 @@ class FullDemo:
                 exists_response = await client.get(
                     f"{self.user_client.base_url}/v1/internal/users/exists",
                     params=params,
+                    headers={"X-API-Key": self.settings.API_FRONTEND_USER_KEY},
                 )
 
                 if exists_response.status_code == 200:
                     exists_data = exists_response.json()
+                    logger.info(f"🔍 EXISTS response: {exists_data}")
 
                     if exists_data.get("exists"):
                         # User exists, get full user data using the original endpoint
+                        logger.info(f"🔍 User exists, getting full user data...")
                         response = await client.get(
                             f"{self.user_client.base_url}/v1/internal/users/id",
                             params=params,
+                            headers={"X-API-Key": self.settings.API_FRONTEND_USER_KEY},
                         )
 
                         if response.status_code == 200:
                             # User found - extract external_auth_id from full user response
                             data = response.json()
+                            logger.info(f"🔍 FULL USER DATA response: {data}")
                             external_auth_id = data.get("external_auth_id")
                             auth_provider = data.get("auth_provider")
 
@@ -744,6 +777,9 @@ class FullDemo:
 
                             logger.info(
                                 f"Successfully resolved email {email} to external_auth_id {external_auth_id}"
+                            )
+                            logger.info(
+                                f"🔍 Returning external_auth_id: {external_auth_id}"
                             )
                             return external_auth_id
                         else:
@@ -819,7 +855,10 @@ class FullDemo:
                 response = await client.post(
                     f"{self.user_client.base_url}/users/",
                     json=user_create_payload,
-                    headers={"Content-Type": "application/json"},
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-API-Key": self.settings.API_FRONTEND_USER_KEY,
+                    },
                 )
 
                 if response.status_code in [200, 201]:
@@ -891,7 +930,10 @@ class FullDemo:
                     response = await client.post(
                         f"{self.user_client.base_url}/users/",
                         json=user_create_payload,
-                        headers={"Content-Type": "application/json"},
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-API-Key": self.settings.API_FRONTEND_USER_KEY,
+                        },
                     )
                     if response.status_code in [200, 201]:
                         logger.info(
@@ -1316,18 +1358,21 @@ class FullDemo:
                             f"🔧 Setting preferred auth provider to {provider.title()}"
                         )
 
-                        # Re-authenticate with the new provider
-                        success = await self.authenticate()
-                        if success:
-                            oauth_success = await self.setup_oauth_integration(provider)
-                            result = (
-                                "✅ OAuth setup successful"
-                                if oauth_success
-                                else "❌ OAuth setup failed"
-                            )
-                            print(f"\n{result}")
-                        else:
-                            print("\n❌ Authentication failed, cannot set up OAuth")
+                        # Check if already authenticated, if not then authenticate
+                        if not self.authenticated:
+                            success = await self.authenticate()
+                            if not success:
+                                print("\n❌ Authentication failed, cannot set up OAuth")
+                                continue
+
+                        # User is authenticated, proceed with OAuth setup
+                        oauth_success = await self.setup_oauth_integration(provider)
+                        result = (
+                            "✅ OAuth setup successful"
+                            if oauth_success
+                            else "❌ OAuth setup failed"
+                        )
+                        print(f"\n{result}")
                     else:
                         print("❌ Supported providers: google, microsoft")
                     continue
@@ -1465,9 +1510,16 @@ async def main() -> None:
 
     # Set up demo
     use_api = not args.local
-    chat_url = "http://localhost:8002"
+    # Use direct service URLs for now (bypassing gateway authentication issues)
+    chat_url = "http://localhost:8002/v1/chat"
     office_url = "http://localhost:8003"
     user_url = "http://localhost:8001"
+
+    # Direct service URLs for health checks
+    chat_health_url = "http://localhost:8002"
+    office_health_url = "http://localhost:8003"
+    user_health_url = "http://localhost:8001"
+
     user_id = args.email or DEFAULT_USER_ID
 
     demo = FullDemo(
@@ -1475,6 +1527,9 @@ async def main() -> None:
         chat_url=chat_url,
         office_url=office_url,
         user_url=user_url,
+        chat_health_url=chat_health_url,
+        office_health_url=office_health_url,
+        user_health_url=user_health_url,
         user_id=user_id,
         skip_auth=args.no_auth,
     )
