@@ -8,8 +8,8 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
 
-from ..service_client import ChatServiceClient
-from ...vespa_query.search_engine import SearchEngine
+from services.chat.service_client import ServiceClient
+from services.vespa_query.search_engine import SearchEngine
 
 logger = logging.getLogger(__name__)
 
@@ -364,7 +364,7 @@ class SemanticSearchTool:
         return text[:max_length] + "..."
 
 # Register tools with the chat service
-def register_vespa_tools(chat_service: ChatServiceClient, vespa_endpoint: str, user_id: str):
+def register_vespa_tools(chat_service: ServiceClient, vespa_endpoint: str, user_id: str):
     """Register Vespa search tools with the chat service"""
     tools = {
         "vespa_search": VespaSearchTool(vespa_endpoint, user_id),
