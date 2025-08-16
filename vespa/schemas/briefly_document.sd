@@ -66,8 +66,7 @@ schema briefly_document {
         }
         
         field metadata type map<string, string> {
-            indexing: attribute | summary
-            attribute: fast-search
+            indexing: summary
         }
         
         field embedding type tensor<float>(x[384]) {
@@ -89,7 +88,7 @@ schema briefly_document {
         second-phase {
             expression: 0.3 * nativeRank(title, content, search_text) + 0.7 * closeness(field, embedding)
         }
-        match-features: nativeRank(title, content, search_text), closeness(field, embedding)
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding)
     }
     
     rank-profile bm25 inherits default {

@@ -80,7 +80,7 @@ class VespaChatDemo:
         
         demo_start = time.time()
         demo_results = {
-            "start_time": datetime.utcnow().isoformat(),
+            "start_time": datetime.now(datetime.UTC).isoformat(),
             "conversation_scenarios": [],
             "performance_metrics": {},
             "search_quality": {},
@@ -103,7 +103,7 @@ class VespaChatDemo:
             # Evaluate user experience
             demo_results["user_experience"] = self._evaluate_user_experience(demo_results["conversation_scenarios"])
             
-            demo_results["end_time"] = datetime.utcnow().isoformat()
+            demo_results["end_time"] = datetime.now(datetime.UTC).isoformat()
             demo_results["status"] = "completed"
             
             demo_duration = time.time() - demo_start
@@ -113,7 +113,7 @@ class VespaChatDemo:
             logger.error(f"Chat demo failed: {e}")
             demo_results["status"] = "failed"
             demo_results["error"] = str(e)
-            demo_results["end_time"] = datetime.utcnow().isoformat()
+            demo_results["end_time"] = datetime.now(datetime.UTC).isoformat()
         
         return demo_results
     
@@ -567,6 +567,67 @@ class VespaChatDemo:
         )
         
         return ux_metrics
+    
+    def _generate_result_summary(self, search_results: Dict[str, Any]) -> str:
+        """Generate a summary of search results for chat display"""
+        try:
+            total_found = search_results.get("total_found", 0)
+            results = search_results.get("results", [])
+            
+            if total_found == 0:
+                return "No results found for your query."
+            
+            # Group results by type
+            result_types = {}
+            for result in results:
+                result_type = result.get("type", "unknown")
+                if result_type not in result_types:
+                    result_types[result_type] = []
+                result_types[result_type].append(result)
+            
+            # Generate summary
+            summary_parts = [f"Found {total_found} results:"]
+            for result_type, type_results in result_types.items():
+                summary_parts.append(f"• {len(type_results)} {result_type.replace('_', ' ')}")
+            
+            return " ".join(summary_parts)
+            
+        except Exception as e:
+            logger.error(f"Error generating result summary: {e}")
+            return "Results found but unable to generate summary."
+    
+    def _assess_context_utilization(self, initial_search: Dict[str, Any], enhanced_results: Dict[str, Any]) -> float:
+        """Assess how well context from initial search is utilized in follow-ups"""
+        try:
+            if not initial_search or not enhanced_results:
+                return 0.0
+            
+            initial_results = initial_search.get("results", [])
+            enhanced_results_list = enhanced_results.get("results", [])
+            
+            if not initial_results or not enhanced_results_list:
+                return 0.0
+            
+            # Check if enhanced results reference or build upon initial results
+            context_utilization_score = 0.0
+            
+            # Simple heuristic: check if enhanced results have more detail or build on initial
+            if len(enhanced_results_list) > len(initial_results):
+                context_utilization_score += 0.3
+            
+            # Check if enhanced results include follow-up suggestions
+            if enhanced_results.get("chat_suggestions"):
+                context_utilization_score += 0.4
+            
+            # Check if enhanced results include quick actions
+            if enhanced_results.get("quick_actions"):
+                context_utilization_score += 0.3
+            
+            return min(context_utilization_score, 1.0)
+            
+        except Exception as e:
+            logger.error(f"Error assessing context utilization: {e}")
+            return 0.0
 
 async def main():
     """Main function for running the Vespa chat demo"""
