@@ -193,6 +193,10 @@ graph TD
 VESPA_ENDPOINT=http://localhost:8080
 VESPA_APPLICATION=briefly
 
+# Vespa Services Configuration
+VESPA_LOADER_PORT=9001
+VESPA_QUERY_PORT=9002
+
 # Pub/Sub Configuration
 PUBSUB_PROJECT_ID=briefly-dev
 PUBSUB_EMULATOR_HOST=localhost:8085
@@ -217,6 +221,10 @@ DEMO_PROVIDERS=microsoft,google
     "project_id": "briefly-dev",
     "emulator_host": "localhost:8085"
   },
+  "services": {
+    "vespa_loader": "http://localhost:9001",
+    "vespa_query": "http://localhost:9002"
+  },
   "demo": {
     "users": ["demo_user_1", "demo_user_2"],
     "providers": ["microsoft", "google"],
@@ -230,6 +238,18 @@ DEMO_PROVIDERS=microsoft,google
 ```
 
 ## Running Demos
+
+### Port Configuration
+
+**Note**: The Vespa services use different ports to avoid conflicts with existing Briefly services:
+
+- **Vespa Loader Service**: Port 9001 (avoids conflict with Office Service on 8001)
+- **Vespa Query Service**: Port 9002 (avoids conflict with Chat Service on 8002)
+- **Office Service**: Port 8001 (existing)
+- **Chat Service**: Port 8002 (existing)
+- **User Service**: Port 8003 (existing)
+- **Shipments Service**: Port 8004 (existing)
+- **Meetings Service**: Port 8005 (existing)
 
 ### Prerequisites
 
@@ -257,13 +277,13 @@ DEMO_PROVIDERS=microsoft,google
 4. **Vespa loader service running**:
    ```bash
    cd services/vespa_loader
-   python -m uvicorn main:app --reload --port 8002
+   python -m uvicorn main:app --reload --port 9001
    ```
 
 5. **Vespa query service running**:
    ```bash
    cd services/vespa_query
-   python -m uvicorn main:app --reload --port 8003
+   python -m uvicorn main:app --reload --port 9002
    ```
 
 ### Quick Start

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     
     # Service configuration
     service_name: str = "vespa-loader"
-    service_port: int = Field(default=8004, env="VESPA_LOADER_PORT")
+    service_port: int = Field(default=9001, env="VESPA_LOADER_PORT")
     service_host: str = Field(default="0.0.0.0", env="VESPA_LOADER_HOST")
     
     # Logging
