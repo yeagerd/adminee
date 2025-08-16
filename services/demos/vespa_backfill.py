@@ -127,11 +127,11 @@ class VespaBackfillDemo:
         try:
             import httpx
             
-            # Get list of running jobs
+            # Get list of running jobs using internal endpoint
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
-                    f"{self.office_service_url}/v1/api/backfill/status",
-                    headers={"X-API-Key": self.api_keys["office"]}
+                    f"{self.office_service_url}/internal/backfill/status?user_id={self.user_email}",
+                    headers={"X-API-Key": self.api_keys["backfill"]}
                 )
                 
                 if response.status_code == 200:
@@ -141,10 +141,10 @@ class VespaBackfillDemo:
                             job_id = job.get("job_id")
                             logger.info(f"Cancelling running job: {job_id}")
                             
-                            # Cancel the job
+                            # Cancel the job using internal endpoint
                             cancel_response = await client.delete(
-                                f"{self.office_service_url}/v1/api/backfill/{job_id}",
-                                headers={"X-API-Key": self.api_keys["office"]}
+                                f"{self.office_service_url}/internal/backfill/{job_id}?user_id={self.user_email}",
+                                headers={"X-API-Key": self.api_keys["backfill"]}
                             )
                             
                             if cancel_response.status_code == 200:
