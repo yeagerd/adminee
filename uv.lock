@@ -271,6 +271,7 @@ source = { editable = "." }
 dependencies = [
     { name = "google-cloud-core" },
     { name = "google-cloud-pubsub" },
+    { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
@@ -308,6 +309,7 @@ requires-dist = [
     { name = "isort", marker = "extra == 'dev'" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "nox", marker = "extra == 'dev'" },
+    { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
@@ -469,6 +471,7 @@ dependencies = [
     { name = "google-auth" },
     { name = "google-auth-httplib2" },
     { name = "google-auth-oauthlib" },
+    { name = "google-cloud-pubsub" },
     { name = "google-cloud-secret-manager" },
     { name = "httpx" },
     { name = "itsdangerous" },
@@ -508,6 +511,7 @@ requires-dist = [
     { name = "google-auth" },
     { name = "google-auth-httplib2" },
     { name = "google-auth-oauthlib" },
+    { name = "google-cloud-pubsub" },
     { name = "google-cloud-secret-manager" },
     { name = "httpx" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
