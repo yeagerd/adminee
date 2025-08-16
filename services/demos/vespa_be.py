@@ -139,10 +139,10 @@ class VespaServiceManager:
     def check_service_health(self, service_key: str, config: Dict) -> Dict[str, any]:
         """Check the health of a service"""
         service_name = config["name"]
-        port = config["port"]
         
         if service_key in self.services:
             # Python service
+            port = config["port"]
             url = f"http://localhost:{port}/health"
             try:
                 response = requests.get(url, timeout=5)
