@@ -79,29 +79,45 @@ class VespaBackfillDemo:
         try:
             import requests
             
-            # Create required topics
+            # Required topics
             topics = ["email-backfill", "calendar-updates", "contact-updates"]
             project_id = self.settings.pubsub_project_id
             emulator_host = self.settings.pubsub_emulator_host
             
             for topic in topics:
-                # Try to create topic using Pub/Sub emulator REST API
-                url = f"http://{emulator_host}/v1/projects/{project_id}/topics"
-                data = {"name": f"projects/{project_id}/topics/{topic}"}
+                topic_path = f"projects/{project_id}/topics/{topic}"
+                
+                # First check if topic already exists
+                check_url = f"http://{emulator_host}/v1/{topic_path}"
+                try:
+                    check_response = requests.get(check_url, timeout=5)
+                    if check_response.status_code == 200:
+                        logger.info(f"✅ Topic {topic} already exists")
+                        continue
+                except Exception as e:
+                    logger.debug(f"Could not check topic {topic}: {e}")
+                
+                # Topic doesn't exist, try to create it
+                create_url = f"http://{emulator_host}/v1/projects/{project_id}/topics"
+                data = {"name": topic_path}
                 
                 try:
-                    response = requests.post(url, json=data, timeout=5)
-                    if response.status_code in [200, 409]:  # Created or already exists
-                        logger.info(f"✅ Topic {topic} is available")
+                    response = requests.post(create_url, json=data, timeout=5)
+                    if response.status_code == 200:
+                        logger.info(f"✅ Topic {topic} created successfully")
+                    elif response.status_code == 409:
+                        logger.info(f"✅ Topic {topic} already exists (race condition)")
                     else:
-                        logger.warning(f"⚠️  Topic {topic} creation failed: {response.status_code}")
+                        logger.error(f"❌ Failed to create topic {topic}: HTTP {response.status_code}")
+                        if response.text:
+                            logger.error(f"   Response: {response.text}")
                 except Exception as e:
-                    logger.warning(f"⚠️  Could not verify topic {topic}: {e}")
+                    logger.error(f"❌ Failed to create topic {topic}: {e}")
             
             logger.info("Pub/Sub topics check completed")
             
         except Exception as e:
-            logger.warning(f"Pub/Sub topics check failed: {e}")
+            logger.error(f"❌ Pub/Sub topics check failed: {e}")
             logger.info("Demo will continue but Pub/Sub publishing may fail")
     
     async def stop_all_backfill_jobs(self):
