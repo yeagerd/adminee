@@ -13,6 +13,280 @@ from services.vespa_query.search_engine import SearchEngine
 
 logger = logging.getLogger(__name__)
 
+# Global draft storage for in-memory draft management
+# This is used by the workflow system to maintain draft state during conversations
+_draft_storage: Dict[str, Dict[str, Any]] = {}
+
+# Draft management functions
+def create_draft_email(thread_id: str, email_data: Dict[str, Any]) -> bool:
+    """Create a draft email for the given thread."""
+    try:
+        key = f"{thread_id}_email"
+        _draft_storage[key] = email_data.copy()
+        logger.info(f"📧 Created email draft for thread {thread_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create email draft: {e}")
+        return False
+
+def create_draft_calendar_event(thread_id: str, event_data: Dict[str, Any]) -> bool:
+    """Create a draft calendar event for the given thread."""
+    try:
+        key = f"{thread_id}_calendar_event"
+        _draft_storage[key] = event_data.copy()
+        logger.info(f"📅 Created calendar event draft for thread {thread_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create calendar event draft: {e}")
+        return False
+
+def create_draft_calendar_change(thread_id: str, change_data: Dict[str, Any]) -> bool:
+    """Create a draft calendar change for the given thread."""
+    try:
+        key = f"{thread_id}_calendar_edit"
+        _draft_storage[key] = change_data.copy()
+        logger.info(f"✏️ Created calendar edit draft for thread {thread_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create calendar edit draft: {e}")
+        return False
+
+def get_draft_email(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Get the email draft for the given thread."""
+    key = f"{thread_id}_email"
+    return _draft_storage.get(key)
+
+def get_draft_calendar_event(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Get the calendar event draft for the given thread."""
+    key = f"{thread_id}_calendar_event"
+    return _draft_storage.get(key)
+
+def has_draft_email(thread_id: str) -> bool:
+    """Check if there's an email draft for the given thread."""
+    key = f"{thread_id}_email"
+    return key in _draft_storage
+
+def has_draft_calendar_event(thread_id: str) -> bool:
+    """Check if there's a calendar event draft for the given thread."""
+    key = f"{thread_id}_calendar_event"
+    return key in _draft_storage
+
+def has_draft_calendar_edit(thread_id: str) -> bool:
+    """Check if there's a calendar edit draft for the given thread."""
+    key = f"{thread_id}_calendar_edit"
+    return key in _draft_storage
+
+def delete_draft_email(thread_id: str) -> bool:
+    """Delete the email draft for the given thread."""
+    try:
+        key = f"{thread_id}_email"
+        if key in _draft_storage:
+            del _draft_storage[key]
+            logger.info(f"🗑️ Deleted email draft for thread {thread_id}")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Failed to delete email draft: {e}")
+        return False
+
+def delete_draft_calendar_event(thread_id: str) -> bool:
+    """Delete the calendar event draft for the given thread."""
+    try:
+        key = f"{thread_id}_calendar_event"
+        if key in _draft_storage:
+            del _draft_storage[key]
+            logger.info(f"🗑️ Deleted calendar event draft for thread {thread_id}")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Failed to delete calendar event draft: {e}")
+        return False
+
+def delete_draft_calendar_edit(thread_id: str) -> bool:
+    """Delete the calendar edit draft for the given thread."""
+    try:
+        key = f"{thread_id}_calendar_edit"
+        if key in _draft_storage:
+            del _draft_storage[key]
+            logger.info(f"🗑️ Deleted calendar edit draft for thread {thread_id}")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Failed to delete calendar edit draft: {e}")
+        return False
+
+def clear_all_drafts(thread_id: str) -> bool:
+    """Clear all drafts for the given thread."""
+    try:
+        thread_prefix = f"{thread_id}_"
+        keys_to_remove = [
+            key for key in _draft_storage.keys() if key.startswith(thread_prefix)
+        ]
+        
+        for key in keys_to_remove:
+            del _draft_storage[key]
+        
+        logger.info(f"🗑️ Cleared {len(keys_to_remove)} drafts for thread {thread_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to clear drafts: {e}")
+        return False
+
+# Document and note retrieval functions
+async def get_documents(
+    user_id: str,
+    document_type: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search_query: Optional[str] = None,
+    max_results: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Get documents from the office service.
+    
+    Args:
+        user_id: User ID to get documents for
+        document_type: Type of document to filter by (optional)
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        search_query: Search query to filter documents (optional)
+        max_results: Maximum number of results to return (optional)
+    
+    Returns:
+        Dict containing documents or error information
+    """
+    try:
+        # Import here to avoid circular imports
+        from services.chat.service_client import ServiceClient
+        from services.common.settings import get_settings
+        
+        # Create service client
+        settings = get_settings()
+        client = ServiceClient(settings.office_service_url)
+        
+        # Build query parameters
+        params = {
+            "user_id": user_id,
+        }
+        
+        if document_type:
+            params["document_type"] = document_type
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if search_query:
+            params["search_query"] = search_query
+        if max_results:
+            params["limit"] = max_results
+        
+        # Make request to office service
+        response = await client.http_client.get(
+            f"{settings.office_service_url}/v1/documents",
+            params=params,
+            headers=client._get_headers_for_service("office")
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "status": "success",
+                "documents": data.get("data", []),
+                "total_count": len(data.get("data", [])),
+                "user_id": user_id,
+                "query_params": params
+            }
+        else:
+            logger.error(f"Failed to get documents: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "user_id": user_id
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting documents for user {user_id}: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "user_id": user_id
+        }
+
+async def get_notes(
+    user_id: str,
+    notebook: Optional[str] = None,
+    tags: Optional[str] = None,
+    search_query: Optional[str] = None,
+    max_results: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Get notes from the office service.
+    
+    Args:
+        user_id: User ID to get notes for
+        notebook: Notebook to filter by (optional)
+        tags: Tags to filter by (optional)
+        search_query: Search query to filter notes (optional)
+        max_results: Maximum number of results to return (optional)
+    
+    Returns:
+        Dict containing notes or error information
+    """
+    try:
+        # Import here to avoid circular imports
+        from services.chat.service_client import ServiceClient
+        from services.common.settings import get_settings
+        
+        # Create service client
+        settings = get_settings()
+        client = ServiceClient(settings.office_service_url)
+        
+        # Build query parameters
+        params = {
+            "user_id": user_id,
+        }
+        
+        if notebook:
+            params["notebook"] = notebook
+        if tags:
+            params["tags"] = tags
+        if search_query:
+            params["search_query"] = search_query
+        if max_results:
+            params["limit"] = max_results
+        
+        # Make request to office service
+        response = await client.http_client.get(
+            f"{settings.office_service_url}/v1/notes",
+            params=params,
+            headers=client._get_headers_for_service("office")
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "status": "success",
+                "notes": data.get("data", []),
+                "total_count": len(data.get("data", [])),
+                "user_id": user_id,
+                "query_params": params
+            }
+        else:
+            logger.error(f"Failed to get notes: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "user_id": user_id
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting notes for user {user_id}: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "user_id": user_id
+        }
+
 class VespaSearchTool:
     """Tool for searching user data using Vespa"""
     
@@ -201,7 +475,7 @@ class UserDataSearchTool:
                 "search_time_ms": results["search_time_ms"]
             }
             
-    except Exception as e:
+        except Exception as e:
             logger.error(f"User data search failed: {e}")
             return {
                 "status": "error",
@@ -303,7 +577,7 @@ class SemanticSearchTool:
             # Process results
             processed_results = self._process_semantic_results(results, query)
 
-    return {
+            return {
                 "status": "success",
                 "query": query,
                 "search_type": "semantic",
@@ -377,4 +651,228 @@ def register_vespa_tools(chat_service: ServiceClient, vespa_endpoint: str, user_
         chat_service.add_tool(tool_name, tool)
     
     logger.info(f"Registered {len(tools)} Vespa search tools for user {user_id}")
-    return tools
+
+
+async def get_calendar_events(
+    user_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    time_zone: str = "UTC",
+    providers: Optional[List[str]] = None,
+    limit: int = 50
+) -> Dict[str, Any]:
+    """
+    Get calendar events for a user from the office service.
+    
+    Args:
+        user_id: User ID to get calendar events for
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        time_zone: Timezone for date filtering (default: UTC)
+        providers: List of calendar providers to query (optional)
+        limit: Maximum number of events to return (default: 50)
+    
+    Returns:
+        Dict containing calendar events or error information
+    """
+    try:
+        # Import here to avoid circular imports
+        from services.chat.service_client import ServiceClient
+        from services.common.settings import get_settings
+        
+        # Create service client
+        settings = get_settings()
+        client = ServiceClient(settings.office_service_url)
+        
+        # Build query parameters
+        params = {
+            "user_id": user_id,
+            "limit": limit
+        }
+        
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if time_zone and time_zone != "UTC":
+            params["timezone"] = time_zone
+        if providers:
+            params["providers"] = ",".join(providers)
+        
+        # Make request to office service
+        response = await client.http_client.get(
+            f"{settings.office_service_url}/v1/calendar/events",
+            params=params,
+            headers=client._get_headers_for_service("office")
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "status": "success",
+                "events": data.get("data", []),
+                "total_count": len(data.get("data", [])),
+                "user_id": user_id,
+                "query_params": params
+            }
+        else:
+            logger.error(f"Failed to get calendar events: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "user_id": user_id
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting calendar events for user {user_id}: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "user_id": user_id
+        }
+
+# Email retrieval function
+async def get_emails(
+    user_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    folder: Optional[str] = None,
+    unread_only: Optional[bool] = None,
+    search_query: Optional[str] = None,
+    max_results: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Get emails from the office service.
+    
+    Args:
+        user_id: User ID to get emails for
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        folder: Folder to filter by (optional)
+        unread_only: Whether to return only unread emails (optional)
+        search_query: Search query to filter emails (optional)
+        max_results: Maximum number of results to return (optional)
+    
+    Returns:
+        Dict containing emails or error information
+    """
+    try:
+        # Import here to avoid circular imports
+        from services.chat.service_client import ServiceClient
+        from services.common.settings import get_settings
+        
+        # Create service client
+        settings = get_settings()
+        client = ServiceClient(settings.office_service_url)
+        
+        # Build query parameters
+        params = {
+            "user_id": user_id,
+        }
+        
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if folder:
+            params["folder"] = folder
+        if unread_only is not None:
+            params["unread_only"] = str(unread_only).lower()
+        if search_query:
+            params["search_query"] = search_query
+        if max_results:
+            params["limit"] = max_results
+        
+        # Make request to office service
+        response = await client.http_client.get(
+            f"{settings.office_service_url}/v1/emails",
+            params=params,
+            headers=client._get_headers_for_service("office")
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "status": "success",
+                "emails": data.get("data", []),
+                "total_count": len(data.get("data", [])),
+                "user_id": user_id,
+                "query_params": params
+            }
+        else:
+            logger.error(f"Failed to get emails: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "user_id": user_id
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting emails for user {user_id}: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "user_id": user_id
+        }
+
+# Tool Registry for executing various tools
+class ToolRegistry:
+    """Registry for executing various tools and functions."""
+    
+    def __init__(self):
+        self._instance = None
+    
+    async def execute_tool(self, tool_name: str, **kwargs) -> Any:
+        """Execute a tool by name with the given arguments."""
+        try:
+            if tool_name == "get_calendar_events":
+                user_id = kwargs.get("user_id")
+                if not user_id:
+                    return type('ToolOutput', (), {'raw_output': {"error": "user_id is required"}})()
+                
+                # Import here to avoid circular imports
+                from services.chat.agents.llm_tools import get_calendar_events
+                result = await get_calendar_events(
+                    user_id=user_id,
+                    start_date=kwargs.get("start_date"),
+                    end_date=kwargs.get("end_date"),
+                    time_zone=kwargs.get("time_zone", "UTC"),
+                    providers=kwargs.get("providers"),
+                    limit=kwargs.get("limit", 50)
+                )
+                return type('ToolOutput', (), {'raw_output': result})()
+                
+            elif tool_name == "get_emails":
+                user_id = kwargs.get("user_id")
+                if not user_id:
+                    return type('ToolOutput', (), {'raw_output': {"error": "user_id is required"}})()
+                
+                # Import here to avoid circular imports
+                from services.chat.agents.llm_tools import get_emails
+                result = await get_emails(
+                    user_id=user_id,
+                    start_date=kwargs.get("start_date"),
+                    end_date=kwargs.get("end_date"),
+                    folder=kwargs.get("folder"),
+                    unread_only=kwargs.get("unread_only"),
+                    search_query=kwargs.get("search_query"),
+                    max_results=kwargs.get("max_results")
+                )
+                return type('ToolOutput', (), {'raw_output': result})()
+                
+            else:
+                return type('ToolOutput', (), {'raw_output': {"error": f"Unknown tool: {tool_name}"}})()
+                
+        except Exception as e:
+            logger.error(f"Error executing tool {tool_name}: {e}")
+            return type('ToolOutput', (), {'raw_output': {"error": str(e)}})()
+
+# Global tool registry instance
+_tool_registry_instance = None
+
+def get_tool_registry() -> ToolRegistry:
+    """Get the global tool registry instance (singleton)."""
+    global _tool_registry_instance
+    if _tool_registry_instance is None:
+        _tool_registry_instance = ToolRegistry()
+    return _tool_registry_instance
