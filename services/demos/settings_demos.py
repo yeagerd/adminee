@@ -6,135 +6,107 @@ This module provides configuration that's appropriate for demo/development
 use without requiring production service settings.
 """
 
-import os
 from typing import Optional, Dict, Any
-from pathlib import Path
+from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
 
-class DemoSettings:
+class DemoSettings(BaseSettings):
     """Settings for demo scripts with sensible defaults."""
     
-    def __init__(self):
-        # Load from .env file if it exists
-        self._load_env_file()
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
     
-    def _load_env_file(self):
-        """Load environment variables from .env file in project root."""
-        env_file = Path(__file__).parent.parent.parent / ".env"
-        if env_file.exists():
-            with open(env_file) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, value = line.split("=", 1)
-                        # Remove quotes if present
-                        if value.startswith('"') and value.endswith('"'):
-                            value = value[1:-1]
-                        elif value.startswith("'") and value.endswith("'"):
-                            value = value[1:-1]
-                        os.environ[key] = value
+    # Service URLs
+    office_service_url: str = Field(
+        default="http://localhost:8003",
+        description="Office service URL for demos"
+    )
+    user_service_url: str = Field(
+        default="http://localhost:8001",
+        description="User service URL for demos"
+    )
+    chat_service_url: str = Field(
+        default="http://localhost:8002",
+        description="Chat service URL for demos"
+    )
+    vespa_endpoint: str = Field(
+        default="http://localhost:8080",
+        description="Vespa endpoint for demos"
+    )
+    vespa_loader_url: str = Field(
+        default="http://localhost:9001",
+        description="Vespa loader service URL"
+    )
+    vespa_query_url: str = Field(
+        default="http://localhost:9002",
+        description="Vespa query service URL"
+    )
     
-    @property
-    def office_service_url(self) -> str:
-        """Office service URL for demos."""
-        return os.getenv("OFFICE_SERVICE_URL", "http://localhost:8003")
+    # Pub/Sub configuration
+    pubsub_project_id: str = Field(
+        default="briefly-dev",
+        description="Pub/Sub project ID for demos"
+    )
+    pubsub_emulator_host: str = Field(
+        default="localhost:8085",
+        description="Pub/Sub emulator host for demos"
+    )
     
-    @property
-    def user_service_url(self) -> str:
-        """User service URL for demos."""
-        return os.getenv("USER_SERVICE_URL", "http://localhost:8001")
+    # API Keys
+    api_frontend_office_key: str = Field(
+        default="test-FRONTEND_OFFICE_KEY",
+        description="Frontend API key for office service access"
+    )
+    api_frontend_user_key: str = Field(
+        default="test-FRONTEND_USER_KEY",
+        description="Frontend API key for user service access"
+    )
+    api_frontend_chat_key: str = Field(
+        default="test-FRONTEND_CHAT_KEY",
+        description="Frontend API key for chat service access"
+    )
+    api_backfill_office_key: str = Field(
+        default="test-BACKFILL-OFFICE-KEY",
+        description="Backfill API key for internal service communication"
+    )
     
-    @property
-    def chat_service_url(self) -> str:
-        """Chat service URL for demos."""
-        return os.getenv("CHAT_SERVICE_URL", "http://localhost:8002")
-    
-    @property
-    def vespa_endpoint(self) -> str:
-        """Vespa endpoint for demos."""
-        return os.getenv("VESPA_ENDPOINT", "http://localhost:8080")
-    
-    @property
-    def vespa_loader_url(self) -> str:
-        """Vespa loader service URL."""
-        return os.getenv("VESPA_LOADER_URL", "http://localhost:9001")
-    
-    @property
-    def vespa_query_url(self) -> str:
-        """Vespa query service URL."""
-        return os.getenv("VESPA_QUERY_URL", "http://localhost:9002")
-    
-    @property
-    def pubsub_project_id(self) -> str:
-        """Pub/Sub project ID for demos."""
-        return os.getenv("PUBSUB_PROJECT_ID", "briefly-dev")
-    
-    @property
-    def pubsub_emulator_host(self) -> str:
-        """Pub/Sub emulator host for demos."""
-        return os.getenv("PUBSUB_EMULATOR_HOST", "localhost:8085")
-    
-    @property
-    def api_frontend_office_key(self) -> str:
-        """Frontend API key for office service access."""
-        return os.getenv("API_FRONTEND_OFFICE_KEY", "test-FRONTEND_OFFICE_KEY")
-    
-    @property
-    def api_frontend_user_key(self) -> str:
-        """Frontend API key for user service access."""
-        return os.getenv("API_FRONTEND_USER_KEY", "test-FRONTEND_USER_KEY")
-    
-    @property
-    def api_frontend_chat_key(self) -> str:
-        """Frontend API key for chat service access."""
-        return os.getenv("API_FRONTEND_CHAT_KEY", "test-FRONTEND_CHAT_KEY")
-    
-    @property
-    def api_backfill_office_key(self) -> str:
-        """Backfill API key for internal service communication."""
-        return os.getenv("API_BACKFILL_OFFICE_KEY", "test-BACKFILL_OFFICE_KEY")
-    
-    @property
-    def demo_user_id(self) -> str:
-        """Default demo user ID."""
-        return os.getenv("DEMO_USER_ID", "demo_user_1")
-    
-    @property
-    def demo_user_email(self) -> str:
-        """Default demo user email."""
-        return os.getenv("DEMO_USER_EMAIL", "trybriefly@outlook.com")
-    
-    @property
-    def demo_providers(self) -> list[str]:
-        """Default demo providers."""
-        providers = os.getenv("DEMO_PROVIDERS", "microsoft,google")
-        return [p.strip() for p in providers.split(",")]
-    
-    @property
-    def demo_batch_size(self) -> int:
-        """Default demo batch size."""
-        return int(os.getenv("DEMO_BATCH_SIZE", "100"))
-    
-    @property
-    def demo_rate_limit(self) -> float:
-        """Default demo rate limit (seconds between batches)."""
-        return float(os.getenv("DEMO_RATE_LIMIT", "1.0"))
-    
-    @property
-    def demo_max_emails(self) -> int:
-        """Default demo max emails per user."""
-        return int(os.getenv("DEMO_MAX_EMAILS", "10"))  # Changed from 1000 to 10 for testing
-    
-    @property
-    def demo_folders(self) -> list[str]:
-        """Default demo email folders."""
-        folders = os.getenv("DEMO_FOLDERS", "INBOX,SENT,DRAFTS")
-        return [f.strip() for f in folders.split(",")]
-    
-    @property
-    def nextauth_test_server_url(self) -> str:
-        """NextAuth test server URL for demos."""
-        return os.getenv("NEXTAUTH_TEST_SERVER_URL", "http://localhost:3001")
+    # Demo configuration
+    demo_user_id: str = Field(
+        default="demo_user_1",
+        description="Default demo user ID"
+    )
+    demo_user_email: str = Field(
+        default="trybriefly@outlook.com",
+        description="Default demo user email"
+    )
+    demo_providers: str = Field(
+        default="microsoft,google",
+        description="Default demo providers"
+    )
+    demo_batch_size: int = Field(
+        default=100,
+        description="Default demo batch size"
+    )
+    demo_rate_limit: float = Field(
+        default=1.0,
+        description="Default demo rate limit (seconds between batches)"
+    )
+    demo_max_emails: int = Field(
+        default=10,
+        description="Default demo max emails per user"
+    )
+    demo_folders: str = Field(
+        default="INBOX,SENT,DRAFTS",
+        description="Default demo email folders"
+    )
+    nextauth_test_server_url: str = Field(
+        default="http://localhost:3001",
+        description="NextAuth test server URL for demos"
+    )
     
     def get_api_keys(self) -> Dict[str, str]:
         """Get all API keys as a dictionary."""
@@ -149,11 +121,11 @@ class DemoSettings:
         """Get demo configuration as a dictionary."""
         return {
             "demo_users": [self.demo_user_id],
-            "providers": self.demo_providers,
+            "providers": [p.strip() for p in self.demo_providers.split(",")],
             "batch_size": self.demo_batch_size,
             "rate_limit": self.demo_rate_limit,
             "max_emails_per_user": self.demo_max_emails,
-            "folders": self.demo_folders,
+            "folders": [f.strip() for f in self.demo_folders.split(",")],
             "project_id": self.pubsub_project_id,
             "emulator_host": self.pubsub_emulator_host,
             "vespa_endpoint": self.vespa_endpoint,
