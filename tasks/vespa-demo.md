@@ -348,7 +348,7 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 
 ---
 
-## Phase 6: Service-to-Service Backfill Communication
+## Phase 6: Service-to-Service Backfill Communication ✅ COMPLETED
 
 ### 6.1 Implement Internal Backfill Endpoints
 **Goal**: Create service-to-service communication endpoints that bypass JWT authentication for backend jobs
@@ -540,3 +540,31 @@ async def start_internal_backfill(
 - [x] Max emails parameter is enforced efficiently (verified: EmailCrawler has early termination logic)
 - [x] Progress tracking updates in real-time (verified: progress calculated and updated in run_backfill_job)
 - [x] Error handling doesn't impact performance (verified: proper exception handling without blocking)
+
+### 6.9 Cleanup and Optimization ✅ COMPLETED
+
+#### 6.9.1 Remove Public Backfill Endpoints
+**Files modified**: `services/office/api/backfill.py`, `services/office/app/main.py`
+
+**Actions Completed**:
+- [x] Remove all public backfill endpoints (POST /start, GET /status, DELETE /{job_id}, etc.)
+- [x] Remove unused router variable and imports
+- [x] Remove unused helper functions (_find_user_job)
+- [x] Remove public router from main.py
+- [x] Keep only internal API key-based endpoints
+
+#### 6.9.2 Update Demo Scripts
+**Files modified**: `services/demos/vespa_backfill.py`
+
+**Actions Completed**:
+- [x] Update cleanup operations to use internal endpoints
+- [x] Change from `/v1/api/backfill/*` to `/internal/backfill/*`
+- [x] Use backfill API key instead of office API key
+- [x] Pass user_id as query parameter for all operations
+
+#### 6.9.3 Verification
+**Test Results**:
+- [x] All internal backfill tests passing (11/11)
+- [x] All office service tests passing (278/278)
+- [x] No breaking changes to existing functionality
+- [x] Demo script cleanup operations working with internal endpoints
