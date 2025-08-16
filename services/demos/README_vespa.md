@@ -238,48 +238,60 @@ DEMO_PROVIDERS=microsoft,google
 }
 ```
 
-## Quick Start
+## Starting Backend Services
 
-### Option 1: Automated Service Startup
-Use the `vespa_be.py` script to start all dependent services:
+### Option 1: Use the Management Script (Recommended)
+
+The `vespa_be.py` script manages the core Vespa services:
 
 ```bash
+# Start all Vespa services (Vespa Engine, Loader Service, Query Service)
 python services/demos/vespa_be.py
+
+# Check status
+python services/demos/vespa_be.py --status
+
+# Stop all services
+python services/demos/vespa_be.py --stop
 ```
 
-This will start:
-- Vespa Engine (Docker)
-- Pub/Sub Emulator (Docker)  
-- Vespa Loader Service (port 9001)
-- Vespa Query Service (port 9002)
+**Note**: The Pub/Sub emulator is now managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
 
-### Option 2: Manual Service Startup
-Start services individually:
+### Option 2: Start Services Individually
 
+#### Start Pub/Sub Emulator
 ```bash
-# Start Vespa Engine
-docker run -d --name vespa \
+# Start Pub/Sub emulator (manages Docker container)
+./scripts/local-pubsub.sh
+
+# Check status
+./scripts/local-pubsub.sh --status
+
+# Stop emulator
+./scripts/local-pubsub.sh --stop
+
+# Clean up container
+./scripts/local-pubsub.sh --cleanup
+```
+
+#### Start Vespa Engine
+```bash
+# Start Vespa container
+docker run -d --name vespa --hostname vespa-container \
   -p 8080:8080 -p 19092:19092 \
   vespaengine/vespa
-
-# Start Pub/Sub Emulator
-docker run -d --name pubsub-emulator \
-  -p 8085:8085 \
-  gcr.io/google.com/cloudsdktool/google-cloud-cli:latest \
-  gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
-
-# Start Vespa Loader Service
-uv run python -m uvicorn services.vespa_loader.main:app --port 9001 --reload
-
-# Start Vespa Query Service  
-uv run python -m uvicorn services.vespa_query.main:app --port 9002 --reload
 ```
 
-### Option 3: Deploy Vespa Application
-Deploy the Vespa application package:
-
+#### Start Vespa Loader Service
 ```bash
-./scripts/deploy-vespa.sh
+cd services/vespa_loader
+python -m uvicorn main:app --host 0.0.0.0 --port 9001 --reload
+```
+
+#### Start Vespa Query Service
+```bash
+cd services/vespa_query
+python -m uvicorn main:app --host 0.0.0.0 --port 9002 --reload
 ```
 
 ## Running Demos

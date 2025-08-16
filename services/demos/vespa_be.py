@@ -69,14 +69,8 @@ class VespaServiceManager:
                 "ports": ["8080:8080", "19092:19092"],
                 "container_name": "vespa",
                 "hostname": "vespa-container"
-            },
-            "pubsub": {
-                "name": "Pub/Sub Emulator",
-                "image": "gcr.io/google.com/cloudsdktool/google-cloud-cli:latest",
-                "ports": ["8085:8085"],
-                "container_name": "pubsub-emulator",
-                "command": ["gcloud", "beta", "emulators", "pubsub", "start", "--host-port=0.0.0.0:8085"]
             }
+            # Note: Pub/Sub emulator is now managed by scripts/local-pubsub.sh
         }
         
         # Dependencies to check (but not start)
@@ -189,13 +183,7 @@ class VespaServiceManager:
                             return {"status": "running", "container": container_name, "port": port, "type": "config_server"}
                         else:
                             return {"status": container_status, "container": container_name}
-                    elif service_key == "pubsub":
-                        url = f"http://localhost:{port}/"
-                        response = requests.get(url, timeout=5)
-                        if response.status_code == 200:
-                            return {"status": "healthy", "container": container_name, "port": port}
-                        else:
-                            return {"status": "unhealthy", "container": container_name, "port": port, "http_status": response.status_code}
+                    # The Pub/Sub emulator is now managed by local-pubsub.sh, so we don't check its health here.
                 except requests.RequestException:
                     return {"status": "unreachable", "container": container_name, "port": port}
             else:
@@ -283,21 +271,7 @@ class VespaServiceManager:
                             self.log(f"ℹ️  Note: This is a Vespa config server for local development", Colors.BLUE)
                             return True
                             
-                elif service_key == "pubsub":
-                    # Check Pub/Sub emulator
-                    try:
-                        response = requests.get(f"http://localhost:{port}/", timeout=5)
-                        if response.status_code == 200:
-                            self.log(f"✅ {service_name} is ready!", Colors.GREEN)
-                            return True
-                    except requests.RequestException as e:
-                        # Log the specific error for debugging
-                        if "Connection refused" in str(e):
-                            self.log(f"⏳ {service_name} is still starting up... (connection refused)", Colors.BLUE)
-                        elif "Max retries exceeded" in str(e):
-                            self.log(f"⏳ {service_name} is still starting up... (max retries)", Colors.BLUE)
-                        else:
-                            self.log(f"⏳ {service_name} is still starting up... ({e})", Colors.BLUE)
+                # The Pub/Sub emulator is now managed by local-pubsub.sh, so we don't wait for it here.
                 
                 time.sleep(2)
             except Exception as e:
@@ -450,52 +424,50 @@ class VespaServiceManager:
         
         self.log("✅ All Vespa services stopped", Colors.GREEN)
     
-    def check_service_status(self):
+    def check_service_status(self) -> bool:
         """Check the status of all services"""
         self.log("🔍 Checking Vespa service status...", Colors.BLUE)
-        self.log("", Colors.NC)
         
         all_healthy = True
         
         # Check Docker services
-        self.log("🐳 Docker Services:", Colors.BLUE)
+        self.log("\n🐳 Docker Services:", Colors.BLUE)
         for service_key, config in self.docker_services.items():
             health = self.check_service_health(service_key, config)
-            if health["status"] == "healthy":
-                self.log(f"  ✅ {config['name']}: {health['status']}", Colors.GREEN)
+            status = health["status"]
+            
+            if status in ["healthy", "running"]:
+                self.log(f"  ✅ {config['name']}: {status}", Colors.GREEN)
             else:
-                self.log(f"  ❌ {config['name']}: {health['status']}", Colors.RED)
+                self.log(f"  ❌ {config['name']}: {status}", Colors.RED)
                 all_healthy = False
         
         # Check Python services
         self.log("\n🐍 Python Services:", Colors.BLUE)
         for service_key, config in self.services.items():
             health = self.check_service_health(service_key, config)
-            if health["status"] == "healthy":
-                self.log(f"  ✅ {config['name']}: {health['status']}", Colors.GREEN)
+            status = health["status"]
+            
+            if status == "healthy":
+                self.log(f"  ✅ {config['name']}: {status}", Colors.GREEN)
             else:
-                self.log(f"  ❌ {config['name']}: {health['status']}", Colors.RED)
+                self.log(f"  ❌ {config['name']}: {status}", Colors.RED)
                 all_healthy = False
         
         # Check dependencies
         self.log("\n🔗 Dependencies:", Colors.BLUE)
         for service_key, config in self.dependencies.items():
-            try:
-                response = requests.get(config["url"], timeout=5)
-                if response.status_code == 200:
-                    self.log(f"  ✅ {config['name']}: healthy", Colors.GREEN)
-                else:
-                    self.log(f"  ❌ {config['name']}: unhealthy (HTTP {response.status_code})", Colors.RED)
-                    all_healthy = False
-            except requests.RequestException:
-                self.log(f"  ❌ {config['name']}: unreachable", Colors.RED)
+            health = self.check_dependency(service_key, config)
+            if health:
+                self.log(f"  ✅ {config['name']}: healthy", Colors.GREEN)
+            else:
+                self.log(f"  ❌ {config['name']}: unhealthy", Colors.RED)
                 all_healthy = False
         
-        self.log("", Colors.NC)
         if all_healthy:
-            self.log("🎉 All services are healthy!", Colors.GREEN)
+            self.log("\n✅ All services are healthy!", Colors.GREEN)
         else:
-            self.log("⚠️  Some services are not healthy", Colors.YELLOW)
+            self.log("\n⚠️  Some services are not healthy", Colors.YELLOW)
         
         return all_healthy
     
@@ -539,7 +511,6 @@ class VespaServiceManager:
         self.log("", Colors.NC)
         self.log("Services Status:", Colors.BLUE)
         self.log("  ✅ Vespa Engine: http://localhost:8080", Colors.GREEN)
-        self.log("  ✅ Pub/Sub Emulator: http://localhost:8085", Colors.GREEN)
         self.log("  ✅ Vespa Loader Service: http://localhost:9001", Colors.GREEN)
         self.log("  ✅ Vespa Query Service: http://localhost:9002", Colors.GREEN)
         self.log("  ✅ Office Service: http://localhost:8001 (dependency)", Colors.GREEN)
