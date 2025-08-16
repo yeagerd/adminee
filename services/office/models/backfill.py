@@ -10,6 +10,7 @@ from enum import Enum
 
 class BackfillStatusEnum(str, Enum):
     """Status of a backfill job"""
+    STARTED = "started"
     RUNNING = "running"
     PAUSED = "paused"
     COMPLETED = "completed"
@@ -38,7 +39,7 @@ class BackfillRequest(BaseModel):
 class BackfillResponse(BaseModel):
     """Response from starting a backfill job"""
     job_id: str = Field(..., description="Unique identifier for the backfill job")
-    status: str = Field(..., description="Status of the job")
+    status: BackfillStatusEnum = Field(..., description="Status of the job")
     message: str = Field(..., description="Human-readable message")
     
     class Config:

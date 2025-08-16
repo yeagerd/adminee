@@ -13,6 +13,7 @@ import uuid
 from services.office.api.backfill import BackfillRequest, BackfillStatus
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
+from services.office.models.backfill import BackfillRequest, BackfillStatus, BackfillStatusEnum
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class BackfillManager:
                 folders=request.folders
             ):
                 # Check if job was cancelled
-                if job.status in ["cancelled", "failed"]:
+                if job.status in [BackfillStatusEnum.CANCELLED, BackfillStatusEnum.FAILED]:  # Use enum values
                     logger.info(f"Backfill job {job_id} {job.status}")
                     break
                 
@@ -122,7 +123,7 @@ class BackfillManager:
                 except RuntimeError as e:
                     # Fatal error (e.g., topic not found) - halt the job
                     logger.error(f"Fatal error in backfill job {job_id}: {e}")
-                    job.status = "failed"
+                    job.status = BackfillStatusEnum.FAILED  # Use enum value
                     job.end_time = datetime.now(timezone.utc)
                     job.error_message = f"Fatal Pub/Sub error: {e}"
                     break
@@ -132,14 +133,14 @@ class BackfillManager:
                 
                 # Check for timeout
                 if datetime.now(timezone.utc) - job.start_time > timedelta(hours=self.job_timeout_hours):
-                    job.status = "failed"
+                    job.status = BackfillStatusEnum.FAILED  # Use enum value
                     job.error_message = "Job timed out"
                     logger.warning(f"Backfill job {job_id} timed out after {self.job_timeout_hours} hours")
                     break
             
             # Mark job as completed
-            if job.status == "running":
-                job.status = "completed"
+            if job.status == BackfillStatusEnum.RUNNING:  # Use enum value
+                job.status = BackfillStatusEnum.COMPLETED  # Use enum value
                 job.end_time = datetime.now(timezone.utc)
                 job.progress = 100.0
                 logger.info(f"Completed backfill job {job_id}: {processed_count} emails processed")
@@ -148,7 +149,7 @@ class BackfillManager:
             logger.error(f"Backfill job {job_id} failed: {e}")
             if job_id in self.active_jobs:
                 job = self.active_jobs[job_id]
-                job.status = "failed"
+                job.status = BackfillStatusEnum.FAILED  # Use enum value
                 job.end_time = datetime.now(timezone.utc)
                 job.error_message = str(e)
         finally:
@@ -164,10 +165,10 @@ class BackfillManager:
         """Pause a running backfill job"""
         try:
             job = self._get_user_job(job_id, user_id)
-            if job.status != "running":
+            if job.status != BackfillStatusEnum.RUNNING:  # Use enum value
                 return False
             
-            job.status = "paused"
+            job.status = BackfillStatusEnum.PAUSED  # Use enum value
             job.pause_time = datetime.now(timezone.utc)
             
             logger.info(f"Paused backfill job {job_id}")
@@ -181,10 +182,10 @@ class BackfillManager:
         """Resume a paused backfill job"""
         try:
             job = self._get_user_job(job_id, user_id)
-            if job.status != "paused":
+            if job.status != BackfillStatusEnum.PAUSED:  # Use enum value
                 return False
             
-            job.status = "running"
+            job.status = BackfillStatusEnum.RUNNING  # Use enum value
             job.resume_time = datetime.now(timezone.utc)
             
             # Restart job execution
@@ -203,10 +204,10 @@ class BackfillManager:
         """Cancel a backfill job"""
         try:
             job = self._get_user_job(job_id, user_id)
-            if job.status in ["completed", "failed", "cancelled"]:
+            if job.status in [BackfillStatusEnum.COMPLETED, BackfillStatusEnum.FAILED, BackfillStatusEnum.CANCELLED]:  # Use enum values
                 return False
             
-            job.status = "cancelled"
+            job.status = BackfillStatusEnum.CANCELLED  # Use enum value
             job.end_time = datetime.now(timezone.utc)
             
             logger.info(f"Cancelled backfill job {job_id}")
@@ -259,11 +260,11 @@ class BackfillManager:
             
             summary = {
                 "total_jobs": len(user_jobs),
-                "running_jobs": len([j for j in user_jobs if j.status == "running"]),
-                "paused_jobs": len([j for j in user_jobs if j.status == "paused"]),
-                "completed_jobs": len([j for j in user_jobs if j.status == "completed"]),
-                "failed_jobs": len([j for j in user_jobs if j.status == "failed"]),
-                "cancelled_jobs": len([j for j in user_jobs if j.status == "cancelled"]),
+                "running_jobs": len([j for j in user_jobs if j.status == BackfillStatusEnum.RUNNING]),  # Use enum
+                "paused_jobs": len([j for j in user_jobs if j.status == BackfillStatusEnum.PAUSED]),  # Use enum
+                "completed_jobs": len([j for j in user_jobs if j.status == BackfillStatusEnum.COMPLETED]),  # Use enum
+                "failed_jobs": len([j for j in user_jobs if j.status == BackfillStatusEnum.FAILED]),  # Use enum
+                "cancelled_jobs": len([j for j in user_jobs if j.status == BackfillStatusEnum.CANCELLED]),  # Use enum
                 "total_emails_processed": sum(j.processed_emails for j in user_jobs),
                 "total_emails_failed": sum(j.failed_emails for j in user_jobs),
                 "average_progress": sum(j.progress for j in user_jobs) / len(user_jobs) if user_jobs else 0
@@ -283,8 +284,8 @@ class BackfillManager:
             summary = {
                 "total_jobs": len(all_jobs),
                 "active_jobs": len(self.active_jobs),
-                "completed_jobs": len([j for j in all_jobs if j.status == "completed"]),
-                "failed_jobs": len([j for j in all_jobs if j.status == "failed"]),
+                "completed_jobs": len([j for j in all_jobs if j.status == BackfillStatusEnum.COMPLETED]),  # Use enum
+                "failed_jobs": len([j for j in all_jobs if j.status == BackfillStatusEnum.FAILED]),  # Use enum
                 "total_emails_processed": sum(j.processed_emails for j in all_jobs),
                 "total_emails_failed": sum(j.failed_emails for j in all_jobs),
                 "max_concurrent_jobs": self.max_concurrent_jobs,
@@ -300,7 +301,7 @@ class BackfillManager:
     def _user_has_active_job(self, user_id: str) -> bool:
         """Check if a user has an active backfill job"""
         return any(
-            job.user_id == user_id and job.status in ["running", "paused"]
+            job.user_id == user_id and job.status in [BackfillStatusEnum.RUNNING, BackfillStatusEnum.PAUSED]  # Use enum values
             for job in self.active_jobs.values()
         )
     

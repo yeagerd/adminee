@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
-from services.office.models.backfill import BackfillRequest, BackfillResponse, BackfillStatus
+from services.office.models.backfill import BackfillRequest, BackfillResponse, BackfillStatus, BackfillStatusEnum
 from services.office.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ async def start_backfill(
         # Check if user already has an active backfill job
         if user_id in active_backfill_jobs:
             existing_job = active_backfill_jobs[user_id]
-            if existing_job.status in ["running", "paused"]:
+            if existing_job.status in [BackfillStatusEnum.RUNNING, BackfillStatusEnum.PAUSED]:  # Use enum values
                 raise HTTPException(
                     status_code=409,
                     detail=f"User already has an active backfill job: {existing_job.job_id}"
@@ -69,7 +69,7 @@ async def start_backfill(
         
         return BackfillResponse(
             job_id=job_id,
-            status="started",
+            status=BackfillStatusEnum.STARTED,  # Use enum value
             message="Backfill job started successfully"
         )
         
@@ -141,13 +141,13 @@ async def pause_backfill_job(
         
         # Find and pause job
         job = _find_user_job(job_id, user_id)
-        if job.status != "running":
+        if job.status != BackfillStatusEnum.RUNNING:  # Use enum value
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot pause job with status: {job.status}"
             )
         
-        job.status = "paused"
+        job.status = BackfillStatusEnum.PAUSED  # Use enum value
         job.pause_time = datetime.now(timezone.utc)
         
         logger.info(f"Paused backfill job {job_id}")
@@ -172,13 +172,13 @@ async def resume_backfill_job(
         
         # Find and resume job
         job = _find_user_job(job_id, user_id)
-        if job.status != "paused":
+        if job.status != BackfillStatusEnum.PAUSED:  # Use enum value
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot resume job with status: {job.status}"
             )
         
-        job.status = "running"
+        job.status = BackfillStatusEnum.RUNNING  # Use enum value
         job.resume_time = datetime.now(timezone.utc)
         
         # Resume job in background
@@ -211,13 +211,13 @@ async def cancel_backfill_job(
         
         # Find and cancel job
         job = _find_user_job(job_id, user_id)
-        if job.status in ["completed", "failed"]:
+        if job.status in [BackfillStatusEnum.COMPLETED, BackfillStatusEnum.FAILED]:  # Use enum values
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot cancel job with status: {job.status}"
             )
         
-        job.status = "cancelled"
+        job.status = BackfillStatusEnum.CANCELLED  # Use enum value
         job.end_time = datetime.now(timezone.utc)
         
         logger.info(f"Cancelled backfill job {job_id}")
@@ -240,7 +240,7 @@ async def run_backfill_job(
     try:
         # Update job status
         job = active_backfill_jobs[user_id]
-        job.status = "running"
+        job.status = BackfillStatusEnum.RUNNING  # Use enum value
         
         # Initialize email crawler and pubsub publisher
         email_crawler = EmailCrawler(user_id, request.provider, max_email_count=10)  # Limit to 10 emails for testing
@@ -274,7 +274,7 @@ async def run_backfill_job(
                 except RuntimeError as e:
                     # Fatal error (e.g., topic not found) - halt the job
                     logger.error(f"Fatal error in backfill job {job_id}: {e}")
-                    job.status = "failed"
+                    job.status = BackfillStatusEnum.FAILED  # Use enum value
                     job.end_time = datetime.now(timezone.utc)
                     job.error_message = f"Fatal Pub/Sub error: {e}"
                     return
@@ -283,12 +283,12 @@ async def run_backfill_job(
                     job.failed_emails += 1
             
             # Check if job was cancelled or paused
-            if job.status in ["cancelled", "paused"]:
+            if job.status in [BackfillStatusEnum.CANCELLED, BackfillStatusEnum.PAUSED]:  # Use enum values
                 logger.info(f"Backfill job {job_id} {job.status}")
                 return
         
         # Mark job as completed
-        job.status = "completed"
+        job.status = BackfillStatusEnum.COMPLETED  # Use enum value
         job.end_time = datetime.now(timezone.utc)
         job.progress = 100
         
@@ -298,7 +298,7 @@ async def run_backfill_job(
         logger.error(f"Backfill job {job_id} failed: {e}")
         if user_id in active_backfill_jobs:
             job = active_backfill_jobs[user_id]
-            job.status = "failed"
+            job.status = BackfillStatusEnum.FAILED  # Use enum value
             job.end_time = datetime.now(timezone.utc)
             job.error_message = str(e)
 
