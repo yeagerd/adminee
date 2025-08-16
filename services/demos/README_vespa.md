@@ -288,12 +288,18 @@ DEMO_PROVIDERS=microsoft,google
 
 ### Quick Start
 
-#### **Option 1: Automated Service Startup**
-Use the provided script to start all Vespa backend services automatically:
+#### **Option 1: Automated Service Management**
+Use the provided script to manage all Vespa backend services:
 
 ```bash
-# Start all Vespa services (Docker + Python services)
-python services/demos/vespa_start_be.py
+# Start all Vespa services (Docker + Python services) - default action
+python services/demos/vespa_be.py
+
+# Check service status and health
+python services/demos/vespa_be.py --status
+
+# Stop all Vespa services
+python services/demos/vespa_be.py --stop
 ```
 
 This script will:
@@ -302,6 +308,8 @@ This script will:
 - Start Vespa Loader Service (Port 9001)
 - Start Vespa Query Service (Port 9002)
 - Verify Office Service is running (Port 8001)
+- Check if services are already running before starting
+- Provide health status monitoring
 
 #### **Option 2: Manual Service Startup**
 Start services individually as described in the Prerequisites section above.
