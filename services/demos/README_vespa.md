@@ -46,7 +46,7 @@ python vespa_full.py --config config.json
 
 **Output**: Comprehensive report with performance metrics, search results, and data quality scores
 
-### 2. Vespa Chat Demo (`vespa_chat.py`)
+### 2. Vespa Chat Demo (`vespa_synthetic.py`)
 
 **Purpose**: Interactive chat experience with Vespa search integration
 
@@ -60,7 +60,7 @@ python vespa_full.py --config config.json
 **Usage**:
 ```bash
 cd services/demos
-python vespa_chat.py --config vespa_config.json
+python vespa_synthetic.py --config vespa_config.json
 ```
 
 **Configuration**:
@@ -329,7 +329,7 @@ Once all services are running:
 
 3. **Test chat integration**:
    ```bash
-   python services/demos/vespa_chat.py
+   python services/demos/vespa_synthetic.py
    ```
 
 ## Performance Metrics
