@@ -6,7 +6,7 @@ Backfill Job Controller - Orchestration service for managing backfill jobs
 import asyncio
 import logging
 from typing import Dict, List, Any, Optional, AsyncGenerator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import uuid
 
@@ -43,14 +43,14 @@ class BackfillManager:
                 raise ValueError("Maximum concurrent jobs reached. Please try again later.")
             
             # Create job ID
-            job_id = f"backfill_{user_id}_{datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+            job_id = f"backfill_{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
             
             # Create job status
             job_status = BackfillStatus(
                 job_id=job_id,
                 user_id=user_id,
                 status="running",
-                start_time=datetime.now(datetime.UTC),
+                start_time=datetime.now(timezone.utc),
                 request=request,
                 progress=0.0,
                 total_emails=0,
@@ -124,7 +124,7 @@ class BackfillManager:
                     job.failed_emails += len(email_batch)
                 
                 # Check for timeout
-                if datetime.now(datetime.UTC) - job.start_time > timedelta(hours=self.job_timeout_hours):
+                if datetime.now(timezone.utc) - job.start_time > timedelta(hours=self.job_timeout_hours):
                     job.status = "failed"
                     job.error_message = "Job timed out"
                     logger.warning(f"Backfill job {job_id} timed out after {self.job_timeout_hours} hours")
@@ -133,7 +133,7 @@ class BackfillManager:
             # Mark job as completed
             if job.status == "running":
                 job.status = "completed"
-                job.end_time = datetime.now(datetime.UTC)
+                job.end_time = datetime.now(timezone.utc)
                 job.progress = 100.0
                 logger.info(f"Completed backfill job {job_id}: {processed_count} emails processed")
             
@@ -142,7 +142,7 @@ class BackfillManager:
             if job_id in self.active_jobs:
                 job = self.active_jobs[job_id]
                 job.status = "failed"
-                job.end_time = datetime.now(datetime.UTC)
+                job.end_time = datetime.now(timezone.utc)
                 job.error_message = str(e)
         finally:
             # Move job to history
@@ -161,7 +161,7 @@ class BackfillManager:
                 return False
             
             job.status = "paused"
-            job.pause_time = datetime.now(datetime.UTC)
+            job.pause_time = datetime.now(timezone.utc)
             
             logger.info(f"Paused backfill job {job_id}")
             return True
@@ -178,7 +178,7 @@ class BackfillManager:
                 return False
             
             job.status = "running"
-            job.resume_time = datetime.now(datetime.UTC)
+            job.resume_time = datetime.now(timezone.utc)
             
             # Restart job execution
             asyncio.create_task(self._execute_backfill_job(
@@ -200,7 +200,7 @@ class BackfillManager:
                 return False
             
             job.status = "cancelled"
-            job.end_time = datetime.now(datetime.UTC)
+            job.end_time = datetime.now(timezone.utc)
             
             logger.info(f"Cancelled backfill job {job_id}")
             return True

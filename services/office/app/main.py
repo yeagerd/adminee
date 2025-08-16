@@ -16,6 +16,7 @@ from services.office.api.calendar import router as calendar_router
 from services.office.api.contacts import router as contacts_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
+from services.office.api.backfill import router as backfill_router
 from services.office.core.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
@@ -67,6 +68,7 @@ app.include_router(email_router, prefix="/v1")
 app.include_router(calendar_router, prefix="/v1")
 app.include_router(files_router, prefix="/v1")
 app.include_router(contacts_router, prefix="/v1")
+app.include_router(backfill_router, prefix="/v1")
 
 
 @app.get("/")

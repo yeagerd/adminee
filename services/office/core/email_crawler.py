@@ -6,7 +6,7 @@ Email crawling logic for backfill functionality
 import asyncio
 import logging
 from typing import AsyncGenerator, List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 
 logger = logging.getLogger(__name__)
@@ -221,8 +221,8 @@ class EmailCrawler:
                 "to": [f"recipient{i}@example.com"],
                 "thread_id": f"thread_{start_idx + i}",
                 "folder": "inbox",
-                "created_at": datetime.utcnow() - timedelta(days=i),
-                "updated_at": datetime.utcnow() - timedelta(days=i),
+                "created_at": datetime.now(timezone.utc) - timedelta(days=i),
+                "updated_at": datetime.now(timezone.utc) - timedelta(days=i),
                 "metadata": {
                     "has_attachments": False,
                     "is_read": True
@@ -276,8 +276,8 @@ class EmailCrawler:
                 "to": [f"recipient{i}@example.com"],
                 "thread_id": f"thread_{start_idx + i}",
                 "folder": "inbox",
-                "created_at": datetime.utcnow() - timedelta(days=i),
-                "updated_at": datetime.utcnow() - timedelta(days=i),
+                "created_at": datetime.now(timezone.utc) - timedelta(days=i),
+                "updated_at": datetime.now(timezone.utc) - timedelta(days=i),
                 "metadata": {
                     "has_attachments": False,
                     "is_read": True

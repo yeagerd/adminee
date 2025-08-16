@@ -15,6 +15,8 @@ from services.common.api_key_auth import (
     make_service_permission_required,
     make_verify_service_authentication,
     verify_api_key,
+    get_client_from_api_key,
+    get_permissions_from_api_key,
 )
 from services.common.http_errors import AuthError
 from services.common.logging_config import get_logger
@@ -100,6 +102,52 @@ def service_permission_required(
         get_settings,
         SERVICE_PERMISSIONS,
     )
+
+
+
+
+
+def get_current_user(request: Request) -> Dict[str, Any]:
+    """
+    Get current user from API key authentication.
+    This function is used by FastAPI dependencies for user authentication.
+    
+    Returns:
+        Dict containing user information including user_id
+    """
+    try:
+        # Extract API key from request headers
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise AuthError("API key required")
+        
+        # Build API key mapping and verify API key
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        service_name = verify_api_key(api_key, api_key_mapping)
+        
+        if not service_name:
+            raise AuthError("Invalid API key")
+        
+        # Get client and permissions from the API key
+        client_name = get_client_from_api_key(api_key, api_key_mapping)
+        permissions = get_permissions_from_api_key(api_key, api_key_mapping)
+        
+        # hrm, I don't like this - we shouldn't be putting demo code in our production services.  I suspect the problem is that when we run as a demo, we don't have a JWT?  But we could get one from the nextauth_teset_server, asking the user to log in.  Afterall, we're only going to run backfill O(1) times, and run search many times
+
+        # For demo purposes, we'll create a user context from the API key
+        # In production, this would typically decode a JWT or look up user details
+        user_id = client_name or "demo_user"
+        
+        return {
+            "user_id": user_id,
+            "client": client_name,
+            "permissions": permissions,
+            "authenticated": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Authentication failed: {e}")
+        raise AuthError(f"Authentication failed: {str(e)}")
 
 
 def optional_service_auth(request: Request) -> Optional[str]:

@@ -6,7 +6,7 @@ Backfill API endpoints for the office service
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query
 from typing import Dict, Any, Optional, List
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
@@ -40,13 +40,13 @@ async def start_backfill(
                 )
         
         # Create new backfill job
-        job_id = f"backfill_{user_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        job_id = f"backfill_{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
         
         backfill_status = BackfillStatus(
             job_id=job_id,
             user_id=user_id,
             status="running",
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
             request=request,
             progress=0,
             total_emails=0,
@@ -148,7 +148,7 @@ async def pause_backfill_job(
             )
         
         job.status = "paused"
-        job.pause_time = datetime.utcnow()
+        job.pause_time = datetime.now(timezone.utc)
         
         logger.info(f"Paused backfill job {job_id}")
         
@@ -179,7 +179,7 @@ async def resume_backfill_job(
             )
         
         job.status = "running"
-        job.resume_time = datetime.utcnow()
+        job.resume_time = datetime.now(timezone.utc)
         
         # Resume job in background
         background_tasks.add_task(
@@ -218,7 +218,7 @@ async def cancel_backfill_job(
             )
         
         job.status = "cancelled"
-        job.end_time = datetime.utcnow()
+        job.end_time = datetime.now(timezone.utc)
         
         logger.info(f"Cancelled backfill job {job_id}")
         
@@ -282,7 +282,7 @@ async def run_backfill_job(
         
         # Mark job as completed
         job.status = "completed"
-        job.end_time = datetime.utcnow()
+        job.end_time = datetime.now(timezone.utc)
         job.progress = 100
         
         logger.info(f"Completed backfill job {job_id}: {processed_count} emails processed")
@@ -292,7 +292,7 @@ async def run_backfill_job(
         if user_id in active_backfill_jobs:
             job = active_backfill_jobs[user_id]
             job.status = "failed"
-            job.end_time = datetime.utcnow()
+            job.end_time = datetime.now(timezone.utc)
             job.error_message = str(e)
 
 def _find_user_job(job_id: str, user_id: str) -> BackfillStatus:

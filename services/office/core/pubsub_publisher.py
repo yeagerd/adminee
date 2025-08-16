@@ -1,147 +1,217 @@
 #!/usr/bin/env python3
 """
-PubSub publisher for publishing crawled emails to the message queue
+Pub/Sub publisher for backfill data
 """
 
-import logging
-from typing import Dict, Any, Optional
+import asyncio
 import json
-from datetime import datetime
+import logging
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
+import uuid
+import os
 
-from services.common.pubsub_client import PubSubClient
+try:
+    from google.cloud import pubsub_v1
+    from google.api_core import exceptions as google_exceptions
+    PUBSUB_AVAILABLE = True
+except ImportError:
+    PUBSUB_AVAILABLE = False
+    logging.warning("Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub")
 
 logger = logging.getLogger(__name__)
 
 class PubSubPublisher:
-    """Publishes email data to PubSub topics"""
+    """Publishes data to Google Cloud Pub/Sub for backfill operations"""
     
-    def __init__(self, project_id: Optional[str] = None, emulator_host: Optional[str] = None):
-        self.pubsub_client = PubSubClient(project_id, emulator_host)
-        self.email_topic = "email-backfill"
-        self.calendar_topic = "calendar-updates"
-        self.contact_topic = "contact-updates"
+    def __init__(self, project_id: str = "briefly-dev", emulator_host: str = "localhost:8085"):
+        self.project_id = project_id
+        self.emulator_host = emulator_host
+        self.publisher = None
+        self.topics = {
+            "emails": f"projects/{project_id}/topics/backfill-emails",
+            "calendar": f"projects/{project_id}/topics/backfill-calendar",
+            "contacts": f"projects/{project_id}/topics/backfill-contacts"
+        }
         
-    async def publish_email(self, email_data: Dict[str, Any]) -> str:
-        """Publish email data to the email topic"""
+        if PUBSUB_AVAILABLE:
+            self._initialize_publisher()
+    
+    def _initialize_publisher(self):
+        """Initialize the Pub/Sub publisher client"""
         try:
-            # Ensure email data has required fields
-            if not email_data.get("id") or not email_data.get("user_id"):
-                raise ValueError("Email data missing required fields: id, user_id")
+            # Use emulator if specified
+            if self.emulator_host:
+                os.environ["PUBSUB_EMULATOR_HOST"] = self.emulator_host
+                logger.info(f"Using Pub/Sub emulator at {self.emulator_host}")
             
-            # Add timestamp if not present
-            if "timestamp" not in email_data:
-                email_data["timestamp"] = datetime.utcnow().isoformat()
-            
-            # Publish to email topic
-            message_id = await self.pubsub_client.publish_email_data(email_data, self.email_topic)
-            
-            logger.debug(f"Published email {email_data.get('id')} to topic {self.email_topic}")
-            return message_id
+            self.publisher = pubsub_v1.PublisherClient()
+            logger.info("Pub/Sub publisher initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to publish email {email_data.get('id', 'unknown')}: {e}")
-            raise
+            logger.error(f"Failed to initialize Pub/Sub publisher: {e}")
+            self.publisher = None
     
-    async def publish_calendar_event(self, calendar_data: Dict[str, Any]) -> str:
-        """Publish calendar event data to the calendar topic"""
+    def _sanitize_data_for_json(self, data: Any) -> Any:
+        """Sanitize data to ensure it's JSON serializable"""
+        if isinstance(data, dict):
+            return {k: self._sanitize_data_for_json(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._sanitize_data_for_json(item) for item in data]
+        elif isinstance(data, datetime):
+            return data.isoformat()
+        elif hasattr(data, 'isoformat'):  # Handle other datetime-like objects
+            return data.isoformat()
+        else:
+            return data
+
+    async def publish_email(self, email_data: Dict[str, Any]) -> bool:
+        """Publish a single email to Pub/Sub"""
+        if not self.publisher:
+            logger.warning("Pub/Sub publisher not available")
+            return False
+        
         try:
-            # Ensure calendar data has required fields
-            if not calendar_data.get("id") or not calendar_data.get("user_id"):
-                raise ValueError("Calendar data missing required fields: id, user_id")
+            # Sanitize data to ensure JSON serialization
+            sanitized_data = self._sanitize_data_for_json(email_data.copy())
             
-            # Add timestamp if not present
-            if "timestamp" not in calendar_data:
-                calendar_data["timestamp"] = datetime.utcnow().isoformat()
+            # Add timestamp and message ID
+            sanitized_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+            sanitized_data["message_id"] = str(uuid.uuid4())
+            
+            # Convert to JSON
+            message_data = json.dumps(sanitized_data).encode("utf-8")
+            
+            # Publish to emails topic
+            future = self.publisher.publish(self.topics["emails"], message_data)
+            message_id = future.result()
+            
+            logger.debug(f"Published email {sanitized_data.get('id')} to Pub/Sub: {message_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to publish email to Pub/Sub: {e}")
+            return False
+    
+    async def publish_calendar_event(self, calendar_data: Dict[str, Any]) -> bool:
+        """Publish a single calendar event to Pub/Sub"""
+        if not self.publisher:
+            logger.warning("Pub/Sub publisher not available")
+            return False
+        
+        try:
+            # Sanitize data to ensure JSON serialization
+            sanitized_data = self._sanitize_data_for_json(calendar_data.copy())
+            
+            # Add timestamp and message ID
+            sanitized_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+            sanitized_data["message_id"] = str(uuid.uuid4())
+            
+            # Convert to JSON
+            message_data = json.dumps(sanitized_data).encode("utf-8")
             
             # Publish to calendar topic
-            message_id = await self.pubsub_client.publish_calendar_data(calendar_data, self.calendar_topic)
+            future = self.publisher.publish(self.topics["calendar"], message_data)
+            message_id = future.result()
             
-            logger.debug(f"Published calendar event {calendar_data.get('id')} to topic {self.calendar_topic}")
-            return message_id
+            logger.debug(f"Published calendar event {sanitized_data.get('id')} to Pub/Sub: {message_id}")
+            return True
             
         except Exception as e:
-            logger.error(f"Failed to publish calendar event {calendar_data.get('id', 'unknown')}: {e}")
-            raise
+            logger.error(f"Failed to publish calendar event to Pub/Sub: {e}")
+            return False
     
-    async def publish_contact(self, contact_data: Dict[str, Any]) -> str:
-        """Publish contact data to the contact topic"""
+    async def publish_contact(self, contact_data: Dict[str, Any]) -> bool:
+        """Publish a single contact to Pub/Sub"""
+        if not self.publisher:
+            logger.warning("Pub/Sub publisher not available")
+            return False
+        
         try:
-            # Ensure contact data has required fields
-            if not contact_data.get("id") or not contact_data.get("user_id"):
-                raise ValueError("Contact data missing required fields: id, user_id")
+            # Sanitize data to ensure JSON serialization
+            sanitized_data = self._sanitize_data_for_json(contact_data.copy())
             
-            # Add timestamp if not present
-            if "timestamp" not in contact_data:
-                contact_data["timestamp"] = datetime.utcnow().isoformat()
+            # Add timestamp and message ID
+            sanitized_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+            sanitized_data["message_id"] = str(uuid.uuid4())
             
-            # Publish to contact topic
-            message_id = await self.pubsub_client.publish_contact_data(contact_data, self.contact_topic)
+            # Convert to JSON
+            message_data = json.dumps(sanitized_data).encode("utf-8")
             
-            logger.debug(f"Published contact {contact_data.get('id')} to topic {self.contact_topic}")
-            return message_id
+            # Publish to contacts topic
+            future = self.publisher.publish(self.topics["contacts"], message_data)
+            message_id = future.result()
+            
+            return True
             
         except Exception as e:
-            logger.error(f"Failed to publish contact {contact_data.get('id', 'unknown')}: {e}")
-            raise
+            logger.error(f"Failed to publish contact to Pub/Sub: {e}")
+            return False
     
-    async def publish_batch_emails(self, emails: list[Dict[str, Any]]) -> list[str]:
+    async def publish_batch_emails(self, emails: list[Dict[str, Any]]) -> list[bool]:
         """Publish multiple emails in batch"""
         try:
-            message_ids = []
+            results = []
             
             for email in emails:
                 try:
-                    message_id = await self.publish_email(email)
-                    message_ids.append(message_id)
+                    success = await self.publish_email(email)
+                    results.append(success)
                 except Exception as e:
                     logger.error(f"Failed to publish email in batch: {e}")
                     # Continue with other emails
+                    results.append(False)
                     continue
             
-            logger.info(f"Published {len(message_ids)} out of {len(emails)} emails to topic {self.email_topic}")
-            return message_ids
+            success_count = sum(results)
+            logger.info(f"Published {success_count} out of {len(emails)} emails to topic {self.topics['emails']}")
+            return results
             
         except Exception as e:
             logger.error(f"Failed to publish batch emails: {e}")
             raise
     
-    async def publish_batch_calendar_events(self, events: list[Dict[str, Any]]) -> list[str]:
+    async def publish_batch_calendar_events(self, events: list[Dict[str, Any]]) -> list[bool]:
         """Publish multiple calendar events in batch"""
         try:
-            message_ids = []
+            results = []
             
             for event in events:
                 try:
-                    message_id = await self.publish_calendar_event(event)
-                    message_ids.append(message_id)
+                    success = await self.publish_calendar_event(event)
+                    results.append(success)
                 except Exception as e:
                     logger.error(f"Failed to publish calendar event in batch: {e}")
                     # Continue with other events
+                    results.append(False)
                     continue
             
-            logger.info(f"Published {len(message_ids)} out of {len(events)} calendar events to topic {self.calendar_topic}")
-            return message_ids
+            success_count = sum(results)
+            logger.info(f"Published {success_count} out of {len(events)} calendar events to topic {self.topics['calendar']}")
+            return results
             
         except Exception as e:
             logger.error(f"Failed to publish batch calendar events: {e}")
             raise
     
-    async def publish_batch_contacts(self, contacts: list[Dict[str, Any]]) -> list[str]:
+    async def publish_batch_contacts(self, contacts: list[Dict[str, Any]]) -> list[bool]:
         """Publish multiple contacts in batch"""
         try:
-            message_ids = []
+            results = []
             
             for contact in contacts:
                 try:
-                    message_id = await self.publish_contact(contact)
-                    message_ids.append(message_id)
+                    success = await self.publish_contact(contact)
+                    results.append(success)
                 except Exception as e:
                     logger.error(f"Failed to publish contact in batch: {e}")
                     # Continue with other contacts
+                    results.append(False)
                     continue
             
-            logger.info(f"Published {len(message_ids)} out of {len(contacts)} contacts to topic {self.contact_topic}")
-            return message_ids
+            success_count = sum(results)
+            logger.info(f"Published {success_count} out of {len(contacts)} contacts to topic {self.topics['contacts']}")
+            return results
             
         except Exception as e:
             logger.error(f"Failed to publish batch contacts: {e}")
@@ -150,13 +220,13 @@ class PubSubPublisher:
     def set_topics(self, email_topic: str = None, calendar_topic: str = None, contact_topic: str = None):
         """Set custom topic names"""
         if email_topic:
-            self.email_topic = email_topic
+            self.topics["emails"] = email_topic
         if calendar_topic:
-            self.calendar_topic = calendar_topic
+            self.topics["calendar"] = calendar_topic
         if contact_topic:
-            self.contact_topic = contact_topic
+            self.topics["contacts"] = contact_topic
         
-        logger.info(f"Set topics: email={self.email_topic}, calendar={self.calendar_topic}, contact={self.contact_topic}")
+        logger.info(f"Set topics: email={self.topics['emails']}, calendar={self.topics['calendar']}, contact={self.topics['contacts']}")
     
     async def close(self):
         """Close the pubsub client"""
