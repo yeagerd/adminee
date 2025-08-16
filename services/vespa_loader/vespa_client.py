@@ -6,7 +6,7 @@ Vespa HTTP API client for the loader service
 import aiohttp
 from typing import Dict, Any, Optional, List
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from services.common.logging_config import get_logger
 from services.common.telemetry import get_tracer
 
@@ -23,7 +23,8 @@ class VespaClient:
     async def start(self):
         """Start the client and create HTTP session"""
         if not self.session:
-            self.session = aiohttp.ClientSession()
+            timeout = aiohttp.ClientTimeout(total=30, connect=10)
+            self.session = aiohttp.ClientSession(timeout=timeout)
         logger.info("Vespa client started")
     
     async def close(self):
@@ -42,7 +43,7 @@ class VespaClient:
                 if not self.session:
                     await self.start()
                 
-                async with self.session.get(f"{self.vespa_endpoint}/application/v2/status") as response:
+                async with self.session.get(f"{self.vespa_endpoint}/") as response:
                     span.set_attribute("vespa.response.status", response.status)
                     
                     if response.status == 200:
@@ -241,12 +242,30 @@ class VespaClient:
             if field not in document:
                 raise ValueError(f"Missing required field: {field}")
         
-        # Convert timestamps to milliseconds if they're datetime objects
-        if "created_at" in document and isinstance(document["created_at"], datetime):
-            document["created_at"] = int(document["created_at"].timestamp() * 1000)
+        # Convert timestamps to milliseconds if they're datetime objects or ISO strings
+        if "created_at" in document:
+            if isinstance(document["created_at"], datetime):
+                document["created_at"] = int(document["created_at"].timestamp() * 1000)
+            elif isinstance(document["created_at"], str):
+                # Parse ISO string to datetime, then convert to milliseconds
+                try:
+                    dt = datetime.fromisoformat(document["created_at"].replace('Z', '+00:00'))
+                    document["created_at"] = int(dt.timestamp() * 1000)
+                except ValueError:
+                    logger.warning(f"Could not parse created_at timestamp: {document['created_at']}")
+                    document["created_at"] = int(datetime.now(timezone.utc).timestamp() * 1000)
         
-        if "updated_at" in document and isinstance(document["updated_at"], datetime):
-            document["updated_at"] = int(document["updated_at"].timestamp() * 1000)
+        if "updated_at" in document:
+            if isinstance(document["updated_at"], datetime):
+                document["updated_at"] = int(document["updated_at"].timestamp() * 1000)
+            elif isinstance(document["updated_at"], str):
+                # Parse ISO string to datetime, then convert to milliseconds
+                try:
+                    dt = datetime.fromisoformat(document["updated_at"].replace('Z', '+00:00'))
+                    document["updated_at"] = int(dt.timestamp() * 1000)
+                except ValueError:
+                    logger.warning(f"Could not parse updated_at timestamp: {document['updated_at']}")
+                    document["updated_at"] = int(datetime.now(timezone.utc).timestamp() * 1000)
         
         # Ensure recipients is a list
         if "recipients" in document and not isinstance(document["recipients"], list):
@@ -256,7 +275,12 @@ class VespaClient:
         if "metadata" not in document:
             document["metadata"] = {}
         
-        return document
+        # Vespa expects the document to be wrapped in a "fields" object
+        vespa_document = {
+            "fields": document
+        }
+        
+        return vespa_document
     
     def _generate_document_id(self, document: Dict[str, Any]) -> str:
         """Generate a unique document ID for Vespa"""
