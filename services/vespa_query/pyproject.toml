@@ -1,0 +1,39 @@
+[project]
+name = "briefly-vespa-query"
+version = "0.1.0"
+description = "Briefly Vespa Query Service - Query interface for hybrid search capabilities"
+requires-python = ">=3.12"
+dependencies = [
+    # Web Framework
+    "fastapi>=0.116.1,<1.0.0",
+    "uvicorn[standard]>=0.22.0,<1.0.0",
+    "pydantic==2.11.7",
+    "structlog>=25.4.0,<26.0.0",
+    # HTTP Client
+    "aiohttp>=3.9.1,<4.0.0",
+    # OpenTelemetry
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-aiohttp",
+    "opentelemetry-distro",
+    "opentelemetry-exporter-gcp-trace",
+    # GCP
+    "google-cloud-secret-manager",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "respx"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]

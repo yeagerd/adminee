@@ -43,6 +43,8 @@ members = [
     "services/office",
     "services/meetings",
     "services/shipments",
+    "services/vespa_query",
+    "services/vespa_loader",
     # Add other services as needed
 ]
 
