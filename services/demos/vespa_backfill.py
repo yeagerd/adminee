@@ -511,8 +511,73 @@ class VespaBackfillDemo:
 async def main():
     """Main function for running the Vespa backfill demo"""
     parser = argparse.ArgumentParser(
-        description="Vespa Real Backfill Demo - Backfill real user data from email providers",
-        epilog="Example: python3 vespa_backfill.py trybriefly@outlook.com --max-emails 10"
+        description="""Vespa Real Backfill Demo - Comprehensive data ingestion and indexing
+
+This demo performs real backfill operations using the existing office service
+infrastructure to crawl real emails, calendar events, and contacts, then
+publishes them to Pub/Sub for the Vespa loader service to consume.
+
+FEATURES:
+  • Real email provider integration (Microsoft, Gmail, etc.)
+  • Automated data crawling and backfill operations
+  • Pub/Sub publishing for Vespa ingestion pipeline
+  • Configurable batch processing and rate limiting
+  • Date range filtering and folder selection
+  • Job monitoring and status tracking
+  • Performance metrics and efficiency analysis
+  • Cleanup and job management capabilities
+
+USAGE EXAMPLES:
+  # Basic backfill with default settings
+  python3 vespa_backfill.py user@example.com
+
+  # Limit emails and set rate limiting
+  python3 vespa_backfill.py user@example.com --max-emails 100 --rate-limit 1.0
+
+  # Specific date range and folders
+  python3 vespa_backfill.py user@example.com --start-date 2024-01-01 --end-date 2024-12-31 --folders INBOX SENT
+
+  # Multiple providers with custom batch size
+  python3 vespa_backfill.py user@example.com --providers microsoft gmail --batch-size 20
+
+  # Cleanup first, then run fresh demo
+  python3 vespa_backfill.py user@example.com --cleanup-first
+
+  # Custom Pub/Sub configuration
+  python3 vespa_backfill.py user@example.com --project-id my-project --emulator-host localhost:8085
+
+BACKFILL PROCESS:
+  1. Connect to email provider APIs (Microsoft Graph, Gmail, etc.)
+  2. Crawl emails, calendar events, and contacts
+  3. Process and normalize data
+  4. Publish to Pub/Sub topics (email-backfill, calendar-updates, contact-updates)
+  5. Vespa loader service consumes and indexes the data
+  6. Monitor job progress and collect performance metrics
+
+CONFIGURATION OPTIONS:
+  • Email providers: Microsoft, Gmail, Outlook, etc.
+  • Batch processing: Control batch sizes and rate limits
+  • Date filtering: Specify start/end dates for historical data
+  • Folder selection: Choose specific email folders to process
+  • Pub/Sub settings: Project ID and emulator configuration
+  • Cleanup options: Stop running jobs and clear topics
+
+PERFORMANCE FEATURES:
+  • Configurable rate limiting to respect API quotas
+  • Batch processing for efficient data handling
+  • Progress monitoring and job status tracking
+  • Performance metrics collection and analysis
+  • Resource cleanup and job management
+
+REQUIREMENTS:
+  • Office service running and accessible
+  • User service for authentication and permissions
+  • Pub/Sub emulator or production instance
+  • Valid API keys for email providers
+  • Vespa loader service for data ingestion
+  • Python dependencies: httpx, asyncio, aiohttp""",
+        epilog="Example: python3 vespa_backfill.py trybriefly@outlook.com --max-emails 10",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("email", help="Email address of the user to backfill (e.g., trybriefly@outlook.com)")
     parser.add_argument("--config", help="Path to config file")
