@@ -1,0 +1,27 @@
+[
+  {
+    "test": "id_corruption_detection",
+    "status": "FAILED",
+    "details": "Vespa ID has duplication: id:briefly:briefly_document::id:briefly:briefly_document::trybriefly@outlook.com_microsoft_ms_9"
+  },
+  {
+    "test": "doc_id_corruption_detection",
+    "status": "PASSED",
+    "details": "doc_id field format is correct"
+  },
+  {
+    "test": "field_completeness",
+    "status": "FAILED",
+    "details": "Missing fields: ['user_id']"
+  },
+  {
+    "test": "document_deletion",
+    "status": "PASSED",
+    "details": "Document deleted successfully"
+  },
+  {
+    "test": "document_count_consistency",
+    "status": "PASSED",
+    "details": "Count matches: 10 = 10"
+  }
+]

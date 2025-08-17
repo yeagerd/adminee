@@ -406,10 +406,12 @@ try:
     data = json.load(sys.stdin)
     children = data.get('root', {}).get('children', [])
     for child in children:
-        # Use the doc_id field, not the full Vespa ID
+        # Use the doc_id field and construct the full Vespa document ID
         doc_id = child.get('fields', {}).get('doc_id', '')
         if doc_id:
-            print(doc_id)
+            # Construct full Vespa document ID: id:briefly:briefly_document::{doc_id}
+            full_doc_id = f\"id:briefly:briefly_document::{doc_id}\"
+            print(full_doc_id)
 except Exception as e:
     print(f'Error parsing response: {e}', file=sys.stderr)
     sys.exit(1)
