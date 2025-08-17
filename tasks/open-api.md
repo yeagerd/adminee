@@ -122,8 +122,8 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Update prop interfaces to use generated types
 
 ### Task 4.3: Type Safety Verification
-- [ ] Run `npm run typecheck` to verify no type errors
-- [ ] Run `npm run lint` to ensure code quality
+- [x] Run `npm run typecheck` to verify no type errors
+- [x] Run `npm run lint` to ensure code quality
 - [ ] Run `npm test` to verify no runtime issues
 - [ ] Test all major user flows with new types
 
