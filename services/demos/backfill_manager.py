@@ -108,7 +108,7 @@ class BackfillManager:
             ):
                 # Check if job was cancelled
                 if job.status in [BackfillStatusEnum.CANCELLED, BackfillStatusEnum.FAILED]:  # Use enum values
-                    logger.info(f"Backfill job {job_id} {job.status}")
+                    logger.info(f"[backfill manager] Backfill job {job_id} {job.status}")
                     break
                 
                 # Publish emails to pubsub
@@ -143,7 +143,7 @@ class BackfillManager:
                 job.status = BackfillStatusEnum.COMPLETED  # Use enum value
                 job.end_time = datetime.now(timezone.utc)
                 job.progress = 100.0
-                logger.info(f"Completed backfill job {job_id}: {processed_count} emails processed")
+                logger.info(f"[backfill manager] Completed backfill job {job_id}: {processed_count} emails processed")
             
         except Exception as e:
             logger.error(f"Backfill job {job_id} failed: {e}")
