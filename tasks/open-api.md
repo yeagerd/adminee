@@ -46,7 +46,7 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Generate schema for vector_db service: `/openapi.json`
 
 ### Task 1.4: Schema Validation & Testing
-- [ ] Validate all generated OpenAPI schemas against OpenAPI 3.0 spec
+- [x] Validate all generated OpenAPI schemas against OpenAPI 3.0 spec
 - [ ] Test schema generation in CI/CD pipeline
 - [ ] Ensure all Pydantic models are properly exposed in schemas
 - [ ] Verify enum values and constraints are correctly represented
