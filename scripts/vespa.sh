@@ -427,13 +427,13 @@ except Exception as e:
             local delete_response
             delete_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/docid/$doc_id")
             
-            if [[ $? -eq 0 ]] && [[ "$delete_response" == *'"pathId":"/document/v1/briefly/briefly_document/docid/'* ]]; then
+            if [[ $? -eq 0 ]] && [[ "$delete_response" == *'"pathId": "/document/v1/briefly/briefly_document/docid/'* ]]; then
                 ((deleted_count++))
                 log_success "Deleted: $doc_id"
             else
                 ((error_count++))
                 log_error "Failed to delete: $doc_id"
-                log_debug "Response: $delete_response"
+                log_info "Response: $delete_response"
             fi
         fi
     done <<< "$document_ids"

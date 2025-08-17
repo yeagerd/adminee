@@ -77,10 +77,12 @@ class VespaClient:
                 
                 # Generate document ID
                 doc_id = self._generate_document_id(document)
-                span.set_attribute("vespa.document.id", doc_id)
+                # Use the same ID format as deletion for consistency
+                full_doc_id = f"id:briefly:briefly_document::{doc_id}"
+                span.set_attribute("vespa.document.id", full_doc_id)
                 
                 # Index document
-                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{doc_id}"
+                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{full_doc_id}"
                 span.set_attribute("vespa.request.url", url)
                 
                 async with self.session.post(url, json=vespa_doc) as response:
@@ -91,7 +93,7 @@ class VespaClient:
                         logger.info(f"Successfully indexed document {doc_id}")
                         span.set_attribute("vespa.indexing.success", True)
                         return {
-                            "id": doc_id,
+                            "id": full_doc_id,
                             "status": "success",
                             "result": result
                         }
