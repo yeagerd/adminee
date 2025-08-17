@@ -262,31 +262,68 @@ class EmailCrawler:
         # emails = await client.get_emails(query_params)
         # return [self._normalize_microsoft_email(email) for email in emails]
 
-        # Generate placeholder emails
-        start_idx = batch_num * batch_size
-        emails = []
-
-        for i in range(batch_size):
-            email_id = f"ms_{start_idx + i}"
-            emails.append(
-                {
-                    "id": email_id,
-                    "user_id": self.user_id,
-                    "provider": "microsoft",
-                    "type": "email",
-                    "subject": f"Microsoft Email {start_idx + i}",
-                    "body": f"This is the body of Microsoft email {start_idx + i}",
-                    "from": f"sender{i}@microsoft.com",
-                    "to": [f"recipient{i}@example.com"],
-                    "thread_id": f"thread_{start_idx + i}",
-                    "folder": "inbox",
-                    "created_at": datetime.now(timezone.utc) - timedelta(days=i),
-                    "updated_at": datetime.now(timezone.utc) - timedelta(days=i),
-                    "metadata": {"has_attachments": False, "is_read": True},
-                }
-            )
-
-        return emails
+        # Use the office service's unified email endpoint
+        try:
+            import httpx
+            
+            # Call the existing /v1/email/messages endpoint
+            office_service_url = "http://localhost:8003"
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{office_service_url}/v1/email/messages",
+                    params={
+                        "providers": ["microsoft"],
+                        "limit": batch_size,
+                        "include_body": True,
+                        "no_cache": True  # Always get fresh data for backfill
+                    },
+                    headers={
+                        "X-User-Id": self.user_id,
+                        "X-API-Key": "test-BACKFILL-OFFICE-KEY"  # Use backfill API key
+                    },
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success") and data.get("data", {}).get("messages"):
+                        # The office service already provides normalized data - convert to backfill format
+                        emails = []
+                        for msg in data["data"]["messages"]:
+                            # Convert normalized EmailMessage to backfill format
+                            email = {
+                                "id": msg.get("provider_message_id", msg.get("id")),
+                                "user_id": self.user_id,
+                                "provider": "microsoft",
+                                "type": "email",
+                                "subject": msg.get("subject", ""),
+                                "body": msg.get("body_text", msg.get("snippet", "")),
+                                "from": msg.get("from_address", {}).get("email", "") if msg.get("from_address") else "",
+                                "to": [addr.get("email", "") for addr in msg.get("to_addresses", [])],
+                                "thread_id": msg.get("thread_id", ""),
+                                "folder": msg.get("labels", ["inbox"])[0] if msg.get("labels") else "inbox",
+                                "created_at": msg.get("date"),
+                                "updated_at": msg.get("date"),
+                                "metadata": {
+                                    "has_attachments": msg.get("has_attachments", False),
+                                    "is_read": msg.get("is_read", True)
+                                }
+                            }
+                            emails.append(email)
+                        
+                        logger.info(f"Retrieved {len(emails)} real emails from Microsoft using office service")
+                        return emails
+                    else:
+                        logger.warning("Office service returned no emails or error")
+                else:
+                    logger.error(f"Office service returned status {response.status_code}: {response.text}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to get real emails from office service: {e}")
+            raise Exception(f"Failed to retrieve real emails from Microsoft: {e}")
+        
+        # Return empty list if no emails found
+        return []
 
     async def _get_gmail_email_batch(
         self,
@@ -316,84 +353,71 @@ class EmailCrawler:
         # emails = await client.get_emails(query_params)
         # return [self._normalize_gmail_email(email) for email in emails]
 
-        # Generate placeholder emails
-        start_idx = batch_num * batch_size
-        emails = []
+        # Use the office service's unified email endpoint
+        try:
+            import httpx
+            
+            # Call the existing /v1/email/messages endpoint
+            office_service_url = "http://localhost:8003"
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{office_service_url}/v1/email/messages",
+                    params={
+                        "providers": ["google"],
+                        "limit": batch_size,
+                        "include_body": True,
+                        "no_cache": True  # Always get fresh data for backfill
+                    },
+                    headers={
+                        "X-User-Id": self.user_id,
+                        "X-API-Key": "test-BACKFILL-OFFICE-KEY"  # Use backfill API key
+                    },
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success") and data.get("data", {}).get("messages"):
+                        # The office service already provides normalized data - convert to backfill format
+                        emails = []
+                        for msg in data["data"]["messages"]:
+                            # Convert normalized EmailMessage to backfill format
+                            email = {
+                                "id": msg.get("provider_message_id", msg.get("id")),
+                                "user_id": self.user_id,
+                                "provider": "google",
+                                "type": "email",
+                                "subject": msg.get("subject", ""),
+                                "body": msg.get("body_text", msg.get("snippet", "")),
+                                "from": msg.get("from_address", {}).get("email", "") if msg.get("from_address") else "",
+                                "to": [addr.get("email", "") for addr in msg.get("to_addresses", [])],
+                                "thread_id": msg.get("thread_id", ""),
+                                "folder": msg.get("labels", ["inbox"])[0] if msg.get("labels") else "inbox",
+                                "created_at": msg.get("date"),
+                                "updated_at": msg.get("date"),
+                                "metadata": {
+                                    "has_attachments": msg.get("has_attachments", False),
+                                    "is_read": msg.get("is_read", True)
+                                }
+                            }
+                            emails.append(email)
+                        
+                        logger.info(f"Retrieved {len(emails)} real emails from Google using office service")
+                        return emails
+                    else:
+                        logger.warning("Office service returned no emails or error")
+                else:
+                    logger.error(f"Office service returned status {response.status_code}: {response.text}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to get real emails from office service: {e}")
+            raise Exception(f"Failed to retrieve real emails from Google: {e}")
+        
+        # Return empty list if no emails found
+        return []
 
-        for i in range(batch_size):
-            email_id = f"gmail_{start_idx + i}"
-            emails.append(
-                {
-                    "id": email_id,
-                    "user_id": self.user_id,
-                    "provider": "google",
-                    "type": "email",
-                    "subject": f"Gmail Email {start_idx + i}",
-                    "body": f"This is the body of Gmail email {start_idx + i}",
-                    "from": f"sender{i}@gmail.com",
-                    "to": [f"recipient{i}@example.com"],
-                    "thread_id": f"thread_{start_idx + i}",
-                    "folder": "inbox",
-                    "created_at": datetime.now(timezone.utc) - timedelta(days=i),
-                    "updated_at": datetime.now(timezone.utc) - timedelta(days=i),
-                    "metadata": {"has_attachments": False, "is_read": True},
-                }
-            )
-
-        return emails
-
-    def _normalize_microsoft_email(self, email: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize Microsoft Graph email format to internal format"""
-        return {
-            "id": email.get("id"),
-            "user_id": self.user_id,
-            "provider": "microsoft",
-            "type": "email",
-            "subject": email.get("subject", ""),
-            "body": email.get("body", {}).get("content", ""),
-            "from": email.get("from", {}).get("emailAddress", {}).get("address", ""),
-            "to": [
-                recipient.get("emailAddress", {}).get("address", "")
-                for recipient in email.get("toRecipients", [])
-            ],
-            "thread_id": email.get("conversationId"),
-            "folder": email.get("parentFolderId", "inbox"),
-            "created_at": email.get("receivedDateTime"),
-            "updated_at": email.get("lastModifiedDateTime"),
-            "metadata": {
-                "has_attachments": bool(email.get("hasAttachments")),
-                "is_read": email.get("isRead", False),
-                "importance": email.get("importance", "normal"),
-            },
-        }
-
-    def _normalize_gmail_email(self, email: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize Gmail API email format to internal format"""
-        return {
-            "id": email.get("id"),
-            "user_id": self.user_id,
-            "provider": "google",
-            "type": "email",
-            "subject": email.get("snippet", ""),
-            "body": email.get(
-                "snippet", ""
-            ),  # Gmail API provides snippet, not full body
-            "from": email.get("payload", {}).get("headers", {}).get("From", ""),
-            "to": [email.get("payload", {}).get("headers", {}).get("To", "")],
-            "thread_id": email.get("threadId"),
-            "folder": (
-                email.get("labelIds", ["inbox"])[0]
-                if email.get("labelIds")
-                else "inbox"
-            ),
-            "created_at": email.get("internalDate"),
-            "updated_at": email.get("internalDate"),
-            "metadata": {
-                "has_attachments": bool(email.get("payload", {}).get("parts")),
-                "is_read": "UNREAD" not in email.get("labelIds", []),
-                "labels": email.get("labelIds", []),
-            },
-        }
+    # Note: Normalization methods removed - we now use the already-normalized data 
+    # from the office service's /v1/email/messages endpoint
 
     def set_rate_limit(self, emails_per_second: int):
         """Set the rate limit for email crawling"""
