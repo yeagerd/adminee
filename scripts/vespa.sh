@@ -387,7 +387,7 @@ clear_vespa_data() {
     local search_response
     search_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
         -H "Content-Type: application/json" \
-        -d '{"yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"", "hits": 1000}')
+        -d '{"yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"", "hits": 200}')
     
     if [[ $? -ne 0 ]]; then
         log_error "Failed to query Vespa for documents"
