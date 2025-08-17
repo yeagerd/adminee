@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # Rate limiting
     max_documents_per_second: int = Field(default=100, env="MAX_DOCUMENTS_PER_SECOND")
     
+    # Pub/Sub configuration
+    pubsub_project_id: str = Field(default="briefly-dev", env="PUBSUB_PROJECT_ID")
+    pubsub_emulator_host: str = Field(default="localhost:8085", env="PUBSUB_EMULATOR_HOST")
+    enable_pubsub_consumer: bool = Field(default=True, env="ENABLE_PUBSUB_CONSUMER")
+    
     # Health check configuration
     health_check_interval_seconds: int = Field(default=30, env="HEALTH_CHECK_INTERVAL")
     health_check_timeout_seconds: int = Field(default=5, env="HEALTH_CHECK_TIMEOUT")

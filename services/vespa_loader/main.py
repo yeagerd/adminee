@@ -7,10 +7,12 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from services.vespa_loader.vespa_client import VespaClient
 from services.vespa_loader.content_normalizer import ContentNormalizer
 from services.vespa_loader.embeddings import EmbeddingGenerator
 from services.vespa_loader.mapper import DocumentMapper
+from services.vespa_loader.pubsub_consumer import PubSubConsumer
 from services.vespa_loader.settings import Settings
 from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware
 from services.common.http_errors import register_briefly_exception_handlers
@@ -35,11 +37,12 @@ vespa_client: VespaClient | None = None
 content_normalizer: ContentNormalizer | None = None
 embedding_generator: EmbeddingGenerator | None = None
 document_mapper: DocumentMapper | None = None
+pubsub_consumer: PubSubConsumer | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage service lifecycle"""
-    global vespa_client, content_normalizer, embedding_generator, document_mapper
+    global vespa_client, content_normalizer, embedding_generator, document_mapper, pubsub_consumer
     
     # Startup
     logger.info("Starting Vespa Loader Service...")
@@ -61,6 +64,21 @@ async def lifespan(app: FastAPI):
         logger.error(f"Vespa connection test failed: {e}")
         raise
     
+    # Start Pub/Sub consumer if enabled
+    if settings.enable_pubsub_consumer:
+        try:
+            pubsub_consumer = PubSubConsumer(settings)
+            success = await pubsub_consumer.start()
+            if success:
+                logger.info("Pub/Sub consumer started successfully")
+            else:
+                logger.warning("Failed to start Pub/Sub consumer")
+        except Exception as e:
+            logger.error(f"Failed to start Pub/Sub consumer: {e}")
+            # Don't fail startup if Pub/Sub consumer fails
+    else:
+        logger.info("Pub/Sub consumer disabled")
+    
     logger.info("Vespa Loader Service started successfully")
     
     yield
@@ -69,6 +87,8 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Vespa Loader Service...")
     if vespa_client:
         await vespa_client.close()
+    if pubsub_consumer:
+        await pubsub_consumer.stop()
     logger.info("Vespa Loader Service shutdown complete")
 
 # Create FastAPI app
@@ -97,10 +117,31 @@ app.middleware("http")(create_request_logging_middleware())
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    health_status = "healthy"
+    
+    # Check Vespa connectivity
+    vespa_healthy = vespa_client is not None
+    if not vespa_healthy:
+        health_status = "degraded"
+    
+    # Check Pub/Sub consumer status
+    pubsub_healthy = pubsub_consumer is not None and pubsub_consumer.running if pubsub_consumer else False
+    
     return {
-        "status": "healthy",
+        "status": health_status,
         "service": "vespa-loader",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "components": {
+            "vespa": {
+                "status": "healthy" if vespa_healthy else "unavailable",
+                "endpoint": vespa_client.vespa_endpoint if vespa_client else None
+            },
+            "pubsub_consumer": {
+                "status": "healthy" if pubsub_healthy else "unavailable",
+                "enabled": pubsub_consumer is not None,
+                "running": pubsub_consumer.running if pubsub_consumer else False
+            }
+        }
     }
 
 @app.post("/ingest")
@@ -214,6 +255,23 @@ async def get_document(user_id: str, doc_id: str):
     except Exception as e:
         logger.error(f"Failed to retrieve document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stats")
+async def get_stats():
+    """Get service statistics"""
+    stats = {
+        "service": "vespa-loader",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "vespa": {
+            "endpoint": vespa_client.vespa_endpoint if vespa_client else None,
+            "connected": vespa_client is not None
+        }
+    }
+    
+    if pubsub_consumer:
+        stats["pubsub_consumer"] = pubsub_consumer.get_stats()
+    
+    return stats
 
 async def process_document(document_data: dict) -> dict:
     """Process a document for Vespa indexing"""

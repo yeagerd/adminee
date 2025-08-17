@@ -387,7 +387,7 @@ class VespaBackfillDemo:
             print(f"ℹ️  No data was published, so no ingestion validation needed")
         
         print(f"{'='*60}")
-    
+        
     async def run_backfill_demo(self) -> Dict[str, Any]:
         """Run the complete real backfill demo"""
         logger.info("Starting Vespa real backfill demo...")
