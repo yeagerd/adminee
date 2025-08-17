@@ -273,8 +273,36 @@ If provider auth, quota, or time constraints block end-to-end tests, use one of 
 
 ### Open Questions
 
-- Do we want to index attachments’ text in the first iteration or limit files to metadata and file names?
+- Do we want to index attachments' text in the first iteration or limit files to metadata and file names?
 - Should we include threads as first-class documents or denormalize last-message signals onto message docs?
 - What embedding model do we standardize on for parity with existing `services/vector_db` usage, while keeping the prototype self-contained?
+
+### Future Work: Document Chunking
+
+The current prototype stores documents as single units with their full content in the `content` field. For improved search precision and better handling of long documents, implementing document chunking should be considered as future work.
+
+#### Current Limitations
+- **No automatic chunking**: Documents are stored as single units with entire content
+- **Full-document search**: Queries search across entire documents without paragraph-level precision
+- **Content truncation**: `search_text` is limited to 10,000 characters
+- **No section targeting**: Cannot target specific paragraphs or sections within documents
+
+#### Proposed Chunking Approach
+- **Pre-processing**: Implement chunking logic before sending documents to Vespa
+- **Chunked schemas**: Create paragraph-level fields or separate chunk documents
+- **Chunk relationships**: Handle parent document references, chunk order, and metadata inheritance
+- **Hybrid search**: Combine document-level and chunk-level search for better relevance
+
+#### Benefits
+- **Improved precision**: Target specific sections within long documents
+- **Better relevance**: Rank results based on chunk-level matching
+- **Enhanced snippets**: Generate more focused search result previews
+- **Scalability**: Handle very long documents without content truncation
+
+#### Implementation Considerations
+- **Chunk size**: Determine optimal paragraph or sentence boundaries
+- **Overlap strategy**: Consider overlapping chunks for context preservation
+- **Metadata handling**: Preserve document-level metadata across chunks
+- **Search coordination**: Coordinate search across document and chunk levels
 
 
