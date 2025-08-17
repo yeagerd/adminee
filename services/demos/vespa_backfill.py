@@ -22,7 +22,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from services.common.logging_config import get_logger
 from services.demos.settings_demos import get_demo_settings
-from services.demos.backfill_manager import BackfillManager
 from services.office.api.backfill import BackfillRequest
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
@@ -52,7 +51,6 @@ class VespaBackfillDemo:
         self.user_service_url = self.settings.user_service_url
         
         # Initialize components
-        self.backfill_manager = BackfillManager()
         self.pubsub_publisher = PubSubPublisher(
             project_id=config.get("project_id", "briefly-dev"),
             emulator_host=config.get("emulator_host", "localhost:8085")
@@ -338,8 +336,58 @@ class VespaBackfillDemo:
                 else:
                     print(f"  {provider}: {before_count:,} (no change)")
         
+                print(f"{'='*60}")
+    
+    def _validate_data_ingestion(self, before_stats: Dict[str, Any], after_stats: Dict[str, Any], results: Dict[str, Any]):
+        """Validate whether data was successfully ingested into Vespa"""
+        print(f"\n{'='*60}")
+        print("DATA INGESTION VALIDATION")
         print(f"{'='*60}")
         
+        if "error" in before_stats or "error" in after_stats:
+            print("⚠️  Cannot validate data ingestion due to stats collection errors")
+            return
+        
+        before_total = before_stats.get("total_documents", 0)
+        after_total = after_stats.get("total_documents", 0)
+        total_published = results.get("total_data_published", 0)
+        
+        print(f"Data Published to Pub/Sub: {total_published:,} items")
+        print(f"Documents in Vespa (Before): {before_total:,}")
+        print(f"Documents in Vespa (After): {after_total:,}")
+        
+        if total_published > 0:
+            if after_total > before_total:
+                documents_added = after_total - before_total
+                print(f"✅ Successfully ingested: +{documents_added:,} documents")
+                
+                if documents_added < total_published:
+                    print(f"⚠️  Note: Only {documents_added:,} of {total_published:,} published items were indexed")
+                    print(f"   This may indicate duplicate data or indexing issues")
+                else:
+                    print(f"✅ All published items were successfully indexed")
+                    
+            elif after_total == before_total:
+                print(f"❌ Data ingestion failed: No documents were added to Vespa")
+                print(f"   Possible causes:")
+                print(f"   • Vespa loader service is not running")
+                print(f"   • Pub/Sub topics are not being consumed")
+                print(f"   • Data format issues preventing indexing")
+                print(f"   • Vespa schema validation failures")
+                
+                # Update results to reflect the actual failure
+                results["data_ingestion_success"] = False
+                results["data_ingestion_error"] = "No documents were added to Vespa despite successful publishing"
+            else:
+                print(f"❌ Data ingestion anomaly: Document count decreased")
+                print(f"   This suggests data was removed or corrupted during ingestion")
+                results["data_ingestion_success"] = False
+                results["data_ingestion_error"] = "Document count decreased during ingestion"
+        else:
+            print(f"ℹ️  No data was published, so no ingestion validation needed")
+        
+        print(f"{'='*60}")
+    
     async def run_backfill_demo(self) -> Dict[str, Any]:
         """Run the complete real backfill demo"""
         logger.info("Starting Vespa real backfill demo...")
@@ -392,12 +440,8 @@ class VespaBackfillDemo:
                     "error": str(e)
                 })
             
-            # Wait for all jobs to complete
-            await self._wait_for_jobs_completion(timeout_minutes=30)
-            
-            # Collect final results
-            final_results = await self._collect_final_results()
-            results.update(final_results)
+            # Note: We're not using BackfillManager anymore, so no system-level metrics to collect
+            # Individual job completion is already handled in _wait_for_job_completion
             
             # Get final Vespa stats after backfill
             logger.info("Collecting final Vespa statistics...")
@@ -407,6 +451,9 @@ class VespaBackfillDemo:
             
             # Print stats comparison
             self.print_stats_comparison(before_stats, after_stats)
+            
+            # Validate data ingestion success
+            self._validate_data_ingestion(before_stats, after_stats, results)
             
             results["status"] = "completed"
             results["end_time"] = datetime.now(timezone.utc).isoformat()
@@ -450,8 +497,12 @@ class VespaBackfillDemo:
                     "error": "Failed to start backfill job"
                 }
             
+            # Calculate timeout based on max emails (5 seconds per email)
+            job_timeout_minutes = max(1, (self.max_emails_per_user * 5) // 60)  # At least 1 minute
+            logger.info(f"Setting job timeout to {job_timeout_minutes} minutes for {self.max_emails_per_user} max emails")
+            
             # Wait for job completion
-            job_result = await self._wait_for_job_completion(job_id, user_id)
+            job_result = await self._wait_for_job_completion(job_id, user_id, timeout_minutes=job_timeout_minutes)
             
             return {
                 "user_id": user_id,
@@ -602,42 +653,13 @@ class VespaBackfillDemo:
     
     async def _wait_for_jobs_completion(self, timeout_minutes: int = 30):
         """Wait for all active jobs to complete"""
-        timeout_seconds = timeout_minutes * 60
-        start_time = datetime.now(timezone.utc)
+        logger.info(f"Waiting up to {timeout_minutes} minutes for jobs to complete...")
         
-        while self.backfill_manager.active_jobs and \
-              (datetime.now(timezone.utc) - start_time).total_seconds() < timeout_seconds:
-            
-            active_count = len(self.backfill_manager.active_jobs)
-            logger.info(f"Waiting for {active_count} active jobs to complete...")
-            
-            # Check job statuses
-            for job_id, job in self.backfill_manager.active_jobs.items():
-                if job.status in ["completed", "failed", "cancelled"]:
-                    logger.info(f"Job {job_id} completed with status: {job.status}")
-            
-            await asyncio.sleep(10)  # Check every 10 seconds
-        
-        if self.backfill_manager.active_jobs:
-            logger.warning(f"Timeout reached, {len(self.backfill_manager.active_jobs)} jobs still active")
-    
-    async def _collect_final_results(self) -> Dict[str, Any]:
-        """Collect final results from all jobs"""
-        all_jobs = list(self.backfill_manager.active_jobs.values()) + self.backfill_manager.job_history
-        
-        successful_jobs = [j for j in all_jobs if j.status == "completed"]
-        failed_jobs = [j for j in all_jobs if j.status == "failed"]
-        
-        total_emails_processed = sum(j.processed_emails for j in all_jobs)
-        total_emails_failed = sum(j.failed_emails for j in all_jobs)
-        
-        return {
-            "successful_jobs": len(successful_jobs),
-            "failed_jobs": len(failed_jobs),
-            "total_emails_processed": total_emails_processed,
-            "total_emails_failed": total_emails_failed,
-            "system_summary": self.backfill_manager.get_system_summary()
-        }
+        # Since we're not using BackfillManager, we just wait for the timeout
+        # The actual job completion is handled by the office service API
+        # For small jobs, this timeout is usually much longer than needed
+        await asyncio.sleep(timeout_minutes * 60)
+        logger.info("Job completion timeout reached")
     
     def _calculate_performance_metrics(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate performance metrics from results"""
