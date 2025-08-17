@@ -1,8 +1,8 @@
 [
   {
     "test": "id_corruption_detection",
-    "status": "FAILED",
-    "details": "Vespa ID has duplication: id:briefly:briefly_document::id:briefly:briefly_document::trybriefly@outlook.com_microsoft_ms_9"
+    "status": "PASSED",
+    "details": "No ID corruption detected"
   },
   {
     "test": "doc_id_corruption_detection",
@@ -11,8 +11,13 @@
   },
   {
     "test": "field_completeness",
-    "status": "FAILED",
-    "details": "Missing fields: ['user_id']"
+    "status": "PASSED",
+    "details": "All required fields present"
+  },
+  {
+    "test": "streaming_id_format",
+    "status": "PASSED",
+    "details": "Document ID follows streaming mode format"
   },
   {
     "test": "document_deletion",

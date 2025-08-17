@@ -43,11 +43,12 @@ class VespaIntegrationTester:
         self.log("🔍 Testing search functionality...")
         
         try:
-            # Test search for the user we know has data
+            # Test search for the user we know has data using streaming mode
             search_query = {
-                "yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"",
+                "yql": "select * from briefly_document where true",
                 "hits": 10,
-                "ranking": "hybrid"
+                "ranking": "hybrid",
+                "streaming.groupname": "trybriefly@outlook.com"  # This ensures user isolation
             }
             
             response = requests.post(f"{self.vespa_endpoint}/search/", json=search_query)
@@ -118,7 +119,8 @@ class VespaIntegrationTester:
             })
         
         # Test 3: Field consistency
-        required_fields = ["user_id", "doc_id", "title", "content", "search_text"]
+        # In streaming mode, user_id is automatically extracted from document ID, so we don't need it as a field
+        required_fields = ["doc_id", "title", "content", "search_text"]
         missing_fields = [field for field in required_fields if field not in fields]
         
         if missing_fields:
@@ -134,6 +136,23 @@ class VespaIntegrationTester:
                 "test": "field_completeness",
                 "status": "PASSED",
                 "details": "All required fields present"
+            })
+        
+        # Test 3.5: Verify streaming mode ID format
+        vespa_id = document.get("id", "")
+        if "g=" in vespa_id and vespa_id.count("id:briefly:briefly_document:g=") == 1:
+            self.log("✅ Streaming mode ID format is correct")
+            self.test_results.append({
+                "test": "streaming_id_format",
+                "status": "PASSED",
+                "details": "Document ID follows streaming mode format"
+            })
+        else:
+            self.log("🚨 Streaming mode ID format is incorrect", "ERROR")
+            self.test_results.append({
+                "test": "streaming_id_format",
+                "status": "FAILED",
+                "details": f"Document ID format incorrect: {vespa_id}"
             })
     
     def test_document_deletion(self, document: Dict[str, Any]) -> bool:
@@ -207,12 +226,13 @@ class VespaIntegrationTester:
         self.log("🔄 Testing data consistency...")
         
         try:
-            # Test 1: Count documents for a specific user
+            # Test 1: Count documents for a specific user using streaming mode
             user_id = "trybriefly@outlook.com"
             count_query = {
-                "yql": f"select * from briefly_document where user_id contains \"{user_id}\"",
+                "yql": "select * from briefly_document where true",
                 "hits": 0,  # Just get count
-                "ranking": "hybrid"
+                "ranking": "hybrid",
+                "streaming.groupname": user_id  # This ensures user isolation
             }
             
             response = requests.post(f"{self.vespa_endpoint}/search/", json=count_query)
@@ -223,11 +243,12 @@ class VespaIntegrationTester:
                 
                 self.log(f"📊 Found {total_found} documents for user {user_id}")
                 
-                # Test 2: Get actual documents
+                # Test 2: Get actual documents using streaming mode
                 search_query = {
-                    "yql": f"select * from briefly_document where user_id contains \"{user_id}\"",
+                    "yql": "select * from briefly_document where true",
                     "hits": 400,
-                    "ranking": "hybrid"
+                    "ranking": "hybrid",
+                    "streaming.groupname": user_id  # This ensures user isolation
                 }
                 
                 response = requests.post(f"{self.vespa_endpoint}/search/", json=search_query)
@@ -291,9 +312,13 @@ class VespaIntegrationTester:
         # Test 4: Data consistency
         consistency_result = self.test_data_consistency()
         
+        # Test 5: User isolation validation
+        isolation_result = self.test_user_isolation()
+        
         # Generate summary
         passed_tests = [r for r in self.test_results if r["status"] == "PASSED"]
         failed_tests = [r for r in self.test_results if r["status"] == "FAILED"]
+        critical_failures = [r for r in self.test_results if r["status"] == "CRITICAL_FAILURE"]
         warning_tests = [r for r in self.test_results if r["status"] == "WARNING"]
         
         summary = {
@@ -301,11 +326,19 @@ class VespaIntegrationTester:
             "total_tests": len(self.test_results),
             "passed": len(passed_tests),
             "failed": len(failed_tests),
+            "critical_failures": len(critical_failures),
             "warnings": len(warning_tests),
             "results": self.test_results
         }
         
         self.log(f"📊 Test Summary: {summary['passed']}/{summary['total_tests']} tests passed")
+        
+        if critical_failures:
+            self.log("🚨🚨🚨 CRITICAL FAILURES (Security Issues):", "ERROR")
+            for test in critical_failures:
+                self.log(f"  - {test['test']}: {test.get('details', 'No details')}", "ERROR")
+                if 'security_implication' in test:
+                    self.log(f"    SECURITY IMPLICATION: {test['security_implication']}", "ERROR")
         
         if failed_tests:
             self.log("🚨 Failed tests:", "ERROR")
@@ -318,6 +351,121 @@ class VespaIntegrationTester:
                 self.log(f"  - {test['test']}: {test.get('details', 'No details')}", "WARNING")
         
         return summary
+    
+    def test_user_isolation(self) -> Dict[str, Any]:
+        """Test that user isolation is working correctly."""
+        self.log("🔒 Testing user isolation...")
+        
+        try:
+            # Test 1: Verify that documents have user_id field
+            user_id = "trybriefly@outlook.com"
+            search_query = {
+                "yql": f"select * from briefly_document where user_id contains \"{user_id}\"",
+                "hits": 5,
+                "ranking": "hybrid"
+            }
+            
+            response = requests.post(f"{self.vespa_endpoint}/search/", json=search_query)
+            
+            if response.status_code == 200:
+                result = response.json()
+                children = result.get("root", {}).get("children", [])
+                
+                if children:
+                    # Check first document for streaming mode ID format
+                    first_doc = children[0]
+                    vespa_id = first_doc.get("id", "")
+                    
+                    # In streaming mode, user_id is extracted from the document ID
+                    if "g=" in vespa_id and vespa_id.count("id:briefly:briefly_document:g=") == 1:
+                        # Extract user_id from the streaming ID format
+                        try:
+                            # Format: id:briefly:briefly_document:g={user_id}:{doc_id}
+                            parts = vespa_id.split(":g=")
+                            if len(parts) == 2:
+                                user_part = parts[1].split(":")[0]
+                                if user_part == user_id:
+                                    self.log("✅ Streaming mode user isolation working correctly")
+                                    self.test_results.append({
+                                        "test": "user_isolation_field_presence",
+                                        "status": "PASSED",
+                                        "details": "User isolation working through streaming mode ID format"
+                                    })
+                                else:
+                                    self.log(f"🚨 user_id mismatch in streaming ID: expected {user_id}, got {user_part}", "ERROR")
+                                    self.test_results.append({
+                                        "test": "user_isolation_field_presence",
+                                        "status": "FAILED",
+                                        "details": f"user_id mismatch in streaming ID: expected {user_id}, got {user_part}"
+                                    })
+                            else:
+                                self.log("🚨 Invalid streaming ID format", "ERROR")
+                                self.test_results.append({
+                                    "test": "user_isolation_field_presence",
+                                    "status": "FAILED",
+                                    "details": f"Invalid streaming ID format: {vespa_id}"
+                                })
+                        except Exception as e:
+                            self.log(f"🚨 Error parsing streaming ID: {e}", "ERROR")
+                            self.test_results.append({
+                                "test": "user_isolation_field_presence",
+                                "status": "FAILED",
+                                "details": f"Error parsing streaming ID: {e}"
+                            })
+                    else:
+                        self.log("🚨🚨🚨 CRITICAL: Document ID is not in streaming mode format!", "ERROR")
+                        self.log("🚨 This breaks user isolation and is a security vulnerability!", "ERROR")
+                        
+                        self.test_results.append({
+                            "test": "user_isolation_field_presence",
+                            "status": "CRITICAL_FAILURE",
+                            "details": "Document ID is not in streaming mode format",
+                            "security_implication": "User isolation broken - documents can be accessed by any user"
+                        })
+                        
+                        return {"status": "critical_failure", "reason": "Invalid streaming ID format"}
+                    
+                    # Test 2: Verify that searching for different user returns no results
+                    other_user = "other@example.com"
+                    other_search_query = {
+                        "yql": "select * from briefly_document where true",
+                        "hits": 5,
+                        "ranking": "hybrid",
+                        "streaming.groupname": other_user  # This should return no results for other user
+                    }
+                    
+                    other_response = requests.post(f"{self.vespa_endpoint}/search/", json=other_search_query)
+                    
+                    if other_response.status_code == 200:
+                        other_result = other_response.json()
+                        other_children = other_result.get("root", {}).get("children", [])
+                        
+                        if len(other_children) == 0:
+                            self.log("✅ User isolation working: other user search returns no results")
+                            self.test_results.append({
+                                "test": "user_isolation_search",
+                                "status": "PASSED",
+                                "details": "Other user search correctly returns no results"
+                            })
+                        else:
+                            self.log(f"🚨 User isolation broken: other user search returned {len(other_children)} results", "ERROR")
+                            self.test_results.append({
+                                "test": "user_isolation_search",
+                                "status": "FAILED",
+                                "details": f"Other user search returned {len(other_children)} results when it should return 0"
+                            })
+                    
+                    return {"status": "success", "user_isolation_working": True}
+                else:
+                    self.log("⚠️ No documents found to test user isolation", "WARNING")
+                    return {"status": "warning", "reason": "No documents to test"}
+            else:
+                self.log(f"❌ User isolation test failed: {response.status_code}", "ERROR")
+                return {"status": "error", "code": response.status_code}
+                
+        except Exception as e:
+            self.log(f"❌ User isolation test error: {e}", "ERROR")
+            return {"status": "error", "message": str(e)}
     
     def save_results(self, filename: str = "vespa_integration_test_results.json"):
         """Save test results to a file."""

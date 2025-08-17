@@ -77,12 +77,13 @@ class VespaClient:
                 
                 # Generate document ID
                 doc_id = self._generate_document_id(document)
-                # Use the same ID format as deletion for consistency
-                full_doc_id = f"id:briefly:briefly_document::{doc_id}"
+                # Use streaming mode ID format: id:briefly:briefly_document:g={user_id}:{doc_id}
+                user_id = document.get("user_id", "unknown")
+                full_doc_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
                 span.set_attribute("vespa.document.id", full_doc_id)
                 
-                # Index document
-                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{full_doc_id}"
+                # Index document using streaming mode URL format
+                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
                 span.set_attribute("vespa.request.url", url)
                 
                 async with self.session.post(url, json=vespa_doc) as response:
@@ -118,10 +119,11 @@ class VespaClient:
             await self.start()
         
         try:
-            # Generate full document ID
-            full_doc_id = f"id:briefly:briefly_document::{doc_id}"
+            # Generate full document ID for streaming mode
+            # Format: id:briefly:briefly_document:g={user_id}:{doc_id}
+            full_doc_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
             
-            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{full_doc_id}"
+            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
             
             async with self.session.delete(url) as response:
                 if response.status == 200:
@@ -147,10 +149,11 @@ class VespaClient:
             await self.start()
         
         try:
-            # Generate full document ID
-            full_doc_id = f"id:briefly:briefly_document::{doc_id}"
+            # Generate full document ID for streaming mode
+            # Format: id:briefly:briefly_document:g={user_id}:{doc_id}
+            full_doc_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
             
-            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/docid/{full_doc_id}"
+            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
             
             async with self.session.get(url) as response:
                 if response.status == 200:
@@ -175,11 +178,13 @@ class VespaClient:
             await self.start()
         
         try:
-            # Build search query
+            # Build search query for streaming mode
+            # In streaming mode, we don't need to filter by user_id in YQL since it's handled by the group
             search_query = {
-                "yql": f'select * from briefly_document where user_id contains "{user_id}" and (search_text contains "{query}" or title contains "{query}")',
+                "yql": f'select * from briefly_document where (search_text contains "{query}" or title contains "{query}")',
                 "hits": limit,
-                "ranking": "hybrid"
+                "ranking": "hybrid",
+                "streaming.groupname": user_id  # This ensures user isolation in streaming mode
             }
             
             url = f"{self.vespa_endpoint}/search/"

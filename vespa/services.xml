@@ -11,7 +11,7 @@
     <content id="briefly" version="1.0">
         <redundancy>1</redundancy>
         <documents>
-            <document type="briefly_document" mode="index"/>
+            <document type="briefly_document" mode="streaming"/>
         </documents>
         <nodes>
             <node distribution-key="0" hostalias="node1"/>

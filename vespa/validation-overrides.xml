@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<validation-overrides>
+    <!-- Allow changing indexing mode from indexed to streaming -->
+    <!-- This is required when migrating existing data to streaming mode -->
+    <allow until="2025-09-15">indexing-mode-change</allow>
+</validation-overrides>
