@@ -69,6 +69,7 @@ class DocumentMapper:
             
             # Create Vespa document
             vespa_doc = {
+                # Remove id field - Vespa streaming mode generates this automatically from URL path
                 "user_id": document_data.get("user_id"),
                 "doc_id": document_data.get("id"),
                 "provider": document_data.get("provider"),
