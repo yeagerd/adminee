@@ -142,29 +142,60 @@ class PubSubConsumer:
                     logger.info(f"Continuing with existing subscription setup...")
     
     async def _start_topic_consumer(self, topic_name: str, config: Dict[str, Any]):
-        """Start consuming from a specific topic"""
+        """Start consuming from a specific topic using polling approach"""
         project_id = self.settings.pubsub_project_id if hasattr(self.settings, 'pubsub_project_id') else "briefly-dev"
         subscription_path = self.subscriber.subscription_path(
             project_id, 
             config["subscription_name"]
         )
         
-        # Start the message stream
-        flow_control = pubsub_v1.types.FlowControl(
-            max_messages=config["batch_size"] * 2,
-            max_bytes=100 * 1024 * 1024,  # 100MB
-            max_lease_duration=60  # 60 seconds
-        )
+        # Store subscription info for polling
+        self.subscriptions[topic_name] = {
+            "subscription_path": subscription_path,
+            "config": config,
+            "active": True
+        }
         
-        # Start consuming messages
-        streaming_pull_future = self.subscriber.subscribe(
-            subscription_path,
-            callback=lambda msg: self._handle_message_sync(topic_name, msg, config),
-            flow_control=flow_control
-        )
-        
-        self.subscriptions[topic_name] = streaming_pull_future
-        logger.info(f"Started consuming from topic: {topic_name}")
+        # Start polling task
+        asyncio.create_task(self._poll_subscription(topic_name, subscription_path, config))
+        logger.info(f"Started polling from topic: {topic_name}")
+    
+    async def _poll_subscription(self, topic_name: str, subscription_path: str, config: Dict[str, Any]):
+        """Poll a subscription for messages"""
+        while self.running and self.subscriptions.get(topic_name, {}).get("active", False):
+            try:
+                # Pull messages from subscription
+                response = self.subscriber.pull(
+                    request=pubsub_v1.PullRequest(
+                        subscription=subscription_path,
+                        max_messages=config["batch_size"],
+                        return_immediately=True
+                    )
+                )
+                
+                if response.received_messages:
+                    logger.info(f"Received {len(response.received_messages)} messages from {topic_name}")
+                    
+                    # Process messages
+                    for message in response.received_messages:
+                        await self._handle_message(topic_name, message, config)
+                        
+                        # Acknowledge the message
+                        self.subscriber.acknowledge(
+                            request=pubsub_v1.AcknowledgeRequest(
+                                subscription=subscription_path,
+                                ack_ids=[message.ack_id]
+                            )
+                        )
+                        
+                        self.processed_count += 1
+                        
+                # Wait before next poll
+                await asyncio.sleep(1)
+                
+            except Exception as e:
+                logger.error(f"Error polling subscription {topic_name}: {e}")
+                await asyncio.sleep(5)  # Wait longer on error
     
     def _handle_message_sync(self, topic_name: str, message: ReceivedMessage, config: Dict[str, Any]):
         """Handle a single message from Pub/Sub synchronously (called from callback)"""
