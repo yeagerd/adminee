@@ -357,6 +357,119 @@ cleanup_vespa() {
     fi
 }
 
+# Clear all data from Vespa
+clear_vespa_data() {
+    log_info "Clearing all data from Vespa..."
+    
+    # Check if Vespa is running
+    if ! check_vespa_container_health; then
+        log_error "Vespa container is not running. Start it first with: $0 --start"
+        exit 1
+    fi
+    
+    # Check if application is deployed
+    if ! curl -s "$VESPA_ENDPOINT/" > /dev/null 2>&1; then
+        log_error "Briefly application is not deployed. Deploy it first with: $0 --deploy"
+        exit 1
+    fi
+    
+    log_info "This will delete ALL documents from Vespa. Are you sure? (y/N)"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        log_info "Operation cancelled"
+        exit 0
+    fi
+    
+    log_info "Clearing all documents from Vespa..."
+    
+    # Use Vespa's document API to clear all documents
+    # First, get a list of all documents
+    local search_response
+    search_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
+        -H "Content-Type: application/json" \
+        -d '{"yql": "select documentid from briefly_document", "hits": 1000, "ranking": "none"}')
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to query Vespa for documents"
+        exit 1
+    fi
+    
+    # Extract document IDs from the response
+    local document_ids
+    document_ids=$(echo "$search_response" | python3 -c "
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    children = data.get('root', {}).get('children', [])
+    for child in children:
+        doc_id = child.get('id', '')
+        if doc_id.startswith('id:briefly:briefly_document::'):
+            print(doc_id)
+except Exception as e:
+    print(f'Error parsing response: {e}', file=sys.stderr)
+    sys.exit(1)
+")
+    
+    if [[ -z "$document_ids" ]]; then
+        log_info "No documents found in Vespa"
+        return 0
+    fi
+    
+    local deleted_count=0
+    local error_count=0
+    
+    # Delete each document
+    while IFS= read -r doc_id; do
+        if [[ -n "$doc_id" ]]; then
+            log_info "Deleting document: $doc_id"
+            
+            local delete_response
+            delete_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/docid/$doc_id")
+            
+            if [[ $? -eq 0 ]] && [[ "$delete_response" == *'"pathId":"/document/v1/briefly/briefly_document/docid/'* ]]; then
+                ((deleted_count++))
+                log_success "Deleted: $doc_id"
+            else
+                ((error_count++))
+                log_error "Failed to delete: $doc_id"
+                log_debug "Response: $delete_response"
+            fi
+        fi
+    done <<< "$document_ids"
+    
+    log_success "Data clearing completed!"
+    log_info "Documents deleted: $deleted_count"
+    if [[ $error_count -gt 0 ]]; then
+        log_warning "Errors encountered: $error_count"
+    fi
+    
+    # Verify the data is cleared
+    log_info "Verifying data is cleared..."
+    local verify_response
+    verify_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
+        -H "Content-Type: application/json" \
+        -d '{"yql": "select documentid from briefly_document", "hits": 1, "ranking": "none"}')
+    
+    local remaining_count
+    remaining_count=$(echo "$verify_response" | python3 -c "
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    total_count = data.get('root', {}).get('fields', {}).get('totalCount', 0)
+    print(total_count)
+except Exception as e:
+    print('0')
+")
+    
+    if [[ "$remaining_count" == "0" ]]; then
+        log_success "✅ All data successfully cleared from Vespa"
+    else
+        log_warning "⚠️  Some data may remain. Total count: $remaining_count"
+    fi
+}
+
 # Show status
 show_status() {
     log_info "Vespa Services Status:"
@@ -474,6 +587,9 @@ case "${1:-}" in
         stop_vespa_services
         cleanup_vespa
         ;;
+    --clear-data)
+        clear_vespa_data
+        ;;
     --status)
         show_status
         ;;
@@ -492,6 +608,7 @@ case "${1:-}" in
         echo "  --deploy   Deploy the Briefly application to Vespa"
         echo "  --stop     Stop Vespa container"
         echo "  --cleanup  Stop and remove the Vespa container"
+        echo "  --clear-data Clear all data from Vespa (useful for testing)"
         echo "  --restart  Restart Vespa container"
         echo "  --status   Show current status"
         echo "  --help     Show this help message"
