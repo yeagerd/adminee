@@ -5,15 +5,15 @@ Backfill API endpoints for the office service
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query
 from typing import Dict, Any, Optional, List
-import logging
 from datetime import datetime, timedelta, timezone
 
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
 from services.office.models.backfill import BackfillRequest, BackfillResponse, BackfillStatus, BackfillStatusEnum
 from services.office.core.auth import verify_backfill_api_key
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 internal_router = APIRouter(prefix="/internal/backfill", tags=["internal-backfill"])
 
@@ -205,7 +205,13 @@ async def run_backfill_job(
         total_emails = await email_crawler.get_total_email_count()
         job.total_emails = total_emails
         
-        logger.info(f"Starting backfill job {job_id} for {total_emails} emails (max: {request.max_emails or 'unlimited'})")
+        logger.info(f"Starting backfill job {job_id} for {total_emails} emails (max: {request.max_emails or 'unlimited'})", extra={
+            "job_id": job_id,
+            "user_id": user_id,
+            "total_emails": total_emails,
+            "max_emails": request.max_emails,
+            "provider": request.provider
+        })
         
         # Process emails in batches
         batch_size = request.batch_size or 100
@@ -252,7 +258,14 @@ async def run_backfill_job(
         job.end_time = datetime.now(timezone.utc)
         job.progress = 100
         
-        logger.info(f"Completed backfill job {job_id}: {processed_count} emails processed")
+        logger.info(f"Completed backfill job {job_id}: {processed_count} emails processed", extra={
+            "job_id": job_id,
+            "user_id": user_id,
+            "processed_count": processed_count,
+            "total_emails": total_emails,
+            "failed_emails": job.failed_emails,
+            "provider": request.provider
+        })
         
     except Exception as e:
         logger.error(f"Backfill job {job_id} failed: {e}")

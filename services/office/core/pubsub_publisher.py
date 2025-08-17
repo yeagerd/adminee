@@ -5,7 +5,6 @@ Pub/Sub publisher for backfill data
 
 import asyncio
 import json
-import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 import uuid
@@ -17,9 +16,13 @@ try:
     PUBSUB_AVAILABLE = True
 except ImportError:
     PUBSUB_AVAILABLE = False
-    logging.warning("Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub")
+    from services.common.logging_config import get_logger
+    logger = get_logger(__name__)
+    logger.warning("Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub")
 
-logger = logging.getLogger(__name__)
+from services.common.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class PubSubPublisher:
     """Publishes data to Google Cloud Pub/Sub for backfill operations"""

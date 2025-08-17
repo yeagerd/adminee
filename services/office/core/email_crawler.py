@@ -4,12 +4,13 @@ Email crawling logic for backfill functionality
 """
 
 import asyncio
-import logging
 from typing import AsyncGenerator, List, Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
 import time
 
-logger = logging.getLogger(__name__)
+from services.common.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class EmailCrawler:
     """Crawls emails from email providers for backfill operations"""
@@ -97,7 +98,11 @@ class EmailCrawler:
         """Get email count from Microsoft Graph API"""
         # This would integrate with the existing Microsoft Graph client
         # For now, return a placeholder count
-        logger.info(f"Getting Microsoft email count for user {self.user_id}")
+        logger.info(f"Getting Microsoft email count for user {self.user_id}", extra={
+            "user_id": self.user_id,
+            "provider": self.provider,
+            "operation": "email_count"
+        })
         
         # Simulate API call delay
         await asyncio.sleep(0.1)
@@ -134,7 +139,14 @@ class EmailCrawler:
         resume_from: int
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Crawl emails from Microsoft Graph API"""
-        logger.info(f"Starting Microsoft email crawl for user {self.user_id}")
+        logger.info(f"Starting Microsoft email crawl for user {self.user_id}", extra={
+            "user_id": self.user_id,
+            "provider": self.provider,
+            "operation": "email_crawl",
+            "batch_size": batch_size,
+            "start_date": start_date,
+            "end_date": end_date
+        })
         
         # Calculate total batches
         total_emails = await self._get_microsoft_email_count()
