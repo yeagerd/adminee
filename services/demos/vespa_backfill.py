@@ -178,7 +178,7 @@ class VespaBackfillDemo:
             # Query to get total document count for this user
             user_query = {
                 "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
-                "hits": 0,  # We only want the count, not the actual documents
+                "hits": 1,  # Use 1 to ensure we get the totalCount field
                 "timeout": "5s"
             }
             
@@ -186,12 +186,14 @@ class VespaBackfillDemo:
             results = await self.search_engine.search(user_query)
             query_time = (time.time() - start_time) * 1000
             
+
+            
             total_documents = results.get("root", {}).get("fields", {}).get("totalCount", 0)
             
             # Get breakdown by source type
             source_type_query = {
                 "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
-                "hits": 0,
+                "hits": 1,
                 "timeout": "5s",
                 "grouping": "source_type"
             }
@@ -209,7 +211,7 @@ class VespaBackfillDemo:
             # Get breakdown by provider
             provider_query = {
                 "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
-                "hits": 0,
+                "hits": 1,
                 "timeout": "5s",
                 "grouping": "provider"
             }
