@@ -6,23 +6,23 @@
 set -e
 
 # Parse command line arguments
-SKIP_FRONTEND=false
+SKIP_FRONTEND=true
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --no-frontend)
-            SKIP_FRONTEND=true
+        --frontend)
+            SKIP_FRONTEND=false
             shift
             ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --no-frontend    Skip starting the frontend (useful for development)"
+            echo "  --frontend       Start the frontend along with backend services"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0               Start all services including frontend"
-            echo "  $0 --no-frontend Start backend services only, run frontend separately"
+            echo "  $0               Start backend services only, run frontend separately"
+            echo "  $0 --frontend    Start all services including frontend"
             exit 0
             ;;
         *)
@@ -39,6 +39,8 @@ cd "$(dirname "$0")/.."
 echo "🚀 Starting all Briefly services..."
 if [ "$SKIP_FRONTEND" = true ]; then
     echo "📱 Frontend will be skipped (backend services only)"
+else
+    echo "📱 Frontend will be started along with backend services"
 fi
 echo "📁 Working directory: $(pwd)"
 echo ""
@@ -295,7 +297,7 @@ echo -e "${BLUE}📋 Service Status:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
     echo -e "   Frontend:     ${GREEN}http://localhost:3000${NC}"
 else
-    echo -e "   Frontend:     ${YELLOW}Not started (use --no-frontend flag)${NC}"
+    echo -e "   Frontend:     ${YELLOW}Not started (use --frontend flag)${NC}"
 fi
 echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
 echo -e "   User Service: ${GREEN}http://localhost:8001${NC}"
