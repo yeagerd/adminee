@@ -151,7 +151,7 @@ class CalendarAgent(FunctionAgent):
                 f"CalendarAgent: Calling get_calendar_events - user_id: {user_id}, start_date: {start_date}, end_date: {end_date}, time_zone: {time_zone}, providers: {providers_list}"
             )
 
-            result = await get_calendar_events(
+            result = get_calendar_events(
                 user_id=user_id,
                 start_date=start_date,
                 end_date=end_date,

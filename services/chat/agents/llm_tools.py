@@ -104,7 +104,7 @@ def create_draft_calendar_change(thread_id: str, event_id: Optional[str] = None,
         existing_draft = _draft_storage.get(key, {})
         
         # Build change data, only including fields that are provided or already exist
-        change_data = {}
+        change_data: Dict[str, Any] = {}
         
         # Add fields that are provided or already exist
         if event_id is not None:
@@ -117,8 +117,8 @@ def create_draft_calendar_change(thread_id: str, event_id: Optional[str] = None,
         elif "change_type" in existing_draft:
             change_data["change_type"] = existing_draft["change_type"]
         
-        # Create a changes object to organize the actual changes
-        changes = {}
+        # Initialize changes dict with proper typing
+        changes: Dict[str, Any] = {}
         
         if new_title is not None:
             changes["title"] = new_title
@@ -136,14 +136,12 @@ def create_draft_calendar_change(thread_id: str, event_id: Optional[str] = None,
             changes["end_time"] = existing_draft["changes"]["end_time"]
             
         if new_attendees is not None:
-            # Parse attendees string into list of objects
-            if new_attendees.strip():
-                attendee_list = []
-                for email in new_attendees.split(','):
-                    email = email.strip()
-                    if email:
-                        attendee_list.append({"email": email, "name": email.split('@')[0]})
-                changes["attendees"] = attendee_list
+            attendee_list = []
+            for email in new_attendees.split(','):
+                email = email.strip()
+                if email:
+                    attendee_list.append({"email": email, "name": email.split('@')[0]})
+            changes["attendees"] = attendee_list
         elif "changes" in existing_draft and "attendees" in existing_draft["changes"]:
             changes["attendees"] = existing_draft["changes"]["attendees"]
             
@@ -1499,8 +1497,6 @@ class ToolRegistry:
                 from services.chat.agents.llm_tools import get_notes
                 result = get_notes(
                     user_id=user_id,
-                    start_date=kwargs.get("start_date"),
-                    end_date=kwargs.get("end_date"),
                     search_query=kwargs.get("search_query"),
                     max_results=kwargs.get("max_results")
                 )
