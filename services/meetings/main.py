@@ -51,7 +51,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Briefly Meetings Service",
     version="0.1.0",
-    description="Meeting scheduling and polling microservice for Briefly.",
+    description="Meeting scheduling and polling microservice for Briefly with availability checking and booking management",
+    contact={
+        "name": "Briefly Team",
+        "email": "support@briefly.ai",
+    },
+    license_info={
+        "name": "Private",
+    },
+    openapi_tags=[
+        {
+            "name": "polls",
+            "description": "Meeting poll creation and management"
+        },
+        {
+            "name": "slots",
+            "description": "Available time slots for meetings"
+        },
+        {
+            "name": "invitations",
+            "description": "Meeting invitation management"
+        },
+        {
+            "name": "public",
+            "description": "Public endpoints for poll participation"
+        },
+        {
+            "name": "email",
+            "description": "Email response processing for meetings"
+        },
+        {
+            "name": "bookings",
+            "description": "Meeting booking and scheduling"
+        }
+    ],
     lifespan=lifespan,
 )
 

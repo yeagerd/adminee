@@ -28,12 +28,12 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [ ] Verify OpenAPI schema generation is enabled
 
 ### Task 1.2: Enhance FastAPI App Configurations
-- [ ] Update `services/chat/main.py` with proper OpenAPI metadata
-- [ ] Update `services/meetings/main.py` with proper OpenAPI metadata  
-- [ ] Update `services/office/app/main.py` with proper OpenAPI metadata
-- [ ] Update `services/user/main.py` with proper OpenAPI metadata
-- [ ] Update `services/shipments/main.py` with proper OpenAPI metadata
-- [ ] Add OpenAPI tags and descriptions to all router endpoints
+- [x] Update `services/chat/main.py` with proper OpenAPI metadata
+- [x] Update `services/meetings/main.py` with proper OpenAPI metadata  
+- [x] Update `services/office/app/main.py` with proper OpenAPI metadata
+- [x] Update `services/user/main.py` with proper OpenAPI metadata
+- [x] Update `services/shipments/main.py` with proper OpenAPI metadata
+- [x] Add OpenAPI tags and descriptions to all router endpoints
 
 ### Task 1.3: Generate OpenAPI Schemas
 - [ ] Create script to generate OpenAPI schemas from all services

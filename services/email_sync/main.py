@@ -1,7 +1,7 @@
 """
-Shipments Service - FastAPI Application
+Briefly Email Sync Service - FastAPI Application
 
-Provides package shipment tracking, label management, and carrier integration.
+Provides email synchronization and processing capabilities.
 """
 
 from contextlib import asynccontextmanager
@@ -18,8 +18,6 @@ from services.common.logging_config import (
     log_service_startup,
     setup_service_logging,
 )
-from services.shipments.routers import api_router
-from services.shipments.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
 logger = get_logger(__name__)
@@ -28,30 +26,20 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup event logic
-    settings = get_settings()
-
-    # Set up centralized logging
-    setup_service_logging(
-        service_name="shipments",
-        log_level=settings.log_level,
-        log_format=settings.log_format,
-    )
-
     log_service_startup(
-        "shipments",
+        "email-sync",
         version="0.1.0",
-        environment=settings.environment,
-        debug=settings.debug,
+        environment="development",
     )
     yield
     # Shutdown event logic
-    log_service_shutdown("shipments")
+    log_service_shutdown("email-sync")
 
 
 app = FastAPI(
-    title="Briefly Shipments Service",
+    title="Briefly Email Sync Service",
     version="0.1.0",
-    description="Package shipment tracking microservice for Briefly with carrier integration and label management",
+    description="Email synchronization and processing microservice for Briefly",
     contact={
         "name": "Briefly Team",
         "email": "support@briefly.ai",
@@ -61,20 +49,16 @@ app = FastAPI(
     },
     openapi_tags=[
         {
-            "name": "packages",
-            "description": "Package management and tracking operations"
+            "name": "sync",
+            "description": "Email synchronization operations"
         },
         {
-            "name": "labels",
-            "description": "Shipping label generation and management"
+            "name": "processing",
+            "description": "Email processing and analysis"
         },
         {
-            "name": "carriers",
-            "description": "Carrier configuration and integration"
-        },
-        {
-            "name": "events",
-            "description": "Shipment event tracking and management"
+            "name": "health",
+            "description": "Health check and service status endpoints"
         }
     ],
     lifespan=lifespan,
@@ -95,10 +79,20 @@ app.middleware("http")(create_request_logging_middleware())
 # Register exception handlers
 register_briefly_exception_handlers(app)
 
-# Register routers with v1 prefix
-app.include_router(api_router, prefix="/v1")
+
+@app.get("/")
+def root() -> dict:
+    logger.info("Root endpoint accessed")
+    return {"message": "Welcome to the Briefly Email Sync Service"}
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "healthy", "service": "shipments", "version": "0.1.0"}
+    logger.info("Health check endpoint accessed")
+    return {"status": "ok", "service": "email-sync", "version": "0.1.0"}
+
+
+@app.get("/openapi.json")
+def get_openapi_schema():
+    """Return the OpenAPI schema for this service."""
+    return app.openapi()

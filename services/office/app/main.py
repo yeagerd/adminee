@@ -49,9 +49,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
 
 app = FastAPI(
-    title="Office Service",
-    description="A backend microservice responsible for all external API interactions with Google and Microsoft services",
+    title="Briefly Office Service",
+    description="Backend microservice for Google and Microsoft integrations including email, calendar, files, and contacts",
     version="0.1.0",
+    contact={
+        "name": "Briefly Team",
+        "email": "support@briefly.ai",
+    },
+    license_info={
+        "name": "Private",
+    },
+    openapi_tags=[
+        {
+            "name": "email",
+            "description": "Email operations including sending, receiving, and management"
+        },
+        {
+            "name": "calendar",
+            "description": "Calendar operations including events and availability"
+        },
+        {
+            "name": "files",
+            "description": "File operations including upload, download, and management"
+        },
+        {
+            "name": "contacts",
+            "description": "Contact management and operations"
+        }
+    ],
     debug=False,
     lifespan=lifespan,
 )

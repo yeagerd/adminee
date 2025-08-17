@@ -73,7 +73,33 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-app = FastAPI(title="Chat Service", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Briefly Chat Service",
+    description="AI-powered chat service with multi-agent workflow for draft management and conversation history",
+    version="0.1.0",
+    contact={
+        "name": "Briefly Team",
+        "email": "support@briefly.ai",
+    },
+    license_info={
+        "name": "Private",
+    },
+    openapi_tags=[
+        {
+            "name": "chat",
+            "description": "Chat operations including conversations, drafts, and AI interactions"
+        },
+        {
+            "name": "drafts",
+            "description": "Draft management for emails and calendar events"
+        },
+        {
+            "name": "health",
+            "description": "Health check and service status endpoints"
+        }
+    ],
+    lifespan=lifespan
+)
 
 # Add centralized request logging middleware
 app.middleware("http")(create_request_logging_middleware())
