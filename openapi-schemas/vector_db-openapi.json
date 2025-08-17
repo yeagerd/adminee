@@ -1,0 +1,88 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Briefly Vector Database Service",
+    "description": "Vector database operations and indexing microservice for Briefly",
+    "contact": {
+      "name": "Briefly Team",
+      "email": "support@briefly.ai"
+    },
+    "license": {
+      "name": "Private"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "Get Openapi Schema",
+        "description": "Return the OpenAPI schema for this service.",
+        "operationId": "get_openapi_schema_openapi_json_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "indexing",
+      "description": "Vector indexing operations"
+    },
+    {
+      "name": "search",
+      "description": "Vector search and similarity operations"
+    },
+    {
+      "name": "health",
+      "description": "Health check and service status endpoints"
+    }
+  ]
+}

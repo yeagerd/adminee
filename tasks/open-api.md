@@ -36,14 +36,14 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Add OpenAPI tags and descriptions to all router endpoints
 
 ### Task 1.3: Generate OpenAPI Schemas
-- [ ] Create script to generate OpenAPI schemas from all services
-- [ ] Generate schema for chat service: `/openapi.json`
-- [ ] Generate schema for meetings service: `/openapi.json`
-- [ ] Generate schema for office service: `/openapi.json`
-- [ ] Generate schema for user service: `/openapi.json`
-- [ ] Generate schema for shipments service: `/openapi.json`
-- [ ] Generate schema for email_sync service: `/openapi.json`
-- [ ] Generate schema for vector_db service: `/openapi.json`
+- [x] Create script to generate OpenAPI schemas from all services
+- [x] Generate schema for chat service: `/openapi.json`
+- [x] Generate schema for meetings service: `/openapi.json`
+- [x] Generate schema for office service: `/openapi.json`
+- [x] Generate schema for user service: `/openapi.json`
+- [x] Generate schema for shipments service: `/openapi.json`
+- [x] Generate schema for email_sync service: `/openapi.json`
+- [x] Generate schema for vector_db service: `/openapi.json`
 
 ### Task 1.4: Schema Validation & Testing
 - [ ] Validate all generated OpenAPI schemas against OpenAPI 3.0 spec
