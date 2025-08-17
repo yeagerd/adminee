@@ -8,7 +8,13 @@ import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-inpu
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToolState } from "@/contexts/tool-context";
 import { meetingsApi, officeApi } from "@/api";
-import type { MeetingPoll, PollParticipant } from "@/api/clients/meetings-client";
+import type { 
+    MeetingPoll, 
+    PollParticipant,
+    MeetingPollCreate,
+    TimeSlotCreate,
+    PollParticipantCreate
+} from "@/types/api/meetings";
 import { CalendarEvent } from "@/types/office-service";
 import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';

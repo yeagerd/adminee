@@ -1,5 +1,9 @@
 import { chatApi, officeApi } from '@/api';
-import type { DraftApiResponse } from '@/api/types/common';
+import type { 
+    UserDraftResponse, 
+    UserDraftListResponse,
+    UserDraftRequest 
+} from '@/types/api/chat';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 
 // Import DraftData types from chat interface
@@ -22,9 +26,9 @@ type DraftCalendarEvent = {
     title?: string;
     start_time?: string;
     end_time?: string;
-    attendees?: string;
     location?: string;
     description?: string;
+    attendees?: string[];
     thread_id: string;
     created_at: string;
     updated_at?: string;
@@ -88,7 +92,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: draftData.start_time,
             endTime: draftData.end_time,
             location: draftData.location,
-            attendees: draftData.attendees ? draftData.attendees.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [],
+            attendees: draftData.attendees || [],
         };
     } else if (draftData.type === 'calendar_change') {
         type = 'calendar';
@@ -98,7 +102,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: draftData.new_start_time,
             endTime: draftData.new_end_time,
             location: draftData.new_location,
-            attendees: draftData.new_attendees ? draftData.new_attendees.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [],
+            attendees: draftData.new_attendees || [],
         };
     } else {
         // For any unhandled types, preserve the original type instead of defaulting to 'email'
@@ -170,62 +174,39 @@ export interface UpdateEmailProviderDraftArgs {
 }
 
 // Data mapping utility
-export function mapDraftFromApi(apiDraft: DraftApiResponse): Draft {
-    const obj = apiDraft as DraftApiResponse;
+export function mapDraftFromApi(apiDraft: UserDraftResponse): Draft {
     return {
-        id: obj.id as string,
-        type: obj.type as DraftType,
-        status: obj.status as DraftStatus,
-        content: obj.content as string,
-        metadata: (obj.metadata as Record<string, unknown>) ?? {},
-        isAIGenerated: (obj.is_ai_generated as boolean | undefined) ?? false,
-        createdAt: obj.created_at as string,
-        updatedAt: obj.updated_at as string,
-        userId: obj.user_id as string,
-        threadId: obj.thread_id as string | undefined,
+        id: apiDraft.id,
+        type: apiDraft.type as DraftType,
+        status: apiDraft.status as DraftStatus,
+        content: apiDraft.content,
+        metadata: apiDraft.metadata ?? {},
+        isAIGenerated: false, // This field is not in the generated type, defaulting to false
+        createdAt: apiDraft.created_at,
+        updatedAt: apiDraft.updated_at,
+        userId: apiDraft.user_id,
+        threadId: apiDraft.thread_id ?? undefined,
     };
 }
 
 // Draft CRUD operations
 export async function createDraft(request: CreateDraftRequest): Promise<Draft> {
-    const data = await chatApi.createDraft({
-        type: request.type,
-        content: request.content,
-        metadata: request.metadata,
-        threadId: request.threadId,
-    });
-
-    return mapDraftFromApi(data as DraftApiResponse);
+    const data = await chatApi.createDraft(request);
+    return mapDraftFromApi(data);
 }
 
 export async function updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
-    const data = await chatApi.updateDraft(draftId, {
-        content: request.content,
-        metadata: request.metadata,
-        status: request.status,
-    });
-
-    return mapDraftFromApi(data as DraftApiResponse);
+    const data = await chatApi.updateDraft(draftId, request);
+    return mapDraftFromApi(data);
 }
 
-export async function deleteDraft(draftId: string): Promise<boolean> {
-    // Add logging to debug deletion logic
-    console.log('[DraftUtils] Attempting to delete draft:', draftId);
-    // Only call backend if draftId is an integer
-    if (/^\d+$/.test(draftId)) {
-        console.log('[DraftUtils] draftId is integer, calling backend to delete.');
-        await chatApi.deleteDraft(draftId);
-        return true;
-    } else {
-        console.log('[DraftUtils] draftId is not integer, treating as local/unsaved draft. No backend call.');
-        // Local/unsaved draft, just remove from UI/state
-        return true;
-    }
+export async function deleteDraft(draftId: string): Promise<void> {
+    await chatApi.deleteDraft(draftId);
 }
 
 export async function getDraft(draftId: string): Promise<Draft> {
     const data = await chatApi.getDraft(draftId);
-    return mapDraftFromApi(data as DraftApiResponse);
+    return mapDraftFromApi(data);
 }
 
 export async function listDrafts(filters?: { type?: DraftType; status?: DraftStatus; search?: string }): Promise<{
@@ -240,7 +221,7 @@ export async function listDrafts(filters?: { type?: DraftType; status?: DraftSta
     });
 
     return {
-        drafts: data.drafts.map((draft) => mapDraftFromApi(draft as DraftApiResponse)),
+        drafts: data.drafts.map((draft) => mapDraftFromApi(draft)),
         totalCount: data.total_count,
         hasMore: data.has_more,
     };

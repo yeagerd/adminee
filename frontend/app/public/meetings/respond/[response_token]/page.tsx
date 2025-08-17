@@ -1,43 +1,32 @@
 "use client";
-import { env } from '@/lib/env';
-import { Check, ChevronDown, ChevronUp, HelpCircle, X } from 'lucide-react';
+import { meetingsApi } from '@/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import type { 
+    MeetingPoll, 
+    PollParticipant, 
+    TimeSlot, 
+    PollResponseCreate 
+} from '@/types/api/meetings';
+import { ArrowLeft, Calendar, Clock, MapPin, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-type TimeSlot = {
-    id: string;
-    start_time: string;
-    end_time: string;
-    timezone: string;
-    is_available: boolean;
-};
-
-type Participant = {
-    id: string;
-    email: string;
-    name?: string;
-    status: string;
-    invited_at: string;
-    responded_at?: string;
+// Legacy types for backward compatibility - these should be removed once all components are updated
+type Participant = 
+    PollParticipant & {
     reminder_sent_count: number;
     response_token: string;
 };
 
-type Poll = {
-    title: string;
-    description?: string;
-    duration_minutes: number;
-    location?: string;
-    meeting_type: string;
-    reveal_participants?: boolean;
-    time_slots: TimeSlot[];
-    participants?: Participant[];
-};
+type Poll = MeetingPoll;
 
-type PollResponse = {
-    time_slot_id: string;
-    response: 'available' | 'unavailable' | 'maybe';
-    comment?: string
-};
+type PollResponse = PollResponseCreate;
 
 export default function PollResponsePage() {
     // next/navigation does not have router.query, so use URLSearchParams or params prop if available
@@ -56,13 +45,7 @@ export default function PollResponsePage() {
 
     useEffect(() => {
         if (!response_token) return;
-        fetch(`${env.GATEWAY_URL}/api/v1/public/polls/response/${response_token}`)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
-            })
+        meetingsApi.publicPolls.getPollResponse(response_token)
             .then(data => {
                 setPoll(data.poll);
                 // Initialize responses for all time slots
@@ -176,11 +159,7 @@ export default function PollResponsePage() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const res = await fetch(`${env.GATEWAY_URL}/api/v1/public/polls/response/${response_token}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ responses }),
-        });
+        const res = await meetingsApi.publicPolls.updatePollResponse(response_token, { responses });
         if (res.ok) {
             setSubmitted(true);
         } else {

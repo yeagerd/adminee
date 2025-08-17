@@ -17,16 +17,8 @@ import CalendarView from './views/calendar-view';
 import ContactsView from './views/contacts-view';
 import EmailView from './views/email-view';
 
-// Define MeetingPoll type for frontend use
-export interface MeetingPoll {
-    id: string;
-    title: string;
-    status: string;
-    created_at: string;
-    updated_at: string;
-    poll_token: string;
-    // Add other fields as needed from backend schema
-}
+// Import generated types from OpenAPI schema
+import type { MeetingPoll } from '@/types/api/meetings';
 
 export function ToolContent() {
     const {
