@@ -94,6 +94,10 @@ def create_draft_calendar_event(thread_id: str, title: Optional[str] = None, sta
 def create_draft_calendar_change(thread_id: str, event_id: Optional[str] = None, change_type: Optional[str] = None, new_title: Optional[str] = None, new_start_time: Optional[str] = None, new_end_time: Optional[str] = None, new_attendees: Optional[str] = None, new_location: Optional[str] = None, new_description: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
     """Create a draft calendar change for the given thread."""
     try:
+        # Validate required parameters
+        if not event_id or not event_id.strip():
+            return {"success": False, "message": "event_id is required"}
+        
         key = f"{thread_id}_calendar_edit"
         
         # Get existing draft if it exists
@@ -112,39 +116,67 @@ def create_draft_calendar_change(thread_id: str, event_id: Optional[str] = None,
             change_data["change_type"] = change_type
         elif "change_type" in existing_draft:
             change_data["change_type"] = existing_draft["change_type"]
-            
+        
+        # Create a changes object to organize the actual changes
+        changes = {}
+        
         if new_title is not None:
-            change_data["new_title"] = new_title
-        elif "new_title" in existing_draft:
-            change_data["new_title"] = existing_draft["new_title"]
+            changes["title"] = new_title
+        elif "changes" in existing_draft and "title" in existing_draft["changes"]:
+            changes["title"] = existing_draft["changes"]["title"]
             
         if new_start_time is not None:
-            change_data["new_start_time"] = new_start_time
-        elif "new_start_time" in existing_draft:
-            change_data["new_start_time"] = existing_draft["new_start_time"]
+            changes["start_time"] = new_start_time
+        elif "changes" in existing_draft and "start_time" in existing_draft["changes"]:
+            changes["start_time"] = existing_draft["changes"]["start_time"]
             
         if new_end_time is not None:
-            change_data["new_end_time"] = new_end_time
-        elif "new_end_time" in existing_draft:
-            change_data["new_end_time"] = existing_draft["new_end_time"]
+            changes["end_time"] = new_end_time
+        elif "changes" in existing_draft and "end_time" in existing_draft["changes"]:
+            changes["end_time"] = existing_draft["changes"]["end_time"]
             
         if new_attendees is not None:
-            change_data["new_attendees"] = new_attendees
-        elif "new_attendees" in existing_draft:
-            change_data["new_attendees"] = existing_draft["new_attendees"]
+            # Parse attendees string into list of objects
+            if new_attendees.strip():
+                attendee_list = []
+                for email in new_attendees.split(','):
+                    email = email.strip()
+                    if email:
+                        attendee_list.append({"email": email, "name": email.split('@')[0]})
+                changes["attendees"] = attendee_list
+        elif "changes" in existing_draft and "attendees" in existing_draft["changes"]:
+            changes["attendees"] = existing_draft["changes"]["attendees"]
             
         if new_location is not None:
-            change_data["new_location"] = new_location
-        elif "new_location" in existing_draft:
-            change_data["new_location"] = existing_draft["new_location"]
+            changes["location"] = new_location
+        elif "changes" in existing_draft and "location" in existing_draft["changes"]:
+            changes["location"] = existing_draft["changes"]["location"]
             
         if new_description is not None:
-            change_data["new_description"] = new_description
-        elif "new_description" in existing_draft:
-            change_data["new_description"] = existing_draft["new_description"]
+            changes["description"] = new_description
+        elif "changes" in existing_draft and "description" in existing_draft["changes"]:
+            changes["description"] = existing_draft["changes"]["description"]
         
-        # Add any additional kwargs
-        change_data.update(kwargs)
+        # Add any additional kwargs to changes if they're not already handled
+        for key_name, value in kwargs.items():
+            if key_name not in ["event_id", "change_type"] and value is not None:
+                changes[key_name] = value
+        
+        # Check if any new changes were actually provided (not just existing ones)
+        new_params_provided = any([
+            new_title is not None,
+            new_start_time is not None, 
+            new_end_time is not None,
+            new_attendees is not None,
+            new_location is not None,
+            new_description is not None
+        ])
+        
+        if not new_params_provided and not kwargs:
+            return {"success": False, "message": "No changes provided"}
+        
+        # Add the changes to the change data
+        change_data["changes"] = changes
         
         _draft_storage[key] = change_data
         logger.info(f"✏️ Created/updated calendar edit draft for thread {thread_id}")
@@ -190,7 +222,7 @@ def delete_draft_email(thread_id: str) -> Dict[str, Any]:
         if key in _draft_storage:
             del _draft_storage[key]
             logger.info(f"🗑️ Deleted email draft for thread {thread_id}")
-            return {"success": True, "deleted": True}
+            return {"success": True, "deleted": True, "message": "Email draft deleted successfully"}
         return {"success": True, "deleted": False, "message": "No email draft found"}
     except Exception as e:
         logger.error(f"Failed to delete email draft: {e}")
@@ -217,7 +249,7 @@ def delete_draft_calendar_edit(thread_id: str) -> Dict[str, Any]:
             del _draft_storage[key]
             logger.info(f"🗑️ Deleted calendar edit draft for thread {thread_id}")
             return {"success": True, "deleted": True, "message": "Calendar edit draft deleted successfully"}
-        return {"success": True, "deleted": False, "message": "No calendar edit draft found"}
+        return {"success": False, "message": "No calendar event edit draft found"}
     except Exception as e:
         logger.error(f"Failed to delete calendar edit draft: {e}")
         return {"success": False, "error": str(e)}
@@ -230,17 +262,31 @@ def clear_all_drafts(thread_id: str) -> Dict[str, Any]:
             key for key in _draft_storage.keys() if key.startswith(thread_prefix)
         ]
         
+        # Extract draft types from keys
+        cleared_drafts = []
+        for key in keys_to_remove:
+            if key.endswith("_email"):
+                cleared_drafts.append("email")
+            elif key.endswith("_calendar_event"):
+                cleared_drafts.append("calendar_event")
+            elif key.endswith("_calendar_edit"):
+                cleared_drafts.append("calendar_edit")
+            else:
+                # For any other draft types, extract the type
+                draft_type = key.replace(thread_prefix, "")
+                cleared_drafts.append(draft_type)
+        
         for key in keys_to_remove:
             del _draft_storage[key]
         
         logger.info(f"🗑️ Cleared {len(keys_to_remove)} drafts for thread {thread_id}")
-        return {"success": True, "cleared_count": len(keys_to_remove)}
+        return {"success": True, "cleared_count": len(keys_to_remove), "cleared_drafts": cleared_drafts}
     except Exception as e:
         logger.error(f"Failed to clear drafts: {e}")
         return {"success": False, "error": str(e)}
 
 # Document and note retrieval functions
-async def get_documents(
+def get_documents(
     user_id: str,
     document_type: Optional[str] = None,
     start_date: Optional[str] = None,
@@ -264,12 +310,47 @@ async def get_documents(
     """
     try:
         # Import here to avoid circular imports
-        from services.chat.service_client import ServiceClient
+        import requests
         from services.chat.settings import get_settings
         
-        # Create service client
+        # Get settings
         settings = get_settings()
-        client = ServiceClient()
+        
+        # First, check if user has document integrations
+        try:
+            integrations_response = requests.get(
+                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
+                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
+                timeout=10
+            )
+            
+            if integrations_response.status_code != 200:
+                return {
+                    "status": "error",
+                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
+                    "user_id": user_id
+                }
+            
+            integrations_data = integrations_response.json()
+            document_integrations = [
+                integration for integration in integrations_data.get("integrations", [])
+                if "documents" in integration.get("scopes", [])
+            ]
+            
+            if not document_integrations:
+                return {
+                    "status": "error",
+                    "error": "No document integrations found for user",
+                    "user_id": user_id
+                }
+                
+        except Exception as e:
+            logger.error(f"Error checking user integrations: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to check user integrations: {str(e)}",
+                "user_id": user_id
+            }
         
         # Build query parameters
         params: Dict[str, Any] = {
@@ -288,19 +369,37 @@ async def get_documents(
             params["limit"] = str(max_results)
         
         # Make request to office service
-        async with client as http_client:
-            response = await http_client.http_client.get(
+        try:
+            response = requests.get(
                 f"{settings.office_service_url}/v1/documents",
                 params=params,
-                headers=client._get_headers_for_service("office")
+                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
+                timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
+                
+                # Validate response structure
+                if "data" not in data:
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: missing 'data' field",
+                        "user_id": user_id
+                    }
+                
+                documents = data.get("data", {}).get("files", [])
+                if not isinstance(documents, list):
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: 'files' field is not a list",
+                        "user_id": user_id
+                    }
+                
                 return {
                     "status": "success",
-                    "documents": data.get("data", []),
-                    "total_count": len(data.get("data", [])),
+                    "documents": documents,
+                    "total_count": len(documents),
                     "user_id": user_id,
                     "query_params": params
                 }
@@ -311,6 +410,28 @@ async def get_documents(
                     "error": f"HTTP {response.status_code}: {response.text}",
                     "user_id": user_id
                 }
+                
+        except requests.Timeout:
+            logger.error("Document request timed out")
+            return {
+                "status": "error",
+                "error": "Request timed out",
+                "user_id": user_id
+            }
+        except requests.HTTPError:
+            logger.error("Document request failed with HTTP error")
+            return {
+                "status": "error",
+                "error": "HTTP error occurred",
+                "user_id": user_id
+            }
+        except Exception as e:
+            logger.error(f"Error making document request: {e}")
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}",
+                "user_id": user_id
+            }
             
     except Exception as e:
         logger.error(f"Error getting documents for user {user_id}: {e}")
@@ -320,7 +441,7 @@ async def get_documents(
             "user_id": user_id
         }
 
-async def get_notes(
+def get_notes(
     user_id: str,
     notebook: Optional[str] = None,
     tags: Optional[str] = None,
@@ -342,12 +463,47 @@ async def get_notes(
     """
     try:
         # Import here to avoid circular imports
-        from services.chat.service_client import ServiceClient
+        import requests
         from services.chat.settings import get_settings
         
-        # Create service client
+        # Get settings
         settings = get_settings()
-        client = ServiceClient()
+        
+        # First, check if user has note integrations
+        try:
+            integrations_response = requests.get(
+                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
+                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
+                timeout=10
+            )
+            
+            if integrations_response.status_code != 200:
+                return {
+                    "status": "error",
+                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
+                    "user_id": user_id
+                }
+            
+            integrations_data = integrations_response.json()
+            note_integrations = [
+                integration for integration in integrations_data.get("integrations", [])
+                if "notes" in integration.get("scopes", [])
+            ]
+            
+            if not note_integrations:
+                return {
+                    "status": "error",
+                    "error": "No note integrations found for user",
+                    "user_id": user_id
+                }
+                
+        except Exception as e:
+            logger.error(f"Error checking user integrations: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to check user integrations: {str(e)}",
+                "user_id": user_id
+            }
         
         # Build query parameters
         params: Dict[str, Any] = {
@@ -364,19 +520,37 @@ async def get_notes(
             params["limit"] = str(max_results)
         
         # Make request to office service
-        async with client as http_client:
-            response = await http_client.http_client.get(
+        try:
+            response = requests.get(
                 f"{settings.office_service_url}/v1/notes",
                 params=params,
-                headers=client._get_headers_for_service("office")
+                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
+                timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
+                
+                # Validate response structure
+                if "data" not in data:
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: missing 'data' field",
+                        "user_id": user_id
+                    }
+                
+                notes = data.get("data", {}).get("notes", [])
+                if not isinstance(notes, list):
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: 'notes' field is not a list",
+                        "user_id": user_id
+                    }
+                
                 return {
                     "status": "success",
-                    "notes": data.get("data", []),
-                    "total_count": len(data.get("data", [])),
+                    "notes": notes,
+                    "total_count": len(notes),
                     "user_id": user_id,
                     "query_params": params
                 }
@@ -387,6 +561,28 @@ async def get_notes(
                     "error": f"HTTP {response.status_code}: {response.text}",
                     "user_id": user_id
                 }
+                
+        except requests.Timeout:
+            logger.error("Note request timed out")
+            return {
+                "status": "error",
+                "error": "Request timed out",
+                "user_id": user_id
+            }
+        except requests.HTTPError:
+            logger.error("Note request failed with HTTP error")
+            return {
+                "status": "error",
+                "error": "HTTP error occurred",
+                "user_id": user_id
+            }
+        except Exception as e:
+            logger.error(f"Error making note request: {e}")
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}",
+                "user_id": user_id
+            }
             
     except Exception as e:
         logger.error(f"Error getting notes for user {user_id}: {e}")
@@ -762,7 +958,7 @@ def register_vespa_tools(chat_service: ServiceClient, vespa_endpoint: str, user_
     logger.info(f"Vespa search tools created for user {user_id} (registration handled by caller)")
 
 
-async def get_calendar_events(
+def get_calendar_events(
     user_id: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -786,12 +982,47 @@ async def get_calendar_events(
     """
     try:
         # Import here to avoid circular imports
-        from services.chat.service_client import ServiceClient
+        import requests
         from services.chat.settings import get_settings
         
-        # Create service client
+        # Get settings
         settings = get_settings()
-        client = ServiceClient()
+        
+        # First, check if user has calendar integrations
+        try:
+            integrations_response = requests.get(
+                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
+                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
+                timeout=10
+            )
+            
+            if integrations_response.status_code != 200:
+                return {
+                    "status": "error",
+                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
+                    "user_id": user_id
+                }
+            
+            integrations_data = integrations_response.json()
+            calendar_integrations = [
+                integration for integration in integrations_data.get("integrations", [])
+                if "calendar" in integration.get("scopes", [])
+            ]
+            
+            if not calendar_integrations:
+                return {
+                    "status": "error",
+                    "error": "No calendar integrations found for user",
+                    "user_id": user_id
+                }
+                
+        except Exception as e:
+            logger.error(f"Error checking user integrations: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to check user integrations: {str(e)}",
+                "user_id": user_id
+            }
         
         # Build query parameters
         params: Dict[str, Any] = {
@@ -809,19 +1040,110 @@ async def get_calendar_events(
             params["providers"] = ",".join(providers)
         
         # Make request to office service
-        async with client as http_client:
-            response = await http_client.http_client.get(
+        try:
+            response = requests.get(
                 f"{settings.office_service_url}/v1/calendar/events",
                 params=params,
-                headers=client._get_headers_for_service("office")
+                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
+                timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
+                
+                # Validate response structure
+                if "data" not in data:
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: missing 'data' field",
+                        "user_id": user_id
+                    }
+                
+                events = data.get("data", {}).get("events", [])
+                if not isinstance(events, list):
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: 'events' field is not a list",
+                        "user_id": user_id
+                    }
+                
+                # Validate individual events have required fields
+                for i, event in enumerate(events):
+                    # Check for required fields
+                    if hasattr(event, 'id'):
+                        # CalendarEvent object
+                        if not event.id:
+                            return {
+                                "status": "error",
+                                "error": f"Validation error: event {i} missing required field: id",
+                                "user_id": user_id
+                            }
+                        # Check for other required fields in CalendarEvent objects
+                        if not hasattr(event, 'start_time') or not hasattr(event, 'end_time'):
+                            return {
+                                "status": "error",
+                                "error": f"Validation error: event {i} missing required fields: start_time, end_time",
+                                "user_id": user_id
+                            }
+                    elif isinstance(event, dict):
+                        # Dictionary
+                        required_fields = ["id", "start_time", "end_time"]
+                        missing_fields = [field for field in required_fields if field not in event]
+                        if missing_fields:
+                            return {
+                                "status": "error",
+                                "error": f"Validation error: event {i} missing required fields: {', '.join(missing_fields)}",
+                                "user_id": user_id
+                            }
+                    else:
+                        # Neither CalendarEvent object nor dictionary
+                        return {
+                            "status": "error",
+                            "error": f"Malformed response: event {i} is neither a CalendarEvent object nor a dictionary",
+                            "user_id": user_id
+                        }
+                
+                # Convert CalendarEvent objects to dictionaries if they are objects
+                events_list = []
+                for event in events:
+                    if hasattr(event, '__dict__'):
+                        # Convert object to dictionary
+                        event_dict = {}
+                        for key, value in event.__dict__.items():
+                            if not key.startswith('_'):
+                                event_dict[key] = value
+                        
+                        # Add display_time field if timezone is provided
+                        if time_zone and time_zone != "UTC" and hasattr(event, 'start_time') and hasattr(event, 'end_time'):
+                            try:
+                                start_time_str = event.start_time.isoformat() if hasattr(event.start_time, 'isoformat') else str(event.start_time)
+                                end_time_str = event.end_time.isoformat() if hasattr(event.end_time, 'isoformat') else str(event.end_time)
+                                event_dict['display_time'] = format_event_time_for_display(start_time_str, end_time_str, time_zone)
+                            except Exception as e:
+                                logger.warning(f"Failed to format display_time for event {event.id}: {e}")
+                                event_dict['display_time'] = f"{start_time_str} to {end_time_str}"
+                        
+                        events_list.append(event_dict)
+                    else:
+                        # Handle dictionary events
+                        event_dict = event.copy()
+                        
+                        # Add display_time field if timezone is provided
+                        if time_zone and time_zone != "UTC" and "start_time" in event and "end_time" in event:
+                            try:
+                                start_time_str = str(event["start_time"])
+                                end_time_str = str(event["end_time"])
+                                event_dict['display_time'] = format_event_time_for_display(start_time_str, end_time_str, time_zone)
+                            except Exception as e:
+                                logger.warning(f"Failed to format display_time for event {event.get('id', 'unknown')}: {e}")
+                                event_dict['display_time'] = f"{start_time_str} to {end_time_str}"
+                        
+                        events_list.append(event_dict)
+                
                 return {
                     "status": "success",
-                    "events": data.get("data", []),
-                    "total_count": len(data.get("data", [])),
+                    "events": events_list,
+                    "total_count": len(events_list),
                     "user_id": user_id,
                     "query_params": params
                 }
@@ -832,6 +1154,28 @@ async def get_calendar_events(
                     "error": f"HTTP {response.status_code}: {response.text}",
                     "user_id": user_id
                 }
+                
+        except requests.Timeout:
+            logger.error("Calendar request timed out")
+            return {
+                "status": "error",
+                "error": "Request timed out",
+                "user_id": user_id
+            }
+        except requests.HTTPError:
+            logger.error("Calendar request failed with HTTP error")
+            return {
+                "status": "error",
+                "error": "HTTP error occurred",
+                "user_id": user_id
+            }
+        except Exception as e:
+            logger.error(f"Error making calendar request: {e}")
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}",
+                "user_id": user_id
+            }
             
     except Exception as e:
         logger.error(f"Error getting calendar events for user {user_id}: {e}")
@@ -842,7 +1186,7 @@ async def get_calendar_events(
         }
 
 # Email retrieval function
-async def get_emails(
+def get_emails(
     user_id: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -868,12 +1212,47 @@ async def get_emails(
     """
     try:
         # Import here to avoid circular imports
-        from services.chat.service_client import ServiceClient
+        import requests
         from services.chat.settings import get_settings
         
-        # Create service client
+        # Get settings
         settings = get_settings()
-        client = ServiceClient()
+        
+        # First, check if user has email integrations
+        try:
+            integrations_response = requests.get(
+                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
+                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
+                timeout=10
+            )
+            
+            if integrations_response.status_code != 200:
+                return {
+                    "status": "error",
+                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
+                    "user_id": user_id
+                }
+            
+            integrations_data = integrations_response.json()
+            email_integrations = [
+                integration for integration in integrations_data.get("integrations", [])
+                if "email" in integration.get("scopes", [])
+            ]
+            
+            if not email_integrations:
+                return {
+                    "status": "error",
+                    "error": "No email integrations found for user",
+                    "user_id": user_id
+                }
+                
+        except Exception as e:
+            logger.error(f"Error checking user integrations: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to check user integrations: {str(e)}",
+                "user_id": user_id
+            }
         
         # Build query parameters
         params: Dict[str, Any] = {
@@ -894,19 +1273,43 @@ async def get_emails(
             params["limit"] = str(max_results)
         
         # Make request to office service
-        async with client as http_client:
-            response = await http_client.http_client.get(
+        try:
+            response = requests.get(
                 f"{settings.office_service_url}/v1/emails",
                 params=params,
-                headers=client._get_headers_for_service("office")
+                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
+                timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
+                
+                # Validate response structure
+                if "data" not in data:
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: missing 'data' field",
+                        "user_id": user_id
+                    }
+                
+                emails = data.get("data", {}).get("emails", [])
+                if "emails" not in data.get("data", {}):
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: missing 'emails' field",
+                        "user_id": user_id
+                    }
+                if not isinstance(emails, list):
+                    return {
+                        "status": "error",
+                        "error": "Malformed response: 'emails' field is not a list",
+                        "user_id": user_id
+                    }
+                
                 return {
                     "status": "success",
-                    "emails": data.get("data", []),
-                    "total_count": len(data.get("data", [])),
+                    "emails": emails,
+                    "total_count": len(emails),
                     "user_id": user_id,
                     "query_params": params
                 }
@@ -917,6 +1320,28 @@ async def get_emails(
                     "error": f"HTTP {response.status_code}: {response.text}",
                     "user_id": user_id
                 }
+                
+        except requests.Timeout:
+            logger.error("Email request timed out")
+            return {
+                "status": "error",
+                "error": "Request timed out",
+                "user_id": user_id
+            }
+        except requests.HTTPError:
+            logger.error("Email request failed with HTTP error")
+            return {
+                "status": "error",
+                "error": "HTTP error occurred",
+                "user_id": user_id
+            }
+        except Exception as e:
+            logger.error(f"Error making email request: {e}")
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}",
+                "user_id": user_id
+            }
             
     except Exception as e:
         logger.error(f"Error getting emails for user {user_id}: {e}")
@@ -933,7 +1358,7 @@ class ToolRegistry:
     def __init__(self) -> None:
         pass
     
-    async def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
+    def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
         """Execute a tool by name with the given arguments."""
         try:
             if tool_name == "get_calendar_events":
@@ -943,7 +1368,7 @@ class ToolRegistry:
                 
                 # Import here to avoid circular imports
                 from services.chat.agents.llm_tools import get_calendar_events
-                result = await get_calendar_events(
+                result = get_calendar_events(
                     user_id=user_id,
                     start_date=kwargs.get("start_date"),
                     end_date=kwargs.get("end_date"),
@@ -951,6 +1376,7 @@ class ToolRegistry:
                     providers=kwargs.get("providers"),
                     limit=kwargs.get("limit", 50)
                 )
+                
                 return type('ToolOutput', (), {'raw_output': result})()
                 
             elif tool_name == "get_emails":
@@ -960,7 +1386,7 @@ class ToolRegistry:
                 
                 # Import here to avoid circular imports
                 from services.chat.agents.llm_tools import get_emails
-                result = await get_emails(
+                result = get_emails(
                     user_id=user_id,
                     start_date=kwargs.get("start_date"),
                     end_date=kwargs.get("end_date"),
@@ -969,6 +1395,42 @@ class ToolRegistry:
                     search_query=kwargs.get("search_query"),
                     max_results=kwargs.get("max_results")
                 )
+                
+                return type('ToolOutput', (), {'raw_output': result})()
+                
+            elif tool_name == "get_notes":
+                user_id = kwargs.get("user_id")
+                if not user_id:
+                    return type('ToolOutput', (), {'raw_output': {"error": "user_id is required"}})()
+                
+                # Import here to avoid circular imports
+                from services.chat.agents.llm_tools import get_notes
+                result = get_notes(
+                    user_id=user_id,
+                    start_date=kwargs.get("start_date"),
+                    end_date=kwargs.get("end_date"),
+                    search_query=kwargs.get("search_query"),
+                    max_results=kwargs.get("max_results")
+                )
+                
+                return type('ToolOutput', (), {'raw_output': result})()
+                
+            elif tool_name == "get_documents":
+                user_id = kwargs.get("user_id")
+                if not user_id:
+                    return type('ToolOutput', (), {'raw_output': {"error": "user_id is required"}})()
+                
+                # Import here to avoid circular imports
+                from services.chat.agents.llm_tools import get_documents
+                result = get_documents(
+                    user_id=user_id,
+                    document_type=kwargs.get("document_type"),
+                    start_date=kwargs.get("start_date"),
+                    end_date=kwargs.get("end_date"),
+                    search_query=kwargs.get("search_query"),
+                    max_results=kwargs.get("max_results")
+                )
+                
                 return type('ToolOutput', (), {'raw_output': result})()
                 
             else:
