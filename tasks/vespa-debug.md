@@ -296,20 +296,6 @@ id:briefly:briefly_document::id:briefly:briefly_document::ms_9
 - [ ] Graceful fallback when streaming parameters are missing
 - [ ] Clear documentation of streaming mode requirements
 
-### 3. Performance Optimization - LOW PRIORITY
-- [ ] Optimize streaming search queries for large datasets
-- [ ] Consider batch operations for document management
-- [ ] Monitor memory usage with streaming mode
-
-### 4. Production Readiness - MEDIUM PRIORITY
-- [ ] Validate streaming mode works with production data volumes
-- [ ] Test user isolation under load
-- [ ] Document deployment procedures for streaming mode
-
-### 5. Monitoring & Alerting - LOW PRIORITY
-- [ ] Add alerts for user isolation failures
-- [ ] Monitor document ID corruption
-- [ ] Track streaming mode performance metrics
 
 ### 6. REAL DATA INTEGRATION - HIGH PRIORITY 🚨
 - [ ] **Replace mock data generation with real Microsoft Graph API integration**
