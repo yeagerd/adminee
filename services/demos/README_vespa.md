@@ -2,6 +2,40 @@
 
 This directory contains comprehensive demonstration services for the Vespa-powered hybrid search system. These demos showcase end-to-end functionality including data ingestion, indexing, search capabilities, and chat integration.
 
+## 🚀 Recent Updates: Script Consolidation
+
+**All Vespa management scripts have been consolidated into a single `./scripts/vespa.sh` script!**
+
+Previously, you had to manage three separate scripts:
+- ~~`deploy-vespa.sh`~~ → Now `./scripts/vespa.sh --deploy`
+- ~~`local_vespa.sh`~~ → Now `./scripts/vespa.sh --start`
+- ~~`start-vespa-local.sh`~~ → Now `./scripts/vespa.sh --start`
+
+**Benefits of consolidation:**
+- ✅ **Single source of truth** for all Vespa operations
+- ✅ **Proper Briefly configuration** deployment
+- ✅ **Better error handling** and user feedback
+- ✅ **Comprehensive service management** in one place
+- ✅ **Real-time deployment monitoring** with live logs
+
+**Quick Reference:**
+```bash
+# Check status and auto-start if needed
+./scripts/vespa.sh
+
+# Start all services
+./scripts/vespa.sh --start
+
+# Deploy Briefly application
+./scripts/vespa.sh --deploy
+
+# Show status
+./scripts/vespa.sh --status
+
+# Stop everything
+./scripts/vespa.sh --stop
+```
+
 ## Overview
 
 The Vespa demo services provide:
@@ -240,38 +274,58 @@ DEMO_PROVIDERS=microsoft,google
 
 ## Starting Backend Services
 
-### Option 1: Use the Management Scripts (Recommended)
+### Option 1: Use the Consolidated Management Script (Recommended)
 
-The `local_vespa.sh` script manages the core Vespa services:
+The new `./scripts/vespa.sh` script consolidates all Vespa management functionality that was previously spread across multiple scripts:
+
+**What it manages:**
+- ✅ **Vespa Container**: Docker container running Vespa engine
+- ✅ **Briefly Application**: Deploys your Vespa configuration from `vespa/` directory
+- ✅ **Python Services**: Vespa Loader Service (port 9001) and Query Service (port 9002)
+
+**Key benefits:**
+- 🚀 **Single command**: One script to manage everything
+- 🔍 **Smart health checks**: Automatically starts services if they're down
+- 📦 **Briefly deployment**: Properly deploys your `vespa/services.xml`, `vespa/hosts.xml`, and `vespa/schemas/` configuration
+- 📊 **Real-time monitoring**: Live log monitoring during deployment
+- 🛠️ **Comprehensive management**: Start, stop, deploy, status, restart, cleanup operations
+
+The `vespa.sh` script manages all Vespa services in one place:
 
 ```bash
 # Start all Vespa services (Vespa Engine, Loader Service, Query Service)
-./scripts/local_vespa.sh
+./scripts/vespa.sh --start
 
 # Check status
-./scripts/local_vespa.sh --status
+./scripts/vespa.sh --status
 
 # Stop all services
-./scripts/local_vespa.sh --stop
+./scripts/vespa.sh --stop
 
 # Clean up container
-./scripts/local_vespa.sh --cleanup
+./scripts/vespa.sh --cleanup
+
+# Restart all services
+./scripts/vespa.sh --restart
+
+# Deploy Briefly application to Vespa
+./scripts/vespa.sh --deploy
 ```
 
-**Note**: The Pub/Sub emulator is managed separately by `scripts/local_pubsub.sh` to avoid conflicts and provide better isolation.
+**Note**: The Pub/Sub emulator is managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
 
 ### Option 2: Legacy Python Script (Deprecated)
 
-⚠️ **DEPRECATED**: The `vespa_be.py` script is deprecated in favor of `local_vespa.sh`:
+⚠️ **DEPRECATED**: The `vespa_be.py` script is deprecated in favor of `./scripts/vespa.sh`:
 
 ```bash
-# DEPRECATED - Use local_vespa.sh instead
+# DEPRECATED - Use ./scripts/vespa.sh --start instead
 python services/demos/vespa_be.py
 
-# DEPRECATED - Use local_vespa.sh --status instead
+# DEPRECATED - Use ./scripts/vespa.sh --status instead
 python services/demos/vespa_be.py --status
 
-# DEPRECATED - Use local_vespa.sh --stop instead
+# DEPRECATED - Use ./scripts/vespa.sh --stop instead
 python services/demos/vespa_be.py --stop
 ```
 

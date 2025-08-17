@@ -32,7 +32,7 @@ This document provides a step-by-step checklist to implement a Vespa-powered dem
 - `vespa/schemas/briefly_document.sd` - Main document schema
 - `vespa/services.xml` - Vespa service configuration
 - `vespa/hosts.xml` - Host configuration for local setup
-- `scripts/start-vespa-local.sh` - Vespa startup script
+- `scripts/vespa.sh` - Consolidated Vespa management script
 
 ### 1.2 Create Office Router Service
 **Goal**: Central routing service for office (eg. email) data distribution
