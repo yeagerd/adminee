@@ -156,7 +156,7 @@ class VespaSearchDemo:
             },
         ]
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Clean up resources and close aiohttp sessions"""
         try:
             logger.info("Cleaning up resources...")
@@ -182,11 +182,11 @@ class VespaSearchDemo:
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "VespaSearchDemo":
         """Async context manager entry"""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
         """Async context manager exit with cleanup"""
         await self.cleanup()
 
@@ -195,7 +195,7 @@ class VespaSearchDemo:
         logger.info("Starting Vespa search capabilities demo...")
 
         demo_start = time.time()
-        demo_results = {
+        demo_results: Dict[str, Any] = {
             "start_time": datetime.now(timezone.utc).isoformat(),
             "search_scenarios": [],
             "advanced_scenarios": [],
@@ -419,7 +419,7 @@ class VespaSearchDemo:
 
     def _assess_search_quality(self, demo_results: Dict[str, Any]) -> Dict[str, Any]:
         """Assess the quality of search results"""
-        quality_metrics = {
+        quality_metrics: Dict[str, Any] = {
             "overall_success_rate": 0.0,
             "scenario_success_rates": {},
             "response_time_distribution": {},
@@ -540,7 +540,7 @@ class VespaSearchDemo:
                 "success": False,
             }
 
-    def print_query_results(self, results: Dict[str, Any]):
+    def print_query_results(self, results: Dict[str, Any]) -> None:
         """Print query results in a detailed, well-formatted way for frontend and LLM use cases"""
         print(f"\n{'='*80}")
         print(f"🔍 SEARCH RESULTS: '{results['query']}'")
@@ -708,7 +708,7 @@ class VespaSearchDemo:
         }
         return emoji_map.get(result_type.lower(), "📄")
 
-    def _format_timestamp(self, timestamp) -> str:
+    def _format_timestamp(self, timestamp: Any) -> str:
         """Format timestamp for display"""
         try:
             if isinstance(timestamp, (int, float)):
@@ -723,7 +723,7 @@ class VespaSearchDemo:
 
     def _get_content_type_summary(self, results: List[Dict[str, Any]]) -> str:
         """Get summary of content types in results"""
-        type_counts = {}
+        type_counts: Dict[str, int] = {}
         for result in results:
             result_type = result.get("type", "Unknown")
             type_counts[result_type] = type_counts.get(result_type, 0) + 1
@@ -823,7 +823,7 @@ class VespaSearchDemo:
         if not results:
             return "No results"
 
-        method_counts = {}
+        method_counts: Dict[str, int] = {}
         for result in results:
             method = result.get("search_method", "Unknown")
             method_counts[method] = method_counts.get(method, 0) + 1
@@ -915,7 +915,7 @@ class VespaSearchDemo:
         else:
             return "Limited - Low-quality content, consider refining search or enhancing data"
 
-    async def dump_all_user_content(self):
+    async def dump_all_user_content(self) -> None:
         """Dump all content stored in Vespa for the current user"""
         try:
             print(f"\n{'='*80}")
@@ -979,7 +979,7 @@ class VespaSearchDemo:
                 return
 
             # Group documents by type
-            docs_by_type = {}
+            docs_by_type: Dict[str, List[Dict[str, Any]]] = {}
             for child in all_documents:
                 fields = child.get("fields", {})
                 doc_type = fields.get("source_type", "unknown")
@@ -1106,7 +1106,7 @@ class VespaSearchDemo:
         finally:
             await self.search_engine.close()
 
-    async def run_interactive_mode(self):
+    async def run_interactive_mode(self) -> None:
         """Run interactive search mode"""
         print("\n" + "=" * 60)
         print("VESPA INTERACTIVE SEARCH MODE")
@@ -1313,7 +1313,7 @@ class VespaSearchDemo:
             logger.error(f"Error getting stats for user {user_email}: {e}")
             return {"user_email": user_email, "error": str(e)}
 
-    def print_user_stats(self, stats: Dict[str, Any]):
+    def print_user_stats(self, stats: Dict[str, Any]) -> None:
         """Print user statistics in a formatted way"""
         print(f"\n{'='*60}")
         print(f"USER STATISTICS: {stats['user_email']}")
@@ -1346,7 +1346,7 @@ class VespaSearchDemo:
 
         print(f"{'='*60}")
 
-    def print_all_users_stats(self, stats: Dict[str, Any]):
+    def print_all_users_stats(self, stats: Dict[str, Any]) -> None:
         """Print statistics for all users"""
         print(f"{'='*60}")
         print("ALL USERS STATISTICS")
@@ -1417,7 +1417,7 @@ class VespaSearchDemo:
         print(f"{'='*60}")
 
 
-async def main():
+async def main() -> Optional[Dict[str, Any]]:
     """Main function for running the Vespa search demo"""
     import argparse
 

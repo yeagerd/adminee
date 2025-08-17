@@ -40,7 +40,7 @@ class VespaChatDemo:
         )
 
         # Demo conversation scenarios
-        self.conversation_scenarios = [
+        self.conversation_scenarios: List[Dict[str, Any]] = [
             {
                 "name": "Cross-Platform Email Search",
                 "user_query": "Quarterly planning doc and invites from last month",
@@ -83,7 +83,7 @@ class VespaChatDemo:
             },
         ]
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Clean up resources and close aiohttp sessions"""
         try:
             logger.info("Cleaning up resources...")
@@ -105,11 +105,11 @@ class VespaChatDemo:
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "VespaChatDemo":
         """Async context manager entry"""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
         """Async context manager exit with cleanup"""
         await self.cleanup()
 
@@ -118,7 +118,7 @@ class VespaChatDemo:
         logger.info("Starting Vespa-powered chat demo...")
 
         demo_start = time.time()
-        demo_results = {
+        demo_results: Dict[str, Any] = {
             "start_time": datetime.now(timezone.utc).isoformat(),
             "conversation_scenarios": [],
             "performance_metrics": {},
@@ -446,7 +446,7 @@ class VespaChatDemo:
         follow_up: str,
     ) -> Dict[str, Any]:
         """Enhance follow-up results with context from initial search"""
-        enhanced = {
+        enhanced: Dict[str, Any] = {
             "follow_up": follow_up,
             "semantic_results": semantic_results,
             "context_integration": {},
@@ -499,7 +499,7 @@ class VespaChatDemo:
         self, semantic_results: Dict[str, Any], initial_search: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """Improve relevance of follow-up results using initial search context"""
-        improved_results = []
+        improved_results: List[Dict[str, Any]] = []
 
         if semantic_results.get("status") != "success":
             return improved_results
@@ -745,7 +745,7 @@ class VespaChatDemo:
                 return "No results found for your query."
 
             # Group results by type
-            result_types = {}
+            result_types: Dict[str, List[Dict[str, Any]]] = {}
             for result in results:
                 result_type = result.get("type", "unknown")
                 if result_type not in result_types:
@@ -875,7 +875,7 @@ class VespaChatDemo:
             }
 
 
-async def main():
+async def main() -> Dict[str, Any]:
     """Main function for running the Vespa chat demo"""
     import argparse
 

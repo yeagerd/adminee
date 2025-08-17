@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from services.common.logging_config import get_logger
 from services.demos.settings_demos import get_demo_settings
 from services.office.api.backfill import BackfillRequest
+from services.office.models.backfill import ProviderEnum
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
 from services.vespa_query.search_engine import SearchEngine
@@ -78,7 +79,7 @@ class VespaBackfillDemo:
             ),
         }
 
-    async def clear_pubsub_topics(self):
+    async def clear_pubsub_topics(self) -> None:
         """Clear Pub/Sub topics to stop flooding"""
         logger.info("Clearing Pub/Sub topics to stop flooding...")
         try:
@@ -92,7 +93,7 @@ class VespaBackfillDemo:
         except Exception as e:
             logger.error(f"Failed to clear Pub/Sub topics: {e}")
 
-    async def ensure_pubsub_topics(self):
+    async def ensure_pubsub_topics(self) -> None:
         """Ensure required Pub/Sub topics exist"""
         logger.info("Ensuring required Pub/Sub topics exist...")
         try:
@@ -141,7 +142,7 @@ class VespaBackfillDemo:
             logger.error(f"❌ Pub/Sub topics check failed: {e}")
             logger.info("Demo will continue but Pub/Sub publishing may fail")
 
-    async def stop_all_backfill_jobs(self):
+    async def stop_all_backfill_jobs(self) -> None:
         """Stop all running backfill jobs"""
         logger.info("Stopping all running backfill jobs...")
         try:
@@ -179,11 +180,11 @@ class VespaBackfillDemo:
         except Exception as e:
             logger.error(f"Error stopping backfill jobs: {e}")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "VespaBackfillDemo":
         """Async context manager entry"""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
         """Async context manager exit"""
         # Cleanup resources if needed
         if hasattr(self, "search_engine"):
@@ -265,7 +266,7 @@ class VespaBackfillDemo:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
-    def print_vespa_stats(self, stats: Dict[str, Any], label: str = "VESPA STATISTICS"):
+    def print_vespa_stats(self, stats: Dict[str, Any], label: str = "VESPA STATISTICS") -> None:
         """Print Vespa statistics in a formatted way"""
         print(f"\n{'='*60}")
         print(f"{label}: {stats['user_email']}")
@@ -300,7 +301,7 @@ class VespaBackfillDemo:
 
     def print_stats_comparison(
         self, before_stats: Dict[str, Any], after_stats: Dict[str, Any]
-    ):
+    ) -> None:
         """Print before and after stats comparison"""
         print(f"\n{'='*60}")
         print("VESPA STATS COMPARISON - BEFORE vs AFTER BACKFILL")
@@ -377,7 +378,7 @@ class VespaBackfillDemo:
         before_stats: Dict[str, Any],
         after_stats: Dict[str, Any],
         results: Dict[str, Any],
-    ):
+    ) -> None:
         """Validate whether data was successfully ingested into Vespa"""
         print(f"\n{'='*60}")
         print("DATA INGESTION VALIDATION")
@@ -440,7 +441,7 @@ class VespaBackfillDemo:
         logger.info("Starting Vespa real backfill demo...")
 
         start_time = datetime.now(timezone.utc)
-        results = {
+        results: Dict[str, Any] = {
             "status": "running",
             "start_time": start_time.isoformat(),
             "users_processed": 0,
@@ -539,7 +540,7 @@ class VespaBackfillDemo:
         try:
             # Create backfill request
             request = BackfillRequest(
-                provider=provider,
+                provider=ProviderEnum(provider),
                 batch_size=self.batch_size,
                 rate_limit=(
                     max(1, int(1.0 / self.rate_limit)) if self.rate_limit > 0 else 100
@@ -547,6 +548,10 @@ class VespaBackfillDemo:
                 start_date=self.start_date,
                 end_date=self.end_date,
                 folders=self.folders,
+                include_attachments=False,
+                include_deleted=False,
+                max_emails=self.max_emails_per_user,
+                user_id=user_id,
             )
 
             # Start backfill job using the office service API
@@ -741,7 +746,7 @@ class VespaBackfillDemo:
             logger.error(f"Failed to publish user data to Pub/Sub: {e}")
             return 0
 
-    async def _wait_for_jobs_completion(self, timeout_minutes: int = 30):
+    async def _wait_for_jobs_completion(self, timeout_minutes: int = 30) -> None:
         """Wait for all active jobs to complete"""
         logger.info(f"Waiting up to {timeout_minutes} minutes for jobs to complete...")
 
@@ -792,7 +797,7 @@ class VespaBackfillDemo:
 
         return metrics
 
-    def print_results(self, results: Dict[str, Any]):
+    def print_results(self, results: Dict[str, Any]) -> None:
         """Print formatted results"""
         print("\n" + "=" * 60)
         print("VESPA REAL BACKFILL DEMO RESULTS")
@@ -838,7 +843,7 @@ class VespaBackfillDemo:
         print("=" * 60)
 
 
-async def main():
+async def main() -> Optional[Dict[str, Any]]:
     """Main function for running the Vespa backfill demo"""
     parser = argparse.ArgumentParser(
         description="""Vespa Real Backfill Demo - Comprehensive data ingestion and indexing

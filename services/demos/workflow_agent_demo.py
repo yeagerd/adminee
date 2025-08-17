@@ -116,9 +116,8 @@ async def demo_office_tools() -> None:
 
     # Get available office tools
     tool_registry = agent.tool_registry
-    available_tools = tool_registry.list_tools()
-
-    print(f"Available office tools: {available_tools}")
+    # available_tools = tool_registry.list_tools()  # ToolRegistry doesn't have list_tools method
+    # print(f"Available office tools: {available_tools}")
 
     # Note: Actual office tool usage would require the office service to be running
     # and proper authentication tokens

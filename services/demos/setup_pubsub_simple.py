@@ -10,7 +10,7 @@ import requests
 
 def create_pubsub_topic(
     project_id: str, topic_name: str, emulator_host: str = "localhost:8085"
-):
+) -> bool:
     """Create a Pub/Sub topic using the emulator's REST API"""
 
     url = f"http://{emulator_host}/v1/projects/{project_id}/topics"
@@ -34,7 +34,7 @@ def create_pubsub_topic(
         return False
 
 
-def main():
+def main() -> None:
     """Set up required Pub/Sub topics"""
     project_id = "briefly-dev"
     emulator_host = "localhost:8085"

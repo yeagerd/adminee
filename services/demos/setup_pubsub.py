@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from services.demos.settings_demos import get_demo_settings
 
 
-def setup_pubsub_topics():
+def setup_pubsub_topics() -> None:
     """Set up Pub/Sub topics for the Vespa backfill demo"""
     settings = get_demo_settings()
 
