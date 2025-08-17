@@ -8,47 +8,57 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from services.vespa_loader.vespa_client import VespaClient
-from services.vespa_loader.content_normalizer import ContentNormalizer
-from services.vespa_loader.embeddings import EmbeddingGenerator
-from services.vespa_loader.mapper import DocumentMapper
-from services.vespa_loader.pubsub_consumer import PubSubConsumer
-from services.vespa_loader.settings import Settings
-from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware
+
+from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware, log_service_startup, log_service_shutdown
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.telemetry import setup_telemetry, get_tracer
-
-# Setup service logging
-setup_service_logging(
-    service_name="vespa-loader",
-    log_level="INFO",
-    log_format="json"
-)
 
 # Setup telemetry
 setup_telemetry("vespa-loader", "1.0.0")
 
-# Get logger and tracer for this module
+# Get logger and tracer for this module - will be configured in lifespan
 logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
 # Global service instances
-vespa_client: VespaClient | None = None
-content_normalizer: ContentNormalizer | None = None
-embedding_generator: EmbeddingGenerator | None = None
-document_mapper: DocumentMapper | None = None
-pubsub_consumer: PubSubConsumer | None = None
+vespa_client = None
+content_normalizer = None
+embedding_generator = None
+document_mapper = None
+pubsub_consumer = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage service lifecycle"""
     global vespa_client, content_normalizer, embedding_generator, document_mapper, pubsub_consumer
     
+    # Initialize settings
+    from services.vespa_loader.settings import Settings
+    settings = Settings()
+    
+    # Set up centralized logging
+    setup_service_logging(
+        service_name="vespa-loader",
+        log_level=settings.log_level,
+        log_format=settings.log_format
+    )
+    
+    # Now import modules that use logging after logging is configured
+    from services.vespa_loader.vespa_client import VespaClient
+    from services.vespa_loader.content_normalizer import ContentNormalizer
+    from services.vespa_loader.embeddings import EmbeddingGenerator
+    from services.vespa_loader.mapper import DocumentMapper
+    from services.vespa_loader.pubsub_consumer import PubSubConsumer
+    
+    # Log service startup
+    log_service_startup(
+        "vespa-loader",
+        version="1.0.0",
+        environment="development"
+    )
+    
     # Startup
     logger.info("Starting Vespa Loader Service...")
-    
-    # Initialize settings
-    settings = Settings()
     
     # Initialize components
     vespa_client = VespaClient(settings.vespa_endpoint)
@@ -90,6 +100,9 @@ async def lifespan(app: FastAPI):
     if pubsub_consumer:
         await pubsub_consumer.stop()
     logger.info("Vespa Loader Service shutdown complete")
+    
+    # Log service shutdown
+    log_service_shutdown("vespa-loader")
 
 # Create FastAPI app
 app = FastAPI(

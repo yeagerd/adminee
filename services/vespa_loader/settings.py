@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    log_format: str = Field(default="json", env="LOG_FORMAT")
     
     # Vespa configuration
     vespa_endpoint: str = Field(

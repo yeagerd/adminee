@@ -9,43 +9,52 @@ import uvicorn
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 
-from services.vespa_query.search_engine import SearchEngine
-from services.vespa_query.query_builder import QueryBuilder
-from services.vespa_query.result_processor import ResultProcessor
-from services.vespa_query.settings import Settings
-from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware
+from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware, log_service_startup, log_service_shutdown
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.telemetry import setup_telemetry, get_tracer
-
-# Setup service logging
-setup_service_logging(
-    service_name="vespa-query",
-    log_level="INFO",
-    log_format="json"
-)
 
 # Setup telemetry
 setup_telemetry("vespa-query", "1.0.0")
 
-# Get logger and tracer for this module
+# Get logger and tracer for this module - will be configured in lifespan
 logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
 # Global service instances
-search_engine: SearchEngine | None = None
-query_builder: QueryBuilder | None = None
-result_processor: ResultProcessor | None = None
+search_engine = None
+query_builder = None
+result_processor = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage service lifecycle"""
     global search_engine, query_builder, result_processor
     
+    # Initialize settings
+    from services.vespa_query.settings import Settings
+    settings = Settings()
+    
+    # Set up centralized logging
+    setup_service_logging(
+        service_name="vespa-query",
+        log_level=settings.log_level,
+        log_format=settings.log_format
+    )
+    
+    # Now import modules that use logging after logging is configured
+    from services.vespa_query.search_engine import SearchEngine
+    from services.vespa_query.query_builder import QueryBuilder
+    from services.vespa_query.result_processor import ResultProcessor
+    
+    # Log service startup
+    log_service_startup(
+        "vespa-query",
+        version="1.0.0",
+        environment="development"
+    )
+    
     # Startup
     logger.info("Starting Vespa Query Service...")
-    
-    # Initialize settings
-    settings = Settings()
     
     # Initialize components
     search_engine = SearchEngine(settings.vespa_endpoint)
@@ -69,6 +78,9 @@ async def lifespan(app: FastAPI):
     if search_engine:
         await search_engine.close()
     logger.info("Vespa Query Service shutdown complete")
+    
+    # Log service shutdown
+    log_service_shutdown("vespa-query")
 
 # Create FastAPI app
 app = FastAPI(

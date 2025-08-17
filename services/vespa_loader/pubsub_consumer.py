@@ -9,10 +9,14 @@ calendar events, and contacts.
 
 import asyncio
 import json
-import logging
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime, timezone
 import time
+
+from services.common.logging_config import get_logger
+from services.vespa_loader.settings import Settings
+
+logger = get_logger(__name__)
 
 try:
     from google.cloud import pubsub_v1
@@ -20,12 +24,7 @@ try:
     PUBSUB_AVAILABLE = True
 except ImportError:
     PUBSUB_AVAILABLE = False
-    logging.warning("Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub")
-
-from services.common.logging_config import get_logger
-from services.vespa_loader.settings import Settings
-
-logger = get_logger(__name__)
+    logger.warning("Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub")
 
 class PubSubConsumer:
     """Consumes messages from Pub/Sub topics for Vespa indexing"""
