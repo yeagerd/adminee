@@ -337,7 +337,8 @@ class VespaSearchTool:
                 "yql": self._build_yql_query(query, source_types),
                 "hits": max_results,
                 "ranking": ranking_profile,
-                "timeout": "5.0s"
+                "timeout": "5.0s",
+                "streaming.groupname": self.user_id  # Add streaming mode support for user isolation
             }
             
             # Execute search
@@ -599,7 +600,8 @@ class SemanticSearchTool:
                 "yql": f'select * from briefly_document where user_id contains "{self.user_id}"',
                 "hits": max_results,
                 "ranking": "semantic",
-                "timeout": "5.0s"
+                "timeout": "5.0s",
+                "streaming.groupname": self.user_id  # Add streaming mode support for user isolation
             }
             
             # Execute search

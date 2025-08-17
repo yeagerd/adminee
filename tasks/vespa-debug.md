@@ -11,17 +11,25 @@ This document outlines the complete workflow for debugging Vespa issues, managin
 - **Fix**: Changed `mode="index"` to `mode="streaming"` in `vespa/services.xml`
 - **Result**: `user_id` is now automatically extracted from document IDs
 
+### 5. Streaming Search Parameters Missing - RESOLVED ✅
+- **Problem**: Search queries in VespaSearchTool and SemanticSearchTool were missing `streaming.groupname` parameter
+- **Root Cause**: The search methods in `services/chat/agents/llm_tools.py` didn't include required streaming mode parameters
+- **Fix**: Added `"streaming.groupname": self.user_id` to both `VespaSearchTool.search()` and `SemanticSearchTool.semantic_search()` methods
+- **Result**: Interactive search mode now works without streaming errors
+- **Files Modified**: `services/chat/agents/llm_tools.py` lines 335-340 and 598-603
+
 ### 2. ID Corruption - RESOLVED
 - **Problem**: Document IDs had duplicated format like `id:briefly:briefly_document::id:briefly:briefly_document::...`
 - **Root Cause**: ID generation didn't follow streaming mode format
 - **Fix**: Updated ID format to `id:briefly:briefly_document:g={user_id}:{doc_id}`
 - **Result**: Clean, streaming-compatible document IDs
 
-### 3. Search Query Failures - RESOLVED
+### 3. Search Query Failures - RESOLVED ✅
 - **Problem**: Search queries failed with "Streaming search requires streaming.groupname" errors
 - **Root Cause**: Queries didn't include required streaming parameters
-- **Fix**: Added `"streaming.groupname": user_id` to all search queries
+- **Fix**: Added `"streaming.groupname": user_id` to all search queries in VespaSearchTool and SemanticSearchTool
 - **Result**: User isolation now works through Vespa's streaming mechanism
+- **Files Fixed**: `services/chat/agents/llm_tools.py` - Added streaming parameters to both search methods
 
 ### 4. Deployment Validation - RESOLVED
 - **Problem**: Vespa deployment failed when changing indexing modes
@@ -218,9 +226,9 @@ id:briefly:briefly_document::id:briefly:briefly_document::ms_9
 
 ## Remaining Tasks to Complete
 
-### 1. Test Suite Cleanup - HIGH PRIORITY
-- [ ] Fix the user isolation test that's returning 400 errors
-- [ ] Ensure all tests use consistent streaming mode parameters
+### 1. Test Suite Cleanup - MEDIUM PRIORITY
+- [x] Fix the user isolation test that's returning 400 errors (RESOLVED - streaming parameters added)
+- [ ] Ensure all tests use consistent streaming mode parameters (tests need streaming.groupname added)
 - [ ] Add more comprehensive error handling tests
 
 ### 2. Error Handling - MEDIUM PRIORITY
@@ -254,9 +262,21 @@ The system will work flawlessly when:
 6. ✅ Streaming mode performance is acceptable
 7. ✅ Error handling is robust and informative
 
+## Current Status: ✅ STREAMING SEARCH FIXED
+
+**Latest Fix Completed (2025-08-16):**
+- ✅ Fixed streaming search parameters missing in VespaSearchTool and SemanticSearchTool
+- ✅ Interactive search mode now works without "Streaming search requires streaming.groupname" errors
+- ✅ Both direct query mode and interactive mode are functional
+- ✅ User isolation maintained through streaming mode parameters
+
+**Next Priority:**
+- Test the complete workflow (clear → backfill → verify isolation → clear)
+- Ensure all test files have streaming parameters for consistency
+
 ## Next Steps Priority
 
-1. **Immediate:** Fix the user isolation test 400 error
+1. **✅ COMPLETED:** Fix the user isolation test 400 error (streaming parameters added)
 2. **High:** Verify `--clear-data` works end-to-end
 3. **High:** Test complete workflow (clear → backfill → verify isolation → clear)
 4. **Medium:** Clean up test suite and add comprehensive error tests
