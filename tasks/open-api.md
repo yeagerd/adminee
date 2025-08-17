@@ -73,39 +73,39 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 ## Phase 3: Service-Specific Type Generation
 
 ### Task 3.1: Chat Service Types
-- [ ] Generate types from `services/chat/models.py` schemas
-- [ ] Include: `ChatRequest`, `ChatResponse`, `ThreadResponse`, `MessageResponse`
-- [ ] Include: `DraftEmail`, `DraftCalendarEvent`, `UserDraftResponse`
-- [ ] Generate types for all API endpoints in `services/chat/api.py`
+- [x] Generate types from `services/chat/models.py` schemas
+- [x] Include: `ChatRequest`, `ChatResponse`, `ThreadResponse`, `MessageResponse`
+- [x] Include: `DraftEmail`, `DraftCalendarEvent`, `UserDraftResponse`
+- [x] Generate types for all API endpoints in `services/chat/api.py`
 
 ### Task 3.2: Meetings Service Types
-- [ ] Generate types from `services/meetings/schemas/` schemas
-- [ ] Include: `BookingSettings`, `AvailabilityRequest`, `PollResponse`
-- [ ] Include: `BusinessHoursConfig`, `MeetingPoll`, `BookingSlot`
-- [ ] Generate types for all API endpoints in meetings routers
+- [x] Generate types from `services/meetings/schemas/` schemas
+- [x] Include: `BookingSettings`, `AvailabilityRequest`, `PollResponse`
+- [x] Include: `BusinessHoursConfig`, `MeetingPoll`, `BookingSlot`
+- [x] Generate types for all API endpoints in meetings routers
 
 ### Task 3.3: Office Service Types
-- [ ] Generate types from `services/office/schemas/` schemas
-- [ ] Include: `EmailMessage`, `CalendarEvent`, `DriveFile`, `Contact`
-- [ ] Include: `AvailabilityResponse`, `TypedApiResponse`, `ApiError`
-- [ ] Generate types for all API endpoints in office routers
+- [x] Generate types from `services/office/schemas/` schemas
+- [x] Include: `EmailMessage`, `CalendarEvent`, `DriveFile`, `Contact`
+- [x] Include: `AvailabilityResponse`, `TypedApiResponse`, `ApiError`
+- [x] Generate types for all API endpoints in office routers
 
 ### Task 3.4: User Service Types
-- [ ] Generate types from `services/user/schemas/` schemas
-- [ ] Include: `UserBase`, `UserResponse`, `UserUpdate`, `UserCreate`
-- [ ] Include: `IntegrationResponse`, `NotificationPreferences`, `AIPreferences`
-- [ ] Generate types for all API endpoints in user routers
+- [x] Generate types from `services/user/schemas/` schemas
+- [x] Include: `UserBase`, `UserResponse`, `UserUpdate`, `UserCreate`
+- [x] Include: `IntegrationResponse`, `NotificationPreferences`, `AIPreferences`
+- [x] Generate types for all API endpoints in user routers
 
 ### Task 3.5: Shipments Service Types
-- [ ] Generate types from `services/shipments/schemas/` schemas
-- [ ] Include: `Package`, `TrackingEvent`, `Label`, `CarrierConfig`
-- [ ] Include: `EmailParseRequest`, `ParsedTrackingInfo`
-- [ ] Generate types for all API endpoints in shipments routers
+- [x] Generate types from `services/shipments/schemas/` schemas
+- [x] Include: `Package`, `TrackingEvent`, `Label`, `CarrierConfig`
+- [x] Include: `EmailParseRequest`, `ParsedTrackingInfo`
+- [x] Generate types for all API endpoints in shipments routers
 
 ### Task 3.6: Common Service Types
-- [ ] Generate types from `services/common/` schemas
-- [ ] Include: `ErrorResponse`, `BrieflyAPIError`, pagination schemas
-- [ ] Ensure shared types are available across all services
+- [x] Generate types from `services/common/` schemas
+- [x] Include: `ErrorResponse`, `BrieflyAPIError`, pagination schemas
+- [x] Ensure shared types are available across all services
 
 ## Phase 4: Frontend Integration
 
