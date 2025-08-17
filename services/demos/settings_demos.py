@@ -6,108 +6,90 @@ This module provides configuration that's appropriate for demo/development
 use without requiring production service settings.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
 
 class DemoSettings(BaseSettings):
     """Settings for demo scripts with sensible defaults."""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
     )
-    
+
     # Service URLs
     office_service_url: str = Field(
-        default="http://localhost:8003",
-        description="Office service URL for demos"
+        default="http://localhost:8003", description="Office service URL for demos"
     )
     user_service_url: str = Field(
-        default="http://localhost:8001",
-        description="User service URL for demos"
+        default="http://localhost:8001", description="User service URL for demos"
     )
     chat_service_url: str = Field(
-        default="http://localhost:8002",
-        description="Chat service URL for demos"
+        default="http://localhost:8002", description="Chat service URL for demos"
     )
     vespa_endpoint: str = Field(
-        default="http://localhost:8080",
-        description="Vespa endpoint for demos"
+        default="http://localhost:8080", description="Vespa endpoint for demos"
     )
     vespa_loader_url: str = Field(
-        default="http://localhost:9001",
-        description="Vespa loader service URL"
+        default="http://localhost:9001", description="Vespa loader service URL"
     )
     vespa_query_url: str = Field(
-        default="http://localhost:9002",
-        description="Vespa query service URL"
+        default="http://localhost:9002", description="Vespa query service URL"
     )
-    
+
     # Pub/Sub configuration
     pubsub_project_id: str = Field(
-        default="briefly-dev",
-        description="Pub/Sub project ID for demos"
+        default="briefly-dev", description="Pub/Sub project ID for demos"
     )
     pubsub_emulator_host: str = Field(
-        default="localhost:8085",
-        description="Pub/Sub emulator host for demos"
+        default="localhost:8085", description="Pub/Sub emulator host for demos"
     )
-    
+
     # API Keys
     api_frontend_office_key: str = Field(
         default="test-FRONTEND_OFFICE_KEY",
-        description="Frontend API key for office service access"
+        description="Frontend API key for office service access",
     )
     api_frontend_user_key: str = Field(
         default="test-FRONTEND_USER_KEY",
-        description="Frontend API key for user service access"
+        description="Frontend API key for user service access",
     )
     api_frontend_chat_key: str = Field(
         default="test-FRONTEND_CHAT_KEY",
-        description="Frontend API key for chat service access"
+        description="Frontend API key for chat service access",
     )
     api_backfill_office_key: str = Field(
         default="test-BACKFILL-OFFICE-KEY",
-        description="Backfill API key for internal service communication"
+        description="Backfill API key for internal service communication",
     )
-    
+
     # Demo configuration
-    demo_user_id: str = Field(
-        default="demo_user_1",
-        description="Default demo user ID"
-    )
+    demo_user_id: str = Field(default="demo_user_1", description="Default demo user ID")
     demo_user_email: str = Field(
-        default="trybriefly@outlook.com",
-        description="Default demo user email"
+        default="trybriefly@outlook.com", description="Default demo user email"
     )
     demo_providers: str = Field(
-        default="microsoft,google",
-        description="Default demo providers"
+        default="microsoft,google", description="Default demo providers"
     )
-    demo_batch_size: int = Field(
-        default=100,
-        description="Default demo batch size"
-    )
+    demo_batch_size: int = Field(default=100, description="Default demo batch size")
     demo_rate_limit: float = Field(
-        default=1.0,
-        description="Default demo rate limit (seconds between batches)"
+        default=1.0, description="Default demo rate limit (seconds between batches)"
     )
     demo_max_emails: int = Field(
-        default=10,
-        description="Default demo max emails per user"
+        default=10, description="Default demo max emails per user"
     )
     demo_folders: str = Field(
-        default="INBOX,SENT,DRAFTS",
-        description="Default demo email folders"
+        default="INBOX,SENT,DRAFTS", description="Default demo email folders"
     )
     nextauth_test_server_url: str = Field(
         default="http://localhost:3001",
-        description="NextAuth test server URL for demos"
+        description="NextAuth test server URL for demos",
     )
-    
+
     def get_api_keys(self) -> Dict[str, str]:
         """Get all API keys as a dictionary."""
         return {
@@ -116,7 +98,7 @@ class DemoSettings(BaseSettings):
             "chat": self.api_frontend_chat_key,
             "backfill": self.api_backfill_office_key,  # Add backfill key
         }
-    
+
     def get_demo_config(self) -> Dict[str, Any]:
         """Get demo configuration as a dictionary."""
         return {

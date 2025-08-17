@@ -4,56 +4,63 @@ Core search engine for hybrid search capabilities using Vespa
 """
 
 import asyncio
-import aiohttp
-from typing import Dict, Any, Optional, List, Union
 import json
-from datetime import datetime
 import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
+import aiohttp
+
 from services.common.logging_config import get_logger
 from services.common.telemetry import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
+
 class SearchEngine:
     """Core search engine for Vespa queries"""
-    
+
     def __init__(self, vespa_endpoint: str) -> None:
-        self.vespa_endpoint = vespa_endpoint.rstrip('/')
+        self.vespa_endpoint = vespa_endpoint.rstrip("/")
         self.session: Optional[aiohttp.ClientSession] = None
-        
+
     async def start(self) -> None:
         """Start the search engine and create HTTP session"""
         if not self.session:
             self.session = aiohttp.ClientSession()
         logger.info("Search engine started")
-    
+
     async def close(self) -> None:
         """Close the search engine and HTTP session"""
         if self.session:
             await self.session.close()
             self.session = None
         logger.info("Search engine closed")
-    
+
     async def test_connection(self) -> bool:
         """Test connection to Vespa"""
         with tracer.start_as_current_span("vespa.test_connection") as span:
             span.set_attribute("vespa.endpoint", self.vespa_endpoint)
-            
+
             try:
                 if not self.session:
                     await self.start()
-                
+
                 if self.session:
-                    async with self.session.get(f"{self.vespa_endpoint}/application/v2/status") as response:
+                    async with self.session.get(
+                        f"{self.vespa_endpoint}/application/v2/status"
+                    ) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             logger.info("Vespa connection test successful")
                             span.set_attribute("vespa.connection.success", True)
                             return True
                         else:
-                            logger.error(f"Vespa connection test failed with status {response.status}")
+                            logger.error(
+                                f"Vespa connection test failed with status {response.status}"
+                            )
                             span.set_attribute("vespa.connection.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             return False
@@ -64,201 +71,235 @@ class SearchEngine:
                 span.set_attribute("vespa.error.message", str(e))
                 span.record_exception(e)
                 return False
-    
+
     async def search(self, search_query: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a search query"""
         with tracer.start_as_current_span("vespa.search") as span:
             span.set_attribute("vespa.query.type", "search")
-            span.set_attribute("vespa.query.ranking", search_query.get("ranking", "unknown"))
+            span.set_attribute(
+                "vespa.query.ranking", search_query.get("ranking", "unknown")
+            )
             span.set_attribute("vespa.query.hits", search_query.get("hits", 0))
-            
+
             if not self.session:
                 await self.start()
-            
+
             try:
                 start_time = time.time()
-                
+
                 # Execute search
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
-                
+
                 if self.session:
                     async with self.session.post(url, json=search_query) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             results = await response.json()
-                            
+
                             # Add performance metrics
                             query_time = time.time() - start_time
-                            span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
-                            
+                            span.set_attribute(
+                                "vespa.query.time_ms", round(query_time * 1000, 2)
+                            )
+
                             results["performance"] = {
                                 "query_time_ms": round(query_time * 1000, 2),
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
-                            
+
                             logger.info(f"Search query executed in {query_time:.3f}s")
                             span.set_attribute("vespa.search.success", True)
                             return results
                         else:
                             error_text = await response.text()
-                            logger.error(f"Search query failed: {response.status} - {error_text}")
+                            logger.error(
+                                f"Search query failed: {response.status} - {error_text}"
+                            )
                             span.set_attribute("vespa.search.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             span.set_attribute("vespa.error.message", error_text)
-                            raise Exception(f"Search failed: {response.status} - {error_text}")
+                            raise Exception(
+                                f"Search failed: {response.status} - {error_text}"
+                            )
                 else:
                     raise Exception("No session available")
-                    
+
             except Exception as e:
                 logger.error(f"Error executing search query: {e}")
                 span.set_attribute("vespa.search.success", False)
                 span.record_exception(e)
                 raise
-    
-    async def autocomplete(self, query: str, user_id: str, limit: int = 10) -> Dict[str, Any]:
+
+    async def autocomplete(
+        self, query: str, user_id: str, limit: int = 10
+    ) -> Dict[str, Any]:
         """Execute an autocomplete query"""
         with tracer.start_as_current_span("vespa.autocomplete") as span:
             span.set_attribute("vespa.query.type", "autocomplete")
             span.set_attribute("vespa.query.text", query)
             span.set_attribute("vespa.query.user_id", user_id)
             span.set_attribute("vespa.query.limit", limit)
-            
+
             if not self.session:
                 await self.start()
-            
+
             try:
                 start_time = time.time()
-                
+
                 # Build autocomplete query
                 autocomplete_query = {
                     "yql": f'select * from briefly_document where user_id="{user_id}" and userInput(@query)',
                     "query": query,
                     "hits": limit,
                     "timeout": "2.0s",
-                    "ranking": "autocomplete"
+                    "ranking": "autocomplete",
                 }
-                
+
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
-                
+
                 if self.session:
-                    async with self.session.post(url, json=autocomplete_query) as response:
+                    async with self.session.post(
+                        url, json=autocomplete_query
+                    ) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             results = await response.json()
-                            
+
                             # Add performance metrics
                             query_time = time.time() - start_time
-                            span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
-                            
+                            span.set_attribute(
+                                "vespa.query.time_ms", round(query_time * 1000, 2)
+                            )
+
                             results["performance"] = {
                                 "query_time_ms": round(query_time * 1000, 2),
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
-                            
-                            logger.info(f"Autocomplete query executed in {query_time:.3f}s")
+
+                            logger.info(
+                                f"Autocomplete query executed in {query_time:.3f}s"
+                            )
                             span.set_attribute("vespa.autocomplete.success", True)
                             return results
                         else:
                             error_text = await response.text()
-                            logger.error(f"Autocomplete query failed: {response.status} - {error_text}")
+                            logger.error(
+                                f"Autocomplete query failed: {response.status} - {error_text}"
+                            )
                             span.set_attribute("vespa.autocomplete.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             span.set_attribute("vespa.error.message", error_text)
-                            raise Exception(f"Autocomplete failed: {response.status} - {error_text}")
+                            raise Exception(
+                                f"Autocomplete failed: {response.status} - {error_text}"
+                            )
                 else:
                     raise Exception("No session available")
-                    
+
             except Exception as e:
                 logger.error(f"Error executing autocomplete query: {e}")
                 span.set_attribute("vespa.autocomplete.success", False)
                 span.record_exception(e)
                 raise
-    
-    async def find_similar(self, document_id: str, user_id: str, limit: int = 10) -> Dict[str, Any]:
+
+    async def find_similar(
+        self, document_id: str, user_id: str, limit: int = 10
+    ) -> Dict[str, Any]:
         """Find similar documents"""
         with tracer.start_as_current_span("vespa.find_similar") as span:
             span.set_attribute("vespa.query.type", "similarity")
             span.set_attribute("vespa.document.id", document_id)
             span.set_attribute("vespa.query.user_id", user_id)
             span.set_attribute("vespa.query.limit", limit)
-            
+
             if not self.session:
                 await self.start()
-            
+
             try:
                 start_time = time.time()
-                
+
                 # Build similarity query
                 similarity_query = {
                     "yql": f'select * from briefly_document where user_id="{user_id}" and id!="{document_id}"',
                     "hits": limit,
                     "timeout": "5.0s",
                     "ranking": "similarity",
-                    "ranking.features.query(queryEmbedding)": "embedding"
+                    "ranking.features.query(queryEmbedding)": "embedding",
                 }
-                
+
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
-                
+
                 if self.session:
-                    async with self.session.post(url, json=similarity_query) as response:
+                    async with self.session.post(
+                        url, json=similarity_query
+                    ) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             results = await response.json()
-                            
+
                             # Add performance metrics
                             query_time = time.time() - start_time
-                            span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
-                            
+                            span.set_attribute(
+                                "vespa.query.time_ms", round(query_time * 1000, 2)
+                            )
+
                             results["performance"] = {
                                 "query_time_ms": round(query_time * 1000, 2),
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
-                            
-                            logger.info(f"Similarity query executed in {query_time:.3f}s")
+
+                            logger.info(
+                                f"Similarity query executed in {query_time:.3f}s"
+                            )
                             span.set_attribute("vespa.similarity.success", True)
                             return results
                         else:
                             error_text = await response.text()
-                            logger.error(f"Similarity query failed: {response.status} - {error_text}")
+                            logger.error(
+                                f"Similarity query failed: {response.status} - {error_text}"
+                            )
                             span.set_attribute("vespa.similarity.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             span.set_attribute("vespa.error.message", error_text)
-                            raise Exception(f"Similarity search failed: {response.status} - {error_text}")
+                            raise Exception(
+                                f"Similarity search failed: {response.status} - {error_text}"
+                            )
                 else:
                     raise Exception("No session available")
-                    
+
             except Exception as e:
                 logger.error(f"Error executing similarity query: {e}")
                 span.set_attribute("vespa.similarity.success", False)
                 span.record_exception(e)
                 raise
-    
-    async def get_facets(self, user_id: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+
+    async def get_facets(
+        self, user_id: str, filters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Get facet information for documents"""
         with tracer.start_as_current_span("vespa.get_facets") as span:
             span.set_attribute("vespa.query.type", "facets")
             span.set_attribute("vespa.query.user_id", user_id)
-            
+
             if not self.session:
                 await self.start()
-            
+
             try:
                 start_time = time.time()
-                
+
                 # Build facets query
                 facets_query = {
                     "yql": f'select * from briefly_document where user_id="{user_id}"',
                     "hits": 0,  # We only want facets, not documents
                     "timeout": "5.0s",
-                    "presentation.timing": True
+                    "presentation.timing": True,
                 }
-                
+
                 # Add facet specifications
                 if filters:
                     facets_query["facets"] = filters
@@ -267,121 +308,137 @@ class SearchEngine:
                     facets_query["facets"] = {
                         "source_type": {"count": 100},
                         "provider": {"count": 100},
-                        "folder": {"count": 100}
+                        "folder": {"count": 100},
                     }
-                
+
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
-                
+
                 if self.session:
                     async with self.session.post(url, json=facets_query) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             results = await response.json()
-                            
+
                             # Add performance metrics
                             query_time = time.time() - start_time
-                            span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
-                            
+                            span.set_attribute(
+                                "vespa.query.time_ms", round(query_time * 1000, 2)
+                            )
+
                             results["performance"] = {
                                 "query_time_ms": round(query_time * 1000, 2),
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
-                            
+
                             logger.info(f"Facets query executed in {query_time:.3f}s")
                             span.set_attribute("vespa.facets.success", True)
                             return results
                         else:
                             error_text = await response.text()
-                            logger.error(f"Facets query failed: {response.status} - {error_text}")
+                            logger.error(
+                                f"Facets query failed: {response.status} - {error_text}"
+                            )
                             span.set_attribute("vespa.facets.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             span.set_attribute("vespa.error.message", error_text)
-                            raise Exception(f"Facets query failed: {response.status} - {error_text}")
+                            raise Exception(
+                                f"Facets query failed: {response.status} - {error_text}"
+                            )
                 else:
                     raise Exception("No session available")
-                    
+
             except Exception as e:
                 logger.error(f"Error executing facets query: {e}")
                 span.set_attribute("vespa.facets.success", False)
                 span.record_exception(e)
                 raise
-    
-    async def get_trending(self, user_id: str, time_range: str = "7d", limit: int = 10) -> Dict[str, Any]:
+
+    async def get_trending(
+        self, user_id: str, time_range: str = "7d", limit: int = 10
+    ) -> Dict[str, Any]:
         """Get trending documents"""
         with tracer.start_as_current_span("vespa.get_trending") as span:
             span.set_attribute("vespa.query.type", "trending")
             span.set_attribute("vespa.query.user_id", user_id)
             span.set_attribute("vespa.query.time_range", time_range)
             span.set_attribute("vespa.query.limit", limit)
-            
+
             if not self.session:
                 await self.start()
-            
+
             try:
                 start_time = time.time()
-                
+
                 # Build trending query
                 trending_query = {
                     "yql": f'select * from briefly_document where user_id="{user_id}"',
                     "hits": limit,
                     "timeout": "5.0s",
                     "ranking": "trending",
-                    "ranking.features.query(timeDecay)": time_range
+                    "ranking.features.query(timeDecay)": time_range,
                 }
-                
+
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
-                
+
                 if self.session:
                     async with self.session.post(url, json=trending_query) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             results = await response.json()
-                            
+
                             # Add performance metrics
                             query_time = time.time() - start_time
-                            span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
-                            
+                            span.set_attribute(
+                                "vespa.query.time_ms", round(query_time * 1000, 2)
+                            )
+
                             results["performance"] = {
                                 "query_time_ms": round(query_time * 1000, 2),
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
-                            
+
                             logger.info(f"Trending query executed in {query_time:.3f}s")
                             span.set_attribute("vespa.trending.success", True)
                             return results
                         else:
                             error_text = await response.text()
-                            logger.error(f"Trending query failed: {response.status} - {error_text}")
+                            logger.error(
+                                f"Trending query failed: {response.status} - {error_text}"
+                            )
                             span.set_attribute("vespa.trending.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             span.set_attribute("vespa.error.message", error_text)
-                            raise Exception(f"Trending query failed: {response.status} - {error_text}")
+                            raise Exception(
+                                f"Trending query failed: {response.status} - {error_text}"
+                            )
                 else:
                     raise Exception("No session available")
-                    
+
             except Exception as e:
                 logger.error(f"Error executing trending query: {e}")
                 span.set_attribute("vespa.trending.success", False)
                 span.record_exception(e)
                 raise
-    
-    async def get_analytics(self, user_id: str, time_range: str = "30d") -> Dict[str, Any]:
+
+    async def get_analytics(
+        self, user_id: str, time_range: str = "30d"
+    ) -> Dict[str, Any]:
         """Get analytics data for documents"""
         with tracer.start_as_current_span("vespa.get_analytics") as span:
             span.set_attribute("vespa.query.type", "analytics")
             span.set_attribute("vespa.query.user_id", user_id)
             span.set_attribute("vespa.query.time_range", time_range)
-            
+
             if not self.session:
                 await self.start()
-            
+
             try:
                 start_time = time.time()
-                
+
                 # Build analytics query
                 analytics_query = {
                     "yql": f'select * from briefly_document where user_id="{user_id}"',
@@ -391,89 +448,93 @@ class SearchEngine:
                     "grouping": {
                         "source_type": {"count": 100},
                         "provider": {"count": 100},
-                        "time_buckets": {"count": 100}
-                    }
+                        "time_buckets": {"count": 100},
+                    },
                 }
-                
+
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
-                
+
                 if self.session:
                     async with self.session.post(url, json=analytics_query) as response:
                         span.set_attribute("vespa.response.status", response.status)
-                        
+
                         if response.status == 200:
                             results = await response.json()
-                            
+
                             # Add performance metrics
                             query_time = time.time() - start_time
-                            span.set_attribute("vespa.query.time_ms", round(query_time * 1000, 2))
-                            
+                            span.set_attribute(
+                                "vespa.query.time_ms", round(query_time * 1000, 2)
+                            )
+
                             results["performance"] = {
                                 "query_time_ms": round(query_time * 1000, 2),
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
-                            
-                            logger.info(f"Analytics query executed in {query_time:.3f}s")
+
+                            logger.info(
+                                f"Analytics query executed in {query_time:.3f}s"
+                            )
                             span.set_attribute("vespa.analytics.success", True)
                             return results
                         else:
                             error_text = await response.text()
-                            logger.error(f"Analytics query failed: {response.status} - {error_text}")
+                            logger.error(
+                                f"Analytics query failed: {response.status} - {error_text}"
+                            )
                             span.set_attribute("vespa.analytics.success", False)
                             span.set_attribute("vespa.error.status", response.status)
                             span.set_attribute("vespa.error.message", error_text)
-                            raise Exception(f"Analytics query failed: {response.status} - {error_text}")
+                            raise Exception(
+                                f"Analytics query failed: {response.status} - {error_text}"
+                            )
                 else:
                     raise Exception("No session available")
-                    
+
             except Exception as e:
                 logger.error(f"Error executing analytics query: {e}")
                 span.set_attribute("vespa.analytics.success", False)
                 span.record_exception(e)
                 raise
-    
+
     async def batch_search(self, queries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Execute multiple search queries in batch"""
         if not queries:
             return []
-        
+
         try:
             # Execute queries in parallel
             tasks = []
             for query in queries:
                 task = self.search(query)
                 tasks.append(task)
-            
+
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Process results and handle errors
             processed_results = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     logger.error(f"Query {i} failed: {result}")
-                    processed_results.append({
-                        "index": i,
-                        "status": "error",
-                        "error": str(result)
-                    })
+                    processed_results.append(
+                        {"index": i, "status": "error", "error": str(result)}
+                    )
                 else:
-                    processed_results.append({
-                        "index": i,
-                        "status": "success",
-                        "result": result
-                    })
-            
+                    processed_results.append(
+                        {"index": i, "status": "success", "result": result}
+                    )
+
             return processed_results
-            
+
         except Exception as e:
             logger.error(f"Error in batch search: {e}")
             raise
-    
+
     def get_search_stats(self) -> Dict[str, Any]:
         """Get search engine statistics"""
         return {
             "vespa_endpoint": self.vespa_endpoint,
             "session_active": self.session is not None,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }

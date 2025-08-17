@@ -5,57 +5,55 @@ Configuration settings for the Vespa query service
 
 from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     """Application settings"""
-    
+
     # Service configuration
     service_name: str = "vespa-query"
     service_port: int = Field(default=9002, env="VESPA_QUERY_PORT")
     service_host: str = Field(default="0.0.0.0", env="VESPA_QUERY_HOST")
-    
+
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     log_format: str = Field(default="json", env="LOG_FORMAT")
-    
+
     # Vespa configuration
-    vespa_endpoint: str = Field(
-        default="http://localhost:8080",
-        env="VESPA_ENDPOINT"
-    )
+    vespa_endpoint: str = Field(default="http://localhost:8080", env="VESPA_ENDPOINT")
     vespa_timeout: int = Field(default=30, env="VESPA_TIMEOUT")
     vespa_application: str = Field(default="briefly", env="VESPA_APPLICATION")
-    
+
     # Search configuration
     default_max_hits: int = Field(default=10, env="DEFAULT_MAX_HITS")
     max_max_hits: int = Field(default=100, env="MAX_MAX_HITS")
-    default_ranking_profile: str = Field(default="hybrid", env="DEFAULT_RANKING_PROFILE")
-    
+    default_ranking_profile: str = Field(
+        default="hybrid", env="DEFAULT_RANKING_PROFILE"
+    )
+
     # Query processing
     query_timeout: int = Field(default=10, env="QUERY_TIMEOUT")
     max_concurrent_queries: int = Field(default=20, env="MAX_CONCURRENT_QUERIES")
     enable_query_caching: bool = Field(default=True, env="ENABLE_QUERY_CACHING")
-    
+
     # Result processing
     enable_facets: bool = Field(default=True, env="ENABLE_FACETS")
     enable_highlighting: bool = Field(default=True, env="ENABLE_HIGHLIGHTING")
     max_facet_values: int = Field(default=50, env="MAX_FACET_VALUES")
-    
+
     # Performance tuning
     connection_pool_size: int = Field(default=10, env="CONNECTION_POOL_SIZE")
     keepalive_timeout: int = Field(default=60, env="KEEPALIVE_TIMEOUT")
     max_retries: int = Field(default=3, env="MAX_RETRIES")
     retry_delay: float = Field(default=0.1, env="RETRY_DELAY")
-    
+
     # Health check configuration
     health_check_interval_seconds: int = Field(default=30, env="HEALTH_CHECK_INTERVAL")
     health_check_timeout_seconds: int = Field(default=5, env="HEALTH_CHECK_TIMEOUT")
-    
+
     # Security
     enable_user_isolation: bool = Field(default=True, env="ENABLE_USER_ISOLATION")
     max_query_length: int = Field(default=1000, env="MAX_QUERY_LENGTH")
-    
+
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )

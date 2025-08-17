@@ -12,11 +12,11 @@ from services.common.logging_config import (
     log_service_startup,
     setup_service_logging,
 )
+from services.office.api.backfill import internal_router as backfill_internal_router
 from services.office.api.calendar import router as calendar_router
 from services.office.api.contacts import router as contacts_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
-from services.office.api.backfill import internal_router as backfill_internal_router
 from services.office.core.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan

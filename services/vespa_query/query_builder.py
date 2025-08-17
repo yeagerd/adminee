@@ -3,21 +3,23 @@
 Query builder for constructing Vespa search queries
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from services.common.logging_config import get_logger
 from services.common.telemetry import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
+
 class QueryBuilder:
     """Builds Vespa search queries with various options"""
-    
+
     def __init__(self) -> None:
         self.default_ranking_profile = "hybrid"
         self.default_max_hits = 10
         self.max_max_hits = 100
-        
+
     def build_search_query(
         self,
         query: str,
@@ -30,7 +32,7 @@ class QueryBuilder:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         folders: Optional[List[str]] = None,
-        include_facets: bool = True
+        include_facets: bool = True,
     ) -> Dict[str, Any]:
         """Build a complete Vespa search query"""
         with tracer.start_as_current_span("query_builder.build_search_query") as span:
@@ -39,48 +41,53 @@ class QueryBuilder:
             span.set_attribute("query.max_hits", max_hits)
             span.set_attribute("query.offset", offset)
             span.set_attribute("query.include_facets", include_facets)
-            span.set_attribute("query.source_types", str(source_types) if source_types else "none")
-            span.set_attribute("query.providers", str(providers) if providers else "none")
-            
+            span.set_attribute(
+                "query.source_types", str(source_types) if source_types else "none"
+            )
+            span.set_attribute(
+                "query.providers", str(providers) if providers else "none"
+            )
+
             try:
                 # Validate inputs
                 self._validate_query_inputs(query, user_id, max_hits, offset)
-                
+
                 # Build base query
                 vespa_query = {
                     "yql": self._build_yql_query(
-                        query, source_types, providers, 
-                        date_from, date_to, folders
+                        query, source_types, providers, date_from, date_to, folders
                     ),
                     "ranking": ranking_profile,
                     "hits": min(max_hits, self.max_max_hits),
                     "offset": offset,
                     "timeout": "10s",
-                    "streaming.groupname": user_id  # Add streaming mode support for user isolation
+                    "streaming.groupname": user_id,  # Add streaming mode support for user isolation
                 }
-                
+
                 # Add faceting if requested
                 if include_facets:
                     vespa_query["presentation.timing"] = True
                     vespa_query["presentation.summary"] = "default"
-                    
-                logger.info(f"Built search query for user {user_id} with {max_hits} hits")
+
+                logger.info(
+                    f"Built search query for user {user_id} with {max_hits} hits"
+                )
                 span.set_attribute("query.build.success", True)
                 return vespa_query
-                
+
             except Exception as e:
                 logger.error(f"Error building search query: {e}")
                 span.set_attribute("query.build.success", False)
                 span.set_attribute("query.error.message", str(e))
                 span.record_exception(e)
                 raise
-    
+
     def build_autocomplete_query(
         self,
         query: str,
         user_id: str,
         max_hits: int = 5,
-        source_types: Optional[List[str]] = None
+        source_types: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Build an autocomplete query"""
         try:
@@ -89,53 +96,52 @@ class QueryBuilder:
                 "ranking": "bm25",
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
-                "streaming.groupname": user_id  # Add streaming mode support for user isolation
+                "streaming.groupname": user_id,  # Add streaming mode support for user isolation
             }
-            
+
             logger.info(f"Built autocomplete query for user {user_id}")
             return vespa_query
-            
+
         except Exception as e:
             logger.error(f"Error building autocomplete query: {e}")
             raise
-    
+
     def build_facets_query(
         self,
         user_id: str,
         source_types: Optional[List[str]] = None,
         providers: Optional[List[str]] = None,
         date_from: Optional[str] = None,
-        date_to: Optional[str] = None
+        date_to: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build a facets query"""
         try:
             vespa_query = {
-                "yql": self._build_facets_yql(source_types, providers, date_from, date_to),
+                "yql": self._build_facets_yql(
+                    source_types, providers, date_from, date_to
+                ),
                 "hits": 0,  # We only want facets, not documents
                 "timeout": "5s",
                 "streaming.groupname": user_id,
-                "presentation.timing": True
+                "presentation.timing": True,
             }
-            
+
             # Add facet specifications
             vespa_query["facets"] = {
                 "source_type": {"count": 100},
                 "provider": {"count": 100},
-                "folder": {"count": 100}
+                "folder": {"count": 100},
             }
-            
+
             logger.info(f"Built facets query for user {user_id}")
             return vespa_query
-            
+
         except Exception as e:
             logger.error(f"Error building facets query: {e}")
             raise
-    
+
     def build_similarity_query(
-        self,
-        document_id: str,
-        user_id: str,
-        max_hits: int = 10
+        self, document_id: str, user_id: str, max_hits: int = 10
     ) -> Dict[str, Any]:
         """Build a similarity search query"""
         try:
@@ -144,21 +150,18 @@ class QueryBuilder:
                 "ranking": "similarity",
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
-                "streaming.groupname": user_id
+                "streaming.groupname": user_id,
             }
-            
+
             logger.info(f"Built similarity query for user {user_id}")
             return vespa_query
-            
+
         except Exception as e:
             logger.error(f"Error building similarity query: {e}")
             raise
-    
+
     def build_trending_query(
-        self,
-        user_id: str,
-        time_range: str = "7d",
-        max_hits: int = 10
+        self, user_id: str, time_range: str = "7d", max_hits: int = 10
     ) -> Dict[str, Any]:
         """Build a trending query"""
         try:
@@ -168,20 +171,18 @@ class QueryBuilder:
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
                 "streaming.groupname": user_id,
-                "ranking.features.query(timeDecay)": time_range
+                "ranking.features.query(timeDecay)": time_range,
             }
-            
+
             logger.info(f"Built trending query for user {user_id}")
             return vespa_query
-            
+
         except Exception as e:
             logger.error(f"Error building trending query: {e}")
             raise
-    
+
     def build_analytics_query(
-        self,
-        user_id: str,
-        time_range: str = "30d"
+        self, user_id: str, time_range: str = "30d"
     ) -> Dict[str, Any]:
         """Build an analytics query"""
         try:
@@ -194,34 +195,36 @@ class QueryBuilder:
                 "grouping": {
                     "source_type": {"count": 100},
                     "provider": {"count": 100},
-                    "time_buckets": {"count": 100}
-                }
+                    "time_buckets": {"count": 100},
+                },
             }
-            
+
             logger.info(f"Built analytics query for user {user_id}")
             return vespa_query
-            
+
         except Exception as e:
             logger.error(f"Error building analytics query: {e}")
             raise
-    
-    def _validate_query_inputs(self, query: str, user_id: str, max_hits: int, offset: int) -> None:
+
+    def _validate_query_inputs(
+        self, query: str, user_id: str, max_hits: int, offset: int
+    ) -> None:
         """Validate query input parameters"""
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
-        
+
         if not user_id or not user_id.strip():
             raise ValueError("User ID cannot be empty")
-        
+
         if max_hits <= 0:
             raise ValueError("Max hits must be positive")
-        
+
         if max_hits > self.max_max_hits:
             raise ValueError(f"Max hits cannot exceed {self.max_max_hits}")
-        
+
         if offset < 0:
             raise ValueError("Offset cannot be negative")
-    
+
     def _build_yql_query(
         self,
         query: str,
@@ -229,21 +232,23 @@ class QueryBuilder:
         providers: Optional[List[str]] = None,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
-        folders: Optional[List[str]] = None
+        folders: Optional[List[str]] = None,
     ) -> str:
         """Build the YQL query string"""
-        yql_parts = ['select * from briefly_document where userInput(@query)']
-        
+        yql_parts = ["select * from briefly_document where userInput(@query)"]
+
         # Add source type filter
         if source_types:
-            source_type_filter = ' or '.join([f'source_type="{st}"' for st in source_types])
-            yql_parts.append(f'and ({source_type_filter})')
-        
+            source_type_filter = " or ".join(
+                [f'source_type="{st}"' for st in source_types]
+            )
+            yql_parts.append(f"and ({source_type_filter})")
+
         # Add provider filter
         if providers:
-            provider_filter = ' or '.join([f'provider="{p}"' for p in providers])
-            yql_parts.append(f'and ({provider_filter})')
-        
+            provider_filter = " or ".join([f'provider="{p}"' for p in providers])
+            yql_parts.append(f"and ({provider_filter})")
+
         # Add date range filter
         if date_from or date_to:
             date_filter_parts = []
@@ -253,46 +258,52 @@ class QueryBuilder:
                 date_filter_parts.append(f'created_at <= "{date_to}"')
             if date_filter_parts:
                 yql_parts.append(f'and ({" and ".join(date_filter_parts)})')
-        
+
         # Add folder filter
         if folders:
-            folder_filter = ' or '.join([f'folder="{f}"' for f in folders])
-            yql_parts.append(f'and ({folder_filter})')
-        
-        return ' '.join(yql_parts)
-    
-    def _build_autocomplete_yql(self, query: str, source_types: Optional[List[str]] = None) -> str:
+            folder_filter = " or ".join([f'folder="{f}"' for f in folders])
+            yql_parts.append(f"and ({folder_filter})")
+
+        return " ".join(yql_parts)
+
+    def _build_autocomplete_yql(
+        self, query: str, source_types: Optional[List[str]] = None
+    ) -> str:
         """Build YQL for autocomplete queries"""
-        yql_parts = ['select * from briefly_document where userInput(@query)']
-        
+        yql_parts = ["select * from briefly_document where userInput(@query)"]
+
         # Add source type filter for autocomplete
         if source_types:
-            source_type_filter = ' or '.join([f'source_type="{st}"' for st in source_types])
-            yql_parts.append(f'and ({source_type_filter})')
-        
-        return ' '.join(yql_parts)
-    
+            source_type_filter = " or ".join(
+                [f'source_type="{st}"' for st in source_types]
+            )
+            yql_parts.append(f"and ({source_type_filter})")
+
+        return " ".join(yql_parts)
+
     def _build_facets_yql(
         self,
         source_types: Optional[List[str]] = None,
         providers: Optional[List[str]] = None,
         date_from: Optional[str] = None,
-        date_to: Optional[str] = None
+        date_to: Optional[str] = None,
     ) -> str:
         """Build YQL for facets queries"""
-        yql_parts = ['select * from briefly_document']
-        
+        yql_parts = ["select * from briefly_document"]
+
         # Add filters for facets
         filters = []
-        
+
         if source_types:
-            source_type_filter = ' or '.join([f'source_type="{st}"' for st in source_types])
-            filters.append(f'({source_type_filter})')
-        
+            source_type_filter = " or ".join(
+                [f'source_type="{st}"' for st in source_types]
+            )
+            filters.append(f"({source_type_filter})")
+
         if providers:
-            provider_filter = ' or '.join([f'provider="{p}"' for p in providers])
-            filters.append(f'({provider_filter})')
-        
+            provider_filter = " or ".join([f'provider="{p}"' for p in providers])
+            filters.append(f"({provider_filter})")
+
         if date_from or date_to:
             date_filter_parts = []
             if date_from:
@@ -301,9 +312,9 @@ class QueryBuilder:
                 date_filter_parts.append(f'created_at <= "{date_to}"')
             if date_filter_parts:
                 filters.append(f'({" and ".join(date_filter_parts)})')
-        
+
         if filters:
-            yql_parts.append('where')
-            yql_parts.append(' and '.join(filters))
-        
-        return ' '.join(yql_parts)
+            yql_parts.append("where")
+            yql_parts.append(" and ".join(filters))
+
+        return " ".join(yql_parts)
