@@ -330,18 +330,9 @@ test_search_endpoints() {
     fi
 }
 
-# Stop Vespa services
+# Stop Vespa container only
 stop_vespa_services() {
-    log_info "Stopping Vespa services..."
-    
-    for port in "$VESPA_LOADER_PORT" "$VESPA_QUERY_PORT"; do
-        local pid
-        pid=$(lsof -ti:"$port" 2>/dev/null || true)
-        if [[ -n "$pid" ]]; then
-            log_info "Stopping service on port ${port} (PID: ${pid})"
-            kill "$pid" 2>/dev/null || true
-        fi
-    done
+    log_info "Stopping Vespa container..."
     
     if docker ps --format "table {{.Names}}" | grep -q "^${VESPA_CONTAINER_NAME}$"; then
         log_info "Stopping Vespa container..."
@@ -351,7 +342,7 @@ stop_vespa_services() {
         log_warning "Vespa container is not running"
     fi
     
-    log_success "All Vespa services stopped"
+    log_success "Vespa container stopped"
 }
 
 # Cleanup Vespa
@@ -390,20 +381,7 @@ show_status() {
         log_error "Vespa Container: Not running"
     fi
     
-    echo ""
-    log_info "Python Services:"
-    
-    if check_python_service_health "$VESPA_LOADER_PORT" "Vespa Loader"; then
-        log_success "  Vespa Loader Service: http://localhost:${VESPA_LOADER_PORT} ✅"
-    else
-        log_warning "  Vespa Loader Service: http://localhost:${VESPA_LOADER_PORT} ❌"
-    fi
-    
-    if check_python_service_health "$VESPA_QUERY_PORT" "Vespa Query"; then
-        log_success "  Vespa Query Service: http://localhost:${VESPA_QUERY_PORT} ✅"
-    else
-        log_warning "  Vespa Query Service: http://localhost:${VESPA_QUERY_PORT} ❌"
-    fi
+
 }
 
 # Deploy Briefly application
@@ -467,9 +445,9 @@ deploy_briefly() {
     fi
 }
 
-# Start all services
+# Start Vespa container only
 start_all() {
-    log_info "Starting all Vespa services..."
+    log_info "Starting Vespa container..."
     
     # Start Vespa container
     if ! start_vespa_container; then
@@ -477,18 +455,7 @@ start_all() {
         exit 1
     fi
     
-    # Start Python services
-    if ! start_python_service "Vespa Loader" "$VESPA_LOADER_PORT" "main:app" "vespa_loader"; then
-        log_error "Failed to start Vespa Loader Service"
-        exit 1
-    fi
-    
-    if ! start_python_service "Vespa Query" "$VESPA_QUERY_PORT" "main:app" "vespa_query"; then
-        log_error "Failed to start Vespa Query Service"
-        exit 1
-    fi
-    
-    log_success "All Vespa services started successfully!"
+    log_success "Vespa container started successfully!"
     show_status
 }
 
@@ -520,26 +487,22 @@ case "${1:-}" in
         echo "Usage: $0 [OPTION]"
         echo ""
         echo "Options:"
-        echo "  (no args)  Start Vespa services if not running, health check"
-        echo "  --start    Start all Vespa services (container + Python services)"
+        echo "  (no args)  Start Vespa container if not running, health check"
+        echo "  --start    Start Vespa container"
         echo "  --deploy   Deploy the Briefly application to Vespa"
-        echo "  --stop     Stop all Vespa services"
+        echo "  --stop     Stop Vespa container"
         echo "  --cleanup  Stop and remove the Vespa container"
-        echo "  --restart  Restart all Vespa services"
+        echo "  --restart  Restart Vespa container"
         echo "  --status   Show current status"
         echo "  --help     Show this help message"
         echo ""
         echo "Services:"
         echo "  Vespa Engine (Docker): ${VESPA_PORTS[*]}"
-        echo "  Vespa Loader Service: http://localhost:${VESPA_LOADER_PORT}"
-        echo "  Vespa Query Service: http://localhost:${VESPA_QUERY_PORT}"
         echo "  Briefly Application: ${VESPA_ENDPOINT}"
         ;;
     *)
-        # Default behavior: health check and start if needed
-        log_info "Checking Vespa services health..."
-        
-        all_healthy=true
+        # Default behavior: health check and start container if needed
+        log_info "Checking Vespa container health..."
         
         if ! check_vespa_container_health; then
             log_info "Vespa container is not running"
@@ -547,31 +510,9 @@ case "${1:-}" in
                 log_error "Failed to start Vespa container"
                 exit 1
             fi
-            all_healthy=false
-        fi
-        
-        if ! check_python_service_health "$VESPA_LOADER_PORT" "Vespa Loader"; then
-            log_info "Vespa Loader Service is not running"
-            if ! start_python_service "Vespa Loader" "$VESPA_LOADER_PORT" "main:app" "vespa_loader"; then
-                log_error "Failed to start Vespa Loader Service"
-                exit 1
-            fi
-            all_healthy=false
-        fi
-        
-        if ! check_python_service_health "$VESPA_QUERY_PORT" "Vespa Query"; then
-            log_info "Vespa Query Service is not running"
-            if ! start_python_service "Vespa Query" "$VESPA_QUERY_PORT" "main:app" "vespa_query"; then
-                log_error "Failed to start Vespa Query Service"
-                exit 1
-            fi
-            all_healthy=false
-        fi
-        
-        if [[ "$all_healthy" == true ]]; then
-            log_success "All Vespa services are already running and healthy!"
+            log_success "Vespa container started successfully!"
         else
-            log_success "Vespa services started successfully!"
+            log_success "Vespa container is already running and healthy!"
         fi
         
         show_status
