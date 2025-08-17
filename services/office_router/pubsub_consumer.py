@@ -84,8 +84,7 @@ class PubSubConsumer:
             callback=self._email_message_callback,
             flow_control=pubsub_v1.types.FlowControl(
                 max_messages=100,
-                max_bytes=1024 * 1024,  # 1MB
-                allow_exceeded_limits=False
+                max_bytes=1024 * 1024  # 1MB
             )
         )
         
@@ -104,8 +103,7 @@ class PubSubConsumer:
             callback=self._calendar_message_callback,
             flow_control=pubsub_v1.types.FlowControl(
                 max_messages=50,
-                max_bytes=512 * 1024,  # 512KB
-                allow_exceeded_limits=False
+                max_bytes=512 * 1024  # 512KB
             )
         )
         

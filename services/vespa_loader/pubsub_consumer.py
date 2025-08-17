@@ -148,8 +148,7 @@ class PubSubConsumer:
                 callback=self._create_message_callback(topic_name, config),
                 flow_control=pubsub_v1.types.FlowControl(
                     max_messages=config["batch_size"],
-                    max_bytes=1024 * 1024,  # 1MB
-                    allow_exceeded_limits=False
+                    max_bytes=1024 * 1024  # 1MB
                 )
             )
             
