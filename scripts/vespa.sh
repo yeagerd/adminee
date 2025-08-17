@@ -67,6 +67,20 @@ check_docker_running() {
     return 0
 }
 
+# Check Python service health
+check_python_service_health() {
+    local port=$1
+    local service_name=$2
+    
+    if lsof -i ":$port" >/dev/null 2>&1; then
+        # Check if the service is responding
+        if curl -s "http://localhost:$port/" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # Check Vespa container health
 check_vespa_container_health() {
     if docker ps --format "table {{.Names}}" | grep -q "^${VESPA_CONTAINER_NAME}$"; then
@@ -161,6 +175,25 @@ start_vespa_container() {
     return 1
 }
 
+# Start Vespa container and services
+start_vespa_with_services() {
+    log_info "Starting Vespa container and services..."
+    
+    # Start Vespa container first
+    if ! start_vespa_container; then
+        log_error "Failed to start Vespa container"
+        return 1
+    fi
+    
+    # Wait a bit for container to fully initialize
+    sleep 5
+    
+    # Start Vespa Python services
+    start_vespa_services
+    
+    log_success "Vespa container and services started successfully!"
+}
+
 # Start Python service
 start_python_service() {
     local service_name=$1
@@ -182,9 +215,10 @@ start_python_service() {
         log_error "Service directory not found: ${service_dir}"
         return 1
     fi
-    
     cd "$service_dir"
-    nohup python -m uvicorn "${module}" --host 0.0.0.0 --port "${port}" --reload >/dev/null 2>&1 &
+    
+    # Activate virtual environment and start service
+    nohup bash -c "source ../../.venv/bin/activate && python -m uvicorn ${module} --host 0.0.0.0 --port ${port} --reload" >/dev/null 2>&1 &
     local pid=$!
     
     sleep 3
@@ -195,6 +229,50 @@ start_python_service() {
     else
         log_error "${service_name} failed to start"
         return 1
+    fi
+}
+
+# Start Vespa Loader service
+start_vespa_loader() {
+    log_info "Starting Vespa Loader service..."
+    start_python_service "Vespa Loader Service" "$VESPA_LOADER_PORT" "main:app" "vespa_loader"
+}
+
+# Start Vespa Query service  
+start_vespa_query() {
+    log_info "Starting Vespa Query service..."
+    start_python_service "Vespa Query Service" "$VESPA_QUERY_PORT" "main:app" "vespa_query"
+}
+
+# Start all Vespa Python services
+start_vespa_services() {
+    log_info "Starting Vespa Python services..."
+    start_vespa_loader
+    start_vespa_query
+}
+
+# Stop Vespa Python services
+stop_vespa_services() {
+    log_info "Stopping Vespa Python services..."
+    
+    # Stop Vespa Loader
+    if check_python_service_health "$VESPA_LOADER_PORT" "Vespa Loader Service"; then
+        local loader_pid
+        loader_pid=$(lsof -ti:"$VESPA_LOADER_PORT" 2>/dev/null | head -1)
+        if [[ -n "$loader_pid" ]]; then
+            kill "$loader_pid" 2>/dev/null || true
+            log_success "Vespa Loader service stopped"
+        fi
+    fi
+    
+    # Stop Vespa Query
+    if check_python_service_health "$VESPA_QUERY_PORT" "Vespa Query Service"; then
+        local query_pid
+        query_pid=$(lsof -ti:"$VESPA_QUERY_PORT" 2>/dev/null | head -1)
+        if [[ -n "$query_pid" ]]; then
+            kill "$query_pid" 2>/dev/null || true
+            log_success "Vespa Query service stopped"
+        fi
     fi
 }
 
@@ -433,8 +511,9 @@ try:
     data = json.load(sys.stdin)
     children = data.get('root', {}).get('children', [])
     for child in children:
-        doc_id = child.get('id', '')
-        if doc_id.startswith('id:briefly:briefly_document::'):
+        # Use the doc_id field, not the full Vespa ID
+        doc_id = child.get('fields', {}).get('doc_id', '')
+        if doc_id:
             print(doc_id)
 except Exception as e:
     print(f'Error parsing response: {e}', file=sys.stderr)
@@ -519,6 +598,23 @@ show_status() {
             log_success "Briefly Application: Deployed ✅"
         else
             log_warning "Briefly Application: Not deployed"
+        fi
+        
+        echo ""
+        log_info "Python Services:"
+        
+        # Check Vespa Loader service
+        if check_python_service_health "$VESPA_LOADER_PORT" "Vespa Loader Service"; then
+            log_success "Vespa Loader Service: http://localhost:${VESPA_LOADER_PORT}"
+        else
+            log_warning "Vespa Loader Service: Not running"
+        fi
+        
+        # Check Vespa Query service
+        if check_python_service_health "$VESPA_QUERY_PORT" "Vespa Query Service"; then
+            log_success "Vespa Query Service: http://localhost:${VESPA_QUERY_PORT}"
+        else
+            log_warning "Vespa Query Service: Not running"
         fi
     else
         log_error "Vespa Container: Not running"
@@ -607,10 +703,16 @@ case "${1:-}" in
     --start)
         start_all
         ;;
+    --start-with-services)
+        start_vespa_with_services
+        ;;
     --deploy)
         deploy_briefly
         ;;
     --stop)
+        stop_vespa_services
+        ;;
+    --stop-services)
         stop_vespa_services
         ;;
     --cleanup)
@@ -629,22 +731,33 @@ case "${1:-}" in
         sleep 2
         start_all
         ;;
+    --restart-with-services)
+        log_info "Restarting Vespa container and services..."
+        stop_vespa_services
+        sleep 2
+        start_vespa_with_services
+        ;;
     --help|-h)
         echo "Usage: $0 [OPTION]"
         echo ""
         echo "Options:"
         echo "  (no args)  Start Vespa container if not running, health check"
-        echo "  --start    Start Vespa container"
+        echo "  --start    Start Vespa container only"
+        echo "  --start-with-services Start Vespa container and Python services"
         echo "  --deploy   Deploy the Briefly application to Vespa"
-        echo "  --stop     Stop Vespa container"
+        echo "  --stop     Stop Vespa container only"
+        echo "  --stop-services Stop Vespa Python services only"
         echo "  --cleanup  Stop and remove the Vespa container"
         echo "  --clear-data Clear all data from Vespa (useful for testing)"
-        echo "  --restart  Restart Vespa container"
+        echo "  --restart  Restart Vespa container only"
+        echo "  --restart-with-services Restart Vespa container and Python services"
         echo "  --status   Show current status"
         echo "  --help     Show this help message"
         echo ""
         echo "Services:"
         echo "  Vespa Engine (Docker): ${VESPA_PORTS[*]}"
+        echo "  Vespa Loader Service: http://localhost:${VESPA_LOADER_PORT}"
+        echo "  Vespa Query Service: http://localhost:${VESPA_QUERY_PORT}"
         echo "  Briefly Application: ${VESPA_ENDPOINT}"
         ;;
     *)
