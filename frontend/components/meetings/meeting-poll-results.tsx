@@ -1,14 +1,15 @@
 'use client';
 
 import { meetingsApi } from '@/api';
-import type { PollResponse } from '@/api/clients/meetings-client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PollResponse } from '@/types/api/meetings';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Mail, Plus, Users } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { Calendar, Clock, MapPin, Users, ChevronDown, ChevronRight, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Participant {
     id: string;
@@ -124,7 +125,6 @@ function PollHeader({ onBack }: PollHeaderProps) {
                 onClick={onBack}
                 className="flex items-center gap-2"
             >
-                <ArrowLeft className="h-4 w-4" />
                 Back to List
             </Button>
             <h1 className="text-2xl font-bold">Meeting Poll Results</h1>
@@ -205,7 +205,7 @@ function ParticipantTable({ participants, onResendEmail, resendingEmails }: Part
                                         disabled={resendingEmails.has(participant.id)}
                                         className="flex items-center gap-1"
                                     >
-                                        <Mail className="h-3 w-3" />
+                                        Mail
                                         {resendingEmails.has(participant.id) ? 'Sending...' : 'Resend'}
                                     </Button>
                                 )}
@@ -241,9 +241,9 @@ function ParticipantSection({ poll, onResendEmail, resendingEmails, onAddPartici
                         className="flex items-center gap-1"
                     >
                         {showParticipantDetails ? (
-                            <ChevronDown className="h-4 w-4" />
+                            ChevronDown
                         ) : (
-                            <ChevronRight className="h-4 w-4" />
+                            ChevronRight
                         )}
                         <Users className="h-4 w-4" />
                     </Button>
@@ -368,9 +368,9 @@ function TimeSlotRow({ slot, stats, isExpanded, isScheduled, poll, participantRe
                 <td className="px-3 py-2 border cursor-pointer" onClick={onToggleExpansion}>
                     <div className="flex items-center gap-2">
                         {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                            ChevronDown
                         ) : (
-                            <ChevronRight className="h-4 w-4 text-gray-500" />
+                            ChevronRight
                         )}
                         <span className="font-medium">{formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}</span>
                         {isScheduled && (

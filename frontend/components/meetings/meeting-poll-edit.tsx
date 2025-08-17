@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { meetingsApi } from '@/api';
-import type { MeetingPollUpdate } from '@/api/clients/meetings-client';
+import { MeetingPollUpdate } from '@/types/api/meetings';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
