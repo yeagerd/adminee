@@ -49,13 +49,14 @@ class QueryBuilder:
                 # Build base query
                 vespa_query = {
                     "yql": self._build_yql_query(
-                        query, user_id, source_types, providers, 
+                        query, source_types, providers, 
                         date_from, date_to, folders
                     ),
                     "ranking": ranking_profile,
                     "hits": min(max_hits, self.max_max_hits),
                     "offset": offset,
-                    "timeout": "10s"
+                    "timeout": "10s",
+                    "streaming.groupname": user_id  # Add streaming mode support for user isolation
                 }
                 
                 # Add faceting if requested
@@ -84,10 +85,11 @@ class QueryBuilder:
         """Build an autocomplete query"""
         try:
             vespa_query = {
-                "yql": self._build_autocomplete_yql(query, user_id, source_types),
+                "yql": self._build_autocomplete_yql(query, source_types),
                 "ranking": "bm25",
                 "hits": min(max_hits, 20),
-                "timeout": "5s"
+                "timeout": "5s",
+                "streaming.groupname": user_id  # Add streaming mode support for user isolation
             }
             
             logger.info(f"Built autocomplete query for user {user_id}")
@@ -107,10 +109,11 @@ class QueryBuilder:
         """Build a query to find similar documents"""
         try:
             vespa_query = {
-                "yql": self._build_similar_docs_yql(doc_id, user_id, source_types),
+                "yql": self._build_similar_docs_yql(doc_id, source_types),
                 "ranking": "semantic",
                 "hits": min(max_hits, self.max_max_hits),
-                "timeout": "10s"
+                "timeout": "10s",
+                "streaming.groupname": user_id  # Add streaming mode support for user isolation
             }
             
             logger.info(f"Built similar documents query for doc {doc_id}")
@@ -130,10 +133,11 @@ class QueryBuilder:
         """Build a query for faceted search"""
         try:
             vespa_query = {
-                "yql": self._build_facets_yql(query, user_id, facet_fields),
+                "yql": self._build_facets_yql(query, facet_fields),
                 "ranking": "bm25",
                 "hits": max_hits,
-                "timeout": "10s"
+                "timeout": "10s",
+                "streaming.groupname": user_id  # Add streaming mode support for user isolation
             }
             
             logger.info(f"Built faceted search query for user {user_id}")
@@ -146,7 +150,6 @@ class QueryBuilder:
     def _build_yql_query(
         self,
         query: str,
-        user_id: str,
         source_types: Optional[List[str]] = None,
         providers: Optional[List[str]] = None,
         date_from: Optional[str] = None,
@@ -154,21 +157,21 @@ class QueryBuilder:
         folders: Optional[List[str]] = None
     ) -> str:
         """Build YQL query string"""
-        # Start with base query
-        yql_parts = [
-            "SELECT * FROM briefly_document",
-            f"WHERE user_id = '{user_id}'"
-        ]
+        # Start with base query - no user_id filter needed in streaming mode
+        yql_parts = ["SELECT * FROM briefly_document"]
+        
+        # Build WHERE clause with filters
+        filters = []
         
         # Add source type filter
         if source_types:
             source_filter = " OR ".join([f"source_type = '{st}'" for st in source_types])
-            yql_parts.append(f"AND ({source_filter})")
+            filters.append(f"({source_filter})")
         
         # Add provider filter
         if providers:
             provider_filter = " OR ".join([f"provider = '{p}'" for p in providers])
-            yql_parts.append(f"AND ({provider_filter})")
+            filters.append(f"({provider_filter})")
         
         # Add date range filter
         if date_from or date_to:
@@ -178,66 +181,67 @@ class QueryBuilder:
             if date_to:
                 date_filters.append(f"created_at <= {date_to}")
             if date_filters:
-                yql_parts.append(f"AND ({' AND '.join(date_filters)})")
+                filters.append(f"({' AND '.join(date_filters)})")
         
         # Add folder filter
         if folders:
             folder_filter = " OR ".join([f"folder = '{f}'" for f in folders])
-            yql_parts.append(f"AND ({folder_filter})")
+            filters.append(f"({folder_filter})")
         
         # Add text search
         if query.strip():
-            yql_parts.append(f"AND ({self._build_text_search(query)})")
+            filters.append(f"({self._build_text_search(query)})")
         
-        # Complete YQL
-        yql = " ".join(yql_parts)
+        # Complete YQL with WHERE clause if filters exist
+        if filters:
+            yql = " ".join(yql_parts + ["WHERE"] + [" AND ".join(filters)])
+        else:
+            yql = " ".join(yql_parts)
+            
         logger.debug(f"Built YQL query: {yql}")
         return yql
     
-    def _build_autocomplete_yql(self, query: str, user_id: str, source_types: Optional[List[str]] = None) -> str:
+    def _build_autocomplete_yql(self, query: str, source_types: Optional[List[str]] = None) -> str:
         """Build YQL for autocomplete"""
-        yql_parts = [
-            "SELECT * FROM briefly_document",
-            f"WHERE user_id = '{user_id}'"
-        ]
+        yql_parts = ["SELECT * FROM briefly_document"]
+        filters = []
         
         if source_types:
             source_filter = " OR ".join([f"source_type = '{st}'" for st in source_types])
-            yql_parts.append(f"AND ({source_filter})")
+            filters.append(f"({source_filter})")
         
         if query.strip():
-            yql_parts.append(f"AND ({self._build_text_search(query, prefix=True)})")
+            filters.append(f"({self._build_text_search(query, prefix=True)})")
         
+        if filters:
+            return " ".join(yql_parts + ["WHERE"] + [" AND ".join(filters)])
         return " ".join(yql_parts)
     
-    def _build_similar_docs_yql(self, doc_id: str, user_id: str, source_types: Optional[List[str]] = None) -> str:
+    def _build_similar_docs_yql(self, doc_id: str, source_types: Optional[List[str]] = None) -> str:
         """Build YQL for finding similar documents"""
-        yql_parts = [
-            "SELECT * FROM briefly_document",
-            f"WHERE user_id = '{user_id}'",
-            f"AND doc_id != '{doc_id}'"
-        ]
+        yql_parts = ["SELECT * FROM briefly_document"]
+        filters = [f"doc_id != '{doc_id}'"]
         
         if source_types:
             source_filter = " OR ".join([f"source_type = '{st}'" for st in source_types])
-            yql_parts.append(f"AND ({source_filter})")
+            filters.append(f"({source_filter})")
         
-        return " ".join(yql_parts)
+        return " ".join(yql_parts + ["WHERE"] + [" AND ".join(filters)])
     
-    def _build_facets_yql(self, query: str, user_id: str, facet_fields: List[str]) -> str:
+    def _build_facets_yql(self, query: str, facet_fields: List[str]) -> str:
         """Build YQL for faceted search"""
-        yql_parts = [
-            "SELECT * FROM briefly_document",
-            f"WHERE user_id = '{user_id}'"
-        ]
+        yql_parts = ["SELECT * FROM briefly_document"]
+        filters = []
         
         if query.strip():
-            yql_parts.append(f"AND ({self._build_text_search(query)})")
+            filters.append(f"({self._build_text_search(query)})")
         
         # Add facet specifications
         for field in facet_fields:
             yql_parts.append(f"FACET {field}")
         
+        if filters:
+            return " ".join(yql_parts + ["WHERE"] + [" AND ".join(filters)])
         return " ".join(yql_parts)
     
     def _build_text_search(self, query: str, prefix: bool = False) -> str:

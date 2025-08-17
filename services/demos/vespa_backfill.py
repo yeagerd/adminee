@@ -179,7 +179,8 @@ class VespaBackfillDemo:
             user_query = {
                 "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
                 "hits": 1,  # Use 1 to ensure we get the totalCount field
-                "timeout": "5s"
+                "timeout": "5s",
+                "streaming.groupname": self.user_email  # Add streaming mode support for user isolation
             }
             
             start_time = time.time()
@@ -195,7 +196,8 @@ class VespaBackfillDemo:
                 "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
                 "hits": 1,
                 "timeout": "5s",
-                "grouping": "source_type"
+                "grouping": "source_type",
+                "streaming.groupname": self.user_email  # Add streaming mode support for user isolation
             }
             
             source_results = await self.search_engine.search(source_type_query)
@@ -213,7 +215,8 @@ class VespaBackfillDemo:
                 "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
                 "hits": 1,
                 "timeout": "5s",
-                "grouping": "provider"
+                "grouping": "provider",
+                "streaming.groupname": self.user_email  # Add streaming mode support for user isolation
             }
             
             provider_results = await self.search_engine.search(provider_query)

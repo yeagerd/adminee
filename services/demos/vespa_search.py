@@ -534,7 +534,8 @@ class VespaSearchDemo:
             user_query = {
                 "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
                 "hits": 0,  # We only want the count, not the actual documents
-                "timeout": "5s"
+                "timeout": "5s",
+                "streaming.groupname": self.user_email  # Add streaming mode support for user isolation
             }
             
             start_time = time.time()
@@ -548,7 +549,8 @@ class VespaSearchDemo:
                 "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
                 "hits": 0,
                 "timeout": "5s",
-                "grouping": "source_type"
+                "grouping": "source_type",
+                "streaming.groupname": self.user_email  # Add streaming mode support for user isolation
             }
             
             source_results = await self.search_engine.search(source_type_query)
@@ -566,7 +568,8 @@ class VespaSearchDemo:
                 "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
                 "hits": 0,
                 "timeout": "5s",
-                "grouping": "provider"
+                "grouping": "provider",
+                "streaming.groupname": self.user_email  # Add streaming mode support for user isolation
             }
             
             provider_results = await self.search_engine.search(provider_query)
@@ -599,52 +602,16 @@ class VespaSearchDemo:
     async def get_all_users_stats(self) -> Dict[str, Any]:
         """Get statistics for all users in the database"""
         try:
-            await self.search_engine.start()
-            
-            # Query to get all unique users
-            users_query = {
-                "yql": "select user_id from briefly_document where true",
-                "hits": 0,
-                "timeout": "5s",
-                "grouping": "user_id"
-            }
-            
-            users_results = await self.search_engine.search(users_query)
-            users = []
-            
-            if "root" in users_results and "children" in users_results["root"]:
-                for child in users_results["root"]["children"]:
-                    if "value" in child:
-                        user_email = child["value"]
-                        users.append(user_email)
-            
-            # Get stats for each user
-            user_stats = []
-            total_documents = 0
-            total_source_types = {}
-            total_providers = {}
-            
-            for user_email in users:
-                user_stat = await self.get_user_stats_for_email(user_email)
-                user_stats.append(user_stat)
-                
-                if "total_documents" in user_stat:
-                    total_documents += user_stat["total_documents"]
-                
-                # Aggregate source type counts
-                for source_type, count in user_stat.get("source_type_breakdown", {}).items():
-                    total_source_types[source_type] = total_source_types.get(source_type, 0) + count
-                
-                # Aggregate provider counts
-                for provider, count in user_stat.get("provider_breakdown", {}).items():
-                    total_providers[provider] = total_providers.get(provider, 0) + count
-            
+            # In streaming mode, we can't query all users at once without specifying a group
+            # Instead, we'll return a message explaining this limitation
             return {
-                "total_users": len(users),
-                "total_documents": total_documents,
-                "user_stats": user_stats,
-                "aggregate_source_types": total_source_types,
-                "aggregate_providers": total_providers,
+                "message": "In streaming mode, user statistics must be queried individually for each user",
+                "streaming_mode_note": "Use get_user_stats_for_email() for individual user statistics",
+                "total_users": "N/A - streaming mode limitation",
+                "total_documents": "N/A - streaming mode limitation",
+                "user_stats": [],
+                "aggregate_source_types": {},
+                "aggregate_providers": {},
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
@@ -662,7 +629,8 @@ class VespaSearchDemo:
             user_query = {
                 "yql": f'select * from briefly_document where user_id contains "{user_email}"',
                 "hits": 0,
-                "timeout": "5s"
+                "timeout": "5s",
+                "streaming.groupname": user_email  # Add streaming mode support for user isolation
             }
             
             start_time = time.time()
@@ -676,7 +644,8 @@ class VespaSearchDemo:
                 "yql": f'select source_type from briefly_document where user_id contains "{user_email}"',
                 "hits": 0,
                 "timeout": "5s",
-                "grouping": "source_type"
+                "grouping": "source_type",
+                "streaming.groupname": user_email  # Add streaming mode support for user isolation
             }
             
             source_results = await self.search_engine.search(source_type_query)
@@ -694,7 +663,8 @@ class VespaSearchDemo:
                 "yql": f'select provider from briefly_document where user_id contains "{user_email}"',
                 "hits": 0,
                 "timeout": "5s",
-                "grouping": "provider"
+                "grouping": "provider",
+                "streaming.groupname": user_email  # Add streaming mode support for user isolation
             }
             
             provider_results = await self.search_engine.search(provider_query)
@@ -752,8 +722,8 @@ class VespaSearchDemo:
         print(f"{'='*60}")
     
     def print_all_users_stats(self, stats: Dict[str, Any]):
-        """Print all users statistics in a formatted way"""
-        print(f"\n{'='*60}")
+        """Print statistics for all users"""
+        print(f"{'='*60}")
         print("ALL USERS STATISTICS")
         print(f"{'='*60}")
         
@@ -761,22 +731,45 @@ class VespaSearchDemo:
             print(f"Error: {stats['error']}")
             return
         
-        print(f"Total Users: {stats.get('total_users', 0):,}")
-        print(f"Total Documents: {stats.get('total_documents', 0):,}")
+        # Handle both numeric and string values for streaming mode compatibility
+        total_users = stats.get('total_users', 0)
+        total_documents = stats.get('total_documents', 0)
+        
+        if isinstance(total_users, (int, float)):
+            print(f"Total Users: {total_users:,}")
+        else:
+            print(f"Total Users: {total_users}")
+            
+        if isinstance(total_documents, (int, float)):
+            print(f"Total Documents: {total_documents:,}")
+        else:
+            print(f"Total Documents: {total_documents}")
+        
+        # Show streaming mode message if present
+        if "message" in stats:
+            print(f"\nNote: {stats['message']}")
+            if "streaming_mode_note" in stats:
+                print(f"  {stats['streaming_mode_note']}")
         
         # Aggregate source types
         aggregate_source_types = stats.get("aggregate_source_types", {})
         if aggregate_source_types:
             print(f"\nAggregate Source Type Breakdown:")
             for source_type, count in sorted(aggregate_source_types.items(), key=lambda x: x[1], reverse=True):
-                print(f"  {source_type}: {count:,}")
+                if isinstance(count, (int, float)):
+                    print(f"  {source_type}: {count:,}")
+                else:
+                    print(f"  {source_type}: {count}")
         
         # Aggregate providers
         aggregate_providers = stats.get("aggregate_providers", {})
         if aggregate_providers:
             print(f"\nAggregate Provider Breakdown:")
             for provider, count in sorted(aggregate_providers.items(), key=lambda x: x[1], reverse=True):
-                print(f"  {provider}: {count:,}")
+                if isinstance(count, (int, float)):
+                    print(f"  {provider}: {count:,}")
+                else:
+                    print(f"  {provider}: {count}")
         
         # Individual user stats
         user_stats = stats.get("user_stats", [])
@@ -784,7 +777,11 @@ class VespaSearchDemo:
             print(f"\nIndividual User Statistics:")
             for user_stat in user_stats:
                 if "error" not in user_stat:
-                    print(f"\n  {user_stat['user_email']}: {user_stat.get('total_documents', 0):,} documents")
+                    total_docs = user_stat.get('total_documents', 0)
+                    if isinstance(total_docs, (int, float)):
+                        print(f"\n  {user_stat['user_email']}: {total_docs:,} documents")
+                    else:
+                        print(f"\n  {user_stat['user_email']}: {total_docs} documents")
         
         print(f"{'='*60}")
 
