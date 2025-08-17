@@ -1,13 +1,14 @@
-import { 
-    UserResponse, 
-    UserPreferencesResponse, 
-    UserPreferencesUpdate,
-    IntegrationListResponse, 
-    OAuthStartRequest,
-    OAuthStartResponse,
+import {
+    IntegrationListResponse,
+    IntegrationScopeResponse,
     OAuthCallbackRequest,
     OAuthCallbackResponse,
-    IntegrationScopeResponse
+    OAuthStartRequest,
+    OAuthStartResponse,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
+    UserResponse,
+    IntegrationProvider
 } from '../../types/api/user';
 import { GatewayClient } from './gateway-client';
 
@@ -40,7 +41,7 @@ export class UserClient extends GatewayClient {
         return this.request<IntegrationListResponse>('/api/v1/users/me/integrations');
     }
 
-    async startOAuthFlow(provider: string, scopes: string[]): Promise<OAuthStartResponse> {
+    async startOAuthFlow(provider: IntegrationProvider, scopes: string[]): Promise<OAuthStartResponse> {
         // Use a dedicated integration callback URL to avoid conflicts with NextAuth
         const redirectUri = `${window.location.origin}/integrations/callback`;
 
@@ -56,7 +57,7 @@ export class UserClient extends GatewayClient {
         });
     }
 
-    async completeOAuthFlow(provider: string, code: string, state: string): Promise<OAuthCallbackResponse> {
+    async completeOAuthFlow(provider: IntegrationProvider, code: string, state: string): Promise<OAuthCallbackResponse> {
         const request: OAuthCallbackRequest = { code, state };
         return this.request<OAuthCallbackResponse>(`/api/v1/users/me/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
@@ -64,19 +65,19 @@ export class UserClient extends GatewayClient {
         });
     }
 
-    async disconnectIntegration(provider: string) {
+    async disconnectIntegration(provider: IntegrationProvider) {
         return this.request(`/api/v1/users/me/integrations/${provider}`, {
             method: 'DELETE',
         });
     }
 
-    async refreshIntegrationTokens(provider: string) {
+    async refreshIntegrationTokens(provider: IntegrationProvider) {
         return this.request(`/api/v1/users/me/integrations/${provider}/refresh`, {
             method: 'PUT',
         });
     }
 
-    async getProviderScopes(provider: string): Promise<IntegrationScopeResponse> {
+    async getProviderScopes(provider: IntegrationProvider): Promise<IntegrationScopeResponse> {
         return this.request<IntegrationScopeResponse>(`/api/v1/users/me/integrations/${provider}/scopes`);
     }
 }

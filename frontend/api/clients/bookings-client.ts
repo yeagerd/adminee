@@ -1,7 +1,3 @@
-import { 
-    CreatePublicBookingRequest,
-    SuccessResponse
-} from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
 
 // Legacy types for backward compatibility - these should be removed once all components are updated

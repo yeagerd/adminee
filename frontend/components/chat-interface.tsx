@@ -286,7 +286,11 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 };
                 if (enableStreaming) {
                     streamControllerRef.current = new AbortController();
-                    const stream = await chatApi.chatStream(currentInput, currentThreadId ?? undefined, userContext, streamControllerRef.current.signal);
+                    const stream = await chatApi.chatStream({
+                        message: currentInput,
+                        thread_id: currentThreadId ?? undefined,
+                        user_context: userContext
+                    }, streamControllerRef.current.signal);
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
                     const placeholderId = self.crypto.randomUUID()
@@ -379,7 +383,11 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                     }
                 } else {
                     // Non-streaming implementation using GatewayClient
-                    const data = await chatApi.chat(currentInput, currentThreadId ?? undefined, userContext) as ChatResponse;
+                    const data = await chatApi.chat({
+                        message: currentInput,
+                        thread_id: currentThreadId ?? undefined,
+                        user_context: userContext
+                    }) as ChatResponse;
                     if (!currentThreadId) {
                         fetchChatHistory()
                     }

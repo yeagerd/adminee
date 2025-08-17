@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { userApi, type Integration } from '@/api';
-import { Calendar, CheckCircle, Loader2, Mail, Shield } from 'lucide-react';
+import { IntegrationProvider } from '@/types/api/user';
+import { Calendar, CheckCircle, Loader2, Mail, Shield, Check, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -13,8 +14,8 @@ import { useEffect, useState } from 'react';
 const OnboardingPage = () => {
     const router = useRouter();
     const { data: session, status } = useSession();
-    const [integrations, setIntegrations] = useState<Integration[]>([]); // Changed type to any[] as Integration type is removed
-    const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
+    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [connectingProvider, setConnectingProvider] = useState<IntegrationProvider | null>(null);
 
     useEffect(() => {
         if (session) {
@@ -25,17 +26,47 @@ const OnboardingPage = () => {
     const loadIntegrations = async () => {
         try {
             const data = await userApi.getIntegrations();
-            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
-            // Extract just the integrations array
-            setIntegrations(data.integrations || []);
+            // Convert IntegrationResponse to Integration type
+            const convertedIntegrations: Integration[] = (data.integrations || []).map(integration => ({
+                ...integration,
+                scopes: integration.scopes || [],
+                external_user_id: integration.external_user_id || undefined,
+                external_email: integration.external_email || undefined,
+                external_name: integration.external_name || undefined,
+                token_expires_at: integration.token_expires_at || undefined,
+                token_created_at: integration.token_created_at || undefined,
+                last_sync_at: integration.last_sync_at || undefined,
+                last_error: integration.last_error || undefined,
+                error_count: integration.error_count || 0
+            }));
+            setIntegrations(convertedIntegrations);
         } catch (error) {
             console.error('Failed to load integrations:', error);
         }
     };
 
-    const handleConnectIntegration = async (provider: string, scopes: string[]) => {
+    // Helper function to get required scopes for each provider
+    const getRequiredScopes = (provider: IntegrationProvider): string[] => {
+        switch (provider) {
+            case IntegrationProvider.GOOGLE:
+                return [
+                    'https://www.googleapis.com/auth/gmail.readonly',
+                    'https://www.googleapis.com/auth/calendar'
+                ];
+            case IntegrationProvider.MICROSOFT:
+                return [
+                    'https://graph.microsoft.com/User.Read',
+                    'https://graph.microsoft.com/Calendars.ReadWrite',
+                    'https://graph.microsoft.com/Mail.Read'
+                ];
+            default:
+                return [];
+        }
+    };
+
+    const handleIntegration = async (provider: IntegrationProvider) => {
         try {
-            setConnectingProvider(provider);
+            const scopes = getRequiredScopes(provider);
             const response = await userApi.startOAuthFlow(provider, scopes) as { authorization_url: string };
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
@@ -78,8 +109,8 @@ const OnboardingPage = () => {
     }
 
     const activeIntegrations = integrations.filter(i => i.status === INTEGRATION_STATUS.ACTIVE);
-    const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
-    const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
+    const hasGoogleIntegration = activeIntegrations.some(i => i.provider === IntegrationProvider.GOOGLE);
+    const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === IntegrationProvider.MICROSOFT);
     const hasAnyIntegration = activeIntegrations.length > 0;
 
     return (
@@ -118,14 +149,11 @@ const OnboardingPage = () => {
                                 </ul>
                             </div>
                             <Button
-                                onClick={() => handleConnectIntegration('google', [
-                                    'https://www.googleapis.com/auth/gmail.readonly',
-                                    'https://www.googleapis.com/auth/calendar'
-                                ])}
-                                disabled={connectingProvider === 'google'}
+                                onClick={() => handleIntegration(IntegrationProvider.GOOGLE)}
+                                disabled={connectingProvider === IntegrationProvider.GOOGLE}
                                 className="w-full"
                             >
-                                {connectingProvider === 'google' ? (
+                                {connectingProvider === IntegrationProvider.GOOGLE ? (
                                     <>
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                         Connecting...
@@ -169,16 +197,12 @@ const OnboardingPage = () => {
                                 </ul>
                             </div>
                             <Button
-                                onClick={() => handleConnectIntegration('microsoft', [
-                                    'https://graph.microsoft.com/User.Read',
-                                    'https://graph.microsoft.com/Calendars.ReadWrite',
-                                    'https://graph.microsoft.com/Mail.Read'
-                                ])}
-                                disabled={connectingProvider === 'microsoft'}
+                                onClick={() => handleIntegration(IntegrationProvider.MICROSOFT)}
+                                disabled={connectingProvider === IntegrationProvider.MICROSOFT}
                                 variant="outline"
                                 className="w-full"
                             >
-                                {connectingProvider === 'microsoft' ? (
+                                {connectingProvider === IntegrationProvider.MICROSOFT ? (
                                     <>
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                         Connecting...

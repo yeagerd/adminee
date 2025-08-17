@@ -1,5 +1,5 @@
-// Import generated types from OpenAPI schemas
-export type { ErrorResponse, BrieflyAPIError } from '../../types/api/common';
+// Common types for the frontend API layer
+// These types are used across multiple services and should be kept in sync with backend schemas
 
 export interface ApiResponse<T = unknown> {
     success: boolean;

@@ -1,5 +1,6 @@
 'use client';
 
+import { meetingsApi, officeApi } from "@/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,13 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToolState } from "@/contexts/tool-context";
-import { meetingsApi, officeApi } from "@/api";
-import type { 
-    MeetingPoll, 
-    PollParticipant,
-    MeetingPollCreate,
-    TimeSlotCreate,
-    PollParticipantCreate
+import type {
+    MeetingPoll,
+    PollParticipant
 } from "@/types/api/meetings";
 import { CalendarEvent } from "@/types/office-service";
 import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";

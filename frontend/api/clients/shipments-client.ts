@@ -1,26 +1,18 @@
-import { 
-    PackageOut,
-    PackageCreate,
-    PackageUpdate,
-    PackageStatus,
-    EmailParseRequest,
-    EmailParseResponse,
-    ParsedTrackingInfo,
+import {
     DataCollectionRequest,
     DataCollectionResponse,
-    LabelOut,
-    LabelCreate,
-    LabelUpdate,
-    TrackingEventOut,
+    EmailParseRequest,
+    EmailParseResponse,
+    PackageCreate,
+    PackageOut,
+    PackageUpdate,
     TrackingEventCreate,
-    CarrierConfigOut
+    TrackingEventOut
 } from '../../types/api/shipments';
 import { GatewayClient } from './gateway-client';
 
 // Legacy types for backward compatibility - these should be removed once all components are updated
-export type { PackageStatus } from '../../types/api/shipments';
-export type { EmailParseRequest, EmailParseResponse, ParsedTrackingInfo } from '../../types/api/shipments';
-export type { DataCollectionRequest, DataCollectionResponse } from '../../types/api/shipments';
+export type { DataCollectionRequest, DataCollectionResponse, EmailParseRequest, EmailParseResponse, PackageStatus, ParsedTrackingInfo } from '../../types/api/shipments';
 
 // Additional types that may not be in the generated schema yet
 export interface SuggestedPackageData {

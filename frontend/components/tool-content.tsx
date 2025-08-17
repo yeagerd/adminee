@@ -1,5 +1,6 @@
 'use client';
 
+import { meetingsApi } from '@/api';
 import BookingsPage from '@/app/bookings/page';
 import DraftsList from '@/components/drafts/drafts-list';
 import { MeetingPollEdit } from '@/components/meetings/meeting-poll-edit';
@@ -9,7 +10,6 @@ import PackageDashboard from '@/components/packages/PackageDashboard';
 import { Button } from '@/components/ui/button';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { meetingsApi } from '@/api';
 import { MeetingSubView } from '@/types/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';

@@ -1,12 +1,8 @@
-import { 
+import {
     MeetingPoll,
     MeetingPollCreate,
     MeetingPollUpdate,
-    PollResponse,
-    TimeSlot,
     PollParticipant,
-    TimeSlotCreate,
-    PollParticipantCreate,
     SuccessResponse
 } from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
@@ -22,24 +18,45 @@ export class MeetingsClient extends GatewayClient {
     }
 
     async createMeetingPoll(pollData: MeetingPollCreate): Promise<MeetingPoll> {
-        const normalized: MeetingPollCreate = {
-            ...pollData,
-            response_deadline: this.normalizeDate(pollData.response_deadline),
+        // Handle null values properly for the API
+        const apiData = {
+            title: pollData.title,
+            description: pollData.description,
+            duration_minutes: pollData.duration_minutes,
+            location: pollData.location,
+            meeting_type: pollData.meeting_type,
+            response_deadline: pollData.response_deadline,
+            min_participants: pollData.min_participants,
+            max_participants: pollData.max_participants,
+            reveal_participants: pollData.reveal_participants,
+            send_emails: pollData.send_emails,
+            time_slots: pollData.time_slots,
+            participants: pollData.participants,
         };
+
         return this.request<MeetingPoll>('/api/v1/meetings/polls', {
             method: 'POST',
-            body: normalized,
+            body: apiData,
         });
     }
 
     async updateMeetingPoll(pollId: string, pollData: MeetingPollUpdate): Promise<MeetingPoll> {
-        const normalized: MeetingPollUpdate = {
-            ...pollData,
-            response_deadline: this.normalizeDate(pollData.response_deadline),
+        // Handle null values properly for the API
+        const apiData = {
+            title: pollData.title,
+            description: pollData.description,
+            duration_minutes: pollData.duration_minutes,
+            location: pollData.location,
+            meeting_type: pollData.meeting_type,
+            response_deadline: pollData.response_deadline,
+            min_participants: pollData.min_participants,
+            max_participants: pollData.max_participants,
+            reveal_participants: pollData.reveal_participants,
         };
+
         return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`, {
             method: 'PUT',
-            body: normalized,
+            body: apiData,
         });
     }
 
@@ -61,8 +78,8 @@ export class MeetingsClient extends GatewayClient {
         });
     }
 
-    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<SuccessResponse<{ event_id?: string; status: string; provider: string }>> {
-        return this.request<SuccessResponse<{ event_id?: string; status: string; provider: string }>>(`/api/v1/meetings/polls/${pollId}/schedule`, {
+    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<SuccessResponse> {
+        return this.request<SuccessResponse>(`/api/v1/meetings/polls/${pollId}/schedule`, {
             method: 'POST',
             body: { selectedSlotId },
         });
@@ -75,8 +92,8 @@ export class MeetingsClient extends GatewayClient {
         });
     }
 
-    async unscheduleMeeting(pollId: string): Promise<SuccessResponse<{ status?: string }>> {
-        return this.request<SuccessResponse<{ status?: string }>>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
+    async unscheduleMeeting(pollId: string): Promise<SuccessResponse> {
+        return this.request<SuccessResponse>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
             method: 'POST',
         });
     }

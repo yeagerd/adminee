@@ -1,22 +1,11 @@
 import { getSession } from 'next-auth/react';
 import { getUserId } from '../../lib/session-utils';
-import type { 
-    CalendarEvent, 
-    CreateCalendarEventRequest,
-    CalendarEventResponse,
-    TypedApiResponse_CalendarEventResponse_,
-    TypedApiResponse_List_CalendarEvent__,
-    EmailDraftCreateRequest,
-    EmailDraftResponse,
-    EmailDraftUpdateRequest,
-    EmailMessageList,
-    EmailThreadList,
-    EmailFolderList,
+import type {
     ContactList,
-    SendEmailRequest,
+    CreateCalendarEventRequest,
     SendEmailResponse,
-    AvailabilityResponse,
-    TypedApiResponse_AvailabilityResponse_
+    TypedApiResponse_CalendarEventResponse_,
+    TypedApiResponse_List_CalendarEvent__
 } from '../../types/api/office';
 import { BulkActionType } from '../types/common';
 import { GatewayClient } from './gateway-client';
@@ -335,8 +324,8 @@ export class OfficeClient extends GatewayClient {
             }
 
             // Extract messageId from the data if available
-            const messageId = result.data && typeof result.data === 'object' && result.data !== null 
-                ? (result.data as any).messageId 
+            const messageId = result.data && typeof result.data === 'object' && result.data !== null
+                ? (result.data as any).messageId
                 : undefined;
             return { success: true, messageId };
         } catch (error) {
