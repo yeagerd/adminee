@@ -9,6 +9,7 @@ This test catches the bug where:
 """
 
 import pytest
+import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from services.vespa_loader.mapper import DocumentMapper
 from services.vespa_loader.main import process_document
@@ -313,6 +314,199 @@ class TestDataStructureMismatch:
         assert vespa_doc.body == router_doc.fields.content
         assert vespa_doc.sender == router_doc.fields.sender
         assert vespa_doc.to == router_doc.fields.recipients
+
+
+class TestUserIDValidation:
+    """Test that the backend properly validates user_id and returns 4xx errors when missing."""
+    
+    def test_ingest_document_rejects_missing_user_id_flat(self):
+        """Test that ingest_document rejects documents without user_id in flat format."""
+        from services.vespa_loader.main import ingest_document
+        
+        # Document missing user_id
+        invalid_document = {
+            "id": "test_001",
+            "provider": "test_provider",
+            "type": "email",
+            "subject": "Test Email",
+            "body": "Test content"
+            # Missing user_id!
+        }
+        
+        # This should raise an HTTPException with 400 status
+        with pytest.raises(Exception) as exc_info:
+            # We need to mock the dependencies since this is a FastAPI endpoint
+            with patch('services.vespa_loader.main.vespa_client', Mock()), \
+                 patch('services.vespa_loader.main.content_normalizer', Mock()), \
+                 patch('services.vespa_loader.main.embedding_generator', Mock()), \
+                 patch('services.vespa_loader.main.document_mapper', Mock()):
+                
+                # This will fail at the validation step before processing
+                asyncio.run(ingest_document(invalid_document))
+        
+        # Check that it's an HTTPException with 400 status
+        assert "user_id is required" in str(exc_info.value)
+    
+    def test_ingest_document_rejects_missing_user_id_nested(self):
+        """Test that ingest_document rejects documents without user_id in nested format."""
+        from services.vespa_loader.main import ingest_document
+        
+        # Document missing user_id in nested structure
+        invalid_document = {
+            "document_type": "briefly_document",
+            "fields": {
+                "doc_id": "test_001",
+                "provider": "test_provider",
+                "source_type": "email",
+                "title": "Test Email",
+                "content": "Test content"
+                # Missing user_id!
+            }
+        }
+        
+        # This should raise an HTTPException with 400 status
+        with pytest.raises(Exception) as exc_info:
+            # We need to mock the dependencies since this is a FastAPI endpoint
+            with patch('services.vespa_loader.main.vespa_client', Mock()), \
+                 patch('services.vespa_loader.main.content_normalizer', Mock()), \
+                 patch('services.vespa_loader.main.embedding_generator', Mock()), \
+                 patch('services.vespa_loader.main.document_mapper', Mock()):
+                
+                # This will fail at the validation step before processing
+                asyncio.run(ingest_document(invalid_document))
+        
+        # Check that it's an HTTPException with 400 status
+        assert "user_id is required" in str(exc_info.value)
+    
+    def test_ingest_batch_rejects_documents_without_user_id(self):
+        """Test that batch ingest rejects any document without user_id."""
+        from services.vespa_loader.main import ingest_batch_documents
+        
+        # Batch with one document missing user_id
+        invalid_batch = [
+            {
+                "user_id": "user1@example.com",
+                "id": "doc_001",
+                "provider": "test_provider",
+                "type": "email",
+                "subject": "Test Email 1",
+                "body": "Test content 1"
+            },
+            {
+                # Missing user_id!
+                "id": "doc_002",
+                "provider": "test_provider",
+                "type": "email",
+                "subject": "Test Email 2",
+                "body": "Test content 2"
+            }
+        ]
+        
+        # This should raise an HTTPException with 400 status
+        with pytest.raises(Exception) as exc_info:
+            # We need to mock the dependencies since this is a FastAPI endpoint
+            with patch('services.vespa_loader.main.vespa_client', Mock()), \
+                 patch('services.vespa_loader.main.content_normalizer', Mock()), \
+                 patch('services.vespa_loader.main.embedding_generator', Mock()), \
+                 patch('services.vespa_loader.main.document_mapper', Mock()):
+                
+                # This will fail at the validation step before processing
+                asyncio.run(ingest_batch_documents(invalid_batch))
+        
+        # Check that it's an HTTPException with 400 status
+        assert "Document at index 1 is missing user_id" in str(exc_info.value)
+    
+    def test_process_document_rejects_missing_user_id_after_conversion(self):
+        """Test that process_document rejects documents without user_id after conversion."""
+        from services.vespa_loader.main import process_document
+        
+        # Mock the dependencies
+        mock_content_normalizer = Mock()
+        mock_content_normalizer.normalize.return_value = "normalized content"
+        
+        mock_embedding_generator = Mock()
+        mock_embedding_generator.generate_embedding = AsyncMock(return_value=[0.1] * 384)
+        
+        mock_document_mapper = Mock()
+        mock_document_mapper.map_to_vespa.return_value = {
+            "user_id": None,  # This will cause the validation to fail
+            "doc_id": "test_001",
+            "provider": "test_provider",
+            "source_type": "email",
+            "title": "Test Email",
+            "content": "normalized content",
+            "search_text": "normalized content"
+        }
+        
+        # Document that will be converted but still missing user_id
+        document_data = {
+            "document_type": "briefly_document",
+            "fields": {
+                "doc_id": "test_001",
+                "provider": "test_provider",
+                "source_type": "email",
+                "title": "Test Email",
+                "content": "Test content"
+                # Missing user_id!
+            }
+        }
+        
+        # This should raise a Pydantic validation error about missing user_id
+        with pytest.raises(Exception, match="user_id"):
+            with patch('services.vespa_loader.main.content_normalizer', mock_content_normalizer), \
+                 patch('services.vespa_loader.main.embedding_generator', mock_embedding_generator), \
+                 patch('services.vespa_loader.main.document_mapper', mock_document_mapper):
+                
+                asyncio.run(process_document(document_data))
+    
+    def test_backfill_cannot_create_problematic_data(self):
+        """Test that the backfill job cannot create data that would cause ID corruption."""
+        # This test verifies that our validation prevents the problematic data structure
+        # that was causing ID corruption in the first place
+        
+        # Simulate what the backfill job might try to send
+        problematic_backfill_data = {
+            "document_type": "briefly_document",
+            "fields": {
+                "doc_id": "ms_0",
+                "provider": "microsoft",
+                "source_type": "email",
+                "title": "Test Email",
+                "content": "Test content"
+                # Missing user_id - this should be rejected!
+            }
+        }
+        
+        # Verify that this data structure is invalid
+        from services.vespa_loader.models import validate_office_router_document
+        
+        # This should fail validation because user_id is required
+        with pytest.raises(Exception) as exc_info:
+            validate_office_router_document(problematic_backfill_data)
+        
+        # The validation should catch the missing user_id
+        assert "user_id" in str(exc_info.value).lower()
+        
+        # Now test with valid data (including user_id)
+        valid_backfill_data = {
+            "document_type": "briefly_document",
+            "fields": {
+                "user_id": "trybriefly@outlook.com",  # This makes it valid
+                "doc_id": "ms_0",
+                "provider": "microsoft",
+                "source_type": "email",
+                "title": "Test Email",
+                "content": "Test content"
+            }
+        }
+        
+        # This should pass validation
+        try:
+            router_doc = validate_office_router_document(valid_backfill_data)
+            assert router_doc.fields.user_id == "trybriefly@outlook.com"
+            assert router_doc.fields.doc_id == "ms_0"
+        except Exception as e:
+            pytest.fail(f"Valid data should not fail validation: {e}")
 
 
 if __name__ == "__main__":

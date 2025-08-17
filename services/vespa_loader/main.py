@@ -171,6 +171,23 @@ async def ingest_document(document_data: dict):
             span.set_attribute("api.document.type", document_data.get("source_type", "unknown"))
             span.set_attribute("api.document.user_id", document_data.get("user_id", "unknown"))
         
+        # Validate that user_id is provided (critical for user isolation)
+        user_id = None
+        if "document_type" in document_data and "fields" in document_data:
+            # Extract from nested structure
+            user_id = document_data.get("fields", {}).get("user_id")
+        else:
+            # Handle flat structure
+            user_id = document_data.get("user_id")
+        
+        if not user_id:
+            span.set_attribute("api.error", "Missing user_id")
+            span.set_attribute("api.error.detail", "user_id is required for document ingestion")
+            raise HTTPException(
+                status_code=400, 
+                detail="user_id is required for document ingestion. This field is critical for user isolation and security."
+            )
+        
         if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
             span.set_attribute("api.error", "Service not ready")
             raise HTTPException(status_code=503, detail="Service not ready")
@@ -205,6 +222,20 @@ async def ingest_batch_documents(documents: list[dict]):
         raise HTTPException(status_code=503, detail="Service not ready")
     
     try:
+        # Validate that all documents have user_id before processing
+        for i, doc in enumerate(documents):
+            user_id = None
+            if "document_type" in doc and "fields" in doc:
+                user_id = doc.get("fields", {}).get("user_id")
+            else:
+                user_id = doc.get("user_id")
+            
+            if not user_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Document at index {i} is missing user_id. This field is critical for user isolation and security."
+                )
+        
         results = []
         
         # Process documents in parallel
@@ -307,6 +338,10 @@ async def process_document(document_data: dict) -> dict:
             
             # Convert Pydantic model to dict for the mapper
             document_data = flat_document_data.model_dump()
+        
+        # Validate that user_id is present after conversion
+        if not document_data.get("user_id"):
+            raise ValueError("user_id is required for document processing. This field is critical for user isolation and security.")
         
         # Map office service format to Vespa format
         vespa_doc = document_mapper.map_to_vespa(document_data)
