@@ -175,7 +175,7 @@ start_python_service() {
     fi
     
     local service_dir
-    service_dir=$(pwd)/services/${directory}
+    service_dir="$REPO_ROOT/services/${directory}"
     
     if [[ ! -d "$service_dir" ]]; then
         log_error "Service directory not found: ${service_dir}"
@@ -539,7 +539,7 @@ case "${1:-}" in
         # Default behavior: health check and start if needed
         log_info "Checking Vespa services health..."
         
-        local all_healthy=true
+        all_healthy=true
         
         if ! check_vespa_container_health; then
             log_info "Vespa container is not running"
