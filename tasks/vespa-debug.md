@@ -11,13 +11,6 @@ This document outlines the complete workflow for debugging Vespa issues, managin
 - **Fix**: Changed `mode="index"` to `mode="streaming"` in `vespa/services.xml`
 - **Result**: `user_id` is now automatically extracted from document IDs
 
-### 5. Streaming Search Parameters Missing - RESOLVED ✅
-- **Problem**: Search queries in VespaSearchTool and SemanticSearchTool were missing `streaming.groupname` parameter
-- **Root Cause**: The search methods in `services/chat/agents/llm_tools.py` didn't include required streaming mode parameters
-- **Fix**: Added `"streaming.groupname": self.user_id` to both `VespaSearchTool.search()` and `SemanticSearchTool.semantic_search()` methods
-- **Result**: Interactive search mode now works without streaming errors
-- **Files Modified**: `services/chat/agents/llm_tools.py` lines 335-340 and 598-603
-
 ### 2. ID Corruption - RESOLVED
 - **Problem**: Document IDs had duplicated format like `id:briefly:briefly_document::id:briefly:briefly_document::...`
 - **Root Cause**: ID generation didn't follow streaming mode format
@@ -36,6 +29,73 @@ This document outlines the complete workflow for debugging Vespa issues, managin
 - **Root Cause**: Missing validation override for `indexing-mode-change`
 - **Fix**: Created `vespa/validation-overrides.xml` with 30-day override
 - **Result**: Successfully deployed streaming mode configuration
+
+### 5. Streaming Search Parameters Missing - RESOLVED ✅
+- **Problem**: Search queries in VespaSearchTool and SemanticSearchTool were missing `streaming.groupname` parameter
+- **Root Cause**: The search methods in `services/chat/agents/llm_tools.py` didn't include required streaming mode parameters
+- **Fix**: Added `"streaming.groupname": self.user_id` to both `VespaSearchTool.search()` and `SemanticSearchTool.semantic_search()` methods
+- **Result**: Interactive search mode now works without streaming errors
+- **Files Modified**: `services/chat/agents/llm_tools.py` lines 335-340 and 598-603
+
+## Current Critical Issue: Mock Data Generation 🚨
+
+### **Problem**: System is generating fake/mock data instead of querying real office services
+- **Root Cause**: `services/office/core/email_crawler.py` contains placeholder/mock data generation
+- **Impact**: Users see fake emails like "Microsoft Email 1", "Microsoft Email 2" instead of real data
+- **Location**: Lines 250-270 in `_get_microsoft_email_batch()` method
+
+### **Evidence from Current System**:
+```python
+# Current mock data generation in email_crawler.py
+emails.append({
+    "id": email_id,
+    "user_id": self.user_id,
+    "provider": "microsoft",
+    "type": "email",
+    "subject": f"Microsoft Email {start_idx + i}",  # FAKE DATA
+    "body": f"This is the body of Microsoft email {start_idx + i}",  # FAKE DATA
+    "from": f"sender{i}@microsoft.com",  # FAKE DATA
+    "to": [f"recipient{i}@example.com"],  # FAKE DATA
+    # ... more fake data
+})
+```
+
+### **What Should Happen Instead**:
+```python
+# Real implementation should look like:
+from ..clients.microsoft_graph import MicrosoftGraphClient
+client = MicrosoftGraphClient(self.user_id)
+
+query_params = {
+    "$top": batch_size,
+    "$skip": batch_num * batch_size,
+    "$orderby": "receivedDateTime desc"
+}
+
+if start_date:
+    query_params["$filter"] = f"receivedDateTime ge {start_date.isoformat()}"
+if end_date:
+    if query_params.get("$filter"):
+        query_params["$filter"] += f" and receivedDateTime le {end_date.isoformat()}"
+    else:
+        query_params["$filter"] = f"receivedDateTime le {end_date.isoformat()}"
+
+emails = await client.get_emails(query_params)
+return [self._normalize_microsoft_email(email) for email in emails]
+```
+
+### **Files Affected**:
+- `services/office/core/email_crawler.py` - Main mock data generation
+- `services/office/api/backfill.py` - Uses the mock email crawler
+- `services/demos/vespa_backfill.py` - Calls the mock backfill API
+- `services/demos/settings_demos.py` - Demo configuration that may enable mock mode
+
+### **Immediate Action Required**:
+1. **Stop using mock data** in production/demo scenarios
+2. **Implement real Microsoft Graph API integration**
+3. **Add proper authentication and API key management**
+4. **Create demo mode toggle** to switch between real and mock data
+5. **Update documentation** to clarify when mock vs real data is used
 
 ## Data Management Procedures
 
@@ -251,6 +311,33 @@ id:briefly:briefly_document::id:briefly:briefly_document::ms_9
 - [ ] Monitor document ID corruption
 - [ ] Track streaming mode performance metrics
 
+### 6. REAL DATA INTEGRATION - HIGH PRIORITY 🚨
+- [ ] **Replace mock data generation with real Microsoft Graph API integration**
+  - [ ] Implement real Microsoft Graph client in `services/office/core/email_crawler.py`
+  - [ ] Remove placeholder/mock email generation in `_get_microsoft_email_batch()`
+  - [ ] Add proper authentication and API key management for Microsoft Graph
+  - [ ] Implement real email crawling with proper rate limiting and error handling
+- [ ] **Implement real Gmail API integration**
+  - [ ] Create Gmail client in `services/office/core/email_crawler.py`
+  - [ ] Remove placeholder Gmail email generation
+  - [ ] Add OAuth2 authentication flow for Gmail API access
+- [ ] **Add real calendar and contact data integration**
+  - [ ] Implement Microsoft Graph calendar API integration
+  - [ ] Implement Microsoft Graph contacts API integration
+  - [ ] Add Gmail calendar and contacts API integration
+- [ ] **Create data source configuration system**
+  - [ ] Add environment variables for API keys and endpoints
+  - [ ] Create configuration for different data sources (Microsoft, Google, etc.)
+  - [ ] Add demo mode toggle to switch between real and mock data
+- [ ] **Implement proper error handling for real API calls**
+  - [ ] Handle API rate limiting and quotas
+  - [ ] Add retry logic for transient failures
+  - [ ] Implement fallback mechanisms when APIs are unavailable
+- [ ] **Add data validation and quality checks**
+  - [ ] Validate email structure and content
+  - [ ] Check for data consistency across different sources
+  - [ ] Implement data sanitization and normalization
+
 ## Success Criteria
 
 The system will work flawlessly when:
@@ -261,18 +348,32 @@ The system will work flawlessly when:
 5. ✅ No ID corruption or duplication occurs
 6. ✅ Streaming mode performance is acceptable
 7. ✅ Error handling is robust and informative
+8. ✅ **Real office service data is integrated** (not mock data)
+9. ✅ **Microsoft Graph API provides real emails, calendar, and contacts**
+10. ✅ **Gmail API provides real emails, calendar, and contacts**
+11. ✅ **Demo mode can toggle between real and mock data for testing**
+12. ✅ **Authentication and API key management is properly implemented**
 
-## Current Status: ✅ STREAMING SEARCH FIXED
+## Current Status: 🚨 MOCK DATA ISSUE IDENTIFIED
 
-**Latest Fix Completed (2025-08-16):**
+**Latest Critical Issue Discovered (2025-08-17):**
+- 🚨 **CRITICAL**: System is generating fake/mock data instead of querying real office services
+- 🚨 **ROOT CAUSE**: `services/office/core/email_crawler.py` contains placeholder/mock data generation
+- 🚨 **IMPACT**: Users see fake emails like "Microsoft Email 1", "Microsoft Email 2" instead of real data
+- 🚨 **LOCATION**: Lines 250-270 in `_get_microsoft_email_batch()` method
+
+**Previous Fixes Completed:**
 - ✅ Fixed streaming search parameters missing in VespaSearchTool and SemanticSearchTool
 - ✅ Interactive search mode now works without "Streaming search requires streaming.groupname" errors
 - ✅ Both direct query mode and interactive mode are functional
 - ✅ User isolation maintained through streaming mode parameters
 
-**Next Priority:**
-- Test the complete workflow (clear → backfill → verify isolation → clear)
-- Ensure all test files have streaming parameters for consistency
+**Next Priority - REAL DATA INTEGRATION:**
+- 🚨 **IMMEDIATE**: Replace mock data generation with real Microsoft Graph API integration
+- 🚨 **IMMEDIATE**: Implement real Gmail API integration
+- 🚨 **IMMEDIATE**: Add proper authentication and API key management
+- 🚨 **IMMEDIATE**: Create demo mode toggle to switch between real and mock data
+- 🚨 **IMMEDIATE**: Stop using mock data in production/demo scenarios
 
 ## Next Steps Priority
 
