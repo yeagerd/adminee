@@ -383,11 +383,11 @@ clear_vespa_data() {
     log_info "Clearing all documents from Vespa..."
     
     # Use Vespa's document API to clear all documents
-    # First, get a list of all documents
+    # First, get a list of all documents using a working query
     local search_response
     search_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
         -H "Content-Type: application/json" \
-        -d '{"yql": "select documentid from briefly_document", "hits": 1000, "ranking": "none"}')
+        -d '{"yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"", "hits": 1000}')
     
     if [[ $? -ne 0 ]]; then
         log_error "Failed to query Vespa for documents"
@@ -449,7 +449,7 @@ except Exception as e:
     local verify_response
     verify_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
         -H "Content-Type: application/json" \
-        -d '{"yql": "select documentid from briefly_document", "hits": 1, "ranking": "none"}')
+        -d '{"yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"", "hits": 1}')
     
     local remaining_count
     remaining_count=$(echo "$verify_response" | python3 -c "
