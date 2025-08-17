@@ -442,18 +442,41 @@ class VespaSearchDemo:
             start_time = time.time()
             
             # Use user data search for comprehensive results
-            results = await self.user_data_search.search_all_data(query, max_results=20)
+            search_results = await self.user_data_search.search_all_data(query, max_results=20)
             
             response_time = (time.time() - start_time) * 1000
             
-            return {
-                "query": query,
-                "status": results.get("status", "unknown"),
-                "response_time_ms": round(response_time, 2),
-                "total_found": results.get("total_found", 0),
-                "results": results.get("results", []),
-                "success": results.get("status") == "success"
-            }
+            # Extract results from the grouped structure
+            if search_results.get("status") == "success":
+                # Flatten grouped results into a single list for display
+                all_results = []
+                grouped_results = search_results.get("grouped_results", {})
+                for result_type, results in grouped_results.items():
+                    all_results.extend(results)
+                
+                # Sort by relevance score
+                all_results.sort(key=lambda x: x.get("relevance_score", 0.0), reverse=True)
+                
+                return {
+                    "query": query,
+                    "status": search_results.get("status", "unknown"),
+                    "response_time_ms": round(response_time, 2),
+                    "total_found": search_results.get("total_found", 0),
+                    "results": all_results,
+                    "success": True,
+                    "summary": search_results.get("summary", {}),
+                    "grouped_results": grouped_results
+                }
+            else:
+                return {
+                    "query": query,
+                    "status": search_results.get("status", "error"),
+                    "response_time_ms": round(response_time, 2),
+                    "total_found": 0,
+                    "results": [],
+                    "success": False,
+                    "error": search_results.get("error", "Unknown error")
+                }
             
         except Exception as e:
             logger.error(f"Query '{query}' failed: {e}")
@@ -465,26 +488,320 @@ class VespaSearchDemo:
             }
 
     def print_query_results(self, results: Dict[str, Any]):
-        """Print query results in a formatted way"""
-        print(f"\n{'='*60}")
-        print(f"QUERY RESULTS: {results['query']}")
-        print(f"{'='*60}")
-        print(f"Status: {results['status']}")
-        print(f"Response Time: {results.get('response_time_ms', 0):.2f}ms")
-        print(f"Total Found: {results.get('total_found', 0)}")
+        """Print query results in a detailed, well-formatted way for frontend and LLM use cases"""
+        print(f"\n{'='*80}")
+        print(f"🔍 SEARCH RESULTS: '{results['query']}'")
+        print(f"{'='*80}")
+        print(f"📊 Status: {results['status']}")
+        print(f"⏱️  Response Time: {results.get('response_time_ms', 0):.2f}ms")
+        print(f"📈 Total Found: {results.get('total_found', 0)}")
         
         if results.get("success") and results.get("results"):
-            print(f"\nTop Results:")
-            for i, result in enumerate(results["results"][:5], 1):
-                print(f"\n{i}. {result.get('title', 'No title')}")
-                print(f"   Type: {result.get('source_type', 'Unknown')}")
-                print(f"   Relevance: {result.get('relevance', 'N/A')}")
+            print(f"\n📋 SEARCH SUMMARY:")
+            print(f"   • Query: '{results['query']}'")
+            print(f"   • Results: {len(results['results'])} documents")
+            print(f"   • Search Method: Hybrid (BM25 + Vector Similarity)")
+            print(f"   • Ranking Profile: Hybrid ranking with semantic understanding")
+            
+            print(f"\n🎯 TOP RESULTS:")
+            print(f"{'─'*80}")
+            
+            for i, result in enumerate(results["results"][:10], 1):
+                # Result header with rank and type
+                result_type = result.get('type', 'Unknown')
+                type_emoji = self._get_type_emoji(result_type)
+                relevance = result.get('relevance_score', 0.0)
+                relevance_pct = f"{relevance * 100:.1f}%" if relevance else "N/A"
+                
+                print(f"\n{i:2d}. {type_emoji} {result.get('title', 'No title')}")
+                print(f"    {'─' * 60}")
+                
+                # Basic metadata
+                print(f"    📁 Type: {result_type.title()}")
+                print(f"    🎯 Relevance: {relevance_pct} (Score: {relevance:.4f})")
+                print(f"    🏷️  Provider: {result.get('provider', 'Unknown')}")
+                print(f"    🆔 ID: {result.get('id', 'N/A')}")
+                
+                # Search method and confidence information
+                search_method = result.get('search_method', 'Unknown')
+                match_confidence = result.get('match_confidence', 'Unknown')
+                print(f"    🔍 Search Method: {search_method}")
+                print(f"    ✅ Match Confidence: {match_confidence}")
+                
+                # Keyword match information
+                keyword_info = result.get('keyword_matches', {})
+                if keyword_info and keyword_info.get('count', 0) > 0:
+                    print(f"    🎯 Keyword Matches: {keyword_info['count']} words ({keyword_info.get('match_ratio', 0):.1%})")
+                    if keyword_info.get('words'):
+                        print(f"    📝 Matched Words: {', '.join(keyword_info['words'][:5])}")
+                
+                # Vector similarity if available
+                if result.get('vector_similarity') is not None:
+                    print(f"    🧠 Vector Similarity: {result['vector_similarity']:.4f}")
+                
+                # Content metrics
+                content_len = result.get('content_length', 0)
+                search_len = result.get('search_text_length', 0)
+                if content_len > 0:
+                    print(f"    📏 Content Length: {content_len} chars")
+                if search_len > 0:
+                    print(f"    🔍 Search Text Length: {search_len} chars")
+                
+                # Type-specific metadata
+                if result_type == "email":
+                    print(f"    📧 From: {result.get('sender', 'Unknown')}")
+                    print(f"    📮 To: {', '.join(result.get('recipients', ['Unknown']))}")
+                    print(f"    📂 Folder: {result.get('folder', 'Unknown')}")
+                    print(f"    🧵 Thread: {result.get('thread_id', 'N/A')}")
+                elif result_type == "calendar":
+                    print(f"    📅 Start: {result.get('start_time', 'Unknown')}")
+                    print(f"    ⏰ End: {result.get('end_time', 'Unknown')}")
+                    print(f"    👥 Attendees: {', '.join(result.get('attendees', ['None']))}")
+                    print(f"    📍 Location: {result.get('location', 'No location')}")
+                elif result_type == "contact":
+                    print(f"    👤 Display Name: {result.get('display_name', 'Unknown')}")
+                    print(f"    🏢 Company: {result.get('company', 'Unknown')}")
+                    print(f"    💼 Job Title: {result.get('job_title', 'Unknown')}")
+                
+                # Content and search text
+                if result.get('content'):
+                    content_preview = result['content'][:150] + "..." if len(result['content']) > 150 else result['content']
+                    print(f"    📝 Content: {content_preview}")
+                
+                if result.get('search_text'):
+                    search_preview = result['search_text'][:150] + "..." if len(result['search_text']) > 150 else result['search_text']
+                    print(f"    🔍 Search Text: {search_preview}")
+                
+                # Snippet with query highlighting
                 if result.get('snippet'):
-                    print(f"   Snippet: {result['snippet'][:100]}...")
+                    print(f"    💡 Snippet: {result['snippet']}")
+                
+                # Timestamps
+                if result.get('created_at'):
+                    created = self._format_timestamp(result['created_at'])
+                    print(f"    📅 Created: {created}")
+                if result.get('updated_at'):
+                    updated = self._format_timestamp(result['updated_at'])
+                    print(f"    🔄 Updated: {updated}")
+                
+                print(f"    {'─' * 60}")
+                
+            # Show additional results count if there are more
+            if len(results["results"]) > 10:
+                remaining = len(results["results"]) - 10
+                print(f"\n📚 ... and {remaining} more results")
+            
+            # Search insights for LLM RAG
+            print(f"\n🧠 SEARCH INSIGHTS FOR LLM RAG:")
+            print(f"   • Primary Content Types: {self._get_content_type_summary(results['results'])}")
+            print(f"   • Top Relevance Range: {self._get_relevance_range(results['results'])}")
+            print(f"   • Content Freshness: {self._get_content_freshness(results['results'])}")
+            print(f"   • Search Confidence: {self._get_search_confidence(results['results'])}")
+            print(f"   • Search Methods: {self._get_search_methods_summary(results['results'])}")
+            print(f"   • Vector vs Keyword: {self._get_vector_keyword_breakdown(results['results'])}")
+            print(f"   • Content Quality: {self._get_content_quality_assessment(results['results'])}")
+            print(f"   • RAG Readiness: {self._get_rag_readiness_assessment(results['results'])}")
+            
         elif results.get("error"):
-            print(f"Error: {results['error']}")
+            print(f"❌ Error: {results['error']}")
         
-        print(f"{'='*60}")
+        print(f"{'='*80}")
+    
+    def _get_type_emoji(self, result_type: str) -> str:
+        """Get appropriate emoji for result type"""
+        emoji_map = {
+            "email": "📧",
+            "calendar": "📅", 
+            "contact": "👤",
+            "file": "📄",
+            "document": "📋",
+            "message": "💬"
+        }
+        return emoji_map.get(result_type.lower(), "📄")
+    
+    def _format_timestamp(self, timestamp) -> str:
+        """Format timestamp for display"""
+        try:
+            if isinstance(timestamp, (int, float)):
+                # Unix timestamp in milliseconds
+                dt = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
+            else:
+                dt = datetime.fromisoformat(str(timestamp).replace('Z', '+00:00'))
+            
+            return dt.strftime("%Y-%m-%d %H:%M UTC")
+        except:
+            return str(timestamp)
+    
+    def _get_content_type_summary(self, results: List[Dict[str, Any]]) -> str:
+        """Get summary of content types in results"""
+        type_counts = {}
+        for result in results:
+            result_type = result.get('type', 'Unknown')
+            type_counts[result_type] = type_counts.get(result_type, 0) + 1
+        
+        if not type_counts:
+            return "No content types found"
+        
+        summary_parts = []
+        for content_type, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
+            summary_parts.append(f"{content_type.title()}: {count}")
+        
+        return ", ".join(summary_parts)
+    
+    def _get_relevance_range(self, results: List[Dict[str, Any]]) -> str:
+        """Get relevance score range for results"""
+        if not results:
+            return "No results"
+        
+        relevances = [r.get('relevance_score', 0.0) for r in results if r.get('relevance_score') is not None]
+        if not relevances:
+            return "No relevance scores"
+        
+        min_rel = min(relevances)
+        max_rel = max(relevances)
+        avg_rel = sum(relevances) / len(relevances)
+        
+        return f"{min_rel:.3f} - {max_rel:.3f} (avg: {avg_rel:.3f})"
+    
+    def _get_content_freshness(self, results: List[Dict[str, Any]]) -> str:
+        """Get content freshness summary"""
+        if not results:
+            return "No results"
+        
+        timestamps = []
+        for result in results:
+            if result.get('created_at'):
+                try:
+                    if isinstance(result['created_at'], (int, float)):
+                        ts = result['created_at'] / 1000
+                    else:
+                        ts = datetime.fromisoformat(str(result['created_at']).replace('Z', '+00:00')).timestamp()
+                    timestamps.append(ts)
+                except:
+                    continue
+        
+        if not timestamps:
+            return "Unknown"
+        
+        now = datetime.now(timezone.utc).timestamp()
+        oldest = min(timestamps)
+        newest = max(timestamps)
+        
+        oldest_days = (now - oldest) / (24 * 3600)
+        newest_days = (now - newest) / (24 * 3600)
+        
+        if oldest_days < 1:
+            return "All content from today"
+        elif oldest_days < 7:
+            return f"Content from last {int(oldest_days)} days"
+        elif oldest_days < 30:
+            return f"Content from last {int(oldest_days)} days"
+        else:
+            return f"Content from last {int(oldest_days)} days (some content may be outdated)"
+    
+    def _get_search_confidence(self, results: List[Dict[str, Any]]) -> str:
+        """Get search confidence assessment"""
+        if not results:
+            return "No results"
+        
+        high_relevance = sum(1 for r in results if r.get('relevance_score', 0) > 0.7)
+        medium_relevance = sum(1 for r in results if 0.3 <= r.get('relevance_score', 0) <= 0.7)
+        low_relevance = sum(1 for r in results if r.get('relevance_score', 0) < 0.3)
+        
+        total = len(results)
+        
+        if high_relevance / total > 0.6:
+            return "High confidence - Strong semantic matches found"
+        elif (high_relevance + medium_relevance) / total > 0.6:
+            return "Medium confidence - Good keyword and semantic matches"
+        else:
+            return "Low confidence - Limited semantic relevance, consider refining query"
+    
+    def _get_search_methods_summary(self, results: List[Dict[str, Any]]) -> str:
+        """Get summary of search methods used"""
+        if not results:
+            return "No results"
+        
+        method_counts = {}
+        for result in results:
+            method = result.get('search_method', 'Unknown')
+            method_counts[method] = method_counts.get(method, 0) + 1
+        
+        if not method_counts:
+            return "Unknown search methods"
+        
+        summary_parts = []
+        for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+            summary_parts.append(f"{method}: {count}")
+        
+        return ", ".join(summary_parts)
+    
+    def _get_vector_keyword_breakdown(self, results: List[Dict[str, Any]]) -> str:
+        """Get breakdown of vector vs keyword search results"""
+        if not results:
+            return "No results"
+        
+        vector_count = sum(1 for r in results if "Vector" in r.get('search_method', ''))
+        keyword_count = sum(1 for r in results if "Keyword" in r.get('search_method', ''))
+        hybrid_count = sum(1 for r in results if "Hybrid" in r.get('search_method', ''))
+        other_count = len(results) - vector_count - keyword_count - hybrid_count
+        
+        breakdown_parts = []
+        if vector_count > 0:
+            breakdown_parts.append(f"Vector: {vector_count}")
+        if keyword_count > 0:
+            breakdown_parts.append(f"Keyword: {keyword_count}")
+        if hybrid_count > 0:
+            breakdown_parts.append(f"Hybrid: {hybrid_count}")
+        if other_count > 0:
+            breakdown_parts.append(f"Other: {other_count}")
+        
+        return ", ".join(breakdown_parts)
+    
+    def _get_content_quality_assessment(self, results: List[Dict[str, Any]]) -> str:
+        """Assess content quality for RAG use"""
+        if not results:
+            return "No results"
+        
+        # Analyze content length and completeness
+        short_content = sum(1 for r in results if r.get('content_length', 0) < 100)
+        medium_content = sum(1 for r in results if 100 <= r.get('content_length', 0) < 500)
+        long_content = sum(1 for r in results if r.get('content_length', 0) >= 500)
+        
+        total = len(results)
+        
+        if long_content / total > 0.6:
+            return "High quality - Most content is substantial (>500 chars)"
+        elif (medium_content + long_content) / total > 0.6:
+            return "Good quality - Mix of medium and long content"
+        else:
+            return "Variable quality - Many short content pieces, may need filtering"
+    
+    def _get_rag_readiness_assessment(self, results: List[Dict[str, Any]]) -> str:
+        """Assess how ready the results are for RAG use"""
+        if not results:
+            return "Not ready - No results"
+        
+        # Check for high-quality, relevant content
+        high_quality = sum(1 for r in results if 
+                          r.get('relevance_score', 0) > 0.6 and 
+                          r.get('content_length', 0) > 200 and
+                          r.get('match_confidence') in ['High', 'Very High'])
+        
+        medium_quality = sum(1 for r in results if 
+                           r.get('relevance_score', 0) > 0.4 and 
+                           r.get('content_length', 0) > 100)
+        
+        total = len(results)
+        
+        if high_quality / total > 0.5:
+            return "Excellent - High-quality content ready for RAG"
+        elif (high_quality + medium_quality) / total > 0.7:
+            return "Good - Most content suitable for RAG with some filtering"
+        elif medium_quality / total > 0.5:
+            return "Fair - Moderate quality, may need content enhancement"
+        else:
+            return "Limited - Low-quality content, consider refining search or enhancing data"
 
     async def run_interactive_mode(self):
         """Run interactive search mode"""

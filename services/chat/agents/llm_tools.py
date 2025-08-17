@@ -654,7 +654,7 @@ class VespaSearchTool:
         return yql
     
     def _process_search_results(self, results: Dict[str, Any], query: str) -> List[Dict[str, Any]]:
-        """Process and format search results"""
+        """Process and format search results with enhanced metadata"""
         processed = []
         
         try:
@@ -663,6 +663,9 @@ class VespaSearchTool:
             
             for child in children:
                 fields = child.get("fields", {})
+                
+                # Determine search method based on relevance score and content analysis
+                search_method = self._determine_search_method(child, fields, query)
                 
                 # Extract relevant fields
                 result = {
@@ -675,7 +678,13 @@ class VespaSearchTool:
                     "created_at": fields.get("created_at"),
                     "updated_at": fields.get("updated_at"),
                     "relevance_score": child.get("relevance", 0.0),
-                    "snippet": self._generate_snippet(fields.get("search_text", ""), query)
+                    "snippet": self._generate_snippet(fields.get("search_text", ""), query),
+                    "search_method": search_method,
+                    "match_confidence": self._calculate_match_confidence(child, fields, query),
+                    "vector_similarity": fields.get("embedding_similarity", None),
+                    "keyword_matches": self._count_keyword_matches(fields.get("search_text", ""), query),
+                    "content_length": len(fields.get("content", "")),
+                    "search_text_length": len(fields.get("search_text", ""))
                 }
                 
                 # Add type-specific fields
@@ -684,21 +693,28 @@ class VespaSearchTool:
                         "sender": fields.get("sender"),
                         "recipients": fields.get("recipients", []),
                         "thread_id": fields.get("thread_id"),
-                        "folder": fields.get("folder")
+                        "folder": fields.get("folder"),
+                        "is_read": fields.get("metadata", {}).get("is_read", False),
+                        "has_attachments": fields.get("metadata", {}).get("has_attachments", False),
+                        "attachment_count": fields.get("metadata", {}).get("attachment_count", 0)
                     })
                 elif fields.get("source_type") == "calendar":
                     result.update({
                         "start_time": fields.get("start_time"),
                         "end_time": fields.get("end_time"),
                         "attendees": fields.get("attendees", []),
-                        "location": fields.get("location")
+                        "location": fields.get("location"),
+                        "is_all_day": fields.get("is_all_day", False),
+                        "recurring": fields.get("recurring", False)
                     })
                 elif fields.get("source_type") == "contact":
                     result.update({
                         "display_name": fields.get("title"),
                         "email_addresses": fields.get("email_addresses", []),
                         "company": fields.get("company"),
-                        "job_title": fields.get("job_title")
+                        "job_title": fields.get("job_title"),
+                        "phone_numbers": fields.get("phone_numbers", []),
+                        "address": fields.get("address", "")
                     })
                 
                 processed.append(result)
@@ -710,6 +726,82 @@ class VespaSearchTool:
             logger.error(f"Error processing search results: {e}")
         
         return processed
+    
+    def _determine_search_method(self, child: Dict[str, Any], fields: Dict[str, Any], query: str) -> str:
+        """Determine whether result came from vector similarity or keyword matching"""
+        relevance = child.get("relevance", 0.0)
+        search_text = fields.get("search_text", "").lower()
+        query_lower = query.lower()
+        
+        # Check for exact keyword matches
+        exact_matches = query_lower in search_text
+        word_matches = any(word in search_text for word in query_lower.split())
+        
+        # Check if we have vector similarity data
+        has_vector = fields.get("embedding") is not None
+        
+        if has_vector and relevance > 0.5:
+            if exact_matches or word_matches:
+                return "Hybrid (Vector + Keyword)"
+            else:
+                return "Vector Similarity"
+        elif exact_matches or word_matches:
+            return "Keyword Matching"
+        else:
+            return "Semantic/Contextual"
+    
+    def _calculate_match_confidence(self, child: Dict[str, Any], fields: Dict[str, Any], query: str) -> str:
+        """Calculate confidence level of the match"""
+        relevance = child.get("relevance", 0.0)
+        search_text = fields.get("search_text", "").lower()
+        query_lower = query.lower()
+        
+        # Count keyword matches
+        query_words = query_lower.split()
+        matches = sum(1 for word in query_words if word in search_text)
+        match_ratio = matches / len(query_words) if query_words else 0
+        
+        if relevance > 0.8 and match_ratio > 0.8:
+            return "Very High"
+        elif relevance > 0.6 and match_ratio > 0.6:
+            return "High"
+        elif relevance > 0.4 and match_ratio > 0.4:
+            return "Medium"
+        elif relevance > 0.2:
+            return "Low"
+        else:
+            return "Very Low"
+    
+    def _count_keyword_matches(self, search_text: str, query: str) -> Dict[str, Any]:
+        """Count keyword matches and their positions"""
+        if not search_text or not query:
+            return {"count": 0, "words": [], "positions": []}
+        
+        search_lower = search_text.lower()
+        query_lower = query.lower()
+        query_words = query_lower.split()
+        
+        matches = []
+        positions = []
+        
+        for word in query_words:
+            if word in search_lower:
+                matches.append(word)
+                # Find all positions of this word
+                start = 0
+                while True:
+                    pos = search_lower.find(word, start)
+                    if pos == -1:
+                        break
+                    positions.append(pos)
+                    start = pos + 1
+        
+        return {
+            "count": len(matches),
+            "words": list(set(matches)),
+            "positions": sorted(positions),
+            "match_ratio": len(matches) / len(query_words) if query_words else 0
+        }
     
     def _generate_snippet(self, text: str, query: str, max_length: int = 200) -> str:
         """Generate a snippet highlighting the search query"""
