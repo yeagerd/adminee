@@ -1,96 +1,15 @@
-import { ApiResponse } from '../types/common';
+import { 
+    MeetingPoll,
+    MeetingPollCreate,
+    MeetingPollUpdate,
+    PollResponse,
+    TimeSlot,
+    PollParticipant,
+    TimeSlotCreate,
+    PollParticipantCreate,
+    SuccessResponse
+} from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
-
-// Meeting Poll Types
-export interface MeetingPoll {
-    id: string;
-    user_id: string;
-    title: string;
-    description?: string;
-    duration_minutes: number;
-    location?: string;
-    meeting_type: string;
-    response_deadline?: string;
-    min_participants?: number;
-    max_participants?: number;
-    reveal_participants?: boolean;
-    status: string;
-    created_at: string;
-    updated_at: string;
-    poll_token: string;
-    time_slots: TimeSlot[];
-    participants: PollParticipant[];
-    responses?: PollResponse[];
-    scheduled_slot_id?: string;
-    calendar_event_id?: string;
-}
-
-export interface PollResponse {
-    id: string;
-    participant_id: string;
-    time_slot_id: string;
-    response: string;
-    comment?: string;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface TimeSlot {
-    id: string;
-    start_time: string;
-    end_time: string;
-    timezone: string;
-    is_available: boolean;
-}
-
-export interface PollParticipant {
-    id: string;
-    email: string;
-    name?: string;
-    status: string;
-    invited_at: string;
-    responded_at?: string;
-    reminder_sent_count: number;
-    response_token: string;
-}
-
-export interface MeetingPollCreate {
-    title: string;
-    description?: string;
-    duration_minutes: number;
-    location?: string;
-    meeting_type: string;
-    response_deadline?: string;
-    min_participants?: number;
-    max_participants?: number;
-    reveal_participants?: boolean;
-    time_slots: TimeSlotCreate[];
-    participants: PollParticipantCreate[];
-}
-
-export interface TimeSlotCreate {
-    start_time: string;
-    end_time: string;
-    timezone: string;
-}
-
-export interface PollParticipantCreate {
-    email: string;
-    name?: string;
-    poll_id?: string;
-    response_token?: string;
-}
-
-export interface MeetingPollUpdate {
-    title?: string;
-    description?: string;
-    duration_minutes?: number;
-    location?: string;
-    meeting_type?: string;
-    response_deadline?: string;
-    min_participants?: number;
-    max_participants?: number;
-}
 
 export class MeetingsClient extends GatewayClient {
     // Meetings Service
@@ -142,8 +61,8 @@ export class MeetingsClient extends GatewayClient {
         });
     }
 
-    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<ApiResponse<{ event_id?: string; status: string; provider: string }>> {
-        return this.request<ApiResponse<{ event_id?: string; status: string; provider: string }>>(`/api/v1/meetings/polls/${pollId}/schedule`, {
+    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<SuccessResponse<{ event_id?: string; status: string; provider: string }>> {
+        return this.request<SuccessResponse<{ event_id?: string; status: string; provider: string }>>(`/api/v1/meetings/polls/${pollId}/schedule`, {
             method: 'POST',
             body: { selectedSlotId },
         });
@@ -156,8 +75,8 @@ export class MeetingsClient extends GatewayClient {
         });
     }
 
-    async unscheduleMeeting(pollId: string): Promise<ApiResponse<{ status?: string }>> {
-        return this.request<ApiResponse<{ status?: string }>>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
+    async unscheduleMeeting(pollId: string): Promise<SuccessResponse<{ status?: string }>> {
+        return this.request<SuccessResponse<{ status?: string }>>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
             method: 'POST',
         });
     }

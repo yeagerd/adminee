@@ -1,3 +1,6 @@
+// Import generated types from OpenAPI schemas
+export type { ErrorResponse, BrieflyAPIError } from '../../types/api/common';
+
 export interface ApiResponse<T = unknown> {
     success: boolean;
     data: T;
@@ -67,6 +70,7 @@ export interface OAuthCallbackResponse {
     error?: string;
 }
 
+// Legacy draft types - these should be replaced with generated types from chat service
 export interface DraftApiResponse {
     id: string;
     type: string;
@@ -110,7 +114,7 @@ export interface EmailDraftResponse {
     request_id: string;
 }
 
-// Meeting Poll Types
+// Legacy meeting poll types - these should be replaced with generated types from meetings service
 export interface MeetingPoll {
     id: string;
     user_id: string;

@@ -110,10 +110,10 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 ## Phase 4: Frontend Integration
 
 ### Task 4.1: Update Frontend API Clients
-- [ ] Update `frontend/api/clients/` to use generated types
-- [ ] Replace manual type definitions with generated ones
-- [ ] Update `frontend/api/types/common.ts` to use generated common types
-- [ ] Ensure all API calls use proper generated types
+- [x] Update `frontend/api/clients/` to use generated types
+- [x] Replace manual type definitions with generated ones
+- [x] Update `frontend/api/types/common.ts` to use generated common types
+- [x] Ensure all API calls use proper generated types
 
 ### Task 4.2: Update Frontend Components
 - [ ] Update components to use generated types instead of manual definitions

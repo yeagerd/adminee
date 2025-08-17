@@ -1,9 +1,28 @@
-import { ApiResponse } from '../types/common';
+import { 
+    PackageOut,
+    PackageCreate,
+    PackageUpdate,
+    PackageStatus,
+    EmailParseRequest,
+    EmailParseResponse,
+    ParsedTrackingInfo,
+    DataCollectionRequest,
+    DataCollectionResponse,
+    LabelOut,
+    LabelCreate,
+    LabelUpdate,
+    TrackingEventOut,
+    TrackingEventCreate,
+    CarrierConfigOut
+} from '../../types/api/shipments';
 import { GatewayClient } from './gateway-client';
 
-// Shipment types - using the same status values as the old package-status.ts
-export type PackageStatus = 'PENDING' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION' | 'DELAYED' | 'CANCELLED' | 'RETURNED';
+// Legacy types for backward compatibility - these should be removed once all components are updated
+export type { PackageStatus } from '../../types/api/shipments';
+export type { EmailParseRequest, EmailParseResponse, ParsedTrackingInfo } from '../../types/api/shipments';
+export type { DataCollectionRequest, DataCollectionResponse } from '../../types/api/shipments';
 
+// Additional types that may not be in the generated schema yet
 export interface SuggestedPackageData {
     tracking_number?: string;
     carrier?: string;
@@ -24,94 +43,22 @@ export interface CursorPaginationInfo {
     limit: number;
 }
 
-export interface EmailParseRequest {
-    subject: string;
-    sender: string;
-    body: string;
-    content_type: string;
-}
-
-export interface ParsedTrackingInfo {
-    tracking_number: string;
-    carrier?: string;
-    confidence: number;
-    source: string;
-}
-
-export interface EmailParseResponse {
-    is_shipment_email: boolean;
-    detected_carrier?: string;
-    tracking_numbers: ParsedTrackingInfo[];
-    confidence: number;
-    detected_from: string;
-    suggested_package_data?: SuggestedPackageData;
-}
-
-export interface PackageCreateRequest {
-    tracking_number: string;
-    carrier: string;
-    status: PackageStatus;
-    estimated_delivery?: string;
-    actual_delivery?: string;
-    recipient_name?: string;
-    shipper_name?: string;
-    package_description?: string;
-    order_number?: string;
-    tracking_link?: string;
-    email_message_id?: string;
-}
-
-export interface PackageResponse {
-    id: string;
-    tracking_number: string;
-    carrier: string;
-    status: PackageStatus;
-    estimated_delivery?: string;
-    actual_delivery?: string;
-    recipient_name?: string;
-    shipper_name?: string;
-    package_description?: string;
-    order_number?: string;
-    tracking_link?: string;
-    updated_at: string;
-    events_count: number;
-    labels: string[];
-}
-
-export interface DataCollectionRequest {
-    user_id: string;
-    email_message_id: string;
-    original_email_data: Record<string, unknown>;
-    auto_detected_data: Record<string, unknown>;
-    user_corrected_data: Record<string, unknown>;
-    detection_confidence: number;
-    correction_reason?: string;
-    consent_given: boolean;
-}
-
-export interface DataCollectionResponse {
-    success: boolean;
-    collection_id: string;
-    timestamp: string;
-    message: string;
-}
-
 export interface PackageRefreshResponse {
     success: boolean;
     message: string;
-    updated_data?: Partial<PackageResponse>;
+    updated_data?: Partial<PackageOut>;
 }
 
 export class ShipmentsClient extends GatewayClient {
     // Shipments Service
-    async parseEmail(emailData: { subject: string; sender: string; body: string; content_type: string }): Promise<EmailParseResponse> {
+    async parseEmail(emailData: EmailParseRequest): Promise<EmailParseResponse> {
         return this.request('/api/v1/shipments/events/from-email', {
             method: 'POST',
             body: emailData,
         });
     }
 
-    async createPackage(packageData: PackageCreateRequest): Promise<PackageResponse> {
+    async createPackage(packageData: PackageCreate): Promise<PackageOut> {
         return this.request('/api/v1/shipments/packages', {
             method: 'POST',
             body: packageData,
@@ -127,7 +74,7 @@ export class ShipmentsClient extends GatewayClient {
         status?: string;
         user_id?: string;
         date_range?: string;
-    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
+    }): Promise<{ packages: PackageOut[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         const queryParams = new URLSearchParams();
 
         // Cursor-based pagination parameters
@@ -162,11 +109,11 @@ export class ShipmentsClient extends GatewayClient {
         return this.request(url);
     }
 
-    async getPackage(id: string): Promise<PackageResponse> {
+    async getPackage(id: string): Promise<PackageOut> {
         return this.request(`/api/v1/shipments/packages/${id}`);
     }
 
-    async updatePackage(id: string, packageData: Record<string, unknown>): Promise<PackageResponse> {
+    async updatePackage(id: string, packageData: PackageUpdate): Promise<PackageOut> {
         return this.request(`/api/v1/shipments/packages/${id}`, {
             method: 'PUT',
             body: packageData,
@@ -185,45 +132,18 @@ export class ShipmentsClient extends GatewayClient {
         });
     }
 
-    async getTrackingEvents(packageId: string): Promise<Array<{
-        id: string;
-        event_date: string;
-        status: PackageStatus;
-        location?: string;
-        description?: string;
-        created_at: string;
-    }>> {
+    async getTrackingEvents(packageId: string): Promise<Array<TrackingEventOut>> {
         return this.request(`/api/v1/shipments/packages/${packageId}/events`);
     }
 
-    async createTrackingEvent(packageId: string, eventData: {
-        event_date: string;
-        status: PackageStatus;
-        location?: string;
-        description?: string;
-        email_message_id?: string;
-    }): Promise<{
-        id: string;
-        event_date: string;
-        status: PackageStatus;
-        location?: string;
-        description?: string;
-        created_at: string;
-    }> {
+    async createTrackingEvent(packageId: string, eventData: TrackingEventCreate): Promise<TrackingEventOut> {
         return this.request(`/api/v1/shipments/packages/${packageId}/events`, {
             method: 'POST',
             body: eventData,
         });
     }
 
-    async getEventsByEmail(emailMessageId: string): Promise<Array<{
-        id: string;
-        event_date: string;
-        status: PackageStatus;
-        location?: string;
-        description?: string;
-        created_at: string;
-    }>> {
+    async getEventsByEmail(emailMessageId: string): Promise<Array<TrackingEventOut>> {
         return this.request(`/api/v1/shipments/events?email_message_id=${encodeURIComponent(emailMessageId)}`);
     }
 
@@ -246,7 +166,7 @@ export class ShipmentsClient extends GatewayClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
+    }): Promise<{ packages: PackageOut[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return this.getPackages({
             cursor,
             limit,
@@ -260,7 +180,7 @@ export class ShipmentsClient extends GatewayClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
+    }): Promise<{ packages: PackageOut[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return this.getPackages({
             cursor,
             limit,
@@ -274,7 +194,7 @@ export class ShipmentsClient extends GatewayClient {
         carrier?: string;
         status?: string;
         user_id?: string;
-    }): Promise<{ packages: PackageResponse[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
+    }): Promise<{ packages: PackageOut[]; next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean; limit: number }> {
         return this.getPackages({
             limit,
             direction: 'next',
@@ -283,7 +203,7 @@ export class ShipmentsClient extends GatewayClient {
     }
 
     // Helper method to check if a package exists
-    async checkPackageExists(trackingNumber: string, carrier?: string): Promise<PackageResponse | null> {
+    async checkPackageExists(trackingNumber: string, carrier?: string): Promise<PackageOut | null> {
         const params: { tracking_number: string; carrier?: string } = {
             tracking_number: trackingNumber
         };
@@ -308,7 +228,7 @@ export class ShipmentsClient extends GatewayClient {
         // Multiple packages found - handle based on carrier specification
         if (carrier) {
             // If carrier was specified, try to find a package that matches the specified carrier
-            const matchingPackage = response.packages.find((pkg: PackageResponse) => pkg.carrier === carrier);
+            const matchingPackage = response.packages.find((pkg: PackageOut) => pkg.carrier === carrier);
             if (matchingPackage) {
                 return matchingPackage;
             }
@@ -321,9 +241,9 @@ export class ShipmentsClient extends GatewayClient {
     }
 
     // Helper method to get package by email message ID
-    async getPackageByEmail(emailMessageId: string): Promise<PackageResponse | null> {
+    async getPackageByEmail(emailMessageId: string): Promise<PackageOut | null> {
         try {
-            const response = await this.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${encodeURIComponent(emailMessageId)}`);
+            const response = await this.request<{ data: PackageOut[] }>(`/api/v1/shipments/packages?email_message_id=${encodeURIComponent(emailMessageId)}`);
 
             if (response && response.data && response.data.length > 0) {
                 return response.data[0];

@@ -1,7 +1,10 @@
-import { ApiResponse } from '../types/common';
+import { 
+    CreatePublicBookingRequest,
+    SuccessResponse
+} from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
 
-// Booking Types
+// Legacy types for backward compatibility - these should be removed once all components are updated
 export interface CreateBookingLinkData {
     title: string;
     description: string;
