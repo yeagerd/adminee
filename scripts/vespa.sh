@@ -140,6 +140,7 @@ start_vespa_container() {
             --hostname "${VESPA_HOSTNAME}" \
             -p "${VESPA_PORTS[0]}" \
             -p "${VESPA_PORTS[1]}" \
+            -e VESPA_IGNORE_NOT_ENOUGH_MEMORY=true \
             "${VESPA_IMAGE}"
     fi
     
@@ -247,8 +248,8 @@ deploy_package() {
         return 1
     fi
     
-    # Use Vespa's prepare -> activate workflow
-    log_info "Using Vespa prepare -> activate workflow..."
+    # Use config server workflow (prepare -> activate)
+    log_info "Using config server workflow (prepare -> activate)..."
     
     # Start tailing logs in background to show deployment progress
     log_info "Starting real-time log monitoring..."
@@ -266,22 +267,34 @@ deploy_package() {
     fi
     
     log_info "Preparing application deployment..."
-    if docker exec "$VESPA_CONTAINER_NAME" vespa-deploy prepare /tmp/app-package.zip; then
+    local prepare_output
+    prepare_output=$(docker exec "$VESPA_CONTAINER_NAME" vespa-deploy prepare /tmp/app-package.zip 2>&1)
+    local prepare_exit_code=$?
+    
+    # Check if prepare succeeded
+    if [[ $prepare_exit_code -eq 0 ]] && [[ "$prepare_output" != *"Usage:"* ]] && [[ "$prepare_output" != *"Available Commands:"* ]]; then
         log_success "Application prepared successfully"
     else
         log_error "Failed to prepare application"
+        log_info "Prepare output: $prepare_output"
         kill $LOG_TAIL_PID 2>/dev/null || true
         return 1
     fi
     
     log_info "Activating application..."
-    if docker exec "$VESPA_CONTAINER_NAME" vespa-deploy activate; then
+    local activate_output
+    activate_output=$(docker exec "$VESPA_CONTAINER_NAME" vespa-deploy activate 2>&1)
+    local activate_exit_code=$?
+    
+    # Check if activate succeeded
+    if [[ $activate_exit_code -eq 0 ]] && [[ "$activate_output" != *"Usage:"* ]] && [[ "$activate_output" != *"Available Commands:"* ]]; then
         log_success "Application activated successfully!"
         # Stop log tailing
         kill $LOG_TAIL_PID 2>/dev/null || true
         return 0
     else
         log_error "Failed to activate application"
+        log_info "Activate output: $activate_output"
         # Stop log tailing
         kill $LOG_TAIL_PID 2>/dev/null || true
         return 1
@@ -295,6 +308,21 @@ wait_for_app_ready() {
     local timeout=60
     local start_time=$(date +%s)
     
+    # Start tailing logs in background
+    log_info "Starting log monitoring..."
+    docker logs "$VESPA_CONTAINER_NAME" --follow --tail 0 &
+    local log_tail_pid=$!
+    
+    # Cleanup function to stop log tailing
+    cleanup_logs() {
+        if [[ -n "$log_tail_pid" ]]; then
+            kill "$log_tail_pid" 2>/dev/null || true
+        fi
+    }
+    
+    # Set trap to cleanup on exit
+    trap cleanup_logs EXIT
+    
     while [[ $(($(date +%s) - start_time)) -lt $timeout ]]; do
         # Check if search endpoint is available
         if curl -s -X POST \
@@ -302,6 +330,7 @@ wait_for_app_ready() {
             -d '{"yql": "select * from briefly_document where true", "hits": 0}' \
             "$VESPA_ENDPOINT/search/" > /dev/null 2>&1; then
             log_success "Search endpoint is working!"
+            cleanup_logs
             return 0
         fi
         
@@ -309,6 +338,7 @@ wait_for_app_ready() {
         sleep 2
     done
     
+    cleanup_logs
     log_error "Application did not become ready within $timeout seconds"
     return 1
 }
