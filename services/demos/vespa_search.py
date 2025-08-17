@@ -4,6 +4,53 @@ Vespa Search Demo - Comprehensive search capabilities demonstration
 
 This demo focuses on testing and showcasing Vespa's search capabilities
 without the complexity of data ingestion and backfill functionality.
+
+FEATURES:
+  • Interactive search mode with real-time querying
+  • Comprehensive search demo with multiple test scenarios
+  • User statistics collection and display
+  • Multi-user database statistics and aggregations
+  • Performance benchmarking and metrics
+  • Support for different ranking profiles (hybrid, BM25, semantic)
+
+USAGE EXAMPLES:
+  # Interactive mode with user stats (default)
+  python3 vespa_search.py user@example.com
+
+  # Show statistics for all users
+  python3 vespa_search.py user@example.com --stats
+
+  # Only show statistics (no interactive mode)
+  python3 vespa_search.py user@example.com --stats-only
+
+  # Run comprehensive search demo
+  python3 vespa_search.py user@example.com --demo
+
+  # Execute single query non-interactively
+  python3 vespa_search.py user@example.com --query "meeting notes"
+
+  # Custom Vespa endpoint
+  python3 vespa_search.py user@example.com --vespa-endpoint http://localhost:8080
+
+STATISTICS PROVIDED:
+  • Current user document count and breakdowns
+  • Source type distribution (emails, calendar, contacts, etc.)
+  • Provider breakdown (Outlook, Gmail, etc.)
+  • All users aggregate statistics
+  • Query performance metrics and response times
+
+SEARCH CAPABILITIES:
+  • Full-text search across titles, content, and search text
+  • User-scoped data isolation
+  • Hybrid ranking (BM25 + vector similarity)
+  • Semantic search with embeddings
+  • Source type and provider filtering
+  • Real-time search with performance metrics
+
+REQUIREMENTS:
+  • Vespa instance running and accessible
+  • User data indexed in Vespa database
+  • Python dependencies: aiohttp, asyncio
 """
 
 import asyncio
@@ -746,8 +793,59 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Run Vespa search capabilities demo with real user data. Shows user stats by default.",
-        epilog="Example: python3 vespa_search.py trybriefly@outlook.com --demo"
+        description="""Vespa Search Demo - Comprehensive search capabilities demonstration
+
+This demo focuses on testing and showcasing Vespa's search capabilities
+without the complexity of data ingestion and backfill functionality.
+
+FEATURES:
+  • Interactive search mode with real-time querying
+  • Comprehensive search demo with multiple test scenarios
+  • User statistics collection and display
+  • Multi-user database statistics and aggregations
+  • Performance benchmarking and metrics
+  • Support for different ranking profiles (hybrid, BM25, semantic)
+
+USAGE EXAMPLES:
+  # Interactive mode with user stats (default)
+  python3 vespa_search.py user@example.com
+
+  # Show statistics for all users
+  python3 vespa_search.py user@example.com --stats
+
+  # Only show statistics (no interactive mode)
+  python3 vespa_search.py user@example.com --stats-only
+
+  # Run comprehensive search demo
+  python3 vespa_search.py user@example.com --demo
+
+  # Execute single query non-interactively
+  python3 vespa_search.py user@example.com --query "meeting notes"
+
+  # Custom Vespa endpoint
+  python3 vespa_search.py user@example.com --vespa-endpoint http://localhost:8080
+
+STATISTICS PROVIDED:
+  • Current user document count and breakdowns
+  • Source type distribution (emails, calendar, contacts, etc.)
+  • Provider breakdown (Outlook, Gmail, etc.)
+  • All users aggregate statistics
+  • Query performance metrics and response times
+
+SEARCH CAPABILITIES:
+  • Full-text search across titles, content, and search text
+  • User-scoped data isolation
+  • Hybrid ranking (BM25 + vector similarity)
+  • Semantic search with embeddings
+  • Source type and provider filtering
+  • Real-time search with performance metrics
+
+REQUIREMENTS:
+  • Vespa instance running and accessible
+  • User data indexed in Vespa database
+  • Python dependencies: aiohttp, asyncio""",
+        epilog="Example: python3 vespa_search.py trybriefly@outlook.com --demo",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("email", help="Email address of the user to search (e.g., trybriefly@outlook.com)")
     parser.add_argument("--vespa-endpoint", default="http://localhost:8080", help="Vespa endpoint")
