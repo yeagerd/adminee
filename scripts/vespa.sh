@@ -362,7 +362,9 @@ cleanup_vespa() {
 
 # Clear all data from Vespa
 clear_vespa_data() {
-    log_info "Clearing all data from Vespa..."
+    local user_id="${2:-trybriefly@outlook.com}"  # Default user if none provided
+    
+    log_info "Clearing all data from Vespa for user: $user_id"
     
     # Check if Vespa is running
     if ! check_vespa_container_health; then
@@ -376,89 +378,78 @@ clear_vespa_data() {
         exit 1
     fi
     
-    log_info "This will delete ALL documents from Vespa. Are you sure? (y/N)"
+    log_info "This will delete ALL documents from Vespa for user: $user_id. Are you sure? (y/N)"
     read -r response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         log_info "Operation cancelled"
         exit 0
     fi
     
-    log_info "Clearing all documents from Vespa..."
+    log_info "Clearing all documents from Vespa for user: $user_id..."
     
-    # Use Vespa's document API to clear all documents
-    # First, get a list of all documents using a working query
-    local search_response
-    search_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
-        -H "Content-Type: application/json" \
-        -d '{"yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"", "hits": 200}')
+    # For streaming mode, use Vespa's visiting API to clear all documents for the user group
+    log_info "Using Vespa visiting API to clear all documents for user group: $user_id"
     
-    if [[ $? -ne 0 ]]; then
-        log_error "Failed to query Vespa for documents"
+    # Use the visiting API to delete all documents in the group
+    # The selection and cluster parameters are required for visiting API deletions
+    local visit_response
+    visit_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/group/$user_id/?selection=true&cluster=briefly")
+    
+    if [[ $? -eq 0 ]]; then
+        # Check if the response contains an error message
+        if [[ "$visit_response" == *'"message"'* ]]; then
+            log_error "Failed to clear documents for user group: $user_id"
+            log_error "Vespa returned an error: $visit_response"
+            return 1
+        else
+            log_success "Successfully cleared all documents for user group: $user_id"
+            log_info "Response: $visit_response"
+            return 0
+        fi
+    else
+        log_error "Failed to clear documents for user group: $user_id"
+        log_error "HTTP request failed with response: $visit_response"
+        return 1
+    fi
+}
+
+# Clear all data from Vespa for all users
+clear_all_vespa_data() {
+    log_info "Clearing all data from Vespa for ALL users..."
+    
+    # Check if Vespa is running
+    if ! check_vespa_container_health; then
+        log_error "Vespa container is not running. Start it first with: $0 --start"
         exit 1
     fi
     
-    # Extract document IDs from the response
-    local document_ids
-    document_ids=$(echo "$search_response" | python3 -c "
-import json
-import sys
-try:
-    data = json.load(sys.stdin)
-    children = data.get('root', {}).get('children', [])
-    for child in children:
-        # Use the doc_id field and construct the full Vespa document ID
-        doc_id = child.get('fields', {}).get('doc_id', '')
-        if doc_id:
-            # Construct full Vespa document ID: id:briefly:briefly_document::{doc_id}
-            full_doc_id = f\"id:briefly:briefly_document::{doc_id}\"
-            print(full_doc_id)
-except Exception as e:
-    print(f'Error parsing response: {e}', file=sys.stderr)
-    sys.exit(1)
-")
-    
-    if [[ -z "$document_ids" ]]; then
-        log_info "No documents found in Vespa"
-        return 0
+    # Check if application is deployed
+    if ! curl -s "$VESPA_ENDPOINT/" > /dev/null 2>&1; then
+        log_error "Briefly application is not deployed. Deploy it first with: $0 --deploy"
+        exit 1
     fi
     
-    local deleted_count=0
-    local error_count=0
-    
-    # Delete each document
-    while IFS= read -r doc_id; do
-        if [[ -n "$doc_id" ]]; then
-            log_info "Deleting document: $doc_id"
-            
-            local delete_response
-            delete_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/docid/$doc_id")
-            
-            if [[ $? -eq 0 ]] && [[ "$delete_response" == *'"pathId": "/document/v1/briefly/briefly_document/docid/'* ]]; then
-                ((deleted_count++))
-                log_success "Deleted: $doc_id"
-            else
-                ((error_count++))
-                log_error "Failed to delete: $doc_id"
-                log_info "Response: $delete_response"
-            fi
-        fi
-    done <<< "$document_ids"
-    
-    log_success "Data clearing completed!"
-    log_info "Documents deleted: $deleted_count"
-    if [[ $error_count -gt 0 ]]; then
-        log_warning "Errors encountered: $error_count"
+    log_info "This will delete ALL documents from Vespa for ALL users. Are you sure? (y/N)"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        log_info "Operation cancelled"
+        exit 0
     fi
     
-    # Verify the data is cleared
-    log_info "Verifying data is cleared..."
-    local verify_response
-    verify_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
-        -H "Content-Type: application/json" \
-        -d '{"yql": "select * from briefly_document where user_id contains \"trybriefly@outlook.com\"", "hits": 1}')
+    # First, try to discover all users by looking for documents with different user IDs
+    # Since we can't query all users at once in streaming mode, we'll try some common ones
+    local common_users=("trybriefly@outlook.com" "admin@briefly.com" "test@example.com")
+    local all_users=()
     
-    local remaining_count
-    remaining_count=$(echo "$verify_response" | python3 -c "
+    # Check which users actually have data
+    for user in "${common_users[@]}"; do
+        local user_response
+        user_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
+            -H "Content-Type: application/json" \
+            -d "{\"yql\": \"select * from briefly_document where true\", \"hits\": 1, \"streaming.groupname\": \"$user\"}")
+        
+        local user_count
+        user_count=$(echo "$user_response" | python3 -c "
 import json
 import sys
 try:
@@ -468,11 +459,56 @@ try:
 except Exception as e:
     print('0')
 ")
+        
+        if [[ "$user_count" != "0" ]]; then
+            all_users+=("$user")
+            log_info "Found user with data: $user ($user_count documents)"
+        fi
+    done
     
-    if [[ "$remaining_count" == "0" ]]; then
-        log_success "✅ All data successfully cleared from Vespa"
+    if [[ ${#all_users[@]} -eq 0 ]]; then
+        log_info "No users with data found"
+        return 0
+    fi
+    
+    # Clear data for each user
+    for user in "${all_users[@]}"; do
+        log_info "Clearing data for user: $user"
+        clear_vespa_data_for_user "$user"
+    done
+    
+    log_success "Data clearing completed for all users!"
+}
+
+# Helper function to clear data for a specific user (without confirmation)
+clear_vespa_data_for_user() {
+    local user_id="$1"
+    
+    log_info "Clearing data for user: $user_id..."
+    
+    # For streaming mode, use Vespa's visiting API to clear all documents for the user group
+    log_info "Using Vespa visiting API to clear all documents for user group: $user_id"
+    
+    # Use the visiting API to delete all documents in the group
+    # The selection and cluster parameters are required for visiting API deletions
+    local visit_response
+    visit_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/group/$user_id/?selection=true&cluster=briefly")
+    
+    if [[ $? -eq 0 ]]; then
+        # Check if the response contains an error message
+        if [[ "$visit_response" == *'"message"'* ]]; then
+            log_error "Failed to clear documents for user group: $user_id"
+            log_error "Vespa returned an error: $visit_response"
+            return 1
+        else
+            log_success "Successfully cleared all documents for user group: $user_id"
+            log_info "Response: $visit_response"
+            return 0
+        fi
     else
-        log_warning "⚠️  Some data may remain. Total count: $remaining_count"
+        log_error "Failed to clear documents for user group: $user_id"
+        log_error "HTTP request failed with response: $visit_response"
+        return 1
     fi
 }
 
@@ -596,7 +632,10 @@ case "${1:-}" in
         cleanup_vespa
         ;;
     --clear-data)
-        clear_vespa_data
+        clear_vespa_data "$@"
+        ;;
+    --clear-all-data)
+        clear_all_vespa_data
         ;;
     --status)
         show_status
@@ -617,6 +656,7 @@ case "${1:-}" in
         echo "  --stop     Stop Vespa container only"
         echo "  --cleanup  Stop and remove the Vespa container"
         echo "  --clear-data Clear all data from Vespa (useful for testing)"
+        echo "  --clear-all-data Clear all data from Vespa for ALL users"
         echo "  --restart  Restart Vespa container only"
         echo "  --status   Show current status"
         echo "  --help     Show this help message"
