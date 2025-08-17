@@ -32,6 +32,9 @@ USAGE EXAMPLES:
   # Custom Vespa endpoint
   python3 vespa_search.py user@example.com --vespa-endpoint http://localhost:8080
 
+  # Dump all content stored in Vespa for the user
+  python3 vespa_search.py user@example.com --dump
+
 STATISTICS PROVIDED:
   • Current user document count and breakdowns
   • Source type distribution (emails, calendar, contacts, etc.)
@@ -802,6 +805,174 @@ class VespaSearchDemo:
             return "Fair - Moderate quality, may need content enhancement"
         else:
             return "Limited - Low-quality content, consider refining search or enhancing data"
+    
+    async def dump_all_user_content(self):
+        """Dump all content stored in Vespa for the current user"""
+        try:
+            print(f"\n{'='*80}")
+            print(f"📋 CONTENT DUMP FOR USER: {self.user_email}")
+            print(f"{'='*80}")
+            
+            # Get all documents for the user
+            all_docs_query = {
+                "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 400,  # Respect Vespa's configured limit
+                "timeout": "10s",
+                "streaming.groupname": self.user_email
+            }
+            
+            print("🔍 Retrieving all documents from Vespa...")
+            await self.search_engine.start()
+            
+            start_time = time.time()
+            
+            # Collect all documents using pagination if needed
+            all_documents = []
+            offset = 0
+            total_count = 0
+            
+            while True:
+                query = all_docs_query.copy()
+                query["offset"] = offset
+                
+                try:
+                    results = await self.search_engine.search(query)
+                    root = results.get("root", {})
+                    children = root.get("children", [])
+                    
+                    if not children:
+                        break
+                    
+                    all_documents.extend(children)
+                    total_count = root.get("fields", {}).get("totalCount", 0)
+                    
+                    print(f"📄 Retrieved {len(children)} documents (offset: {offset}, total so far: {len(all_documents)})")
+                    
+                    # If we got fewer results than requested, we've reached the end
+                    if len(children) < 400:
+                        break
+                    
+                    offset += 400
+                    
+                except Exception as e:
+                    print(f"⚠️  Error retrieving documents at offset {offset}: {e}")
+                    break
+            
+            query_time = (time.time() - start_time) * 1000
+            
+            print(f"✅ Retrieved {len(all_documents)} documents in {query_time:.2f}ms")
+            print(f"📊 Total documents in Vespa: {total_count}")
+            
+            if not all_documents:
+                print("❌ No documents found for this user")
+                return
+            
+            # Group documents by type
+            docs_by_type = {}
+            for child in all_documents:
+                fields = child.get("fields", {})
+                doc_type = fields.get("source_type", "unknown")
+                if doc_type not in docs_by_type:
+                    docs_by_type[doc_type] = []
+                docs_by_type[doc_type].append(child)
+            
+            # Display documents by type
+            for doc_type, docs in sorted(docs_by_type.items()):
+                print(f"\n{'─'*80}")
+                print(f"📁 {doc_type.upper()} DOCUMENTS ({len(docs)})")
+                print(f"{'─'*80}")
+                
+                for i, doc in enumerate(docs, 1):
+                    fields = doc.get("fields", {})
+                    doc_id = fields.get("doc_id", "unknown")
+                    
+                    print(f"\n{i:3d}. 📄 Document ID: {doc_id}")
+                    print(f"    {'─' * 60}")
+                    
+                    # Basic metadata
+                    print(f"    🆔 Vespa ID: {doc.get('id', 'N/A')}")
+                    print(f"    🏷️  Provider: {fields.get('provider', 'Unknown')}")
+                    print(f"    📅 Created: {self._format_timestamp(fields.get('created_at'))}")
+                    print(f"    🔄 Updated: {self._format_timestamp(fields.get('updated_at'))}")
+                    
+                    # Title and content
+                    if fields.get('title'):
+                        print(f"    📝 Title: {fields.get('title')}")
+                    
+                    if fields.get('content'):
+                        content = fields.get('content')
+                        print(f"    📄 Content ({len(content)} chars):")
+                        # Show first 200 chars, then truncate
+                        if len(content) > 200:
+                            print(f"      {content[:200]}...")
+                        else:
+                            print(f"      {content}")
+                    
+                    if fields.get('search_text'):
+                        search_text = fields.get('search_text')
+                        print(f"    🔍 Search Text ({len(search_text)} chars):")
+                        if len(search_text) > 300:
+                            print(f"      {search_text[:300]}...")
+                        else:
+                            print(f"      {search_text}")
+                    
+                    # Type-specific fields
+                    if doc_type == "email":
+                        print(f"    📧 From: {fields.get('sender', 'Unknown')}")
+                        print(f"    📮 To: {', '.join(fields.get('recipients', ['Unknown']))}")
+                        print(f"    📂 Folder: {fields.get('folder', 'Unknown')}")
+                        print(f"    🧵 Thread: {fields.get('thread_id', 'N/A')}")
+                        
+                        # Email metadata
+                        metadata = fields.get("metadata", {})
+                        if metadata:
+                            print(f"    📊 Metadata:")
+                            for key, value in metadata.items():
+                                print(f"      • {key}: {value}")
+                    
+                    elif doc_type == "calendar":
+                        print(f"    📅 Start: {fields.get('start_time', 'Unknown')}")
+                        print(f"    ⏰ End: {fields.get('end_time', 'Unknown')}")
+                        print(f"    👥 Attendees: {', '.join(fields.get('attendees', ['None']))}")
+                        print(f"    📍 Location: {fields.get('location', 'No location')}")
+                        print(f"    🌅 All Day: {fields.get('is_all_day', False)}")
+                        print(f"    🔄 Recurring: {fields.get('recurring', False)}")
+                    
+                    elif doc_type == "contact":
+                        print(f"    👤 Display Name: {fields.get('title', 'Unknown')}")
+                        print(f"    🏢 Company: {fields.get('company', 'Unknown')}")
+                        print(f"    💼 Job Title: {fields.get('job_title', 'Unknown')}")
+                        print(f"    📧 Emails: {', '.join(fields.get('email_addresses', ['None']))}")
+                        print(f"    📱 Phones: {', '.join(fields.get('phone_numbers', ['None']))}")
+                        print(f"    🏠 Address: {fields.get('address', 'No address')}")
+                    
+                    # Raw fields for debugging
+                    print(f"    🔧 Raw Fields:")
+                    for key, value in fields.items():
+                        if key not in ['content', 'search_text']:  # Skip long content fields
+                            if isinstance(value, (list, dict)):
+                                print(f"      • {key}: {type(value).__name__} ({len(value) if hasattr(value, '__len__') else 'N/A'})")
+                            else:
+                                print(f"      • {key}: {value}")
+                    
+                    print(f"    {'─' * 60}")
+            
+            # Summary
+            print(f"\n{'='*80}")
+            print(f"📊 DUMP SUMMARY")
+            print(f"{'='*80}")
+            print(f"User: {self.user_email}")
+            print(f"Total Documents: {total_count}")
+            print(f"Document Types: {', '.join(f'{t}: {len(docs)}' for t, docs in docs_by_type.items())}")
+            print(f"Query Time: {query_time:.2f}ms")
+            print(f"Vespa Endpoint: {self.vespa_endpoint}")
+            print(f"{'='*80}")
+            
+        except Exception as e:
+            print(f"❌ Error dumping content: {e}")
+            logger.error(f"Failed to dump content: {e}")
+        finally:
+            await self.search_engine.close()
 
     async def run_interactive_mode(self):
         """Run interactive search mode"""
@@ -1139,6 +1310,9 @@ USAGE EXAMPLES:
   # Custom Vespa endpoint
   python3 vespa_search.py user@example.com --vespa-endpoint http://localhost:8080
 
+  # Dump all content stored in Vespa for the user
+  python3 vespa_search.py user@example.com --dump
+
 STATISTICS PROVIDED:
   • Current user document count and breakdowns
   • Source type distribution (emails, calendar, contacts, etc.)
@@ -1168,6 +1342,7 @@ REQUIREMENTS:
     parser.add_argument("--query", help="Run a single query non-interactively")
     parser.add_argument("--stats", action="store_true", help="Show statistics for all users (in addition to current user stats)")
     parser.add_argument("--stats-only", action="store_true", help="Only show statistics, don't run interactive mode")
+    parser.add_argument("--dump", action="store_true", help="Dump all content stored in Vespa for the user")
     
     args = parser.parse_args()
     
@@ -1249,6 +1424,12 @@ REQUIREMENTS:
                 all_users_stats = await demo.get_all_users_stats()
                 demo.print_all_users_stats(all_users_stats)
                 return all_users_stats
+                
+            elif args.dump:
+                # Dump all content stored in Vespa for the user
+                print(f"\nDumping all content stored in Vespa for user: {args.email}")
+                await demo.dump_all_user_content()
+                return {"status": "dumped", "user": args.email}
                 
             else:
                 # Interactive mode (default)
