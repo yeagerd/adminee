@@ -8,7 +8,15 @@
         "start": "next start",
         "lint": "next lint",
         "test": "jest",
-        "typecheck": "npx tsc --noEmit"
+        "typecheck": "npx tsc --noEmit",
+        "generate-types": "npm run generate-types:chat && npm run generate-types:meetings && npm run generate-types:office && npm run generate-types:user && npm run generate-types:shipments && npm run generate-types:email-sync && npm run generate-types:vector-db",
+        "generate-types:chat": "openapi --input ../openapi-schemas/chat-openapi.json --output ./types/api/chat",
+        "generate-types:meetings": "openapi --input ../openapi-schemas/meetings-openapi.json --output ./types/api/meetings",
+        "generate-types:office": "openapi --input ../openapi-schemas/office-openapi.json --output ./types/api/office",
+        "generate-types:user": "openapi --input ../openapi-schemas/user-openapi.json --output ./types/api/user",
+        "generate-types:shipments": "openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/api/shipments",
+        "generate-types:email-sync": "openapi --input ../openapi-schemas/email_sync-openapi.json --output ./types/api/email-sync",
+        "generate-types:vector-db": "openapi --input ../openapi-schemas/vector_db-openapi.json --output ./types/api/vector-db"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.1",
@@ -95,6 +103,8 @@
         "jest": "^30.0.5",
         "jest-environment-jsdom": "^30.0.5",
         "jest-junit": "^16.0.0",
+        "openapi-typescript-codegen": "^0.26.0",
+        "@openapitools/openapi-generator-cli": "^2.7.0",
         "postcss": "^8",
         "tailwindcss": "^3.4.17",
         "ts-jest": "^29.4.1",

@@ -54,9 +54,9 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 ## Phase 2: Frontend Type Generation Setup
 
 ### Task 2.1: Install TypeScript Code Generation Tools
-- [ ] Add `openapi-typescript-codegen` to frontend dev dependencies
-- [ ] Add `@openapitools/openapi-generator-cli` as alternative option
-- [ ] Create npm scripts for type generation
+- [x] Add `openapi-typescript-codegen` to frontend dev dependencies
+- [x] Add `@openapitools/openapi-generator-cli` as alternative option
+- [x] Create npm scripts for type generation
 
 ### Task 2.2: Create Type Generation Scripts
 - [ ] Create `scripts/generate-types.sh` for Unix systems
