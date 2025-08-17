@@ -362,7 +362,8 @@ class VespaIntegrationTester:
             search_query = {
                 "yql": f"select * from briefly_document where user_id contains \"{user_id}\"",
                 "hits": 5,
-                "ranking": "hybrid"
+                "ranking": "hybrid",
+                "streaming.groupname": user_id  # Required for streaming mode
             }
             
             response = requests.post(f"{self.vespa_endpoint}/search/", json=search_query)
