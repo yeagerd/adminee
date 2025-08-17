@@ -59,10 +59,10 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Create npm scripts for type generation
 
 ### Task 2.2: Create Type Generation Scripts
-- [ ] Create `scripts/generate-types.sh` for Unix systems
-- [ ] Create `scripts/generate-types.bat` for Windows systems
-- [ ] Add type generation to frontend package.json scripts
-- [ ] Create configuration files for each service's type generation
+- [x] Create `scripts/generate-types.sh` for Unix systems
+- [x] Create `scripts/generate-types.bat` for Windows systems
+- [x] Add type generation to frontend package.json scripts
+- [x] Create configuration files for each service's type generation
 
 ### Task 2.3: Set Up Type Generation Pipeline
 - [ ] Create `frontend/scripts/` directory for build scripts
