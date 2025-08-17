@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class DocumentMapper:
     """Maps office service data formats to Vespa document format"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # Field mappings from office service to Vespa
         self.field_mappings = {
             "email": {
@@ -68,7 +68,7 @@ class DocumentMapper:
             mappings = self.field_mappings.get(doc_type, {})
             
             # Create Vespa document
-            vespa_doc = {
+            vespa_doc: Dict[str, Any] = {
                 # Remove id field - Vespa streaming mode generates this automatically from URL path
                 "user_id": document_data.get("user_id"),
                 "doc_id": document_data.get("id"),
@@ -106,34 +106,36 @@ class DocumentMapper:
     
     def _determine_document_type(self, document_data: Dict[str, Any]) -> str:
         """Determine the type of document based on content"""
-        # Check explicit type field
-        if "type" in document_data:
-            return document_data["type"]
-        
-        # Infer type from content
+        # Check for email-specific fields
         if "subject" in document_data and "body" in document_data:
             return "email"
-        elif "start_time" in document_data and "end_time" in document_data:
+        
+        # Check for calendar-specific fields
+        if "start_time" in document_data and "end_time" in document_data:
             return "calendar"
-        elif "display_name" in document_data and "email_addresses" in document_data:
+        
+        # Check for contact-specific fields
+        if "display_name" in document_data and ("email_addresses" in document_data or "phone_numbers" in document_data):
             return "contact"
-        elif "name" in document_data and "file_type" in document_data:
+        
+        # Check for file-specific fields
+        if "name" in document_data and "file_type" in document_data:
             return "file"
-        else:
-            # Default to email if we can't determine
-            return "email"
+        
+        # Default to email if we can't determine
+        logger.warning("Could not determine document type, defaulting to email")
+        return "email"
     
-    def _map_fields(self, source: Dict[str, Any], target: Dict[str, Any], 
-                    mappings: Dict[str, str]) -> Dict[str, Any]:
+    def _map_fields(self, source: Dict[str, Any], target: Dict[str, Any], mappings: Dict[str, str]) -> Dict[str, Any]:
         """Map fields from source to target using the provided mappings"""
         for source_field, target_field in mappings.items():
-            if source_field in source:
+            if source_field in source and source[source_field] is not None:
                 target[target_field] = source[source_field]
         
         return target
     
     def _generate_search_text(self, vespa_doc: Dict[str, Any], doc_type: str) -> str:
-        """Generate search text for the document"""
+        """Generate searchable text content for the document"""
         search_parts = []
         
         # Add title
@@ -149,13 +151,19 @@ class DocumentMapper:
             if vespa_doc.get("sender"):
                 search_parts.append(f"From: {vespa_doc['sender']}")
             if vespa_doc.get("recipients"):
-                search_parts.append(f"To: {', '.join(vespa_doc['recipients'])}")
+                if isinstance(vespa_doc["recipients"], list):
+                    search_parts.append(f"To: {', '.join(vespa_doc['recipients'])}")
+                else:
+                    search_parts.append(f"To: {vespa_doc['recipients']}")
         
         elif doc_type == "calendar":
-            if vespa_doc.get("attendees"):
-                search_parts.append(f"Attendees: {', '.join(vespa_doc['attendees'])}")
             if vespa_doc.get("location"):
                 search_parts.append(f"Location: {vespa_doc['location']}")
+            if vespa_doc.get("attendees"):
+                if isinstance(vespa_doc["attendees"], list):
+                    search_parts.append(f"Attendees: {', '.join(vespa_doc['attendees'])}")
+                else:
+                    search_parts.append(f"Attendees: {vespa_doc['attendees']}")
         
         elif doc_type == "contact":
             if vespa_doc.get("company"):
@@ -163,109 +171,96 @@ class DocumentMapper:
             if vespa_doc.get("job_title"):
                 search_parts.append(f"Job: {vespa_doc['job_title']}")
         
-        # Join all parts
-        search_text = " ".join(search_parts)
-        
-        # Truncate if too long
-        if len(search_text) > 10000:
-            search_text = search_text[:10000] + "..."
-        
-        return search_text
+        # Join all parts with spaces
+        return " ".join(search_parts)
     
     def _extract_metadata(self, document_data: Dict[str, Any], doc_type: str) -> Dict[str, Any]:
         """Extract metadata from the document"""
         metadata = {}
         
-        # Common metadata
-        if "metadata" in document_data:
-            metadata.update(document_data["metadata"])
+        # Common metadata fields
+        common_fields = ["created_at", "updated_at", "provider", "source_type"]
+        for field in common_fields:
+            if field in document_data and document_data[field] is not None:
+                metadata[field] = document_data[field]
         
         # Type-specific metadata
         if doc_type == "email":
             metadata.update({
-                "has_attachments": bool(document_data.get("attachments")),
-                "attachment_count": len(document_data.get("attachments", [])),
-                "is_reply": bool(document_data.get("in_reply_to")),
-                "is_forward": bool(document_data.get("forwarded_from"))
+                "has_attachments": document_data.get("has_attachments", False),
+                "is_read": document_data.get("is_read", False),
+                "is_important": document_data.get("is_important", False),
+                "labels": document_data.get("labels", [])
             })
         
         elif doc_type == "calendar":
             metadata.update({
                 "is_all_day": document_data.get("is_all_day", False),
-                "is_recurring": bool(document_data.get("recurrence_pattern")),
-                "attendee_count": len(document_data.get("attendees", [])),
-                "has_location": bool(document_data.get("location"))
+                "is_recurring": document_data.get("is_recurring", False),
+                "status": document_data.get("status", "busy"),
+                "reminder_minutes": document_data.get("reminder_minutes", 15)
             })
         
         elif doc_type == "contact":
             metadata.update({
-                "email_count": len(document_data.get("email_addresses", [])),
-                "phone_count": len(document_data.get("phone_numbers", [])),
-                "has_company": bool(document_data.get("company")),
-                "has_job_title": bool(document_data.get("job_title"))
+                "is_favorite": document_data.get("is_favorite", False),
+                "categories": document_data.get("categories", []),
+                "notes": document_data.get("notes", "")
             })
         
         elif doc_type == "file":
             metadata.update({
-                "file_extension": document_data.get("file_extension"),
-                "mime_type": document_data.get("mime_type"),
-                "is_shared": document_data.get("is_shared", False),
-                "permissions": document_data.get("permissions", [])
+                "size_bytes": document_data.get("size", 0),
+                "mime_type": document_data.get("mime_type", ""),
+                "checksum": document_data.get("checksum", ""),
+                "parent_folder": document_data.get("parent_folder", "")
             })
         
         return metadata
     
-    def _validate_vespa_document(self, vespa_doc: Dict[str, Any]):
+    def _validate_vespa_document(self, vespa_doc: Dict[str, Any]) -> None:
         """Validate that the Vespa document has required fields"""
-        required_fields = ["user_id", "doc_id", "provider", "source_type"]
+        required_fields = ["user_id", "source_type"]
+        missing_fields = [field for field in required_fields if not vespa_doc.get(field)]
         
-        for field in required_fields:
-            if not vespa_doc.get(field):
-                raise ValueError(f"Missing required field: {field}")
+        if missing_fields:
+            raise ValueError(f"Missing required fields for Vespa document: {missing_fields}")
         
-        # Ensure user_id is a string
-        if not isinstance(vespa_doc["user_id"], str):
-            raise ValueError("user_id must be a string")
+        # Ensure timestamps are in the correct format
+        timestamp_fields = ["created_at", "updated_at"]
+        for field in timestamp_fields:
+            if vespa_doc.get(field) and isinstance(vespa_doc[field], str):
+                try:
+                    # Try to parse ISO format
+                    datetime.fromisoformat(vespa_doc[field].replace('Z', '+00:00'))
+                except ValueError:
+                    logger.warning(f"Invalid timestamp format for {field}: {vespa_doc[field]}")
+                    # Set to current time if invalid
+                    vespa_doc[field] = datetime.now().isoformat()
         
-        # Ensure doc_id is a string
-        if not isinstance(vespa_doc["doc_id"], str):
-            raise ValueError("doc_id must be a string")
+        # Ensure lists are actually lists
+        list_fields = ["recipients", "attendees", "labels", "categories"]
+        for field in list_fields:
+            if field in vespa_doc and not isinstance(vespa_doc[field], list):
+                if vespa_doc[field] is not None:
+                    vespa_doc[field] = [vespa_doc[field]]
+                else:
+                    vespa_doc[field] = []
         
-        # Ensure provider is a string
-        if not isinstance(vespa_doc["provider"], str):
-            raise ValueError("provider must be a string")
-        
-        # Ensure source_type is a string
-        if not isinstance(vespa_doc["source_type"], str):
-            raise ValueError("source_type must be a string")
+        logger.debug(f"Vespa document validation passed for {vespa_doc.get('source_type')} document")
     
-    def map_from_vespa(self, vespa_doc: Dict[str, Any]) -> Dict[str, Any]:
-        """Map Vespa document back to office service format"""
-        try:
-            doc_type = vespa_doc.get("source_type", "email")
-            
-            # Get reverse field mappings
-            reverse_mappings = {v: k for k, v in self.field_mappings.get(doc_type, {}).items()}
-            
-            # Create office service document
-            office_doc = {
-                "id": vespa_doc.get("doc_id"),
-                "user_id": vespa_doc.get("user_id"),
-                "provider": vespa_doc.get("provider"),
-                "type": doc_type
-            }
-            
-            # Map fields back
-            for vespa_field, office_field in reverse_mappings.items():
-                if vespa_field in vespa_doc:
-                    office_doc[office_field] = vespa_doc[vespa_field]
-            
-            # Add metadata
-            if vespa_doc.get("metadata"):
-                office_doc["metadata"] = vespa_doc["metadata"]
-            
-            return office_doc
-            
-        except Exception as e:
-            logger.error(f"Error mapping Vespa document to office service format: {e}")
-            raise
+    def map_batch(self, documents: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+        """Map a batch of documents to Vespa format"""
+        mapped_documents = []
+        
+        for doc in documents:
+            try:
+                mapped_doc = self.map_to_vespa(doc)
+                mapped_documents.append(mapped_doc)
+            except Exception as e:
+                logger.error(f"Error mapping document {doc.get('id', 'unknown')}: {e}")
+                # Continue with other documents
+                continue
+        
+        logger.info(f"Successfully mapped {len(mapped_documents)} out of {len(documents)} documents")
+        return mapped_documents

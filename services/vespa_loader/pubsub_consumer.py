@@ -9,7 +9,7 @@ calendar events, and contacts.
 
 import asyncio
 import json
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, Union
 from datetime import datetime, timezone
 import time
 
@@ -29,10 +29,10 @@ except ImportError:
 class PubSubConsumer:
     """Consumes messages from Pub/Sub topics for Vespa indexing"""
     
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.subscriber = None
-        self.subscriptions = {}
+        self.subscriber: Optional[pubsub_v1.SubscriberClient] = None
+        self.subscriptions: Dict[str, Dict[str, Any]] = {}
         self.running = False
         self.processed_count = 0
         self.error_count = 0
@@ -57,14 +57,14 @@ class PubSubConsumer:
         }
         
         # Batch processing
-        self.message_batches = {topic: [] for topic in self.topics}
-        self.batch_timers = {}
+        self.message_batches: Dict[str, List[Dict[str, Any]]] = {topic: [] for topic in self.topics}
+        self.batch_timers: Dict[str, Optional[asyncio.Task[Any]]] = {}
         self.batch_timeout = 5.0  # seconds
         
         # Event loop reference for cross-thread communication
-        self.loop = None
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
         
-    async def start(self):
+    async def start(self) -> bool:
         """Start the Pub/Sub consumer"""
         if not PUBSUB_AVAILABLE:
             logger.error("Pub/Sub not available - cannot start consumer")
@@ -98,7 +98,7 @@ class PubSubConsumer:
             logger.error(f"Failed to start Pub/Sub consumer: {e}")
             return False
     
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the Pub/Sub consumer"""
         self.running = False
         
@@ -118,8 +118,11 @@ class PubSubConsumer:
         
         logger.info("Pub/Sub consumer stopped")
     
-    async def _ensure_subscriptions(self):
+    async def _ensure_subscriptions(self) -> None:
         """Ensure all required subscriptions exist"""
+        if not self.subscriber:
+            return
+            
         for topic_name, config in self.topics.items():
             try:
                 subscription_path = self.subscriber.subscription_path(
@@ -134,8 +137,11 @@ class PubSubConsumer:
             except Exception as e:
                 logger.error(f"Error setting up subscription for {topic_name}: {e}")
     
-    async def _start_topic_consumer(self, topic_name: str, config: Dict[str, Any]):
+    async def _start_topic_consumer(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Start consuming from a specific topic using async callbacks"""
+        if not self.subscriber:
+            return
+            
         try:
             subscription_path = self.subscriber.subscription_path(
                 self.settings.pubsub_project_id,
@@ -164,9 +170,9 @@ class PubSubConsumer:
             logger.error(f"Error starting topic consumer for {topic_name}: {e}")
             self.subscriptions[topic_name] = {"active": False}
     
-    def _create_message_callback(self, topic_name: str, config: Dict[str, Any]):
+    def _create_message_callback(self, topic_name: str, config: Dict[str, Any]) -> Callable[[Any], None]:
         """Create a callback function for processing messages from a specific topic"""
-        def message_callback(message):
+        def message_callback(message: Any) -> None:
             try:
                 # Parse message data
                 data = json.loads(message.data.decode("utf-8"))
@@ -181,17 +187,19 @@ class PubSubConsumer:
                 # Process batch if it's full or start timer for partial batch
                 if len(self.message_batches[topic_name]) >= config["batch_size"]:
                     # Schedule async processing
-                    asyncio.run_coroutine_threadsafe(
-                        self._process_batch(topic_name, config),
-                        self.loop
-                    )
+                    if self.loop:
+                        asyncio.run_coroutine_threadsafe(
+                            self._process_batch(topic_name, config),
+                            self.loop
+                        )
                 else:
                     # Start timer for partial batch
-                    asyncio.run_coroutine_threadsafe(
-                        self._schedule_batch_processing(topic_name, config),
-                        self.loop
-                    )
-                    
+                    if self.loop:
+                        asyncio.run_coroutine_threadsafe(
+                            self._schedule_batch_processing(topic_name, config),
+                            self.loop
+                        )
+                        
             except Exception as e:
                 logger.error(f"Error handling message from {topic_name}: {e}")
                 message.nack()
@@ -199,7 +207,7 @@ class PubSubConsumer:
         
         return message_callback
     
-    async def _schedule_batch_processing(self, topic_name: str, config: Dict[str, Any]):
+    async def _schedule_batch_processing(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Schedule batch processing for a topic"""
         # Cancel existing timer if any
         if topic_name in self.batch_timers and self.batch_timers[topic_name]:
@@ -210,14 +218,14 @@ class PubSubConsumer:
             self._delayed_batch_processing(topic_name, config)
         )
     
-    async def _delayed_batch_processing(self, topic_name: str, config: Dict[str, Any]):
+    async def _delayed_batch_processing(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Process batch after timeout delay"""
         await asyncio.sleep(self.batch_timeout)
         
         if self.message_batches[topic_name]:
             await self._process_batch(topic_name, config)
     
-    async def _process_batch(self, topic_name: str, config: Dict[str, Any]):
+    async def _process_batch(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Process a batch of messages"""
         if not self.message_batches[topic_name]:
             return
@@ -250,7 +258,7 @@ class PubSubConsumer:
         
         logger.info(f"Completed processing batch from {topic_name}: {len(batch)} messages")
     
-    async def _process_single_message(self, topic_name: str, item: Dict[str, Any], config: Dict[str, Any]):
+    async def _process_single_message(self, topic_name: str, item: Dict[str, Any], config: Dict[str, Any]) -> Any:
         """Process a single message"""
         try:
             # Call the appropriate processor
@@ -264,28 +272,28 @@ class PubSubConsumer:
             logger.error(f"Error processing message from {topic_name}: {e}")
             raise
     
-    async def _process_email_message(self, data: Dict[str, Any]):
+    async def _process_email_message(self, data: Dict[str, Any]) -> None:
         """Process an email message for Vespa indexing"""
         logger.info(f"Processing email message: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}")
         
         # Call the ingest endpoint to index the document
         await self._call_ingest_endpoint(data)
     
-    async def _process_calendar_message(self, data: Dict[str, Any]):
+    async def _process_calendar_message(self, data: Dict[str, Any]) -> None:
         """Process a calendar message for Vespa indexing"""
         logger.info(f"Processing calendar message: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}")
         
         # Call the ingest endpoint to index the document
         await self._call_ingest_endpoint(data)
     
-    async def _process_contact_message(self, data: Dict[str, Any]):
+    async def _process_contact_message(self, data: Dict[str, Any]) -> None:
         """Process a contact message for Vespa indexing"""
         logger.info(f"Processing contact message: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}")
         
         # Call the ingest endpoint to index the document
         await self._call_ingest_endpoint(data)
     
-    async def _call_ingest_endpoint(self, data: Dict[str, Any]):
+    async def _call_ingest_endpoint(self, data: Dict[str, Any]) -> None:
         """Call the Vespa loader ingest endpoint"""
         try:
             import httpx

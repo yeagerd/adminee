@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 class ContentNormalizer:
     """Normalizes content for better search indexing"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # Common HTML tags to remove
         self.html_tags = [
             'html', 'head', 'body', 'div', 'span', 'p', 'br', 'hr',
@@ -99,16 +99,12 @@ class ContentNormalizer:
             content = re.sub(rf'<{tag}[^>]*>', '', content, flags=re.IGNORECASE)
             content = re.sub(rf'</{tag}[^>]*>', '', content, flags=re.IGNORECASE)
         
-        # Remove any remaining HTML tags
-        content = re.sub(r'<[^>]+>', '', content)
-        
         return content
     
     def _clean_email_headers(self, content: str) -> str:
         """Clean email headers from content"""
         for pattern in self.compiled_patterns:
             content = pattern.sub('', content)
-        
         return content
     
     def _clean_whitespace(self, content: str) -> str:
@@ -119,82 +115,100 @@ class ContentNormalizer:
         # Replace multiple tabs with single space
         content = re.sub(r'\t+', ' ', content)
         
-        # Replace multiple newlines with single newline
-        content = re.sub(r'\n\s*\n', '\n', content)
-        
         return content
     
     def _remove_excessive_newlines(self, content: str) -> str:
-        """Remove excessive newlines"""
-        # Replace 3 or more consecutive newlines with 2 newlines
+        """Remove excessive newlines from content"""
+        # Replace multiple newlines with double newline
         content = re.sub(r'\n{3,}', '\n\n', content)
         
         return content
     
-    def extract_text_from_html(self, html_content: str) -> str:
-        """Extract plain text from HTML content"""
+    def normalize_html(self, html_content: str) -> str:
+        """Normalize HTML content specifically"""
         if not html_content:
             return ""
         
         try:
             # Remove HTML tags
-            text = self._remove_html_tags(html_content)
+            content = self._remove_html_tags(html_content)
             
             # Decode HTML entities
-            text = unescape(text)
+            content = unescape(content)
             
             # Clean up whitespace
-            text = self._clean_whitespace(text)
+            content = self._clean_whitespace(content)
             
-            return text.strip()
+            return content.strip()
             
         except Exception as e:
-            logger.error(f"Error extracting text from HTML: {e}")
+            logger.error(f"Error normalizing HTML content: {e}")
             return str(html_content)
     
-    def normalize_for_search(self, content: str) -> str:
-        """Normalize content specifically for search indexing"""
-        if not content:
+    def normalize_email(self, email_content: str) -> str:
+        """Normalize email content specifically"""
+        if not email_content:
             return ""
         
         try:
-            # Basic normalization
-            normalized = self.normalize(content)
+            # Clean email headers
+            content = self._clean_email_headers(email_content)
             
-            # Convert to lowercase for better search matching
-            normalized = normalized.lower()
+            # Remove HTML tags if present
+            content = self._remove_html_tags(content)
             
-            # Remove common punctuation that might interfere with search
-            normalized = re.sub(r'[^\w\s]', ' ', normalized)
+            # Decode HTML entities
+            content = unescape(content)
             
-            # Clean up whitespace again
-            normalized = self._clean_whitespace(normalized)
+            # Clean up whitespace
+            content = self._clean_whitespace(content)
             
-            return normalized.strip()
+            # Remove excessive newlines
+            content = self._remove_excessive_newlines(content)
+            
+            return content.strip()
             
         except Exception as e:
-            logger.error(f"Error normalizing content for search: {e}")
-            return str(content)
+            logger.error(f"Error normalizing email content: {e}")
+            return str(email_content)
     
-    def truncate_content(self, content: str, max_length: int = 1000) -> str:
-        """Truncate content to specified length while preserving word boundaries"""
-        if not content or len(content) <= max_length:
-            return content
+    def normalize_text(self, text_content: str) -> str:
+        """Normalize plain text content"""
+        if not text_content:
+            return ""
         
         try:
-            # Truncate to max_length
-            truncated = content[:max_length]
+            # Clean up whitespace
+            content = self._clean_whitespace(text_content)
             
-            # Find the last complete word
-            last_space = truncated.rfind(' ')
-            if last_space > max_length * 0.8:  # Only truncate at word boundary if it's not too far back
-                truncated = truncated[:last_space]
+            # Remove excessive newlines
+            content = self._remove_excessive_newlines(content)
             
-            # Add ellipsis
-            truncated += "..."
-            
-            return truncated
+            return content.strip()
             
         except Exception as e:
-            logger.error(f"Error truncating content: {e}")
-            return content[:max_length] + "..."
+            logger.error(f"Error normalizing text content: {e}")
+            return str(text_content)
+    
+    def get_normalization_stats(self, original_content: str, normalized_content: str) -> dict:
+        """Get statistics about the normalization process"""
+        if not original_content:
+            return {
+                "original_length": 0,
+                "normalized_length": len(normalized_content),
+                "reduction_percentage": 0.0
+            }
+        
+        original_length = len(original_content)
+        normalized_length = len(normalized_content)
+        
+        if original_length == 0:
+            reduction_percentage = 0.0
+        else:
+            reduction_percentage = ((original_length - normalized_length) / original_length) * 100
+        
+        return {
+            "original_length": original_length,
+            "normalized_length": normalized_length,
+            "reduction_percentage": round(reduction_percentage, 2)
+        }

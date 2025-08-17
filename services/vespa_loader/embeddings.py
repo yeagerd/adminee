@@ -12,13 +12,13 @@ logger = get_logger(__name__)
 class EmbeddingGenerator:
     """Generates embeddings for semantic search"""
     
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
         self.model_name = model_name
         self.model = None
         self.tokenizer = None
         self._initialize_model()
     
-    def _initialize_model(self):
+    def _initialize_model(self) -> None:
         """Initialize the embedding model"""
         try:
             # For now, we'll use a simple placeholder implementation
@@ -51,7 +51,7 @@ class EmbeddingGenerator:
             
             # Placeholder implementation: generate deterministic "fake" embeddings
             # In production, this would use the actual model
-            embedding = self._generate_placeholder_embedding(text)
+            embedding: List[float] = self._generate_placeholder_embedding(text)
             return embedding
             
         except Exception as e:
@@ -99,72 +99,96 @@ class EmbeddingGenerator:
         for i in range(0, len(text_hash), 2):
             if len(embedding) >= 384:
                 break
-            # Convert hex pair to float between -1 and 1
-            hex_val = text_hash[i:i+2]
-            float_val = (int(hex_val, 16) / 255.0) * 2 - 1
-            embedding.append(float_val)
+            hex_pair = text_hash[i:i+2]
+            # Convert hex to float between -1 and 1
+            value = (int(hex_pair, 16) / 255.0) * 2 - 1
+            embedding.append(value)
         
-        # Pad or truncate to exactly 384 dimensions
+        # Pad to exactly 384 dimensions
         while len(embedding) < 384:
             embedding.append(0.0)
         
-        if len(embedding) > 384:
-            embedding = embedding[:384]
-        
-        return embedding
+        return embedding[:384]
     
-    def similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
-        """Calculate cosine similarity between two embeddings"""
-        try:
-            if len(embedding1) != len(embedding2):
-                logger.error("Embedding dimensions don't match")
-                return 0.0
-            
-            # Convert to numpy arrays
-            vec1 = np.array(embedding1)
-            vec2 = np.array(embedding2)
-            
-            # Calculate cosine similarity
-            dot_product = np.dot(vec1, vec2)
-            norm1 = np.linalg.norm(vec1)
-            norm2 = np.linalg.norm(vec2)
-            
-            if norm1 == 0 or norm2 == 0:
-                return 0.0
-            
-            similarity = dot_product / (norm1 * norm2)
-            return float(similarity)
-            
-        except Exception as e:
-            logger.error(f"Error calculating similarity: {e}")
-            return 0.0
+    def get_embedding_dimension(self) -> int:
+        """Get the dimension of the embeddings"""
+        return 384
     
-    def find_most_similar(self, query_embedding: List[float], 
-                          candidate_embeddings: List[List[float]], 
-                          top_k: int = 5) -> List[tuple]:
-        """Find the most similar embeddings to the query"""
-        try:
-            similarities = []
-            
-            for i, candidate in enumerate(candidate_embeddings):
-                similarity = self.similarity(query_embedding, candidate)
-                similarities.append((i, similarity))
-            
-            # Sort by similarity (descending)
-            similarities.sort(key=lambda x: x[1], reverse=True)
-            
-            # Return top-k results
-            return similarities[:top_k]
-            
-        except Exception as e:
-            logger.error(f"Error finding most similar embeddings: {e}")
-            return []
+    def is_model_loaded(self) -> bool:
+        """Check if the model is loaded and ready"""
+        return self.model is not None
     
     def get_model_info(self) -> dict:
-        """Get information about the embedding model"""
+        """Get information about the current model"""
         return {
             "model_name": self.model_name,
-            "embedding_dimension": 384,
-            "model_loaded": self.model is not None,
-            "implementation": "placeholder" if self.model is None else "real"
+            "is_loaded": self.is_model_loaded(),
+            "dimension": self.get_embedding_dimension(),
+            "type": "placeholder" if self.model is None else "real"
         }
+    
+    async def similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
+        """Calculate cosine similarity between two embeddings"""
+        if len(embedding1) != len(embedding2):
+            raise ValueError("Embeddings must have the same dimension")
+        
+        # Convert to numpy arrays for efficient computation
+        vec1 = np.array(embedding1)
+        vec2 = np.array(embedding2)
+        
+        # Calculate cosine similarity
+        dot_product = np.dot(vec1, vec2)
+        norm1 = np.linalg.norm(vec1)
+        norm2 = np.linalg.norm(vec2)
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        similarity = dot_product / (norm1 * norm2)
+        return float(similarity)
+    
+    async def find_most_similar(self, query_embedding: List[float], 
+                               candidate_embeddings: List[List[float]], 
+                               top_k: int = 5) -> List[tuple[int, float]]:
+        """Find the most similar embeddings to the query"""
+        if not candidate_embeddings:
+            return []
+        
+        similarities = []
+        for i, candidate in enumerate(candidate_embeddings):
+            try:
+                sim = await self.similarity(query_embedding, candidate)
+                similarities.append((i, sim))
+            except Exception as e:
+                logger.warning(f"Error calculating similarity for candidate {i}: {e}")
+                continue
+        
+        # Sort by similarity (descending)
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        
+        # Return top-k results
+        return similarities[:top_k]
+    
+    def preprocess_text(self, text: str) -> str:
+        """Preprocess text before generating embeddings"""
+        if not text:
+            return ""
+        
+        # Basic preprocessing
+        text = text.strip()
+        text = text.lower()
+        
+        # Remove extra whitespace
+        text = " ".join(text.split())
+        
+        # Truncate if too long (most models have token limits)
+        max_length = 512
+        if len(text) > max_length:
+            text = text[:max_length] + "..."
+        
+        return text
+    
+    async def generate_embedding_with_preprocessing(self, text: str) -> List[float]:
+        """Generate embedding with text preprocessing"""
+        processed_text = self.preprocess_text(text)
+        return await self.generate_embedding(processed_text)

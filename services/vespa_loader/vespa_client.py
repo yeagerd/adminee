@@ -16,18 +16,18 @@ tracer = get_tracer(__name__)
 class VespaClient:
     """Client for interacting with Vespa HTTP API"""
     
-    def __init__(self, vespa_endpoint: str):
+    def __init__(self, vespa_endpoint: str) -> None:
         self.vespa_endpoint = vespa_endpoint.rstrip('/')
         self.session: Optional[aiohttp.ClientSession] = None
         
-    async def start(self):
+    async def start(self) -> None:
         """Start the client and create HTTP session"""
         if not self.session:
             timeout = aiohttp.ClientTimeout(total=30, connect=10)
             self.session = aiohttp.ClientSession(timeout=timeout)
         logger.info("Vespa client started")
     
-    async def close(self):
+    async def close(self) -> None:
         """Close the client and HTTP session"""
         if self.session:
             await self.session.close()
@@ -43,18 +43,20 @@ class VespaClient:
                 if not self.session:
                     await self.start()
                 
-                async with self.session.get(f"{self.vespa_endpoint}/") as response:
-                    span.set_attribute("vespa.response.status", response.status)
-                    
-                    if response.status == 200:
-                        logger.info("Vespa connection test successful")
-                        span.set_attribute("vespa.connection.success", True)
-                        return True
-                    else:
-                        logger.error(f"Vespa connection test failed with status {response.status}")
-                        span.set_attribute("vespa.connection.success", False)
-                        span.set_attribute("vespa.error.status", response.status)
-                        return False
+                if self.session:
+                    async with self.session.get(f"{self.vespa_endpoint}/") as response:
+                        span.set_attribute("vespa.response.status", response.status)
+                        
+                        if response.status == 200:
+                            logger.info("Vespa connection test successful")
+                            span.set_attribute("vespa.connection.success", True)
+                            return True
+                        else:
+                            logger.error(f"Vespa connection test failed with status {response.status}")
+                            span.set_attribute("vespa.connection.success", False)
+                            span.set_attribute("vespa.error.status", response.status)
+                            return False
+                return False
             except Exception as e:
                 logger.error(f"Vespa connection test failed: {e}")
                 span.set_attribute("vespa.connection.success", False)
@@ -73,7 +75,7 @@ class VespaClient:
             
             try:
                 # Prepare document for Vespa
-                vespa_doc = self._prepare_document_for_indexing(document)
+                vespa_doc: Dict[str, Any] = self._prepare_document_for_indexing(document)
                 
                 # Generate document ID
                 doc_id = self._generate_document_id(document)
@@ -87,216 +89,248 @@ class VespaClient:
                 url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
                 span.set_attribute("vespa.request.url", url)
                 
-                async with self.session.post(url, json=vespa_doc) as response:
-                    span.set_attribute("vespa.response.status", response.status)
-                    
-                    if response.status == 200:
-                        result = await response.json()
-                        logger.info(f"Successfully indexed document {doc_id}")
-                        span.set_attribute("vespa.indexing.success", True)
-                        return {
-                            "id": full_doc_id,
-                            "status": "success",
-                            "result": result
-                        }
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"Failed to index document {doc_id}: {response.status} - {error_text}")
-                        span.set_attribute("vespa.indexing.success", False)
-                        span.set_attribute("vespa.error.status", response.status)
-                        span.set_attribute("vespa.error.message", error_text)
-                        raise Exception(f"Indexing failed: {response.status} - {error_text}")
+                if self.session:
+                    async with self.session.post(url, json=vespa_doc) as response:
+                        span.set_attribute("vespa.response.status", response.status)
                         
+                        if response.status == 200:
+                            result = await response.json()
+                            logger.info(f"Successfully indexed document {doc_id}")
+                            span.set_attribute("vespa.indexing.success", True)
+                            return {
+                                "id": full_doc_id,
+                                "status": "success",
+                                "result": result
+                            }
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Failed to index document {doc_id}: {response.status} - {error_text}")
+                            span.set_attribute("vespa.indexing.success", False)
+                            span.set_attribute("vespa.error.status", response.status)
+                            span.set_attribute("vespa.error.message", error_text)
+                            raise Exception(f"HTTP {response.status}: {error_text}")
+                else:
+                    raise Exception("No session available")
+                    
             except Exception as e:
-                logger.error(f"Error indexing document: {e}")
+                logger.error(f"Error indexing document {document.get('id', 'unknown')}: {e}")
                 span.set_attribute("vespa.indexing.success", False)
-                span.set_attribute("vespa.error.message", str(e))
                 span.record_exception(e)
                 raise
     
-    async def delete_document(self, user_id: str, doc_id: str) -> Dict[str, Any]:
-        """Delete a document from Vespa"""
-        if not self.session:
-            await self.start()
-        
-        try:
-            # Generate full document ID for streaming mode
-            # Format: id:briefly:briefly_document:g={user_id}:{doc_id}
-            full_doc_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
+    async def get_document(self, doc_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get a document from Vespa"""
+        with tracer.start_as_current_span("vespa.get_document") as span:
+            span.set_attribute("vespa.document.id", doc_id)
+            span.set_attribute("vespa.document.user_id", user_id)
             
-            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
+            if not self.session:
+                await self.start()
             
-            async with self.session.delete(url) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    logger.info(f"Successfully deleted document {doc_id}")
-                    return {
-                        "id": doc_id,
-                        "status": "success",
-                        "result": result
-                    }
+            try:
+                # Use streaming mode URL format
+                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
+                span.set_attribute("vespa.request.url", url)
+                
+                if self.session:
+                    async with self.session.get(url) as response:
+                        span.set_attribute("vespa.response.status", response.status)
+                        
+                        if response.status == 200:
+                            result = await response.json()
+                            logger.info(f"Successfully retrieved document {doc_id}")
+                            span.set_attribute("vespa.retrieval.success", True)
+                            return result
+                        elif response.status == 404:
+                            logger.info(f"Document {doc_id} not found")
+                            span.set_attribute("vespa.retrieval.success", False)
+                            span.set_attribute("vespa.error.status", 404)
+                            return None
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Failed to get document {doc_id}: {response.status} - {error_text}")
+                            span.set_attribute("vespa.retrieval.success", False)
+                            span.set_attribute("vespa.error.status", response.status)
+                            span.set_attribute("vespa.error.message", error_text)
+                            raise Exception(f"HTTP {response.status}: {error_text}")
                 else:
-                    error_text = await response.text()
-                    logger.error(f"Failed to delete document {doc_id}: {response.status} - {error_text}")
-                    raise Exception(f"Deletion failed: {response.status} - {error_text}")
+                    raise Exception("No session available")
                     
-        except Exception as e:
-            logger.error(f"Error deleting document: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Error getting document {doc_id}: {e}")
+                span.set_attribute("vespa.retrieval.success", False)
+                span.record_exception(e)
+                raise
     
-    async def get_document(self, user_id: str, doc_id: str) -> Dict[str, Any]:
-        """Retrieve a document from Vespa"""
-        if not self.session:
-            await self.start()
-        
-        try:
-            # Generate full document ID for streaming mode
-            # Format: id:briefly:briefly_document:g={user_id}:{doc_id}
-            full_doc_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
+    async def delete_document(self, doc_id: str, user_id: str) -> bool:
+        """Delete a document from Vespa"""
+        with tracer.start_as_current_span("vespa.delete_document") as span:
+            span.set_attribute("vespa.document.id", doc_id)
+            span.set_attribute("vespa.document.user_id", user_id)
             
-            url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
+            if not self.session:
+                await self.start()
             
-            async with self.session.get(url) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    logger.info(f"Successfully retrieved document {doc_id}")
-                    return result
-                elif response.status == 404:
-                    logger.warning(f"Document {doc_id} not found")
-                    return {"error": "Document not found"}
+            try:
+                # Use streaming mode URL format
+                url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
+                span.set_attribute("vespa.request.url", url)
+                
+                if self.session:
+                    async with self.session.delete(url) as response:
+                        span.set_attribute("vespa.response.status", response.status)
+                        
+                        if response.status == 200:
+                            logger.info(f"Successfully deleted document {doc_id}")
+                            span.set_attribute("vespa.deletion.success", True)
+                            return True
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Failed to delete document {doc_id}: {response.status} - {error_text}")
+                            span.set_attribute("vespa.deletion.success", False)
+                            span.set_attribute("vespa.error.status", response.status)
+                            span.set_attribute("vespa.error.message", error_text)
+                            raise Exception(f"HTTP {response.status}: {error_text}")
                 else:
-                    error_text = await response.text()
-                    logger.error(f"Failed to retrieve document {doc_id}: {response.status} - {error_text}")
-                    raise Exception(f"Retrieval failed: {response.status} - {error_text}")
+                    raise Exception("No session available")
                     
-        except Exception as e:
-            logger.error(f"Error retrieving document: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Error deleting document {doc_id}: {e}")
+                span.set_attribute("vespa.deletion.success", False)
+                span.record_exception(e)
+                raise
     
     async def search_documents(self, query: str, user_id: str, limit: int = 10) -> Dict[str, Any]:
-        """Search for documents in Vespa"""
-        if not self.session:
-            await self.start()
-        
-        try:
-            # Build search query for streaming mode
-            # In streaming mode, we don't need to filter by user_id in YQL since it's handled by the group
-            search_query = {
-                "yql": f'select * from briefly_document where (search_text contains "{query}" or title contains "{query}")',
-                "hits": limit,
-                "ranking": "hybrid",
-                "streaming.groupname": user_id  # This ensures user isolation in streaming mode
-            }
+        """Search documents in Vespa"""
+        with tracer.start_as_current_span("vespa.search_documents") as span:
+            span.set_attribute("vespa.query", query)
+            span.set_attribute("vespa.document.user_id", user_id)
+            span.set_attribute("vespa.search.limit", limit)
             
-            url = f"{self.vespa_endpoint}/search/"
+            if not self.session:
+                await self.start()
             
-            async with self.session.post(url, json=search_query) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    logger.info(f"Search query '{query}' returned {len(result.get('root', {}).get('children', []))} results")
-                    return result
+            try:
+                # Prepare search query
+                search_query = {
+                    "yql": f'select * from briefly_document where user_id="{user_id}" and userInput(@query)',
+                    "query": query,
+                    "hits": limit,
+                    "timeout": "5.0s"
+                }
+                
+                url = f"{self.vespa_endpoint}/search/"
+                span.set_attribute("vespa.request.url", url)
+                
+                if self.session:
+                    async with self.session.post(url, json=search_query) as response:
+                        span.set_attribute("vespa.response.status", response.status)
+                        
+                        if response.status == 200:
+                            result = await response.json()
+                            logger.info(f"Successfully searched documents for user {user_id}")
+                            span.set_attribute("vespa.search.success", True)
+                            return result
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Failed to search documents: {response.status} - {error_text}")
+                            span.set_attribute("vespa.search.success", False)
+                            span.set_attribute("vespa.error.status", response.status)
+                            span.set_attribute("vespa.error.message", error_text)
+                            raise Exception(f"HTTP {response.status}: {error_text}")
                 else:
-                    error_text = await response.text()
-                    logger.error(f"Search query failed: {response.status} - {error_text}")
-                    raise Exception(f"Search failed: {response.status} - {error_text}")
+                    raise Exception("No session available")
                     
-        except Exception as e:
-            logger.error(f"Error searching documents: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Error searching documents: {e}")
+                span.set_attribute("vespa.search.success", False)
+                span.record_exception(e)
+                raise
     
-    async def batch_index_documents(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Index multiple documents in batch"""
-        if not self.session:
-            await self.start()
-        
-        try:
-            results = []
+    async def get_document_count(self, user_id: str) -> int:
+        """Get the total count of documents for a user"""
+        with tracer.start_as_current_span("vespa.get_document_count") as span:
+            span.set_attribute("vespa.document.user_id", user_id)
             
-            # Process documents in parallel
-            import asyncio
-            tasks = [self.index_document(doc) for doc in documents]
-            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+            if not self.session:
+                await self.start()
             
-            # Process results
-            for i, result in enumerate(batch_results):
-                if isinstance(result, Exception):
-                    results.append({
-                        "index": i,
-                        "status": "error",
-                        "error": str(result)
-                    })
+            try:
+                # Use a simple search query to get count
+                search_query = {
+                    "yql": f'select count() from briefly_document where user_id="{user_id}"',
+                    "timeout": "5.0s"
+                }
+                
+                url = f"{self.vespa_endpoint}/search/"
+                span.set_attribute("vespa.request.url", url)
+                
+                if self.session:
+                    async with self.session.post(url, json=search_query) as response:
+                        span.set_attribute("vespa.response.status", response.status)
+                        
+                        if response.status == 200:
+                            result = await response.json()
+                            count = result.get("root", {}).get("fields", {}).get("count()", 0)
+                            logger.info(f"Document count for user {user_id}: {count}")
+                            span.set_attribute("vespa.count.success", True)
+                            span.set_attribute("vespa.count.value", count)
+                            return count
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Failed to get document count: {response.status} - {error_text}")
+                            span.set_attribute("vespa.count.success", False)
+                            span.set_attribute("vespa.error.status", response.status)
+                            span.set_attribute("vespa.error.message", error_text)
+                            raise Exception(f"HTTP {response.status}: {error_text}")
                 else:
-                    results.append({
-                        "index": i,
-                        "status": "success",
-                        "result": result
-                    })
-            
-            return {
-                "status": "completed",
-                "total_documents": len(documents),
-                "results": results
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in batch indexing: {e}")
-            raise
+                    raise Exception("No session available")
+                    
+            except Exception as e:
+                logger.error(f"Error getting document count: {e}")
+                span.set_attribute("vespa.count.success", False)
+                span.record_exception(e)
+                raise
     
     def _prepare_document_for_indexing(self, document: Dict[str, Any]) -> Dict[str, Any]:
-        """Prepare document for Vespa indexing"""
-        # Ensure required fields are present
-        required_fields = ["user_id", "doc_id", "provider", "source_type"]
-        for field in required_fields:
-            if field not in document:
-                raise ValueError(f"Missing required field: {field}")
-        
-        # Convert timestamps to milliseconds if they're datetime objects or ISO strings
-        if "created_at" in document:
-            if isinstance(document["created_at"], datetime):
-                document["created_at"] = int(document["created_at"].timestamp() * 1000)
-            elif isinstance(document["created_at"], str):
-                # Parse ISO string to datetime, then convert to milliseconds
-                try:
-                    dt = datetime.fromisoformat(document["created_at"].replace('Z', '+00:00'))
-                    document["created_at"] = int(dt.timestamp() * 1000)
-                except ValueError:
-                    logger.warning(f"Could not parse created_at timestamp: {document['created_at']}")
-                    document["created_at"] = int(datetime.now(timezone.utc).timestamp() * 1000)
-        
-        if "updated_at" in document:
-            if isinstance(document["updated_at"], datetime):
-                document["updated_at"] = int(document["updated_at"].timestamp() * 1000)
-            elif isinstance(document["updated_at"], str):
-                # Parse ISO string to datetime, then convert to milliseconds
-                try:
-                    dt = datetime.fromisoformat(document["updated_at"].replace('Z', '+00:00'))
-                    document["updated_at"] = int(dt.timestamp() * 1000)
-                except ValueError:
-                    logger.warning(f"Could not parse updated_at timestamp: {document['updated_at']}")
-                    document["updated_at"] = int(datetime.now(timezone.utc).timestamp() * 1000)
-        
-        # Ensure recipients is a list
-        if "recipients" in document and not isinstance(document["recipients"], list):
-            document["recipients"] = [document["recipients"]]
-        
-        # Ensure metadata is a dict
-        if "metadata" not in document:
-            document["metadata"] = {}
-        
-        # Vespa expects the document to be wrapped in a "fields" object
-        vespa_document = {
-            "fields": document
+        """Prepare a document for Vespa indexing"""
+        # Extract the fields we want to index
+        vespa_doc = {
+            "fields": {
+                "id": document.get("id"),
+                "user_id": document.get("user_id"),
+                "source_type": document.get("source_type", "unknown"),
+                "provider": document.get("provider", "unknown"),
+                "subject": document.get("subject", ""),
+                "body": document.get("body", ""),
+                "from_address": document.get("from", ""),
+                "to_addresses": document.get("to", []),
+                "thread_id": document.get("thread_id", ""),
+                "folder": document.get("folder", ""),
+                "created_at": document.get("created_at"),
+                "updated_at": document.get("updated_at"),
+                "metadata": document.get("metadata", {}),
+                "timestamp": document.get("timestamp")
+            }
         }
         
-        return vespa_document
+        # Add any additional fields that might be present
+        for key, value in document.items():
+            if key not in vespa_doc["fields"] and value is not None:
+                vespa_doc["fields"][key] = value
+        
+        return vespa_doc
     
     def _generate_document_id(self, document: Dict[str, Any]) -> str:
-        """Generate a document ID for Vespa streaming mode"""
-        # For streaming mode, we should use the original doc_id directly
-        # The user isolation is handled by the URL path structure, not the ID complexity
-        doc_id = document.get("doc_id", "unknown")
+        """Generate a unique document ID for Vespa"""
+        # Use a combination of fields to create a unique ID
+        doc_id = document.get("id", "")
+        source_type = document.get("source_type", "unknown")
+        provider = document.get("provider", "unknown")
         
-        # Ensure the doc_id is URL-safe
-        safe_doc_id = str(doc_id).replace(" ", "_").replace("/", "_").replace("\\", "_")
-        
-        return safe_doc_id
+        if doc_id:
+            return f"{source_type}_{provider}_{doc_id}"
+        else:
+            # Fallback to timestamp-based ID
+            timestamp = int(datetime.now(timezone.utc).timestamp())
+            return f"{source_type}_{provider}_{timestamp}"

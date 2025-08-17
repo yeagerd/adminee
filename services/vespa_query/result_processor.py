@@ -14,7 +14,7 @@ tracer = get_tracer(__name__)
 class ResultProcessor:
     """Processes and formats Vespa search results"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.default_max_snippet_length = 200
         self.max_title_length = 100
         
@@ -109,28 +109,30 @@ class ResultProcessor:
             
         except Exception as e:
             logger.error(f"Error processing autocomplete results: {e}")
-            return {"suggestions": [], "error": str(e)}
+            return {
+                "query": query,
+                "user_id": user_id,
+                "suggestions": [],
+                "total_suggestions": 0,
+                "error": str(e),
+                "processed_at": datetime.utcnow().isoformat()
+            }
     
-    def process_similar_documents_results(
+    def process_similarity_results(
         self,
         vespa_results: Dict[str, Any],
-        original_doc_id: str,
+        query: str,
         user_id: str
     ) -> Dict[str, Any]:
-        """Process similar documents results"""
+        """Process similarity search results"""
         try:
             documents = self._process_documents(
                 vespa_results.get("root", {}).get("children", []),
                 include_highlights=False
             )
             
-            # Add similarity scores if available
-            for doc in documents:
-                if "relevance" in doc:
-                    doc["similarity_score"] = doc.pop("relevance")
-            
             return {
-                "original_doc_id": original_doc_id,
+                "query": query,
                 "user_id": user_id,
                 "similar_documents": documents,
                 "total_similar": len(documents),
@@ -138,181 +140,234 @@ class ResultProcessor:
             }
             
         except Exception as e:
-            logger.error(f"Error processing similar documents results: {e}")
-            return {"similar_documents": [], "error": str(e)}
+            logger.error(f"Error processing similarity results: {e}")
+            return {
+                "query": query,
+                "user_id": user_id,
+                "similar_documents": [],
+                "total_similar": 0,
+                "error": str(e),
+                "processed_at": datetime.utcnow().isoformat()
+            }
     
-    def _process_documents(self, vespa_docs: List[Dict[str, Any]], include_highlights: bool) -> List[Dict[str, Any]]:
-        """Process individual Vespa documents"""
+    def process_facets_results(
+        self,
+        vespa_results: Dict[str, Any],
+        query: str,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """Process facets results"""
+        try:
+            facets = self._process_facets(vespa_results.get("root", {}).get("children", []))
+            
+            return {
+                "query": query,
+                "user_id": user_id,
+                "facets": facets,
+                "total_facets": len(facets),
+                "processed_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing facets results: {e}")
+            return {
+                "query": query,
+                "user_id": user_id,
+                "facets": {},
+                "total_facets": 0,
+                "error": str(e),
+                "processed_at": datetime.utcnow().isoformat()
+            }
+    
+    def process_trending_results(
+        self,
+        vespa_results: Dict[str, Any],
+        query: str,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """Process trending results"""
+        try:
+            documents = self._process_documents(
+                vespa_results.get("root", {}).get("children", []),
+                include_highlights=False
+            )
+            
+            return {
+                "query": query,
+                "user_id": user_id,
+                "trending_documents": documents,
+                "total_trending": len(documents),
+                "processed_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing trending results: {e}")
+            return {
+                "query": query,
+                "user_id": user_id,
+                "trending_documents": [],
+                "total_trending": 0,
+                "error": str(e),
+                "processed_at": datetime.utcnow().isoformat()
+            }
+    
+    def process_analytics_results(
+        self,
+        vespa_results: Dict[str, Any],
+        query: str,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """Process analytics results"""
+        try:
+            # Extract analytics data
+            analytics_data = self._extract_analytics_data(vespa_results)
+            
+            return {
+                "query": query,
+                "user_id": user_id,
+                "analytics": analytics_data,
+                "processed_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing analytics results: {e}")
+            return {
+                "query": query,
+                "user_id": user_id,
+                "analytics": {},
+                "error": str(e),
+                "processed_at": datetime.utcnow().isoformat()
+            }
+    
+    def _process_documents(self, documents: List[Dict[str, Any]], include_highlights: bool) -> List[Dict[str, Any]]:
+        """Process individual documents from Vespa results"""
         processed_docs = []
         
-        for doc in vespa_docs:
+        for doc in documents:
             try:
-                fields = doc.get("fields", {})
-                
-                processed_doc = {
-                    "id": fields.get("doc_id"),
-                    "title": self._truncate_text(fields.get("title", ""), self.max_title_length),
-                    "content": fields.get("content", ""),
-                    "source_type": fields.get("source_type"),
-                    "provider": fields.get("provider"),
-                    "user_id": fields.get("user_id"),
-                    "created_at": fields.get("created_at"),
-                    "updated_at": fields.get("updated_at"),
-                    "relevance": doc.get("relevance", 0.0),
-                    "metadata": {}
-                }
-                
-                # Add highlights if requested
-                if include_highlights and "highlights" in doc:
-                    processed_doc["highlights"] = self._process_highlights(doc["highlights"])
-                
-                # Add metadata fields
-                metadata_fields = ["sender", "recipients", "thread_id", "folder", "location", "attendees"]
-                for field in metadata_fields:
-                    if field in fields:
-                        processed_doc["metadata"][field] = fields[field]
-                
-                # Add snippet if content is long
-                if len(fields.get("content", "")) > self.default_max_snippet_length:
-                    processed_doc["snippet"] = self._create_snippet(
-                        fields.get("content", ""),
-                        self.default_max_snippet_length
-                    )
-                
+                processed_doc = self._process_single_document(doc, include_highlights)
                 processed_docs.append(processed_doc)
-                
             except Exception as e:
                 logger.warning(f"Error processing document: {e}")
                 continue
         
         return processed_docs
     
-    def _process_highlights(self, highlights: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Process Vespa highlights"""
-        processed_highlights = []
+    def _process_single_document(self, doc: Dict[str, Any], include_highlights: bool) -> Dict[str, Any]:
+        """Process a single document"""
+        fields = doc.get("fields", {})
+        
+        processed_doc = {
+            "id": fields.get("id"),
+            "user_id": fields.get("user_id"),
+            "source_type": fields.get("source_type"),
+            "provider": fields.get("provider"),
+            "title": fields.get("title", ""),
+            "content": fields.get("content", ""),
+            "created_at": fields.get("created_at"),
+            "updated_at": fields.get("updated_at"),
+            "relevance_score": doc.get("relevance", 0.0)
+        }
+        
+        # Add highlights if requested
+        if include_highlights and "highlights" in doc:
+            processed_doc["highlights"] = self._extract_highlights(doc["highlights"])
+        
+        # Add metadata
+        if "metadata" in fields:
+            processed_doc["metadata"] = fields["metadata"]
+        
+        return processed_doc
+    
+    def _extract_highlights(self, highlights: List[Dict[str, Any]]) -> List[str]:
+        """Extract highlight text from Vespa highlights"""
+        highlight_texts = []
         
         for highlight in highlights:
-            try:
-                processed_highlight = {
-                    "field": highlight.get("field"),
-                    "snippet": highlight.get("snippet"),
-                    "matches": highlight.get("matches", [])
-                }
-                processed_highlights.append(processed_highlight)
-            except Exception as e:
-                logger.warning(f"Error processing highlight: {e}")
-                continue
+            if "value" in highlight:
+                highlight_texts.append(highlight["value"])
         
-        return processed_highlights
+        return highlight_texts
     
-    def _process_facets(self, vespa_docs: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Process Vespa facets"""
-        facets = {}
+    def _process_facets(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Process facets from documents"""
+        source_types: Dict[str, int] = {}
+        providers: Dict[str, int] = {}
+        folders: Dict[str, int] = {}
         
-        # Look for facet information in the results
-        # This is a simplified implementation - actual facets would come from Vespa
-        source_types = {}
-        providers = {}
-        folders = {}
-        
-        for doc in vespa_docs:
+        for doc in documents:
             fields = doc.get("fields", {})
             
             # Count source types
-            source_type = fields.get("source_type")
-            if source_type:
-                source_types[source_type] = source_types.get(source_type, 0) + 1
+            source_type = fields.get("source_type", "unknown")
+            source_types[source_type] = source_types.get(source_type, 0) + 1
             
             # Count providers
-            provider = fields.get("provider")
-            if provider:
-                providers[provider] = providers.get(provider, 0) + 1
+            provider = fields.get("provider", "unknown")
+            providers[provider] = providers.get(provider, 0) + 1
             
             # Count folders
-            folder = fields.get("folder")
-            if folder:
-                folders[folder] = folders.get(folder, 0) + 1
+            folder = fields.get("folder", "unknown")
+            folders[folder] = folders.get(folder, 0) + 1
         
-        if source_types:
-            facets["source_type"] = [
-                {"value": k, "count": v} for k, v in source_types.items()
-            ]
-        
-        if providers:
-            facets["provider"] = [
-                {"value": k, "count": v} for k, v in providers.items()
-            ]
-        
-        if folders:
-            facets["folder"] = [
-                {"value": k, "count": v} for k, v in folders.items()
-            ]
-        
-        return facets
+        return {
+            "source_types": source_types,
+            "providers": providers,
+            "folders": folders
+        }
     
     def _extract_performance_metrics(self, vespa_results: Dict[str, Any]) -> Dict[str, Any]:
         """Extract performance metrics from Vespa results"""
-        performance = {}
+        performance = vespa_results.get("performance", {})
         
-        # Extract timing information if available
-        timing = vespa_results.get("timing", {})
-        if timing:
-            performance["query_time_ms"] = timing.get("queryTime", 0)
-            performance["summary_time_ms"] = timing.get("summaryTime", 0)
+        return {
+            "query_time_ms": performance.get("query_time_ms", 0),
+            "timestamp": performance.get("timestamp", ""),
+            "vespa_timing": vespa_results.get("timing", {})
+        }
+    
+    def _extract_analytics_data(self, vespa_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract analytics data from Vespa results"""
+        analytics = {}
         
-        # Extract coverage information
-        coverage = vespa_results.get("root", {}).get("coverage", {})
-        if coverage:
-            performance["coverage"] = coverage.get("coverage", 0)
-            performance["documents"] = coverage.get("documents", 0)
+        # Extract grouping results if available
+        if "root" in vespa_results and "children" in vespa_results["root"]:
+            children = vespa_results["root"]["children"]
+            for child in children:
+                if "id" in child and "relevance" in child:
+                    analytics[child["id"]] = child["relevance"]
         
-        return performance
+        return analytics
     
     def _extract_autocomplete_suggestions(self, documents: List[Dict[str, Any]], query: str) -> List[str]:
         """Extract autocomplete suggestions from documents"""
         suggestions = set()
-        query_lower = query.lower()
         
         for doc in documents:
-            title = doc.get("title", "").lower()
-            content = doc.get("content", "").lower()
+            # Add title suggestions
+            title = doc.get("title", "")
+            if title and query.lower() in title.lower():
+                suggestions.add(title[:self.max_title_length])
             
-            # Look for query prefix matches
-            if title.startswith(query_lower):
-                suggestions.add(doc["title"])
-            
-            if content.startswith(query_lower):
-                # Extract sentence or phrase starting with query
-                content_start = content.find(query_lower)
-                if content_start >= 0:
-                    sentence_end = content.find(".", content_start)
-                    if sentence_end > 0:
-                        suggestion = content[content_start:sentence_end].strip()
-                        if len(suggestion) < 100:  # Limit suggestion length
-                            suggestions.add(suggestion)
+            # Add content suggestions
+            content = doc.get("content", "")
+            if content and query.lower() in content.lower():
+                # Extract sentence containing query
+                sentences = content.split('.')
+                for sentence in sentences:
+                    if query.lower() in sentence.lower():
+                        clean_sentence = sentence.strip()
+                        if len(clean_sentence) <= self.default_max_snippet_length:
+                            suggestions.add(clean_sentence)
+                        else:
+                            # Truncate sentence
+                            start = clean_sentence.lower().find(query.lower())
+                            end = start + len(query)
+                            snippet = clean_sentence[max(0, start-50):end+50]
+                            suggestions.add(snippet.strip())
+                        break
         
         return list(suggestions)[:10]  # Limit to 10 suggestions
-    
-    def _create_snippet(self, content: str, max_length: int) -> str:
-        """Create a text snippet from content"""
-        if len(content) <= max_length:
-            return content
-        
-        # Try to break at sentence boundary
-        snippet = content[:max_length]
-        last_period = snippet.rfind(".")
-        
-        if last_period > max_length * 0.7:  # If period is in last 30%
-            return snippet[:last_period + 1]
-        
-        return snippet + "..."
-    
-    def _truncate_text(self, text: str, max_length: int) -> str:
-        """Truncate text to maximum length"""
-        if not text or len(text) <= max_length:
-            return text
-        
-        return text[:max_length - 3] + "..."
     
     def _create_empty_results(self, query: str, user_id: str) -> Dict[str, Any]:
         """Create empty results structure"""
@@ -327,7 +382,7 @@ class ResultProcessor:
             "processed_at": datetime.utcnow().isoformat()
         }
     
-    def _create_error_results(self, query: str, user_id: str, error: str) -> Dict[str, Any]:
+    def _create_error_results(self, query: str, user_id: str, error_message: str) -> Dict[str, Any]:
         """Create error results structure"""
         return {
             "query": query,
@@ -337,6 +392,6 @@ class ResultProcessor:
             "facets": {},
             "performance": {},
             "coverage": {},
-            "error": error,
+            "error": error_message,
             "processed_at": datetime.utcnow().isoformat()
         }
