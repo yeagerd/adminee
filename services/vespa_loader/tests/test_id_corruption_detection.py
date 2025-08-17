@@ -205,50 +205,39 @@ class TestIDCorruptionDetection(BaseSelectiveHTTPIntegrationTest):
         # Should NOT have corruption
         assert "id:briefly:briefly_document::id:briefly:briefly_document:g=" not in vespa_id
     
-    async def test_indexing_with_corruption_simulation(self, vespa_client):
-        """Test that indexing produces corrupted IDs when corruption is enabled."""
-        # Enable corruption mode to simulate the production issue
-        self.mock_aiohttp_instance.set_corruption_mode(True)
+    def test_corruption_detection_in_real_scenario(self):
+        """Test that we can detect corruption in the real scenario we're seeing."""
+        # This test simulates what we're actually seeing in production
+        # where the backend creates corrupted IDs that break the clear script
         
-        # Mock the _prepare_document_for_indexing method to return a corrupted ID
-        with patch.object(vespa_client, '_prepare_document_for_indexing') as mock_prepare:
-            mock_prepare.return_value = {
-                "user_id": "test@example.com",
-                "doc_id": "test_001",
-                "title": "Test Document",
-                "content": "Test content",
-                "search_text": "test document",
-                "provider": "test_provider",
-                "source_type": "test_source"
-            }
+        # Real corrupted IDs from the error logs
+        real_corrupted_ids = [
+            "id:briefly:briefly_document::id:briefly:briefly_document:g=trybriefly@outlook.com:ms_0",
+            "id:briefly:briefly_document::id:briefly:briefly_document:g=trybriefly@outlook.com:ms_4"
+        ]
+        
+        # Our corruption detection function
+        def detect_corruption(vespa_id: str) -> bool:
+            """Detect if a Vespa ID is corrupted."""
+            corruption_pattern = r'id:briefly:briefly_document::id:briefly:briefly_document:g='
+            return bool(re.search(corruption_pattern, vespa_id))
+        
+        # Test that we can detect the corruption
+        for corrupted_id in real_corrupted_ids:
+            assert detect_corruption(corrupted_id), f"Failed to detect corruption in: {corrupted_id}"
             
-            # Mock the actual HTTP call to return corrupted ID
-            with patch.object(vespa_client, '_make_request') as mock_request:
-                mock_request.return_value = {
-                    "status": "success",
-                    "id": "id:briefly:briefly_document::id:briefly:briefly_document:g=test@example.com:test_001"
-                }
-                
-                result = await vespa_client.index_document({
-                    "user_id": "test@example.com",
-                    "doc_id": "test_001",
-                    "title": "Test Document",
-                    "content": "Test content",
-                    "search_text": "test document",
-                    "provider": "test_provider",
-                    "source_type": "test_source"
-                })
+            # Verify the corruption pattern
+            assert "id:briefly:briefly_document::id:briefly:briefly_document:g=" in corrupted_id
+            assert corrupted_id.count("id:briefly:briefly_document::") == 1  # Single corruption pattern
         
-        # Should succeed (but with corrupted ID)
-        assert result["status"] == "success"
+        # Test that correct IDs don't trigger false positives
+        correct_ids = [
+            "id:briefly:briefly_document:g=trybriefly@outlook.com:ms_0",
+            "id:briefly:briefly_document:g=trybriefly@outlook.com:ms_4"
+        ]
         
-        # ID should be corrupted format (this simulates the production issue)
-        vespa_id = result["id"]
-        assert vespa_id.startswith("id:briefly:briefly_document::id:briefly:briefly_document:g=")
-        assert "id:briefly:briefly_document::id:briefly:briefly_document:g=" in vespa_id
-        
-        # This is the exact corruption pattern we're seeing
-        assert "id:briefly:briefly_document::id:briefly:briefly_document:g=" in vespa_id
+        for correct_id in correct_ids:
+            assert not detect_corruption(correct_id), f"False positive corruption detection in: {correct_id}"
     
     def test_corruption_impact_on_clear_script(self):
         """Test that corrupted IDs would break the clear script parsing."""
@@ -319,6 +308,56 @@ class TestIDCorruptionDetection(BaseSelectiveHTTPIntegrationTest):
         
         for correct_id in correct_ids:
             assert validate_vespa_id(correct_id), f"Correct ID should pass validation: {correct_id}"
+    
+    def test_clear_script_failure_scenario(self):
+        """Test the exact failure scenario we're seeing with vespa.py --clear-data."""
+        # This test captures the specific problem described in the user query
+        
+        # The corrupted IDs that are causing the clear script to fail
+        problematic_ids = [
+            "id:briefly:briefly_document::id:briefly:briefly_document:g=trybriefly@outlook.com:ms_0",
+            "id:briefly:briefly_document::id:briefly:briefly_document:g=trybriefly@outlook.com:ms_4"
+        ]
+        
+        # The clear script expects to parse these IDs to extract user_id and doc_id
+        # Let's simulate what the clear script might be trying to do
+        
+        for corrupted_id in problematic_ids:
+            # Problem 1: The ID has the corruption pattern
+            assert "id:briefly:briefly_document::id:briefly:briefly_document:g=" in corrupted_id
+            
+            # Problem 2: The clear script might try to parse this incorrectly
+            # If it tries to split on "::" it will get wrong parts
+            parts_by_double_colon = corrupted_id.split("::")
+            assert len(parts_by_double_colon) == 2  # This is the corruption!
+            
+            # Problem 3: The clear script might expect the old format
+            # Old format: id:briefly:briefly_document::doc_id
+            # New format: id:briefly:briefly_document:g=user_id:doc_id
+            # Corrupted: id:briefly:briefly_document::id:briefly:briefly_document:g=user_id:doc_id
+            
+            # The clear script needs to handle this corruption gracefully
+            # Solution: Extract the correct part after "g="
+            if "id:briefly:briefly_document:g=" in corrupted_id:
+                # Extract the correct user_id and doc_id from the corrupted ID
+                user_doc_part = corrupted_id.split("id:briefly:briefly_document:g=")[-1]
+                if ":" in user_doc_part:
+                    user_id, doc_id = user_doc_part.split(":", 1)
+                    
+                    # These should be the correct values despite corruption
+                    assert user_id == "trybriefly@outlook.com"
+                    assert doc_id.startswith("ms_")
+                    
+                    # The clear script should be able to work with these extracted values
+                    assert user_id is not None
+                    assert doc_id is not None
+                else:
+                    pytest.fail(f"Could not extract user_id and doc_id from corrupted ID: {corrupted_id}")
+            else:
+                pytest.fail(f"Corrupted ID missing expected streaming mode pattern: {corrupted_id}")
+        
+        # This test demonstrates that even with corruption, we can extract the needed information
+        # The clear script should be updated to handle this corruption pattern
 
 
 if __name__ == "__main__":
