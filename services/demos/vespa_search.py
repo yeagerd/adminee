@@ -33,6 +33,9 @@ class VespaSearchDemo:
         self.user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_email)
         self.semantic_search = SemanticSearchTool(self.vespa_endpoint, self.user_email)
         
+        # Initialize search engine for stats
+        self.search_engine = SearchEngine(self.vespa_endpoint)
+        
         # Comprehensive search test scenarios
         self.search_scenarios = [
             {
@@ -129,6 +132,10 @@ class VespaSearchDemo:
             
             if hasattr(self.semantic_search, 'search_engine'):
                 await self.semantic_search.search_engine.close()
+            
+            # Close our stats search engine
+            if hasattr(self, 'search_engine'):
+                await self.search_engine.close()
                 
             logger.info("Resource cleanup completed")
         except Exception as e:
@@ -471,12 +478,275 @@ class VespaSearchDemo:
             except Exception as e:
                 print(f"\nError: {e}")
 
+    async def get_user_stats(self) -> Dict[str, Any]:
+        """Get statistics for the current user"""
+        try:
+            await self.search_engine.start()
+            
+            # Query to get total document count for this user
+            user_query = {
+                "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 0,  # We only want the count, not the actual documents
+                "timeout": "5s"
+            }
+            
+            start_time = time.time()
+            results = await self.search_engine.search(user_query)
+            query_time = (time.time() - start_time) * 1000
+            
+            total_documents = results.get("root", {}).get("fields", {}).get("totalCount", 0)
+            
+            # Get breakdown by source type
+            source_type_query = {
+                "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "source_type"
+            }
+            
+            source_results = await self.search_engine.search(source_type_query)
+            source_breakdown = {}
+            
+            if "root" in source_results and "children" in source_results["root"]:
+                for child in source_results["root"]["children"]:
+                    if "value" in child:
+                        source_type = child["value"]
+                        count = child.get("fields", {}).get("count()", 0)
+                        source_breakdown[source_type] = count
+            
+            # Get breakdown by provider
+            provider_query = {
+                "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "provider"
+            }
+            
+            provider_results = await self.search_engine.search(provider_query)
+            provider_breakdown = {}
+            
+            if "root" in provider_results and "children" in provider_results["root"]:
+                for child in provider_results["root"]["children"]:
+                    if "value" in child:
+                        provider = child["value"]
+                        count = child.get("fields", {}).get("count()", 0)
+                        provider_breakdown[provider] = count
+            
+            return {
+                "user_email": self.user_email,
+                "total_documents": total_documents,
+                "source_type_breakdown": source_breakdown,
+                "provider_breakdown": provider_breakdown,
+                "query_time_ms": round(query_time, 2),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting user stats: {e}")
+            return {
+                "user_email": self.user_email,
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+    
+    async def get_all_users_stats(self) -> Dict[str, Any]:
+        """Get statistics for all users in the database"""
+        try:
+            await self.search_engine.start()
+            
+            # Query to get all unique users
+            users_query = {
+                "yql": "select user_id from briefly_document where true",
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "user_id"
+            }
+            
+            users_results = await self.search_engine.search(users_query)
+            users = []
+            
+            if "root" in users_results and "children" in users_results["root"]:
+                for child in users_results["root"]["children"]:
+                    if "value" in child:
+                        user_email = child["value"]
+                        users.append(user_email)
+            
+            # Get stats for each user
+            user_stats = []
+            total_documents = 0
+            total_source_types = {}
+            total_providers = {}
+            
+            for user_email in users:
+                user_stat = await self.get_user_stats_for_email(user_email)
+                user_stats.append(user_stat)
+                
+                if "total_documents" in user_stat:
+                    total_documents += user_stat["total_documents"]
+                
+                # Aggregate source type counts
+                for source_type, count in user_stat.get("source_type_breakdown", {}).items():
+                    total_source_types[source_type] = total_source_types.get(source_type, 0) + count
+                
+                # Aggregate provider counts
+                for provider, count in user_stat.get("provider_breakdown", {}).items():
+                    total_providers[provider] = total_providers.get(provider, 0) + count
+            
+            return {
+                "total_users": len(users),
+                "total_documents": total_documents,
+                "user_stats": user_stats,
+                "aggregate_source_types": total_source_types,
+                "aggregate_providers": total_providers,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting all users stats: {e}")
+            return {
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+    
+    async def get_user_stats_for_email(self, user_email: str) -> Dict[str, Any]:
+        """Get statistics for a specific user email"""
+        try:
+            # Query to get total document count for this user
+            user_query = {
+                "yql": f'select * from briefly_document where user_id contains "{user_email}"',
+                "hits": 0,
+                "timeout": "5s"
+            }
+            
+            start_time = time.time()
+            results = await self.search_engine.search(user_query)
+            query_time = (time.time() - start_time) * 1000
+            
+            total_documents = results.get("root", {}).get("fields", {}).get("totalCount", 0)
+            
+            # Get breakdown by source type
+            source_type_query = {
+                "yql": f'select source_type from briefly_document where user_id contains "{user_email}"',
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "source_type"
+            }
+            
+            source_results = await self.search_engine.search(source_type_query)
+            source_breakdown = {}
+            
+            if "root" in source_results and "children" in source_results["root"]:
+                for child in source_results["root"]["children"]:
+                    if "value" in child:
+                        source_type = child["value"]
+                        count = child.get("fields", {}).get("count()", 0)
+                        source_breakdown[source_type] = count
+            
+            # Get breakdown by provider
+            provider_query = {
+                "yql": f'select provider from briefly_document where user_id contains "{user_email}"',
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "provider"
+            }
+            
+            provider_results = await self.search_engine.search(provider_query)
+            provider_breakdown = {}
+            
+            if "root" in provider_results and "children" in provider_results["root"]:
+                for child in provider_results["root"]["children"]:
+                    if "value" in child:
+                        provider = child["value"]
+                        count = child.get("fields", {}).get("count()", 0)
+                        provider_breakdown[provider] = count
+            
+            return {
+                "user_email": user_email,
+                "total_documents": total_documents,
+                "source_type_breakdown": source_breakdown,
+                "provider_breakdown": provider_breakdown,
+                "query_time_ms": round(query_time, 2)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting stats for user {user_email}: {e}")
+            return {
+                "user_email": user_email,
+                "error": str(e)
+            }
+    
+    def print_user_stats(self, stats: Dict[str, Any]):
+        """Print user statistics in a formatted way"""
+        print(f"\n{'='*60}")
+        print(f"USER STATISTICS: {stats['user_email']}")
+        print(f"{'='*60}")
+        
+        if "error" in stats:
+            print(f"Error: {stats['error']}")
+            return
+        
+        print(f"Total Documents: {stats.get('total_documents', 0):,}")
+        print(f"Query Time: {stats.get('query_time_ms', 0):.2f}ms")
+        
+        # Source type breakdown
+        source_breakdown = stats.get("source_type_breakdown", {})
+        if source_breakdown:
+            print(f"\nSource Type Breakdown:")
+            for source_type, count in sorted(source_breakdown.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {source_type}: {count:,}")
+        
+        # Provider breakdown
+        provider_breakdown = stats.get("provider_breakdown", {})
+        if provider_breakdown:
+            print(f"\nProvider Breakdown:")
+            for provider, count in sorted(provider_breakdown.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {provider}: {count:,}")
+        
+        print(f"{'='*60}")
+    
+    def print_all_users_stats(self, stats: Dict[str, Any]):
+        """Print all users statistics in a formatted way"""
+        print(f"\n{'='*60}")
+        print("ALL USERS STATISTICS")
+        print(f"{'='*60}")
+        
+        if "error" in stats:
+            print(f"Error: {stats['error']}")
+            return
+        
+        print(f"Total Users: {stats.get('total_users', 0):,}")
+        print(f"Total Documents: {stats.get('total_documents', 0):,}")
+        
+        # Aggregate source types
+        aggregate_source_types = stats.get("aggregate_source_types", {})
+        if aggregate_source_types:
+            print(f"\nAggregate Source Type Breakdown:")
+            for source_type, count in sorted(aggregate_source_types.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {source_type}: {count:,}")
+        
+        # Aggregate providers
+        aggregate_providers = stats.get("aggregate_providers", {})
+        if aggregate_providers:
+            print(f"\nAggregate Provider Breakdown:")
+            for provider, count in sorted(aggregate_providers.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {provider}: {count:,}")
+        
+        # Individual user stats
+        user_stats = stats.get("user_stats", [])
+        if user_stats:
+            print(f"\nIndividual User Statistics:")
+            for user_stat in user_stats:
+                if "error" not in user_stat:
+                    print(f"\n  {user_stat['user_email']}: {user_stat.get('total_documents', 0):,} documents")
+        
+        print(f"{'='*60}")
+
 async def main():
     """Main function for running the Vespa search demo"""
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Run Vespa search capabilities demo with real user data",
+        description="Run Vespa search capabilities demo with real user data. Shows user stats by default.",
         epilog="Example: python3 vespa_search.py trybriefly@outlook.com --demo"
     )
     parser.add_argument("email", help="Email address of the user to search (e.g., trybriefly@outlook.com)")
@@ -484,6 +754,8 @@ async def main():
     parser.add_argument("--output-file", help="Output file for demo results")
     parser.add_argument("--demo", action="store_true", help="Run the comprehensive demo instead of interactive mode")
     parser.add_argument("--query", help="Run a single query non-interactively")
+    parser.add_argument("--stats", action="store_true", help="Show statistics for all users (in addition to current user stats)")
+    parser.add_argument("--stats-only", action="store_true", help="Only show statistics, don't run interactive mode")
     
     args = parser.parse_args()
     
@@ -495,6 +767,13 @@ async def main():
     
     try:
         async with VespaSearchDemo(config) as demo:
+            # Show stats for the current user when starting (unless --stats-only)
+            if not args.stats_only:
+                print(f"\nCollecting statistics for user: {args.email}")
+                user_stats = await demo.get_user_stats()
+                demo.print_user_stats(user_stats)
+                print()
+            
             if args.demo:
                 # Run the comprehensive demo
                 results = await demo.run_search_demo()
@@ -551,6 +830,13 @@ async def main():
                 results = await demo.run_single_query(args.query)
                 demo.print_query_results(results)
                 return results
+                
+            elif args.stats or args.stats_only:
+                # Show all users stats (user stats already shown above if not --stats-only)
+                print("\nCollecting statistics for all users...")
+                all_users_stats = await demo.get_all_users_stats()
+                demo.print_all_users_stats(all_users_stats)
+                return all_users_stats
                 
             else:
                 # Interactive mode (default)
