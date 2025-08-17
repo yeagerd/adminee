@@ -23,7 +23,7 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 ## Phase 1: Backend OpenAPI Schema Generation
 
 ### Task 1.1: Install OpenAPI Generation Dependencies
-- [ ] Add `fastapi[all]` to each service's dependencies if not present
+- [x] Add `fastapi[all]` to each service's dependencies if not present
 - [ ] Ensure each service has proper FastAPI app configuration with metadata
 - [ ] Verify OpenAPI schema generation is enabled
 

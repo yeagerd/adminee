@@ -1,28 +1,23 @@
 [project]
-name = "briefly-meetings"
+name = "briefly-email-sync"
 version = "0.1.0"
-description = "Meeting Scheduler Service for Briefly"
+description = "Briefly Email Synchronization Service"
 requires-python = ">=3.12"
 dependencies = [
     # Web Framework - Full FastAPI with OpenAPI support
     "fastapi[all]>=0.110.0,<1.0.0",
     "uvicorn[standard]>=0.29.0,<1.0.0",
     "pydantic>=2.6.0,<3.0.0",
-    # Database
-    "sqlalchemy>=2.0.0,<3.0.0",
-    "alembic>=1.13.0,<2.0.0",
-    # Authentication & Validation
-    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    # Email processing
     "email-validator>=2.1.0,<3.0.0",
-    # HTTP Client
-    "aiohttp>=3.9.0,<4.0.0",
     # Utilities
-    "itsdangerous>=2.2.0,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
 ]
-
-[tool.setuptools]
-packages = ["api", "app", "models", "schemas"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
