@@ -66,6 +66,7 @@ def patch_chat_settings_singleton():
 
 def test_get_calendar_events_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
+    import asyncio
     from datetime import datetime, timezone
 
     from services.chat.agents.llm_tools import get_calendar_events
@@ -139,7 +140,7 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
     # Set the side_effect on the mock
     mock_requests.side_effect = mock_get
 
-    result = get_calendar_events("user123")
+    result = asyncio.run(get_calendar_events("user123"))
     assert result is not None
     assert "events" in result
     assert len(result["events"]) == 2
@@ -149,6 +150,7 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
 
 def test_get_calendar_events_malformed(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
+    import asyncio
     from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
@@ -193,7 +195,7 @@ def test_get_calendar_events_malformed(mock_requests, monkeypatch):
     # Set the side_effect on the mock
     mock_requests.side_effect = mock_get
 
-    result = get_calendar_events("user123")
+    result = asyncio.run(get_calendar_events("user123"))
     assert result is not None
     assert "error" in result
     assert "validation" in result["error"].lower()

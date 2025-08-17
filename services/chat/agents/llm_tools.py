@@ -4,9 +4,10 @@ LLM Tools for chat workflows - Enhanced with Vespa search capabilities
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
 import json
+import requests
 
 from services.chat.service_client import ServiceClient
 from services.vespa_query.search_engine import SearchEngine
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 _draft_storage: Dict[str, Dict[str, Any]] = {}
 
 # Draft management functions
-def create_draft_email(thread_id: str, to: Optional[str], subject: Optional[str], body: Optional[str], **kwargs: Any) -> Dict[str, Any]:
+def create_draft_email(thread_id: str, to: Optional[str] = None, subject: Optional[str] = None, body: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
     """Create a draft email for the given thread."""
     try:
         key = f"{thread_id}_email"
@@ -30,49 +31,124 @@ def create_draft_email(thread_id: str, to: Optional[str], subject: Optional[str]
         }
         _draft_storage[key] = email_data
         logger.info(f"📧 Created email draft for thread {thread_id}")
-        return {"success": True, "draft_id": key}
+        return {"success": True, "draft": email_data}
     except Exception as e:
         logger.error(f"Failed to create email draft: {e}")
         return {"success": False, "error": str(e)}
 
-def create_draft_calendar_event(thread_id: str, title: Optional[str], start_time: Optional[str], end_time: Optional[str], attendees: Optional[str], location: Optional[str], description: Optional[str], **kwargs: Any) -> Dict[str, Any]:
-    """Create a draft calendar event for the given thread."""
+def create_draft_calendar_event(thread_id: str, title: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, attendees: Optional[str] = None, location: Optional[str] = None, description: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
+    """Create or update a draft calendar event for the given thread."""
     try:
         key = f"{thread_id}_calendar_event"
+        
+        # Get existing draft if it exists
+        existing_draft = _draft_storage.get(key, {})
+        
+        # Build event data, only including fields that are provided or already exist
         event_data = {
-            "title": title or "",
-            "start_time": start_time or "",
-            "end_time": end_time or "",
-            "attendees": attendees or "",
-            "location": location or "",
-            "description": description or "",
-            **kwargs
+            "type": "calendar_event",
+            "thread_id": thread_id,
         }
+        
+        # Add fields that are provided or already exist
+        if title is not None:
+            event_data["title"] = title
+        elif "title" in existing_draft:
+            event_data["title"] = existing_draft["title"]
+            
+        if start_time is not None:
+            event_data["start_time"] = start_time
+        elif "start_time" in existing_draft:
+            event_data["start_time"] = existing_draft["start_time"]
+            
+        if end_time is not None:
+            event_data["end_time"] = end_time
+        elif "end_time" in existing_draft:
+            event_data["end_time"] = existing_draft["end_time"]
+            
+        if attendees is not None:
+            event_data["attendees"] = attendees
+        elif "attendees" in existing_draft:
+            event_data["attendees"] = existing_draft["attendees"]
+            
+        if location is not None:
+            event_data["location"] = location
+        elif "location" in existing_draft:
+            event_data["location"] = existing_draft["location"]
+            
+        if description is not None:
+            event_data["description"] = description
+        elif "description" in existing_draft:
+            event_data["description"] = existing_draft["description"]
+        
+        # Add any additional kwargs
+        event_data.update(kwargs)
+        
         _draft_storage[key] = event_data
-        logger.info(f"📅 Created calendar event draft for thread {thread_id}")
-        return {"success": True, "draft_id": key}
+        logger.info(f"📅 Created/updated calendar event draft for thread {thread_id}")
+        return {"success": True, "draft": event_data}
     except Exception as e:
         logger.error(f"Failed to create calendar event draft: {e}")
         return {"success": False, "error": str(e)}
 
-def create_draft_calendar_change(thread_id: str, event_id: Optional[str], change_type: Optional[str], new_title: Optional[str], new_start_time: Optional[str], new_end_time: Optional[str], new_attendees: Optional[str], new_location: Optional[str], new_description: Optional[str], **kwargs: Any) -> Dict[str, Any]:
+def create_draft_calendar_change(thread_id: str, event_id: Optional[str] = None, change_type: Optional[str] = None, new_title: Optional[str] = None, new_start_time: Optional[str] = None, new_end_time: Optional[str] = None, new_attendees: Optional[str] = None, new_location: Optional[str] = None, new_description: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
     """Create a draft calendar change for the given thread."""
     try:
         key = f"{thread_id}_calendar_edit"
-        change_data = {
-            "event_id": event_id or "",
-            "change_type": change_type or "",
-            "new_title": new_title or "",
-            "new_start_time": new_start_time or "",
-            "new_end_time": new_end_time or "",
-            "new_attendees": new_attendees or "",
-            "new_location": new_location or "",
-            "new_description": new_description or "",
-            **kwargs
-        }
+        
+        # Get existing draft if it exists
+        existing_draft = _draft_storage.get(key, {})
+        
+        # Build change data, only including fields that are provided or already exist
+        change_data = {}
+        
+        # Add fields that are provided or already exist
+        if event_id is not None:
+            change_data["event_id"] = event_id
+        elif "event_id" in existing_draft:
+            change_data["event_id"] = existing_draft["event_id"]
+            
+        if change_type is not None:
+            change_data["change_type"] = change_type
+        elif "change_type" in existing_draft:
+            change_data["change_type"] = existing_draft["change_type"]
+            
+        if new_title is not None:
+            change_data["new_title"] = new_title
+        elif "new_title" in existing_draft:
+            change_data["new_title"] = existing_draft["new_title"]
+            
+        if new_start_time is not None:
+            change_data["new_start_time"] = new_start_time
+        elif "new_start_time" in existing_draft:
+            change_data["new_start_time"] = existing_draft["new_start_time"]
+            
+        if new_end_time is not None:
+            change_data["new_end_time"] = new_end_time
+        elif "new_end_time" in existing_draft:
+            change_data["new_end_time"] = existing_draft["new_end_time"]
+            
+        if new_attendees is not None:
+            change_data["new_attendees"] = new_attendees
+        elif "new_attendees" in existing_draft:
+            change_data["new_attendees"] = existing_draft["new_attendees"]
+            
+        if new_location is not None:
+            change_data["new_location"] = new_location
+        elif "new_location" in existing_draft:
+            change_data["new_location"] = existing_draft["new_location"]
+            
+        if new_description is not None:
+            change_data["new_description"] = new_description
+        elif "new_description" in existing_draft:
+            change_data["new_description"] = existing_draft["new_description"]
+        
+        # Add any additional kwargs
+        change_data.update(kwargs)
+        
         _draft_storage[key] = change_data
-        logger.info(f"✏️ Created calendar edit draft for thread {thread_id}")
-        return {"success": True, "draft_id": key}
+        logger.info(f"✏️ Created/updated calendar edit draft for thread {thread_id}")
+        return {"success": True, "draft": change_data}
     except Exception as e:
         logger.error(f"Failed to create calendar edit draft: {e}")
         return {"success": False, "error": str(e)}
@@ -87,23 +163,25 @@ def get_draft_calendar_event(thread_id: str) -> Optional[Dict[str, Any]]:
     key = f"{thread_id}_calendar_event"
     return _draft_storage.get(key)
 
-def has_draft_email(thread_id: str) -> Dict[str, Any]:
+def get_draft_calendar_edit(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Get the calendar edit draft for the given thread."""
+    key = f"{thread_id}_calendar_edit"
+    return _draft_storage.get(key)
+
+def has_draft_email(thread_id: str) -> bool:
     """Check if there's an email draft for the given thread."""
     key = f"{thread_id}_email"
-    exists = key in _draft_storage
-    return {"exists": exists, "draft_id": key if exists else None}
+    return key in _draft_storage
 
-def has_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
+def has_draft_calendar_event(thread_id: str) -> bool:
     """Check if there's a calendar event draft for the given thread."""
     key = f"{thread_id}_calendar_event"
-    exists = key in _draft_storage
-    return {"exists": exists, "draft_id": key if exists else None}
+    return key in _draft_storage
 
-def has_draft_calendar_edit(thread_id: str) -> Dict[str, Any]:
+def has_draft_calendar_edit(thread_id: str) -> bool:
     """Check if there's a calendar edit draft for the given thread."""
     key = f"{thread_id}_calendar_edit"
-    exists = key in _draft_storage
-    return {"exists": exists, "draft_id": key if exists else None}
+    return key in _draft_storage
 
 def delete_draft_email(thread_id: str) -> Dict[str, Any]:
     """Delete the email draft for the given thread."""
@@ -125,7 +203,7 @@ def delete_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
         if key in _draft_storage:
             del _draft_storage[key]
             logger.info(f"🗑️ Deleted calendar event draft for thread {thread_id}")
-            return {"success": True, "deleted": True}
+            return {"success": True, "deleted": True, "message": "Calendar event draft deleted successfully"}
         return {"success": True, "deleted": False, "message": "No calendar event draft found"}
     except Exception as e:
         logger.error(f"Failed to delete calendar event draft: {e}")
@@ -138,7 +216,7 @@ def delete_draft_calendar_edit(thread_id: str) -> Dict[str, Any]:
         if key in _draft_storage:
             del _draft_storage[key]
             logger.info(f"🗑️ Deleted calendar edit draft for thread {thread_id}")
-            return {"success": True, "deleted": True}
+            return {"success": True, "deleted": True, "message": "Calendar edit draft deleted successfully"}
         return {"success": True, "deleted": False, "message": "No calendar edit draft found"}
     except Exception as e:
         logger.error(f"Failed to delete calendar edit draft: {e}")
@@ -900,12 +978,80 @@ class ToolRegistry:
             logger.error(f"Error executing tool {tool_name}: {e}")
             return type('ToolOutput', (), {'raw_output': {"error": str(e)}})()
 
+# Timezone formatting functions
+def format_event_time_for_display(start_time: str, end_time: str, timezone_str: str = "UTC") -> str:
+    """
+    Format a datetime range for display in the specified timezone.
+    
+    Args:
+        start_time: ISO datetime string for start time (e.g., "2025-06-18T10:00:00Z")
+        end_time: ISO datetime string for end time (e.g., "2025-06-18T11:00:00Z")
+        timezone_str: Timezone string (e.g., "US/Eastern", "US/Pacific")
+    
+    Returns:
+        Formatted datetime range string in the specified timezone
+    """
+    try:
+        import pytz
+        from datetime import datetime
+        from typing import Union
+        
+        def format_single_time(dt_str: str) -> Union[datetime, str]:
+            """Format a single datetime string."""
+            try:
+                # Parse the datetime string
+                if dt_str.endswith('Z'):
+                    dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                else:
+                    dt = datetime.fromisoformat(dt_str)
+                
+                # If no timezone info, assume UTC
+                if dt.tzinfo is None:
+                    dt = pytz.UTC.localize(dt)
+                
+                return dt
+            except Exception:
+                # Return original string if parsing fails
+                return dt_str
+        
+        # Parse both times
+        start_dt = format_single_time(start_time)
+        end_dt = format_single_time(end_time)
+        
+        # If either failed to parse, return original format
+        if isinstance(start_dt, str) or isinstance(end_dt, str):
+            return f"{start_time} to {end_time}"
+        
+        # Convert to target timezone
+        try:
+            target_tz = pytz.timezone(timezone_str)
+            localized_start = start_dt.astimezone(target_tz)
+            localized_end = end_dt.astimezone(target_tz)
+        except pytz.exceptions.UnknownTimeZoneError:
+            # Fall back to UTC if timezone is invalid
+            localized_start = start_dt.astimezone(pytz.UTC)
+            localized_end = end_dt.astimezone(pytz.UTC)
+        
+        # Format for display
+        start_formatted = localized_start.strftime("%I:%M %p")
+        end_formatted = localized_end.strftime("%I:%M %p")
+        
+        # Check if same day
+        if localized_start.date() == localized_end.date():
+            return f"{start_formatted} to {end_formatted}"
+        else:
+            # Different days, include dates
+            start_date = localized_start.strftime("%b %d")
+            end_date = localized_end.strftime("%b %d")
+            return f"{start_date} {start_formatted} to {end_date} {end_formatted}"
+        
+    except Exception as e:
+        logger.error(f"Error formatting datetime range {start_time} to {end_time}: {e}")
+        return f"{start_time} to {end_time}"  # Return original format if formatting fails
+
 # Global tool registry instance
-_tool_registry_instance = None
+_tool_registry = ToolRegistry()
 
 def get_tool_registry() -> ToolRegistry:
-    """Get the global tool registry instance (singleton)."""
-    global _tool_registry_instance
-    if _tool_registry_instance is None:
-        _tool_registry_instance = ToolRegistry()
-    return _tool_registry_instance
+    """Get the global tool registry instance."""
+    return _tool_registry

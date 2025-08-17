@@ -62,9 +62,9 @@ class DraftAgent(FunctionAgent):
     def _get_existing_drafts(thread_id: str) -> Dict[str, bool]:
         """Get information about existing drafts for the thread."""
         return {
-            "email": has_draft_email(thread_id)["exists"],
-            "calendar_event": has_draft_calendar_event(thread_id)["exists"],
-            "calendar_edit": has_draft_calendar_edit(thread_id)["exists"],
+            "email": has_draft_email(thread_id),
+            "calendar_event": has_draft_calendar_event(thread_id),
+            "calendar_edit": has_draft_calendar_edit(thread_id),
         }
 
     @staticmethod
