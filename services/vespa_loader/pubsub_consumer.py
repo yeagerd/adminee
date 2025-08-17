@@ -19,8 +19,8 @@ from services.vespa_loader.settings import Settings
 logger = get_logger(__name__)
 
 try:
-    from google.cloud import pubsub_v1
-    from google.cloud.pubsub_v1.types import ReceivedMessage
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+    from google.cloud.pubsub_v1.types import ReceivedMessage  # type: ignore[attr-defined]
     PUBSUB_AVAILABLE = True
 except ImportError:
     PUBSUB_AVAILABLE = False
@@ -31,7 +31,7 @@ class PubSubConsumer:
     
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.subscriber: Optional[pubsub_v1.SubscriberClient] = None
+        self.subscriber: Optional[Any] = None
         self.subscriptions: Dict[str, Dict[str, Any]] = {}
         self.running = False
         self.processed_count = 0
@@ -211,7 +211,9 @@ class PubSubConsumer:
         """Schedule batch processing for a topic"""
         # Cancel existing timer if any
         if topic_name in self.batch_timers and self.batch_timers[topic_name]:
-            self.batch_timers[topic_name].cancel()
+            timer = self.batch_timers[topic_name]
+            if timer and not timer.done():
+                timer.cancel()
         
         # Create new timer
         self.batch_timers[topic_name] = asyncio.create_task(

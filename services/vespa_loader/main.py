@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Optional, Any, Dict, Union, AsyncGenerator
 
 from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware, log_service_startup, log_service_shutdown
 from services.common.http_errors import register_briefly_exception_handlers
@@ -21,14 +22,14 @@ logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
 # Global service instances
-vespa_client = None
-content_normalizer = None
-embedding_generator = None
-document_mapper = None
-pubsub_consumer = None
+vespa_client: Optional[Any] = None
+content_normalizer: Optional[Any] = None
+embedding_generator: Optional[Any] = None
+document_mapper: Optional[Any] = None
+pubsub_consumer: Optional[Any] = None
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage service lifecycle"""
     global vespa_client, content_normalizer, embedding_generator, document_mapper, pubsub_consumer
     
@@ -107,7 +108,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="Vespa Loader Service",
-    description="Service for loading and indexing documents into Vespa",
+    description="Consumes email data and indexes into Vespa",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -121,254 +122,247 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add request logging middleware
+app.add_middleware(create_request_logging_middleware())
+
 # Register exception handlers
 register_briefly_exception_handlers(app)
 
-# Add request logging middleware
-app.middleware("http")(create_request_logging_middleware())
-
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
     """Health check endpoint"""
-    health_status = "healthy"
-    
-    # Check Vespa connectivity
-    vespa_healthy = vespa_client is not None
-    if not vespa_healthy:
-        health_status = "degraded"
-    
-    # Check Pub/Sub consumer status
-    pubsub_healthy = pubsub_consumer is not None and pubsub_consumer.running if pubsub_consumer else False
-    
-    return {
-        "status": health_status,
-        "service": "vespa-loader",
-        "version": "1.0.0",
-        "components": {
-            "vespa": {
-                "status": "healthy" if vespa_healthy else "unavailable",
-                "endpoint": vespa_client.vespa_endpoint if vespa_client else None
-            },
-            "pubsub_consumer": {
-                "status": "healthy" if pubsub_healthy else "unavailable",
-                "enabled": pubsub_consumer is not None,
-                "running": pubsub_consumer.running if pubsub_consumer else False
-            }
-        }
-    }
+    return {"status": "healthy", "service": "vespa-loader"}
+
+@app.get("/")
+async def root() -> Dict[str, str]:
+    """Root endpoint"""
+    return {"message": "Vespa Loader Service", "version": "1.0.0"}
 
 @app.post("/ingest")
-async def ingest_document(document_data: dict):
+async def ingest_document(
+    document_data: Dict[str, Any],
+    background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
-    with tracer.start_as_current_span("api.ingest_document") as span:
-        # Handle nested office router format for span attributes
-        if "document_type" in document_data and "fields" in document_data:
-            # Extract from nested structure
-            span.set_attribute("api.document.type", document_data.get("fields", {}).get("source_type", "unknown"))
-            span.set_attribute("api.document.user_id", document_data.get("fields", {}).get("user_id", "unknown"))
-        else:
-            # Handle flat structure
-            span.set_attribute("api.document.type", document_data.get("source_type", "unknown"))
-            span.set_attribute("api.document.user_id", document_data.get("user_id", "unknown"))
-        
-        # Validate that user_id is provided (critical for user isolation)
-        user_id = None
-        if "document_type" in document_data and "fields" in document_data:
-            # Extract from nested structure
-            user_id = document_data.get("fields", {}).get("user_id")
-        else:
-            # Handle flat structure
-            user_id = document_data.get("user_id")
-        
-        if not user_id:
-            span.set_attribute("api.error", "Missing user_id")
-            span.set_attribute("api.error.detail", "user_id is required for document ingestion")
-            raise HTTPException(
-                status_code=400, 
-                detail="user_id is required for document ingestion. This field is critical for user isolation and security."
-            )
-        
-        if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
-            span.set_attribute("api.error", "Service not ready")
-            raise HTTPException(status_code=503, detail="Service not ready")
-        
-        try:
-            # Process the document
-            processed_doc = await process_document(document_data)
-            
-            # Index into Vespa
-            result = await vespa_client.index_document(processed_doc)
-            
-            span.set_attribute("api.ingest.success", True)
-            span.set_attribute("api.document.id", result.get("id"))
-            
-            return {
-                "status": "success",
-                "document_id": result.get("id"),
-                "message": "Document indexed successfully"
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to ingest document: {e}")
-            span.set_attribute("api.ingest.success", False)
-            span.set_attribute("api.error.message", str(e))
-            span.record_exception(e)
-            raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/ingest/batch")
-async def ingest_batch_documents(documents: list[dict]):
-    """Ingest multiple documents in batch"""
     if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
-        raise HTTPException(status_code=503, detail="Service not ready")
+        raise HTTPException(status_code=500, detail="Service not initialized")
     
     try:
-        # Validate that all documents have user_id before processing
-        for i, doc in enumerate(documents):
-            user_id = None
-            if "document_type" in doc and "fields" in doc:
-                user_id = doc.get("fields", {}).get("user_id")
-            else:
-                user_id = doc.get("user_id")
-            
-            if not user_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Document at index {i} is missing user_id. This field is critical for user isolation and security."
-                )
+        # Validate document data
+        if not document_data.get("id") or not document_data.get("user_id"):
+            raise HTTPException(status_code=400, detail="Document ID and user_id are required")
         
+        # Map document to Vespa format
+        if not document_mapper:
+            raise HTTPException(status_code=500, detail="Document mapper not initialized")
+        vespa_document = document_mapper.map_to_vespa(document_data)
+        
+        # Normalize content
+        if vespa_document.get("content") and content_normalizer:
+            vespa_document["content"] = content_normalizer.normalize(vespa_document["content"])
+        
+        # Generate embeddings if content exists
+        if vespa_document.get("content") and embedding_generator:
+            try:
+                embedding = await embedding_generator.generate_embedding(vespa_document["content"])
+                vespa_document["embedding"] = embedding
+            except Exception as e:
+                logger.warning(f"Failed to generate embedding: {e}")
+                # Continue without embedding
+        
+        # Index document in Vespa
+        if not vespa_client:
+            raise HTTPException(status_code=500, detail="Vespa client not initialized")
+        result = await vespa_client.index_document(vespa_document)
+        
+        # Add background task for post-processing if needed
+        background_tasks.add_task(
+            _post_process_document,
+            document_id=document_data["id"],
+            user_id=document_data["user_id"]
+        )
+        
+        return {
+            "status": "success",
+            "document_id": document_data["id"],
+            "vespa_result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error ingesting document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ingest/batch")
+async def ingest_batch_documents(
+    documents: list[Dict[str, Any]],
+    background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
+    """Ingest multiple documents in batch"""
+    if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    
+    try:
         results = []
+        errors = []
         
-        # Process documents in parallel
-        import asyncio
-        tasks = [process_document(doc) for doc in documents]
-        processed_docs = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Index documents in batch
-        for i, processed_doc in enumerate(processed_docs):
-            if isinstance(processed_doc, Exception):
+        for doc in documents:
+            try:
+                # Map document to Vespa format
+                if not document_mapper:
+                    raise HTTPException(status_code=500, detail="Document mapper not initialized")
+                vespa_document = document_mapper.map_to_vespa(doc)
+                
+                # Normalize content
+                if vespa_document.get("content") and content_normalizer:
+                    vespa_document["content"] = content_normalizer.normalize(vespa_document["content"])
+                
+                # Generate embeddings if content exists
+                if vespa_document.get("content") and embedding_generator:
+                    try:
+                        embedding = await embedding_generator.generate_embedding(vespa_document["content"])
+                        vespa_document["embedding"] = embedding
+                    except Exception as e:
+                        logger.warning(f"Failed to generate embedding for document {doc.get('id')}: {e}")
+                        # Continue without embedding
+                
+                # Index document in Vespa
+                if not vespa_client:
+                    raise HTTPException(status_code=500, detail="Vespa client not initialized")
+                result = await vespa_client.index_document(vespa_document)
+                
                 results.append({
-                    "index": i,
-                    "status": "error",
-                    "error": str(processed_doc)
+                    "id": doc.get("id"),
+                    "status": "success",
+                    "result": result
                 })
-            else:
-                try:
-                    result = await vespa_client.index_document(processed_doc)
-                    results.append({
-                        "index": i,
-                        "status": "success",
-                        "document_id": result.get("id")
-                    })
-                except Exception as e:
-                    results.append({
-                        "index": i,
-                        "status": "error",
-                        "error": str(e)
-                    })
+                
+            except Exception as e:
+                logger.error(f"Error processing document {doc.get('id', 'unknown')}: {e}")
+                errors.append({
+                    "id": doc.get("id"),
+                    "status": "error",
+                    "error": str(e)
+                })
+        
+        # Add background task for batch post-processing
+        if results:
+            background_tasks.add_task(
+                _post_process_batch,
+                successful_docs=len(results),
+                failed_docs=len(errors)
+            )
         
         return {
             "status": "completed",
             "total_documents": len(documents),
+            "successful": len(results),
+            "failed": len(errors),
+            "results": results,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in batch ingestion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/document/{user_id}/{document_id}")
+async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
+    """Delete a document from Vespa"""
+    if not vespa_client:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    
+    try:
+        result = await vespa_client.delete_document(document_id, user_id)
+        return {
+            "status": "success",
+            "document_id": document_id,
+            "deleted": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/document/{user_id}/{document_id}")
+async def get_document(user_id: str, document_id: str) -> Dict[str, Any]:
+    """Get a document from Vespa"""
+    if not vespa_client:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    
+    try:
+        document = await vespa_client.get_document(document_id, user_id)
+        if document is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        return {
+            "status": "success",
+            "document": document
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/search/{user_id}")
+async def search_documents(
+    user_id: str,
+    query: str = "",
+    limit: int = 10
+) -> Dict[str, Any]:
+    """Search documents for a user"""
+    if not vespa_client:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    
+    try:
+        results = await vespa_client.search_documents(query, user_id, limit)
+        return {
+            "status": "success",
+            "query": query,
+            "user_id": user_id,
             "results": results
         }
         
     except Exception as e:
-        logger.error(f"Failed to ingest batch documents: {e}")
+        logger.error(f"Error searching documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/documents/{user_id}/{doc_id}")
-async def delete_document(user_id: str, doc_id: str):
-    """Delete a document from Vespa"""
+@app.get("/stats/{user_id}")
+async def get_user_stats(user_id: str) -> Dict[str, Any]:
+    """Get statistics for a user"""
     if not vespa_client:
-        raise HTTPException(status_code=503, detail="Service not ready")
+        raise HTTPException(status_code=500, detail="Service not initialized")
     
     try:
-        result = await vespa_client.delete_document(user_id, doc_id)
+        document_count = await vespa_client.get_document_count(user_id)
         return {
             "status": "success",
-            "message": "Document deleted successfully"
+            "user_id": user_id,
+            "document_count": document_count
         }
         
     except Exception as e:
-        logger.error(f"Failed to delete document: {e}")
+        logger.error(f"Error getting user stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/documents/{user_id}/{doc_id}")
-async def get_document(user_id: str, doc_id: str):
-    """Retrieve a document from Vespa"""
-    if not vespa_client:
-        raise HTTPException(status_code=503, detail="Service not ready")
-    
+async def _post_process_document(document_id: str, user_id: str) -> None:
+    """Post-process a document after ingestion"""
     try:
-        document = await vespa_client.get_document(user_id, doc_id)
-        return document
-        
+        logger.info(f"Post-processing document {document_id} for user {user_id}")
+        # Add any post-processing logic here
+        # For example: update search indices, trigger notifications, etc.
     except Exception as e:
-        logger.error(f"Failed to retrieve document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in post-processing document {document_id}: {e}")
 
-@app.get("/stats")
-async def get_stats():
-    """Get service statistics"""
-    stats = {
-        "service": "vespa-loader",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "vespa": {
-            "endpoint": vespa_client.vespa_endpoint if vespa_client else None,
-            "connected": vespa_client is not None
-        }
-    }
-    
-    if pubsub_consumer:
-        stats["pubsub_consumer"] = pubsub_consumer.get_stats()
-    
-    return stats
-
-async def process_document(document_data: dict) -> dict:
-    """Process a document for Vespa indexing"""
+async def _post_process_batch(successful_docs: int, failed_docs: int) -> None:
+    """Post-process a batch of documents"""
     try:
-        # Check if this is office router format (nested structure)
-        if "document_type" in document_data and "fields" in document_data:
-            # Convert office router format to vespa loader expected format
-            from services.vespa_loader.models import convert_office_router_to_vespa_loader, validate_office_router_document
-            
-            # Validate and convert the nested structure
-            router_doc = validate_office_router_document(document_data)
-            flat_document_data = convert_office_router_to_vespa_loader(router_doc)
-            
-            # Convert Pydantic model to dict for the mapper
-            document_data = flat_document_data.model_dump()
-        
-        # Validate that user_id is present after conversion
-        if not document_data.get("user_id"):
-            raise ValueError("user_id is required for document processing. This field is critical for user isolation and security.")
-        
-        # Map office service format to Vespa format
-        vespa_doc = document_mapper.map_to_vespa(document_data)
-        
-        # Normalize content (HTML to Markdown, etc.)
-        if "content" in vespa_doc:
-            vespa_doc["content"] = content_normalizer.normalize(vespa_doc["content"])
-        
-        if "search_text" in vespa_doc:
-            vespa_doc["search_text"] = content_normalizer.normalize(vespa_doc["search_text"])
-        
-        # Generate embeddings for semantic search
-        if "search_text" in vespa_doc and vespa_doc["search_text"]:
-            embedding = await embedding_generator.generate_embedding(vespa_doc["search_text"])
-            vespa_doc["embedding"] = embedding
-        
-        return vespa_doc
-        
+        logger.info(f"Post-processing batch: {successful_docs} successful, {failed_docs} failed")
+        # Add any batch post-processing logic here
+        # For example: update analytics, send notifications, etc.
     except Exception as e:
-        logger.error(f"Failed to process document: {e}")
-        raise
+        logger.error(f"Error in batch post-processing: {e}")
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8004,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=9001)

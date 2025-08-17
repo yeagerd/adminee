@@ -95,7 +95,7 @@ class EmbeddingGenerator:
         text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
         
         # Convert hash to a list of floats
-        embedding = []
+        embedding: List[float] = []
         for i in range(0, len(text_hash), 2):
             if len(embedding) >= 384:
                 break

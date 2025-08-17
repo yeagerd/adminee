@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncGenerator
 
 from services.common.logging_config import setup_service_logging, get_logger, create_request_logging_middleware, log_service_startup, log_service_shutdown
 from services.common.http_errors import register_briefly_exception_handlers
@@ -21,12 +21,12 @@ logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
 # Global service instances
-search_engine = None
-query_builder = None
-result_processor = None
+search_engine: Optional[Any] = None
+query_builder: Optional[Any] = None
+result_processor: Optional[Any] = None
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage service lifecycle"""
     global search_engine, query_builder, result_processor
     
@@ -99,267 +99,279 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add request logging middleware
+app.add_middleware(create_request_logging_middleware())
+
 # Register exception handlers
 register_briefly_exception_handlers(app)
 
-# Add request logging middleware
-app.middleware("http")(create_request_logging_middleware())
-
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "vespa-query",
-        "version": "1.0.0"
-    }
+    return {"status": "healthy", "service": "vespa-query"}
 
-@app.get("/search")
-async def search_documents(
+@app.get("/")
+async def root() -> Dict[str, str]:
+    """Root endpoint"""
+    return {"message": "Vespa Query Service", "version": "1.0.0"}
+
+@app.post("/search")
+async def search(
     query: str = Query(..., description="Search query"),
-    user_id: str = Query(..., description="User ID for data isolation"),
-    ranking_profile: str = Query("hybrid", description="Ranking profile (hybrid, bm25, semantic)"),
-    max_hits: int = Query(10, ge=1, le=100, description="Maximum number of results"),
-    offset: int = Query(0, ge=0, description="Result offset for pagination"),
-    source_types: Optional[str] = Query(None, description="Comma-separated source types to filter"),
-    providers: Optional[str] = Query(None, description="Comma-separated providers to filter"),
-    date_from: Optional[str] = Query(None, description="Start date filter (ISO format)"),
-    date_to: Optional[str] = Query(None, description="End date filter (ISO format)"),
-    folders: Optional[str] = Query(None, description="Comma-separated folders to filter"),
-    include_facets: bool = Query(True, description="Whether to include faceted results")
-):
-    """Search documents using hybrid search"""
-    with tracer.start_as_current_span("api.search_documents") as span:
-        span.set_attribute("api.query", query)
-        span.set_attribute("api.user_id", user_id)
-        span.set_attribute("api.ranking_profile", ranking_profile)
-        span.set_attribute("api.max_hits", max_hits)
-        span.set_attribute("api.offset", offset)
+    user_id: str = Query(..., description="User ID"),
+    max_hits: int = Query(10, description="Maximum number of results"),
+    offset: int = Query(0, description="Result offset"),
+    source_types: Optional[List[str]] = Query(None, description="Filter by source types"),
+    providers: Optional[List[str]] = Query(None, description="Filter by providers"),
+    date_from: Optional[str] = Query(None, description="Start date for filtering"),
+    date_to: Optional[str] = Query(None, description="End date for filtering"),
+    folders: Optional[List[str]] = Query(None, description="Filter by folders"),
+    include_facets: bool = Query(True, description="Include facets in results")
+) -> Dict[str, Any]:
+    """Execute a search query"""
+    if not query_builder:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    
+    try:
+        # Build search query
+        search_query = query_builder.build_search_query(
+            query=query,
+            user_id=user_id,
+            max_hits=max_hits,
+            offset=offset,
+            source_types=source_types,
+            providers=providers,
+            date_from=date_from,
+            date_to=date_to,
+            folders=folders,
+            include_facets=include_facets
+        )
         
-        if not all([search_engine, query_builder, result_processor]):
-            span.set_attribute("api.error", "Service not ready")
-            raise HTTPException(status_code=503, detail="Service not ready")
+        # Execute search
+        if not search_engine:
+            raise HTTPException(status_code=500, detail="Search engine not initialized")
         
-        try:
-            # Parse filter parameters
-            source_type_list = source_types.split(",") if source_types else None
-            provider_list = providers.split(",") if providers else None
-            folder_list = folders.split(",") if folders else None
-            
-            span.set_attribute("api.source_types", str(source_type_list) if source_type_list else "none")
-            span.set_attribute("api.providers", str(provider_list) if provider_list else "none")
-            span.set_attribute("api.folders", str(folder_list) if folder_list else "none")
-            
-            # Build search query
-            search_query = query_builder.build_search_query(
-                query=query,
-                user_id=user_id,
-                ranking_profile=ranking_profile,
-                max_hits=max_hits,
-                offset=offset,
-                source_types=source_type_list,
-                providers=provider_list,
-                date_from=date_from,
-                date_to=date_to,
-                folders=folder_list,
-                include_facets=include_facets
-            )
-            
-            # Execute search
-            search_results = await search_engine.search(search_query)
-            
-            # Process and format results
-            processed_results = result_processor.process_search_results(
-                search_results,
-                query=query,
-                user_id=user_id,
-                include_facets=include_facets
-            )
-            
-            span.set_attribute("api.search.success", True)
-            span.set_attribute("api.results.total_hits", processed_results.get("total_hits", 0))
-            return processed_results
-            
-        except Exception as e:
-            logger.error(f"Search failed: {e}")
-            span.set_attribute("api.search.success", False)
-            span.set_attribute("api.error.message", str(e))
-            span.record_exception(e)
-            raise HTTPException(status_code=500, detail=str(e))
+        vespa_results = await search_engine.search(search_query)
+        
+        # Process results
+        if not result_processor:
+            raise HTTPException(status_code=500, detail="Result processor not initialized")
+        
+        processed_results = result_processor.process_search_results(
+            vespa_results=vespa_results,
+            query=query,
+            user_id=user_id,
+            include_highlights=True,
+            include_facets=include_facets
+        )
+        
+        return processed_results
+        
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/search/autocomplete")
-async def autocomplete_search(
-    query: str = Query(..., description="Partial search query"),
-    user_id: str = Query(..., description="User ID for data isolation"),
-    max_suggestions: int = Query(5, ge=1, le=20, description="Maximum number of suggestions")
-):
-    """Get autocomplete suggestions for search queries"""
-    if not all([search_engine, query_builder, result_processor]):
-        raise HTTPException(status_code=503, detail="Service not ready")
+@app.post("/autocomplete")
+async def autocomplete(
+    query: str = Query(..., description="Autocomplete query"),
+    user_id: str = Query(..., description="User ID"),
+    max_suggestions: int = Query(5, description="Maximum number of suggestions")
+) -> Dict[str, Any]:
+    """Get autocomplete suggestions"""
+    if not query_builder:
+        raise HTTPException(status_code=500, detail="Service not initialized")
     
     try:
         # Build autocomplete query
         autocomplete_query = query_builder.build_autocomplete_query(
             query=query,
             user_id=user_id,
-            max_suggestions=max_suggestions
+            max_hits=max_suggestions
         )
         
-        # Execute autocomplete search
-        autocomplete_results = await search_engine.autocomplete(autocomplete_query)
+        # Execute autocomplete
+        if not search_engine:
+            raise HTTPException(status_code=500, detail="Search engine not initialized")
+        
+        vespa_results = await search_engine.autocomplete(query, user_id, max_suggestions)
         
         # Process results
-        suggestions = result_processor.process_autocomplete_results(autocomplete_results)
+        if not result_processor:
+            raise HTTPException(status_code=500, detail="Result processor not initialized")
         
-        return {
-            "query": query,
-            "suggestions": suggestions,
-            "total_suggestions": len(suggestions)
-        }
-        
-    except Exception as e:
-        logger.error(f"Autocomplete search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/search/similar")
-async def find_similar_documents(
-    document_id: str = Query(..., description="Document ID to find similar documents for"),
-    user_id: str = Query(..., description="User ID for data isolation"),
-    max_hits: int = Query(10, ge=1, le=50, description="Maximum number of similar documents"),
-    similarity_threshold: float = Query(0.5, ge=0.0, le=1.0, description="Minimum similarity threshold")
-):
-    """Find documents similar to a given document"""
-    if not all([search_engine, query_builder, result_processor]):
-        raise HTTPException(status_code=503, detail="Service not ready")
-    
-    try:
-        # Build similarity query
-        similarity_query = query_builder.build_similarity_query(
-            document_id=document_id,
-            user_id=user_id,
-            max_hits=max_hits,
-            similarity_threshold=similarity_threshold
-        )
-        
-        # Execute similarity search
-        similarity_results = await search_engine.find_similar(similarity_query)
-        
-        # Process results
-        processed_results = result_processor.process_similarity_results(
-            similarity_results,
-            document_id=document_id,
+        processed_results = result_processor.process_autocomplete_results(
+            vespa_results=vespa_results,
+            query=query,
             user_id=user_id
         )
         
         return processed_results
         
     except Exception as e:
-        logger.error(f"Similarity search failed: {e}")
+        logger.error(f"Autocomplete error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/search/facets")
-async def get_search_facets(
-    user_id: str = Query(..., description="User ID for data isolation"),
-    source_types: Optional[str] = Query(None, description="Comma-separated source types to filter"),
-    providers: Optional[str] = Query(None, description="Comma-separated providers to filter"),
-    date_from: Optional[str] = Query(None, description="Start date filter (ISO format)"),
-    date_to: Optional[str] = Query(None, description="End date filter (ISO format)")
-):
-    """Get faceted search results for browsing"""
-    if not all([search_engine, query_builder, result_processor]):
-        raise HTTPException(status_code=503, detail="Service not ready")
+@app.post("/similar")
+async def find_similar(
+    document_id: str = Query(..., description="Document ID to find similar documents for"),
+    user_id: str = Query(..., description="User ID"),
+    max_hits: int = Query(10, description="Maximum number of similar documents")
+) -> Dict[str, Any]:
+    """Find similar documents"""
+    if not query_builder:
+        raise HTTPException(status_code=500, detail="Service not initialized")
     
     try:
-        # Parse filter parameters
-        source_type_list = source_types.split(",") if source_types else None
-        provider_list = providers.split(",") if providers else None
+        # Build similarity query
+        similarity_query = query_builder.build_similarity_query(
+            document_id=document_id,
+            user_id=user_id,
+            max_hits=max_hits
+        )
         
+        # Execute similarity search
+        if not search_engine:
+            raise HTTPException(status_code=500, detail="Search engine not initialized")
+        
+        vespa_results = await search_engine.find_similar(document_id, user_id, max_hits)
+        
+        # Process results
+        if not result_processor:
+            raise HTTPException(status_code=500, detail="Result processor not initialized")
+        
+        processed_results = result_processor.process_similarity_results(
+            vespa_results=vespa_results,
+            query=document_id,
+            user_id=user_id
+        )
+        
+        return processed_results
+        
+    except Exception as e:
+        logger.error(f"Similarity search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/facets")
+async def get_facets(
+    user_id: str = Query(..., description="User ID"),
+    source_types: Optional[List[str]] = Query(None, description="Filter by source types"),
+    providers: Optional[List[str]] = Query(None, description="Filter by providers"),
+    date_from: Optional[str] = Query(None, description="Start date for filtering"),
+    date_to: Optional[str] = Query(None, description="End date for filtering")
+) -> Dict[str, Any]:
+    """Get facet information"""
+    if not query_builder:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    
+    try:
         # Build facets query
         facets_query = query_builder.build_facets_query(
             user_id=user_id,
-            source_types=source_type_list,
-            providers=provider_list,
+            source_types=source_types,
+            providers=providers,
             date_from=date_from,
             date_to=date_to
         )
         
-        # Execute facets search
-        facets_results = await search_engine.get_facets(facets_query)
+        # Execute facets query
+        if not search_engine:
+            raise HTTPException(status_code=500, detail="Search engine not initialized")
+        
+        vespa_results = await search_engine.get_facets(user_id)
         
         # Process results
-        processed_facets = result_processor.process_facets_results(facets_results)
+        if not result_processor:
+            raise HTTPException(status_code=500, detail="Result processor not initialized")
         
-        return processed_facets
+        processed_results = result_processor.process_facets_results(
+            vespa_results=vespa_results,
+            query="facets",
+            user_id=user_id
+        )
+        
+        return processed_results
         
     except Exception as e:
-        logger.error(f"Facets search failed: {e}")
+        logger.error(f"Facets error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/search/trending")
-async def get_trending_topics(
-    user_id: str = Query(..., description="User ID for data isolation"),
-    time_window: str = Query("7d", description="Time window (1d, 7d, 30d, 90d)"),
-    max_topics: int = Query(10, ge=1, le=50, description="Maximum number of trending topics")
-):
-    """Get trending topics based on recent document activity"""
-    if not all([search_engine, query_builder, result_processor]):
-        raise HTTPException(status_code=503, detail="Service not ready")
+@app.post("/trending")
+async def get_trending(
+    user_id: str = Query(..., description="User ID"),
+    time_range: str = Query("7d", description="Time range for trending"),
+    max_hits: int = Query(10, description="Maximum number of trending documents")
+) -> Dict[str, Any]:
+    """Get trending documents"""
+    if not query_builder:
+        raise HTTPException(status_code=500, detail="Service not initialized")
     
     try:
         # Build trending query
         trending_query = query_builder.build_trending_query(
             user_id=user_id,
-            time_window=time_window,
-            max_topics=max_topics
+            time_range=time_range,
+            max_hits=max_hits
         )
         
-        # Execute trending search
-        trending_results = await search_engine.get_trending(trending_query)
+        # Execute trending query
+        if not search_engine:
+            raise HTTPException(status_code=500, detail="Search engine not initialized")
+        
+        vespa_results = await search_engine.get_trending(user_id, time_range, max_hits)
         
         # Process results
-        processed_trending = result_processor.process_trending_results(trending_results)
+        if not result_processor:
+            raise HTTPException(status_code=500, detail="Result processor not initialized")
         
-        return processed_trending
+        processed_results = result_processor.process_trending_results(
+            vespa_results=vespa_results,
+            query="trending",
+            user_id=user_id
+        )
+        
+        return processed_results
         
     except Exception as e:
-        logger.error(f"Trending search failed: {e}")
+        logger.error(f"Trending error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/search/analytics")
-async def get_search_analytics(
-    user_id: str = Query(..., description="User ID for data isolation"),
-    date_from: str = Query(..., description="Start date (ISO format)"),
-    date_to: str = Query(..., description="End date (ISO format)")
-):
-    """Get search analytics and insights"""
-    if not all([search_engine, query_builder, result_processor]):
-        raise HTTPException(status_code=503, detail="Service not ready")
+@app.post("/analytics")
+async def get_analytics(
+    user_id: str = Query(..., description="User ID"),
+    time_range: str = Query("30d", description="Time range for analytics")
+) -> Dict[str, Any]:
+    """Get analytics data"""
+    if not query_builder:
+        raise HTTPException(status_code=500, detail="Service not initialized")
     
     try:
         # Build analytics query
         analytics_query = query_builder.build_analytics_query(
             user_id=user_id,
-            date_from=date_from,
-            date_to=date_to
+            time_range=time_range
         )
         
-        # Execute analytics search
-        analytics_results = await search_engine.get_analytics(analytics_query)
+        # Execute analytics query
+        if not search_engine:
+            raise HTTPException(status_code=500, detail="Search engine not initialized")
+        
+        vespa_results = await search_engine.get_analytics(user_id, time_range)
         
         # Process results
-        processed_analytics = result_processor.process_analytics_results(analytics_results)
+        if not result_processor:
+            raise HTTPException(status_code=500, detail="Result processor not initialized")
         
-        return processed_analytics
+        processed_results = result_processor.process_analytics_results(
+            vespa_results=vespa_results,
+            query="analytics",
+            user_id=user_id
+        )
+        
+        return processed_results
         
     except Exception as e:
-        logger.error(f"Analytics search failed: {e}")
+        logger.error(f"Analytics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8005,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=9002)
