@@ -26,6 +26,7 @@ from services.demos.backfill_manager import BackfillManager
 from services.office.api.backfill import BackfillRequest
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
+from services.vespa_query.search_engine import SearchEngine
 
 logger = get_logger(__name__)
 
@@ -56,6 +57,10 @@ class VespaBackfillDemo:
             project_id=config.get("project_id", "briefly-dev"),
             emulator_host=config.get("emulator_host", "localhost:8085")
         )
+        
+        # Initialize Vespa search engine for stats
+        self.vespa_endpoint = config.get("vespa_endpoint", "http://localhost:8080")
+        self.search_engine = SearchEngine(self.vespa_endpoint)
         
         # API keys from common settings
         self.api_keys = {
@@ -164,7 +169,176 @@ class VespaBackfillDemo:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
         # Cleanup resources if needed
-        pass
+        if hasattr(self, 'search_engine'):
+            await self.search_engine.close()
+    
+    async def get_user_vespa_stats(self) -> Dict[str, Any]:
+        """Get current Vespa statistics for the user"""
+        try:
+            await self.search_engine.start()
+            
+            # Query to get total document count for this user
+            user_query = {
+                "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 0,  # We only want the count, not the actual documents
+                "timeout": "5s"
+            }
+            
+            start_time = time.time()
+            results = await self.search_engine.search(user_query)
+            query_time = (time.time() - start_time) * 1000
+            
+            total_documents = results.get("root", {}).get("fields", {}).get("totalCount", 0)
+            
+            # Get breakdown by source type
+            source_type_query = {
+                "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "source_type"
+            }
+            
+            source_results = await self.search_engine.search(source_type_query)
+            source_breakdown = {}
+            
+            if "root" in source_results and "children" in source_results["root"]:
+                for child in source_results["root"]["children"]:
+                    if "value" in child:
+                        source_type = child["value"]
+                        count = child.get("fields", {}).get("count()", 0)
+                        source_breakdown[source_type] = count
+            
+            # Get breakdown by provider
+            provider_query = {
+                "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
+                "hits": 0,
+                "timeout": "5s",
+                "grouping": "provider"
+            }
+            
+            provider_results = await self.search_engine.search(provider_query)
+            provider_breakdown = {}
+            
+            if "root" in provider_results and "children" in provider_results["root"]:
+                for child in provider_results["root"]["children"]:
+                    if "value" in child:
+                        provider = child["value"]
+                        count = child.get("fields", {}).get("count()", 0)
+                        provider_breakdown[provider] = count
+            
+            return {
+                "user_email": self.user_email,
+                "total_documents": total_documents,
+                "source_type_breakdown": source_breakdown,
+                "provider_breakdown": provider_breakdown,
+                "query_time_ms": round(query_time, 2),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting Vespa stats for user {self.user_email}: {e}")
+            return {
+                "user_email": self.user_email,
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+    
+    def print_vespa_stats(self, stats: Dict[str, Any], label: str = "VESPA STATISTICS"):
+        """Print Vespa statistics in a formatted way"""
+        print(f"\n{'='*60}")
+        print(f"{label}: {stats['user_email']}")
+        print(f"{'='*60}")
+        
+        if "error" in stats:
+            print(f"Error: {stats['error']}")
+            return
+        
+        print(f"Total Documents: {stats.get('total_documents', 0):,}")
+        print(f"Query Time: {stats.get('query_time_ms', 0):.2f}ms")
+        
+        # Source type breakdown
+        source_breakdown = stats.get("source_type_breakdown", {})
+        if source_breakdown:
+            print(f"\nSource Type Breakdown:")
+            for source_type, count in sorted(source_breakdown.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {source_type}: {count:,}")
+        
+        # Provider breakdown
+        provider_breakdown = stats.get("provider_breakdown", {})
+        if provider_breakdown:
+            print(f"\nProvider Breakdown:")
+            for provider, count in sorted(provider_breakdown.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {provider}: {count:,}")
+        
+        print(f"{'='*60}")
+    
+    def print_stats_comparison(self, before_stats: Dict[str, Any], after_stats: Dict[str, Any]):
+        """Print before and after stats comparison"""
+        print(f"\n{'='*60}")
+        print("VESPA STATS COMPARISON - BEFORE vs AFTER BACKFILL")
+        print(f"{'='*60}")
+        
+        if "error" in before_stats or "error" in after_stats:
+            print("⚠️  Some stats could not be retrieved due to errors")
+            if "error" in before_stats:
+                print(f"Before stats error: {before_stats['error']}")
+            if "error" in after_stats:
+                print(f"After stats error: {after_stats['error']}")
+            return
+        
+        before_total = before_stats.get("total_documents", 0)
+        after_total = after_stats.get("total_documents", 0)
+        difference = after_total - before_total
+        
+        print(f"User: {before_stats['user_email']}")
+        print(f"Total Documents: {before_total:,} → {after_total:,} ({difference:+d})")
+        
+        if difference > 0:
+            print(f"✅ Documents added: +{difference:,}")
+        elif difference < 0:
+            print(f"⚠️  Documents removed: {difference:,}")
+        else:
+            print(f"ℹ️  No change in document count")
+        
+        # Compare source type breakdowns
+        before_source = before_stats.get("source_type_breakdown", {})
+        after_source = after_stats.get("source_type_breakdown", {})
+        
+        if before_source or after_source:
+            print(f"\nSource Type Changes:")
+            all_source_types = set(before_source.keys()) | set(after_source.keys())
+            
+            for source_type in sorted(all_source_types):
+                before_count = before_source.get(source_type, 0)
+                after_count = after_source.get(source_type, 0)
+                change = after_count - before_count
+                
+                if change != 0:
+                    change_symbol = "+" if change > 0 else ""
+                    print(f"  {source_type}: {before_count:,} → {after_count:,} ({change_symbol}{change:,})")
+                else:
+                    print(f"  {source_type}: {before_count:,} (no change)")
+        
+        # Compare provider breakdowns
+        before_provider = before_stats.get("provider_breakdown", {})
+        after_provider = after_stats.get("provider_breakdown", {})
+        
+        if before_provider or after_provider:
+            print(f"\nProvider Changes:")
+            all_providers = set(before_provider.keys()) | set(after_provider.keys())
+            
+            for provider in sorted(all_providers):
+                before_count = before_provider.get(provider, 0)
+                after_count = after_provider.get(provider, 0)
+                change = after_count - before_count
+                
+                if change != 0:
+                    change_symbol = "+" if change > 0 else ""
+                    print(f"  {provider}: {before_count:,} → {after_count:,} ({change_symbol}{change:,})")
+                else:
+                    print(f"  {provider}: {before_count:,} (no change)")
+        
+        print(f"{'='*60}")
         
     async def run_backfill_demo(self) -> Dict[str, Any]:
         """Run the complete real backfill demo"""
@@ -179,10 +353,17 @@ class VespaBackfillDemo:
             "successful_jobs": 0,
             "failed_jobs": 0,
             "job_details": [],
-            "performance_metrics": {}
+            "performance_metrics": {},
+            "vespa_stats": {}
         }
         
         try:
+            # Get initial Vespa stats before backfill
+            logger.info("Collecting initial Vespa statistics...")
+            before_stats = await self.get_user_vespa_stats()
+            results["vespa_stats"]["before"] = before_stats
+            self.print_vespa_stats(before_stats, "INITIAL VESPA STATISTICS")
+            
             # Process the specified user
             logger.info(f"Starting backfill for user: {self.user_email}")
             
@@ -217,6 +398,15 @@ class VespaBackfillDemo:
             # Collect final results
             final_results = await self._collect_final_results()
             results.update(final_results)
+            
+            # Get final Vespa stats after backfill
+            logger.info("Collecting final Vespa statistics...")
+            after_stats = await self.get_user_vespa_stats()
+            results["vespa_stats"]["after"] = after_stats
+            self.print_vespa_stats(after_stats, "FINAL VESPA STATISTICS")
+            
+            # Print stats comparison
+            self.print_stats_comparison(before_stats, after_stats)
             
             results["status"] = "completed"
             results["end_time"] = datetime.now(timezone.utc).isoformat()
@@ -590,6 +780,7 @@ REQUIREMENTS:
     parser.add_argument("--folders", nargs="+", help="Email folders to backfill")
     parser.add_argument("--project-id", help="Pub/Sub project ID")
     parser.add_argument("--emulator-host", help="Pub/Sub emulator host")
+    parser.add_argument("--vespa-endpoint", help="Vespa endpoint for statistics collection")
     parser.add_argument("--cleanup-first", action="store_true", help="Stop running jobs and clear Pub/Sub first")
     
     args = parser.parse_args()
@@ -621,6 +812,8 @@ REQUIREMENTS:
         config["project_id"] = args.project_id
     if args.emulator_host:
         config["emulator_host"] = args.emulator_host
+    if args.vespa_endpoint:
+        config["vespa_endpoint"] = args.vespa_endpoint
     
     try:
         async with VespaBackfillDemo(config) as demo:
