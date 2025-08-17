@@ -83,6 +83,7 @@ class VespaClient:
                 span.set_attribute("vespa.document.id", full_doc_id)
                 
                 # Index document using streaming mode URL format
+                # Correct format: /document/v1/{namespace}/{documenttype}/group/{groupname}/{docid}
                 url = f"{self.vespa_endpoint}/document/v1/briefly/briefly_document/group/{user_id}/{doc_id}"
                 span.set_attribute("vespa.request.url", url)
                 
@@ -290,15 +291,12 @@ class VespaClient:
         return vespa_document
     
     def _generate_document_id(self, document: Dict[str, Any]) -> str:
-        """Generate a unique document ID for Vespa"""
-        user_id = document.get("user_id", "unknown")
+        """Generate a document ID for Vespa streaming mode"""
+        # For streaming mode, we should use the original doc_id directly
+        # The user isolation is handled by the URL path structure, not the ID complexity
         doc_id = document.get("doc_id", "unknown")
-        provider = document.get("provider", "unknown")
         
-        # Create a unique ID that includes user and provider for isolation
-        unique_id = f"{user_id}_{provider}_{doc_id}"
+        # Ensure the doc_id is URL-safe
+        safe_doc_id = str(doc_id).replace(" ", "_").replace("/", "_").replace("\\", "_")
         
-        # Remove any characters that might cause issues in URLs
-        unique_id = unique_id.replace(" ", "_").replace("/", "_").replace("\\", "_")
-        
-        return unique_id
+        return safe_doc_id
