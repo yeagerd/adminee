@@ -65,10 +65,10 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Create configuration files for each service's type generation
 
 ### Task 2.3: Set Up Type Generation Pipeline
-- [ ] Create `frontend/scripts/` directory for build scripts
-- [ ] Create `frontend/types/api/` directory structure for generated types
-- [ ] Set up type generation for each service
-- [ ] Create index files to export all generated types
+- [x] Create `frontend/scripts/` directory for build scripts
+- [x] Create `frontend/types/api/` directory structure for generated types
+- [x] Set up type generation for each service
+- [x] Create index files to export all generated types
 
 ## Phase 3: Service-Specific Type Generation
 
