@@ -86,7 +86,7 @@ class PubSubConsumer:
             # Create subscriptions if they don't exist
             await self._ensure_subscriptions()
             
-            # Start consuming from each topic
+            # Start consuming from each topic using async callbacks
             for topic_name, config in self.topics.items():
                 await self._start_topic_consumer(topic_name, config)
             
@@ -102,156 +102,103 @@ class PubSubConsumer:
         """Stop the Pub/Sub consumer"""
         self.running = False
         
-        # Cancel all batch timers
-        for timer in self.batch_timers.values():
-            if timer and not timer.done():
-                timer.cancel()
+        # Cancel all subscriptions
+        for topic_name, subscription in self.subscriptions.items():
+            try:
+                if subscription and hasattr(subscription, 'cancel'):
+                    subscription.cancel()
+                    logger.info(f"Cancelled subscription for topic: {topic_name}")
+            except Exception as e:
+                logger.error(f"Error cancelling subscription for topic {topic_name}: {e}")
         
-        # Close subscriber
+        # Close subscriber client
         if self.subscriber:
             self.subscriber.close()
             self.subscriber = None
-            
+        
         logger.info("Pub/Sub consumer stopped")
     
     async def _ensure_subscriptions(self):
         """Ensure all required subscriptions exist"""
-        project_id = self.settings.pubsub_project_id if hasattr(self.settings, 'pubsub_project_id') else "briefly-dev"
-        
         for topic_name, config in self.topics.items():
+            try:
+                subscription_path = self.subscriber.subscription_path(
+                    self.settings.pubsub_project_id,
+                    config["subscription_name"]
+                )
+                
+                # Check if subscription exists (this is a simplified check)
+                # In production, you might want to create subscriptions if they don't exist
+                logger.info(f"Subscription path for {topic_name}: {subscription_path}")
+                
+            except Exception as e:
+                logger.error(f"Error setting up subscription for {topic_name}: {e}")
+    
+    async def _start_topic_consumer(self, topic_name: str, config: Dict[str, Any]):
+        """Start consuming from a specific topic using async callbacks"""
+        try:
             subscription_path = self.subscriber.subscription_path(
-                project_id, 
+                self.settings.pubsub_project_id,
                 config["subscription_name"]
             )
             
-            try:
-                # Try to create subscription (will fail if it already exists)
-                topic_path = self.subscriber.topic_path(project_id, topic_name)
-                self.subscriber.create_subscription(
-                    name=subscription_path,
-                    topic=topic_path
+            # Use the subscribe method with callbacks instead of polling
+            subscription = self.subscriber.subscribe(
+                subscription_path,
+                callback=self._create_message_callback(topic_name, config),
+                flow_control=pubsub_v1.types.FlowControl(
+                    max_messages=config["batch_size"],
+                    max_bytes=1024 * 1024,  # 1MB
+                    allow_exceeded_limits=False
                 )
-                logger.info(f"Created subscription: {config['subscription_name']}")
-            except Exception as e:
-                if "already exists" in str(e).lower():
-                    logger.info(f"Subscription already exists: {config['subscription_name']}")
-                else:
-                    logger.warning(f"Could not create subscription {config['subscription_name']}: {e}")
-                    # For emulator, we might need to handle this differently
-                    logger.info(f"Continuing with existing subscription setup...")
+            )
+            
+            self.subscriptions[topic_name] = {
+                "subscription": subscription,
+                "active": True,
+                "path": subscription_path
+            }
+            
+            logger.info(f"Started async subscription for topic: {topic_name}")
+            
+        except Exception as e:
+            logger.error(f"Error starting topic consumer for {topic_name}: {e}")
+            self.subscriptions[topic_name] = {"active": False}
     
-    async def _start_topic_consumer(self, topic_name: str, config: Dict[str, Any]):
-        """Start consuming from a specific topic using polling approach"""
-        project_id = self.settings.pubsub_project_id if hasattr(self.settings, 'pubsub_project_id') else "briefly-dev"
-        subscription_path = self.subscriber.subscription_path(
-            project_id, 
-            config["subscription_name"]
-        )
-        
-        # Store subscription info for polling
-        self.subscriptions[topic_name] = {
-            "subscription_path": subscription_path,
-            "config": config,
-            "active": True
-        }
-        
-        # Start polling task
-        asyncio.create_task(self._poll_subscription(topic_name, subscription_path, config))
-        logger.info(f"Started polling from topic: {topic_name}")
-    
-    async def _poll_subscription(self, topic_name: str, subscription_path: str, config: Dict[str, Any]):
-        """Poll a subscription for messages"""
-        while self.running and self.subscriptions.get(topic_name, {}).get("active", False):
+    def _create_message_callback(self, topic_name: str, config: Dict[str, Any]):
+        """Create a callback function for processing messages from a specific topic"""
+        def message_callback(message):
             try:
-                # Pull messages from subscription
-                response = self.subscriber.pull(
-                    request=pubsub_v1.PullRequest(
-                        subscription=subscription_path,
-                        max_messages=config["batch_size"],
-                        return_immediately=True
+                # Parse message data
+                data = json.loads(message.data.decode("utf-8"))
+                
+                # Add to batch
+                self.message_batches[topic_name].append({
+                    "message": message,
+                    "data": data,
+                    "timestamp": time.time()
+                })
+                
+                # Process batch if it's full or start timer for partial batch
+                if len(self.message_batches[topic_name]) >= config["batch_size"]:
+                    # Schedule async processing
+                    asyncio.run_coroutine_threadsafe(
+                        self._process_batch(topic_name, config),
+                        self.loop
                     )
-                )
-                
-                if response.received_messages:
-                    logger.info(f"Received {len(response.received_messages)} messages from {topic_name}")
+                else:
+                    # Start timer for partial batch
+                    asyncio.run_coroutine_threadsafe(
+                        self._schedule_batch_processing(topic_name, config),
+                        self.loop
+                    )
                     
-                    # Process messages
-                    for message in response.received_messages:
-                        await self._handle_message(topic_name, message, config)
-                        
-                        # Acknowledge the message
-                        self.subscriber.acknowledge(
-                            request=pubsub_v1.AcknowledgeRequest(
-                                subscription=subscription_path,
-                                ack_ids=[message.ack_id]
-                            )
-                        )
-                        
-                        self.processed_count += 1
-                        
-                # Wait before next poll
-                await asyncio.sleep(1)
-                
             except Exception as e:
-                logger.error(f"Error polling subscription {topic_name}: {e}")
-                await asyncio.sleep(5)  # Wait longer on error
-    
-    def _handle_message_sync(self, topic_name: str, message: ReceivedMessage, config: Dict[str, Any]):
-        """Handle a single message from Pub/Sub synchronously (called from callback)"""
-        try:
-            # Parse message data
-            data = json.loads(message.data.decode("utf-8"))
-            
-            # Add to batch
-            self.message_batches[topic_name].append({
-                "message": message,
-                "data": data,
-                "timestamp": time.time()
-            })
-            
-            # Process batch if it's full or start timer for partial batch
-            if len(self.message_batches[topic_name]) >= config["batch_size"]:
-                # Schedule async processing
-                asyncio.run_coroutine_threadsafe(
-                    self._process_batch(topic_name, config),
-                    self.loop
-                )
-            else:
-                # Start timer for partial batch
-                asyncio.run_coroutine_threadsafe(
-                    self._schedule_batch_processing(topic_name, config),
-                    self.loop
-                )
-                
-        except Exception as e:
-            logger.error(f"Error handling message from {topic_name}: {e}")
-            message.nack()
-            self.error_count += 1
-
-    async def _handle_message(self, topic_name: str, message: ReceivedMessage, config: Dict[str, Any]):
-        """Handle a single message from Pub/Sub (async version for compatibility)"""
-        try:
-            # Parse message data
-            data = json.loads(message.data.decode("utf-8"))
-            
-            # Add to batch
-            self.message_batches[topic_name].append({
-                "message": message,
-                "data": data,
-                "timestamp": time.time()
-            })
-            
-            # Process batch if it's full or start timer for partial batch
-            if len(self.message_batches[topic_name]) >= config["batch_size"]:
-                await self._process_batch(topic_name, config)
-            else:
-                # Start timer for partial batch
-                await self._schedule_batch_processing(topic_name, config)
-                
-        except Exception as e:
-            logger.error(f"Error handling message from {topic_name}: {e}")
-            message.nack()
-            self.error_count += 1
+                logger.error(f"Error handling message from {topic_name}: {e}")
+                message.nack()
+                self.error_count += 1
+        
+        return message_callback
     
     async def _schedule_batch_processing(self, topic_name: str, config: Dict[str, Any]):
         """Schedule batch processing for a topic"""

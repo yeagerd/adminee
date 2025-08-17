@@ -12,6 +12,7 @@ dependencies = [
     "google-cloud-core>=2.4.3",
     "google-cloud-pubsub>=2.31.1",
     "pydantic>=2.11.7",
+    "pydantic-settings>=2.0.0",
 ]
 
 [project.optional-dependencies]
