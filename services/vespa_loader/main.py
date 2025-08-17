@@ -161,8 +161,15 @@ async def health_check():
 async def ingest_document(document_data: dict):
     """Ingest a document into Vespa"""
     with tracer.start_as_current_span("api.ingest_document") as span:
-        span.set_attribute("api.document.type", document_data.get("source_type", "unknown"))
-        span.set_attribute("api.document.user_id", document_data.get("user_id", "unknown"))
+        # Handle nested office router format for span attributes
+        if "document_type" in document_data and "fields" in document_data:
+            # Extract from nested structure
+            span.set_attribute("api.document.type", document_data.get("fields", {}).get("source_type", "unknown"))
+            span.set_attribute("api.document.user_id", document_data.get("fields", {}).get("user_id", "unknown"))
+        else:
+            # Handle flat structure
+            span.set_attribute("api.document.type", document_data.get("source_type", "unknown"))
+            span.set_attribute("api.document.user_id", document_data.get("user_id", "unknown"))
         
         if not all([vespa_client, content_normalizer, embedding_generator, document_mapper]):
             span.set_attribute("api.error", "Service not ready")
@@ -289,6 +296,18 @@ async def get_stats():
 async def process_document(document_data: dict) -> dict:
     """Process a document for Vespa indexing"""
     try:
+        # Check if this is office router format (nested structure)
+        if "document_type" in document_data and "fields" in document_data:
+            # Convert office router format to vespa loader expected format
+            from services.vespa_loader.models import convert_office_router_to_vespa_loader, validate_office_router_document
+            
+            # Validate and convert the nested structure
+            router_doc = validate_office_router_document(document_data)
+            flat_document_data = convert_office_router_to_vespa_loader(router_doc)
+            
+            # Convert Pydantic model to dict for the mapper
+            document_data = flat_document_data.model_dump()
+        
         # Map office service format to Vespa format
         vespa_doc = document_mapper.map_to_vespa(document_data)
         
