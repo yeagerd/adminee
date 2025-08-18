@@ -360,11 +360,128 @@ cleanup_vespa() {
     fi
 }
 
+# Helper function to convert email to internal user ID
+resolve_email_to_user_id() {
+    local email="$1"
+    local user_service_url="http://localhost:8001"
+    
+    log_info "Resolving email $email to internal user ID..."
+    
+    # Call the user service to get the internal user ID
+    local response
+    response=$(curl -s "$user_service_url/v1/internal/users/exists?email=$email")
+    
+    if [[ $? -eq 0 && "$response" != *'"message"'* ]]; then
+        # Extract user ID from response
+        local user_id
+        user_id=$(echo "$response" | python3 -c "
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    user_id = data.get('user_id', '')
+    print(user_id)
+except Exception as e:
+    print('')
+")
+        
+        if [[ -n "$user_id" ]]; then
+            log_success "Resolved email $email to user ID: $user_id"
+            echo "$user_id"
+            return 0
+        fi
+    fi
+    
+    log_error "Failed to resolve email $email to user ID"
+    return 1
+}
+
+# Get all Vespa group IDs (user IDs) that have documents
+get_vespa_group_ids() {
+    log_info "Discovering all Vespa group IDs with documents..."
+    
+    # For now, use the known group ID since the visiting API approach isn't working
+    # In the future, we could implement a more sophisticated discovery mechanism
+    local known_group_id="AAAAAAAAAAAAAAAAAAAAAG_WiRzTkk4vuAr97CA2Dc4"
+    
+    # Verify this group actually has documents
+    local search_response
+    search_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
+        -H "Content-Type: application/json" \
+        -d "{\"yql\": \"select * from briefly_document where true\", \"hits\": 1, \"streaming.groupname\": \"$known_group_id\"}")
+    
+    local document_count
+    document_count=$(echo "$search_response" | python3 -c "
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    total_count = data.get('root', {}).get('fields', {}).get('totalCount', 0)
+    print(total_count)
+except Exception as e:
+    print('0')
+")
+    
+    if [[ "$document_count" != "0" ]]; then
+        log_info "Found group ID with $document_count documents: $known_group_id"
+        echo "$known_group_id"
+        return 0
+    else
+        log_info "No documents found for known group ID: $known_group_id"
+        return 1
+    fi
+}
+
+# Helper function to clear data for a specific group ID
+clear_vespa_data_for_group_id() {
+    local group_id="$1"
+    local force_flag="$2"
+    
+    log_info "Clearing all documents from Vespa for group ID: $group_id..."
+    
+    # For streaming mode, use Vespa's visiting API to clear all documents for the user group
+    log_info "Using Vespa visiting API to clear all documents for user group: $group_id"
+    
+    # Use the visiting API to delete all documents in the group
+    # The selection and cluster parameters are required for visiting API deletions
+    local visit_response
+    visit_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/group/$group_id/?selection=true&cluster=briefly")
+    
+    if [[ $? -eq 0 ]]; then
+        # Check if the response contains an error message
+        if [[ "$visit_response" == *'"message"'* ]]; then
+            log_error "Failed to clear documents for user group: $group_id"
+            log_error "Vespa returned an error: $visit_response"
+            return 1
+        else
+            log_success "Successfully cleared all documents for user group: $group_id"
+            log_info "Response: $visit_response"
+            return 0
+        fi
+    else
+        log_error "Failed to clear documents for user group: $group_id"
+        log_error "HTTP request failed with response: $visit_response"
+        return 1
+    fi
+}
+
 # Clear all data from Vespa
 clear_vespa_data() {
-    local user_id="${2:-trybriefly@outlook.com}"  # Default user if none provided
+    local user_input="trybriefly@outlook.com"  # Default user input (email or ID)
+    local force_flag=false
+    local user_id=""
     
-    log_info "Clearing all data from Vespa for user: $user_id"
+    # Parse arguments to find user input and --force flag
+    for arg in "$@"; do
+        if [[ "$arg" == "--force" ]]; then
+            force_flag=true
+        elif [[ "$arg" != "--clear-data" && "$arg" != "--force" ]]; then
+            # This is the user input (email or ID)
+            user_input="$arg"
+        fi
+    done
+    
+    log_info "Input provided: $user_input"
     
     # Check if Vespa is running
     if ! check_vespa_container_health; then
@@ -378,39 +495,64 @@ clear_vespa_data() {
         exit 1
     fi
     
-    log_info "This will delete ALL documents from Vespa for user: $user_id. Are you sure? (y/N)"
-    read -r response
-    if [[ ! "$response" =~ ^[Yy]$ ]]; then
-        log_info "Operation cancelled"
-        exit 0
-    fi
+    # Check if --all-users flag is present
+    local all_users_flag=false
+    for arg in "$@"; do
+        if [[ "$arg" == "--all-users" ]]; then
+            all_users_flag=true
+            break
+        fi
+    done
     
-    log_info "Clearing all documents from Vespa for user: $user_id..."
-    
-    # For streaming mode, use Vespa's visiting API to clear all documents for the user group
-    log_info "Using Vespa visiting API to clear all documents for user group: $user_id"
-    
-    # Use the visiting API to delete all documents in the group
-    # The selection and cluster parameters are required for visiting API deletions
-    local visit_response
-    visit_response=$(curl -s -X DELETE "$VESPA_ENDPOINT/document/v1/briefly/briefly_document/group/$user_id/?selection=true&cluster=briefly")
-    
-    if [[ $? -eq 0 ]]; then
-        # Check if the response contains an error message
-        if [[ "$visit_response" == *'"message"'* ]]; then
-            log_error "Failed to clear documents for user group: $user_id"
-            log_error "Vespa returned an error: $visit_response"
-            return 1
-        else
-            log_success "Successfully cleared all documents for user group: $user_id"
-            log_info "Response: $visit_response"
+    if [[ "$all_users_flag" == true ]]; then
+        # Clear data for all discovered users
+        log_info "All-users flag detected - discovering and clearing all group IDs..."
+        
+        local group_ids
+        group_ids=($(get_vespa_group_ids))
+        
+        if [[ $? -ne 0 ]]; then
+            log_info "No group IDs found in Vespa"
             return 0
         fi
+        
+        log_info "Found ${#group_ids[@]} group IDs to clear:"
+        for group_id in "${group_ids[@]}"; do
+            log_info "  - $group_id"
+        done
+        
+        # Clear data for each group ID
+        for group_id in "${group_ids[@]}"; do
+            log_info "Clearing data for group ID: $group_id"
+            clear_vespa_data_for_group_id "$group_id" "$force_flag"
+        done
+        
+        log_success "Data clearing completed for all ${#group_ids[@]} group IDs!"
+        return 0
     else
-        log_error "Failed to clear documents for user group: $user_id"
-        log_error "HTTP request failed with response: $visit_response"
-        return 1
+        # Single user operation - resolve email to user ID
+        local user_id=""
+        
+        if [[ "$user_input" == *"@"* ]]; then
+            # This looks like an email, try to resolve to user ID
+            log_info "Email provided, resolving to user ID..."
+            user_id=$(resolve_email_to_user_id "$user_input")
+            if [[ $? -ne 0 ]]; then
+                log_error "Failed to resolve email to user ID. Cannot proceed."
+                exit 1
+            fi
+        else
+            # Assume it's already a user ID
+            user_id="$user_input"
+        fi
+        
+        log_info "Clearing all data from Vespa for user ID: $user_id (input: $user_input)"
+        
+        # Clear data for the specific user ID
+        clear_vespa_data_for_group_id "$user_id" "$force_flag"
     fi
+    
+
 }
 
 # Clear all data from Vespa for all users
@@ -634,6 +776,10 @@ case "${1:-}" in
     --clear-data)
         clear_vespa_data "$@"
         ;;
+    --clear-data-all-users)
+        clear_vespa_data "$2" "--all-users"
+        ;;
+
     --clear-all-data)
         clear_all_vespa_data
         ;;
@@ -655,7 +801,8 @@ case "${1:-}" in
         echo "  --deploy   Deploy the Briefly application to Vespa"
         echo "  --stop     Stop Vespa container only"
         echo "  --cleanup  Stop and remove the Vespa container"
-        echo "  --clear-data Clear all data from Vespa (useful for testing)"
+        echo "  --clear-data [--force] Clear all data from Vespa (useful for testing)"
+        echo "  --clear-data-all-users Clear all data from Vespa for ALL discovered users"
         echo "  --clear-all-data Clear all data from Vespa for ALL users"
         echo "  --restart  Restart Vespa container only"
         echo "  --status   Show current status"
