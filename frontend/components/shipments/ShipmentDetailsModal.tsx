@@ -1,5 +1,5 @@
 import { shipmentsApi } from '@/api';
-import type { PackageOut } from '@/types/api/shipments';
+import type { PackageOut, PackageUpdate } from '@/types/api/shipments';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
+import { PACKAGE_STATUS_OPTIONS } from '@/lib/package-status';
+import { PackageStatus } from '@/types/api/shipments';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { BadgeCheck, Calendar, ExternalLink, FileText, Hash, Loader2, Package, Tag, Trash2, Truck, User } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -109,7 +110,16 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
                 setEventsError(null);
                 try {
                     const fetchedEvents = await shipmentsApi.getTrackingEvents(shipment.id);
-                    setEvents(fetchedEvents);
+                    // Convert TrackingEventOut to the expected format, converting null to undefined
+                    const convertedEvents = fetchedEvents.map(event => ({
+                        id: event.id,
+                        event_date: event.event_date,
+                        status: event.status,
+                        location: event.location || undefined,
+                        description: event.description || undefined,
+                        created_at: event.created_at,
+                    }));
+                    setEvents(convertedEvents);
                 } catch (err) {
                     console.error('Error fetching events:', err);
                     setEventsError(err instanceof Error ? err.message : 'Failed to fetch events');
@@ -189,7 +199,19 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             // Update the shipment if there are form changes
             let updatedShipment = shipment;
             if (hasFormChanges) {
-                updatedShipment = await shipmentsApi.updatePackage(shipment.id, updateData);
+                // Add required archived_at field to PackageUpdate and convert undefined to null
+                const packageUpdateData: PackageUpdate = {
+                    status: updateData.status || null,
+                    estimated_delivery: updateData.estimated_delivery || null,
+                    actual_delivery: updateData.actual_delivery || null,
+                    recipient_name: updateData.recipient_name || null,
+                    shipper_name: updateData.shipper_name || null,
+                    package_description: updateData.package_description || null,
+                    order_number: updateData.order_number || null,
+                    tracking_link: updateData.tracking_link || null,
+                    archived_at: null, // Set to null since we're not archiving
+                };
+                updatedShipment = await shipmentsApi.updatePackage(shipment.id, packageUpdateData);
             }
 
             // Delete staged events if any

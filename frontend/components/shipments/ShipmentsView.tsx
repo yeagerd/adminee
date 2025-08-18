@@ -1,7 +1,7 @@
 import { shipmentsApi } from '@/api';
 import type { PackageOut } from '@/types/api/shipments';
 import { usePagination } from '@/hooks/use-pagination';
-import { PackageStatus } from '@/lib/package-status';
+import { PackageStatus } from '@/types/api/shipments';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../ui/button';
@@ -71,11 +71,11 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
                 tracking_number: pkg.tracking_number,
                 carrier: pkg.carrier,
                 status: pkg.status,
-                estimated_delivery: pkg.estimated_delivery,
-                actual_delivery: pkg.actual_delivery,
-                recipient_name: pkg.recipient_name,
-                package_description: pkg.package_description,
-                tracking_link: pkg.tracking_link,
+                estimated_delivery: pkg.estimated_delivery || undefined,
+                actual_delivery: pkg.actual_delivery || undefined,
+                recipient_name: pkg.recipient_name || undefined,
+                package_description: pkg.package_description || undefined,
+                tracking_link: pkg.tracking_link || undefined,
                 updated_at: pkg.updated_at,
                 events_count: pkg.events_count,
                 labels: pkg.labels || [],
@@ -149,16 +149,16 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
             tracking_number: shipment.tracking_number,
             carrier: shipment.carrier,
             status: shipment.status as PackageStatus, // Type assertion needed due to interface differences
-            estimated_delivery: shipment.estimated_delivery,
-            actual_delivery: shipment.actual_delivery,
-            recipient_name: shipment.recipient_name,
-            shipper_name: undefined, // Not available in ShipmentItem
-            package_description: shipment.package_description,
-            order_number: undefined, // Not available in ShipmentItem
-            tracking_link: shipment.tracking_link,
+            estimated_delivery: shipment.estimated_delivery || null,
+            actual_delivery: shipment.actual_delivery || null,
+            recipient_name: shipment.recipient_name || null,
+            shipper_name: null, // Not available in ShipmentItem
+            package_description: shipment.package_description || null,
+            order_number: null, // Not available in ShipmentItem
+            tracking_link: shipment.tracking_link || null,
             updated_at: shipment.updated_at,
             events_count: shipment.events_count || 0,
-            labels: shipment.labels || [],
+                            labels: shipment.labels?.map(label => typeof label === 'string' ? { name: label } : label) || [],
         };
 
         setSelectedShipment(packageResponse);
@@ -190,20 +190,20 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
         setShipments(prevShipments =>
             prevShipments.map(shipment =>
                 shipment.id === updatedShipment.id
-                    ? {
-                        ...shipment,
-                        tracking_number: updatedShipment.tracking_number,
-                        carrier: updatedShipment.carrier,
-                        status: updatedShipment.status,
-                        estimated_delivery: updatedShipment.estimated_delivery,
-                        actual_delivery: updatedShipment.actual_delivery,
-                        recipient_name: updatedShipment.recipient_name,
-                        package_description: updatedShipment.package_description,
-                        tracking_link: updatedShipment.tracking_link,
-                        updated_at: updatedShipment.updated_at,
-                        events_count: updatedShipment.events_count,
-                        labels: updatedShipment.labels,
-                    }
+                                            ? {
+                            ...shipment,
+                            tracking_number: updatedShipment.tracking_number,
+                            carrier: updatedShipment.carrier,
+                            status: updatedShipment.status,
+                            estimated_delivery: updatedShipment.estimated_delivery || undefined,
+                            actual_delivery: updatedShipment.actual_delivery || undefined,
+                            recipient_name: updatedShipment.recipient_name || undefined,
+                            package_description: updatedShipment.package_description || undefined,
+                            tracking_link: updatedShipment.tracking_link || undefined,
+                            updated_at: updatedShipment.updated_at,
+                            events_count: updatedShipment.events_count,
+                            labels: updatedShipment.labels || [],
+                        }
                     : shipment
             )
         );
