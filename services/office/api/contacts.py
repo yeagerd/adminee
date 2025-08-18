@@ -182,7 +182,7 @@ async def list_contacts(
             cached = await cache_manager.get_from_cache(cache_key)
             if cached:
                 return ContactList(
-                    success=True, data=cached, cache_hit=True, request_id=request_id
+                    success=True, data=cached.get("contacts", []), cache_hit=True, request_id=request_id
                 )
 
         factory = await get_api_client_factory()
@@ -303,7 +303,7 @@ async def list_contacts(
 
         return ContactList(
             success=True,
-            data=response_data,
+            data=contacts,
             cache_hit=False,
             provider_used=(
                 Provider(providers_used[0]) if len(providers_used) == 1 else None

@@ -379,7 +379,9 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["id"] == "gmail_sent_123"
+        assert data["data"]["message_id"] == "gmail_sent_123"
+        assert data["data"]["provider"] == "google"
+        assert data["data"]["recipient_count"] == 2
 
         # Verify API client was created
         mock_create_client.assert_called_once()

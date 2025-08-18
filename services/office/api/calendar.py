@@ -1228,12 +1228,12 @@ async def update_microsoft_event(
         raise
 
 
-@router.delete("/events/{event_id}", response_model=CalendarEventResponse)
+@router.delete("/events/{event_id}", response_model=CalendarEventDetailResponse)
 async def delete_calendar_event(
     request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     service_name: str = Depends(service_permission_required(["write_calendar"])),
-) -> CalendarEventResponse:
+) -> CalendarEventDetailResponse:
     """
     Delete a calendar event by ID.
 
@@ -1298,13 +1298,12 @@ async def delete_calendar_event(
             f"Calendar event deleted successfully in {response_time_ms}ms via {provider}"
         )
 
-        return CalendarEventResponse(
-            event_id=event_id,
-            provider=provider,
-            status="deleted",
-            deleted_at=datetime.now(timezone.utc).isoformat(),
-            event_data=None,  # No event data for deletions
-            request_metadata=response_data["request_metadata"],
+        return CalendarEventDetailResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=Provider(provider),
+            request_id=request_id,
         )
 
     except AuthError:

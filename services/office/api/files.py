@@ -166,8 +166,12 @@ async def get_files(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for files")
+            # Convert cached DriveFile objects to dictionaries if needed
+            cached_files = cached_result.get("files", [])
+            if cached_files and hasattr(cached_files[0], 'model_dump'):
+                cached_files = [file.model_dump() for file in cached_files]
             return FileListResponse(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+                success=True, data=cached_files, cache_hit=True, request_id=request_id
             )
 
         # Fetch files from each provider
@@ -360,7 +364,7 @@ async def get_files(
             if k in response_data and response_data[k] is None:
                 response_data[k] = []  # type: ignore[assignment]
         return FileListResponse(
-            success=True, data=response_data, cache_hit=False, request_id=request_id
+            success=True, data=[file.model_dump() for file in files_list], cache_hit=False, request_id=request_id
         )
 
     except ValidationError:
@@ -437,8 +441,12 @@ async def search_files(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for file search")
+            # Convert cached DriveFile objects to dictionaries if needed
+            cached_files = cached_result.get("files", [])
+            if cached_files and hasattr(cached_files[0], 'model_dump'):
+                cached_files = [file.model_dump() for file in cached_files]
             return FileSearchResponse(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+                success=True, data=cached_files, cache_hit=True, request_id=request_id
             )
 
         # Search files from each provider
@@ -589,7 +597,7 @@ async def search_files(
         )
 
         return FileSearchResponse(
-            success=True, data=response_data, cache_hit=False, request_id=request_id
+            success=True, data=[file.model_dump() for file in all_results], cache_hit=False, request_id=request_id
         )
 
     except ValidationError:

@@ -46,6 +46,7 @@ from services.office.schemas import (
     EmailThreadList,
     SendEmailRequest,
     SendEmailResponse,
+    EmailSendResult,
 )
 
 logger = get_logger(__name__)
@@ -438,6 +439,12 @@ async def get_email_folders(
                 ],
                 "providers_used": cached_result.get("providers_used", []),
                 "provider_errors": cached_result.get("provider_errors", {}),
+                "request_metadata": {
+                    "request_id": request_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "providers_requested": valid_providers,
+                    "cache_hit": True
+                }
             }
             return EmailFolderList(
                 success=True, data=response_data, cache_hit=True, request_id=request_id
@@ -496,6 +503,12 @@ async def get_email_folders(
             "folders": unique_folders,
             "providers_used": providers_used,
             "provider_errors": provider_errors,
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "providers_requested": valid_providers,
+                "duration_seconds": (datetime.now(timezone.utc) - start_time).total_seconds()
+            }
         }
 
         # Convert Pydantic models to dictionaries for caching
@@ -588,8 +601,11 @@ async def get_email_message(
 
         # Build response
         response_data = {
-            "message": message.model_dump(),
-            "provider": provider,
+            "messages": [message],
+            "total_count": 1,
+            "providers_used": [provider],
+            "provider_errors": None,
+            "has_more": False,
             "request_metadata": {
                 "user_id": user_id,
                 "message_id": message_id,
@@ -701,9 +717,19 @@ async def send_email(
                     request_id=request_id,
                 )
 
+        # Transform the raw API result into EmailSendResult format
+        email_send_result = EmailSendResult(
+            message_id=result.get("id", "unknown"),
+            thread_id=result.get("threadId"),
+            provider=Provider(provider),
+            sent_at=datetime.now(timezone.utc),
+            recipient_count=len(email_data.to) + len(email_data.cc or []) + len(email_data.bcc or []),
+            has_attachments=False  # TODO: Implement attachment detection
+        )
+
         return SendEmailResponse(
             success=True,
-            data=result,
+            data=email_send_result,
             request_id=request_id,
         )
 
@@ -832,6 +858,17 @@ async def get_email_threads(
             "providers_used": providers_used,
             "provider_errors": provider_errors if provider_errors else None,
             "has_more": len(all_threads) >= limit,  # Simple heuristic for pagination
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "providers_requested": providers,
+                "limit": limit,
+                "include_body": include_body,
+                "labels": labels,
+                "folder_id": folder_id,
+                "query": q,
+                "page_token": page_token
+            }
         }
 
         # Cache the result
@@ -918,8 +955,18 @@ async def get_email_thread(
 
         # Prepare response data
         response_data = {
-            "thread": thread,
-            "provider_used": provider,
+            "threads": [thread],
+            "total_count": 1,
+            "providers_used": [provider],
+            "provider_errors": None,
+            "has_more": False,
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "provider": provider,
+                "thread_id": thread_id,
+                "include_body": include_body
+            }
         }
 
         # Cache the result
@@ -1004,8 +1051,18 @@ async def get_message_thread(
 
         # Prepare response data
         response_data = {
-            "thread": thread,
-            "provider_used": provider,
+            "threads": [thread],
+            "total_count": 1,
+            "providers_used": [provider],
+            "provider_errors": None,
+            "has_more": False,
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "provider": provider,
+                "message_id": message_id,
+                "include_body": include_body
+            }
         }
 
         # Cache the result
