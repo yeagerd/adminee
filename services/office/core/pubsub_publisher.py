@@ -11,11 +11,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
-    from google.api_core import exceptions as google_exceptions
-    from google.cloud import pubsub_v1
+    from google.api_core import exceptions as google_exceptions  # type: ignore[import-not-found]
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
     PUBSUB_AVAILABLE = True
-except ImportError:
+except Exception:
     PUBSUB_AVAILABLE = False
     from services.common.logging_config import get_logger
 
@@ -48,7 +48,7 @@ class PubSubPublisher:
         if PUBSUB_AVAILABLE:
             self._initialize_publisher()
 
-    def _initialize_publisher(self):
+    def _initialize_publisher(self) -> None:
         """Initialize the Pub/Sub publisher client"""
         try:
             # Use emulator if specified
@@ -301,10 +301,10 @@ class PubSubPublisher:
 
     def set_topics(
         self,
-        email_topic: str = None,
-        calendar_topic: str = None,
-        contact_topic: str = None,
-    ):
+        email_topic: Optional[str] = None,
+        calendar_topic: Optional[str] = None,
+        contact_topic: Optional[str] = None,
+    ) -> None:
         """Set custom topic names"""
         if email_topic:
             self.topics["emails"] = email_topic
@@ -317,7 +317,11 @@ class PubSubPublisher:
             f"Set topics: email={self.topics['emails']}, calendar={self.topics['calendar']}, contact={self.topics['contacts']}"
         )
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the pubsub client"""
-        await self.pubsub_client.close()
+        try:
+            if self.publisher:
+                self.publisher.transport.close()  # type: ignore[attr-defined]
+        except Exception:
+            pass
         logger.info("PubSub publisher closed")

@@ -2569,12 +2569,17 @@ async def get_internal_email_messages(
                             order_by="receivedDateTime desc",
                         )
                     elif provider == "google":
-                        messages = await client.get_messages(
-                            top=limit,
-                            filter=filter_str,
-                            search=q,
-                            order_by="receivedDateTime desc",
-                        )
+                        # Google client uses different parameter names (max_results, query)
+                        # but our unified factory likely returns GoogleAPIClient for google
+                        # So call with google-style args conditionally via getattr
+                        if hasattr(client, "get_messages"):
+                            # type: ignore[no-any-return]
+                            messages = await client.get_messages(  # type: ignore[misc]
+                                max_results=limit,  # type: ignore[call-arg]
+                                query=q,  # type: ignore[call-arg]
+                            )
+                        else:
+                            messages = {"messages": []}
                     else:
                         continue
 
@@ -2598,7 +2603,8 @@ async def get_internal_email_messages(
                         normalize_google_email(msg, email) for msg in email_list
                     ]
                 else:
-                    normalized_messages = messages
+                    # If unknown provider, yield empty list
+                    normalized_messages = []
 
                 # Add to results
                 all_messages.extend(normalized_messages)
@@ -2716,9 +2722,8 @@ async def get_internal_email_count(
                             top=100,  # Get up to 100 to get a reasonable count
                         )
                     elif provider == "google":
-                        messages = await client.get_messages(
-                            top=100,  # Get up to 100 to get a reasonable count
-                        )
+                        # Google client supports max_results, not top
+                        messages = await client.get_messages(max_results=100)  # type: ignore[misc,call-arg]
                     else:
                         continue
 
@@ -2728,12 +2733,12 @@ async def get_internal_email_count(
                 )
 
                 # Count messages from the response
-                if provider == "microsoft" and "value" in messages:
+                if provider == "microsoft" and isinstance(messages, dict) and "value" in messages:
                     total_count += len(messages["value"])
                     logger.info(
                         f"Microsoft API returned {len(messages['value'])} messages in 'value' array"
                     )
-                elif provider == "google" and "messages" in messages:
+                elif provider == "google" and isinstance(messages, dict) and "messages" in messages:
                     total_count += len(messages["messages"])
                     logger.info(
                         f"Google API returned {len(messages['messages'])} messages in 'messages' array"

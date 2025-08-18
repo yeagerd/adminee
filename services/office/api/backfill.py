@@ -91,7 +91,7 @@ async def start_internal_backfill(
     background_tasks: BackgroundTasks,
     user_id: str = Query(..., description="User email address"),
     api_key: str = Depends(verify_backfill_api_key),
-):
+) -> BackfillResponse:
     """Internal endpoint for starting backfill jobs (service-to-service)"""
     try:
         # Validate user_id format (basic email validation)
@@ -120,13 +120,17 @@ async def start_internal_backfill(
         backfill_status = BackfillStatus(
             job_id=job_id,
             user_id=user_id,
-            status="running",
+            status=BackfillStatusEnum.RUNNING,
             start_time=datetime.now(timezone.utc),
+            end_time=None,
+            pause_time=None,
+            resume_time=None,
             request=request,
             progress=0,
             total_emails=0,
             processed_emails=0,
             failed_emails=0,
+            error_message=None,
         )
 
         # Store job status
@@ -149,13 +153,14 @@ async def start_internal_backfill(
         logger.error(f"Failed to start internal backfill job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Function end
 
 @internal_router.get("/status/{job_id}", response_model=BackfillStatus)
 async def get_internal_backfill_status(
     job_id: str,
     user_id: str = Query(..., description="User email address"),
     api_key: str = Depends(verify_backfill_api_key),
-):
+) -> BackfillStatus:
     """Internal endpoint for getting backfill job status"""
     try:
         # Find job by ID and user_id
@@ -181,7 +186,7 @@ async def get_internal_backfill_status(
 async def list_internal_backfill_jobs(
     user_id: str = Query(..., description="User email address"),
     api_key: str = Depends(verify_backfill_api_key),
-):
+) -> List[BackfillStatus]:
     """Internal endpoint for listing backfill jobs for a user"""
     try:
         # Filter jobs by user_id
@@ -201,7 +206,7 @@ async def cancel_internal_backfill_job(
     job_id: str,
     user_id: str = Query(..., description="User email address"),
     api_key: str = Depends(verify_backfill_api_key),
-):
+) -> Dict[str, str]:
     """Internal endpoint for cancelling a backfill job"""
     try:
         # Find job by ID and user_id
@@ -240,7 +245,7 @@ async def cancel_internal_backfill_job(
 
 async def run_backfill_job(
     job_id: str, user_id: str, request: BackfillRequest, resume_from: int = 0
-):
+) -> None:
     """Run the backfill job in the background"""
     try:
         # Update job status

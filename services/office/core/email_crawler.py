@@ -87,7 +87,7 @@ class EmailCrawler:
                 provider_str = str(self.provider).lower()
 
             # Build query parameters for count
-            params = {
+            params: Dict[str, Any] = {
                 "user_id": self.user_id,
                 "providers": [provider_str],
             }
@@ -205,7 +205,7 @@ class EmailCrawler:
                 provider_str = str(provider).lower()
 
             # Build query parameters
-            params = {
+            params: Dict[str, Any] = {
                 "user_id": self.user_id,  # Pass user_id as query parameter for internal endpoint
                 "email": self.user_email,  # Pass email for normalizer
                 "providers": [provider_str],
@@ -368,7 +368,7 @@ class EmailCrawler:
         # Return empty list if no emails found
         return []
 
-    def set_rate_limit(self, emails_per_second: int):
+    def set_rate_limit(self, emails_per_second: int) -> None:
         """Set the rate limit for email crawling"""
         if emails_per_second > 0:
             self.rate_limit_delay = 1.0 / emails_per_second

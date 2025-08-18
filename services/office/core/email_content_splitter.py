@@ -13,13 +13,13 @@ import re
 from typing import Any, Dict, Optional
 
 from bs4 import BeautifulSoup
-from bs4.element import Tag
+from bs4.element import Tag, PageElement, NavigableString
 
 
 class EmailContentSplitter:
     """Splits email content into visible and quoted parts"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the email content splitter with common quote patterns."""
         self.quote_patterns = [
             # HTML structure patterns (most reliable for real emails)
@@ -59,7 +59,7 @@ class EmailContentSplitter:
 
     def split_content(
         self, html_content: Optional[str] = None, text_content: Optional[str] = None
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         """
         Split email content into visible and quoted parts
 
@@ -70,7 +70,7 @@ class EmailContentSplitter:
         Returns:
             Dict with keys: visible_content, quoted_content, thread_summary
         """
-        result = {"visible_content": "", "quoted_content": "", "thread_summary": {}}
+        result: Dict[str, Any] = {"visible_content": "", "quoted_content": "", "thread_summary": {}}
 
         # Try HTML splitting first if available
         if html_content:
@@ -112,7 +112,7 @@ class EmailContentSplitter:
             soup = BeautifulSoup(html_content, "html.parser")
 
             # First, try to find quoted content using selectors (Gmail, Yahoo, etc.)
-            quoted_node = None
+            quoted_node: Optional[PageElement] = None
             for selector in self.quote_selectors:
                 quoted_node = soup.select_one(selector)
                 if quoted_node:
@@ -120,7 +120,7 @@ class EmailContentSplitter:
 
             # If no selector match, try to find the first <hr> tag as a boundary
             if not quoted_node:
-                hr_node = soup.find("hr")
+                hr_node: Optional[PageElement] = soup.find("hr")
                 if hr_node:
                     quoted_node = hr_node
 
@@ -138,7 +138,7 @@ class EmailContentSplitter:
                 working_soup = BeautifulSoup(html_content, "html.parser")
 
                 # Find the quoted node in the working soup
-                working_quoted_node = None
+                working_quoted_node: Optional[PageElement] = None
                 for selector in self.quote_selectors:
                     working_quoted_node = working_soup.select_one(selector)
                     if working_quoted_node:
@@ -235,7 +235,7 @@ class EmailContentSplitter:
 
     def _find_element_containing_text(
         self, soup: BeautifulSoup, text: str
-    ) -> Optional[Tag]:
+    ) -> Optional[PageElement]:
         """Find the element containing specific text"""
         for element in soup.find_all():
             if text in element.get_text():
@@ -334,7 +334,7 @@ class EmailContentSplitter:
 
 def split_email_content(
     html_content: Optional[str] = None, text_content: Optional[str] = None
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """
     Convenience function to split email content
 
