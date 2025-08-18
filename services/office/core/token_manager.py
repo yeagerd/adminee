@@ -254,10 +254,19 @@ class TokenManager:
 
             request_id = request_id_var.get()
 
-            # Prepare headers with dynamic request ID
+            # Prepare headers with dynamic request ID and API key authentication
             headers = {}
             if request_id and request_id != "uninitialized":
                 headers["X-Request-Id"] = request_id
+            
+            # Add API key authentication for service-to-service communication
+            api_key = get_settings().api_office_user_key
+            if api_key:
+                headers["X-API-Key"] = api_key
+            else:
+                logger.warning(
+                    f"TokenManager instance {self._instance_id}: No API key configured for user service communication"
+                )
 
             response = await self.http_client.post(
                 f"{get_settings().USER_SERVICE_URL}/v1/internal/tokens/get",

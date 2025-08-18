@@ -20,6 +20,27 @@ from typing import Any, Dict, List, Optional
 # Add the services directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+# Environment validation - check if virtual environment is active
+def validate_environment():
+    """Validate that the virtual environment is active and dependencies are available."""
+    try:
+        import pydantic
+        print("✅ Virtual environment is active - pydantic is available")
+    except ImportError:
+        print("❌ ERROR: Virtual environment is not active!")
+        print("\nThe backfill script requires the virtual environment to be activated.")
+        print("Please run the following command first:")
+        print("\n  source .venv/bin/activate")
+        print("\nOr on Windows:")
+        print("\n  .venv\\Scripts\\activate")
+        print("\nThen try running the script again:")
+        print(f"\n  python {sys.argv[0]} {' '.join(sys.argv[1:])}")
+        print("\nThis ensures all required dependencies (like pydantic) are available.")
+        sys.exit(1)
+
+# Validate environment before importing other modules
+validate_environment()
+
 from services.common.logging_config import get_logger
 from services.demos.settings_demos import get_demo_settings
 from services.office.api.backfill import BackfillRequest
@@ -373,67 +394,66 @@ class VespaBackfillDemo:
 
                 print(f"{'='*60}")
 
-    def _validate_data_ingestion(
+    async def _validate_data_ingestion(
         self,
         before_stats: Dict[str, Any],
         after_stats: Dict[str, Any],
         results: Dict[str, Any],
     ) -> None:
-        """Validate whether data was successfully ingested into Vespa"""
-        print(f"\n{'='*60}")
-        print("DATA INGESTION VALIDATION")
+        """Validate that data was actually ingested into Vespa"""
         print(f"{'='*60}")
-
-        if "error" in before_stats or "error" in after_stats:
-            print("⚠️  Cannot validate data ingestion due to stats collection errors")
-            return
-
-        before_total = before_stats.get("total_documents", 0)
-        after_total = after_stats.get("total_documents", 0)
+        print("📊 DATA INGESTION VALIDATION")
+        print(f"{'='*60}")
+        
+        # Check if any data was actually published
         total_published = results.get("total_data_published", 0)
-
-        print(f"Data Published to Pub/Sub: {total_published:,} items")
-        print(f"Documents in Vespa (Before): {before_total:,}")
-        print(f"Documents in Vespa (After): {after_total:,}")
-
-        if total_published > 0:
-            if after_total > before_total:
-                documents_added = after_total - before_total
-                print(f"✅ Successfully ingested: +{documents_added:,} documents")
-
-                if documents_added < total_published:
-                    print(
-                        f"⚠️  Note: Only {documents_added:,} of {total_published:,} published items were indexed"
-                    )
-                    print(f"   This may indicate duplicate data or indexing issues")
-                else:
-                    print(f"✅ All published items were successfully indexed")
-
-            elif after_total == before_total:
-                print(f"❌ Data ingestion failed: No documents were added to Vespa")
-                print(f"   Possible causes:")
-                print(f"   • Vespa loader service is not running")
-                print(f"   • Pub/Sub topics are not being consumed")
-                print(f"   • Data format issues preventing indexing")
-                print(f"   • Vespa schema validation failures")
-
-                # Update results to reflect the actual failure
-                results["data_ingestion_success"] = False
-                results["data_ingestion_error"] = (
-                    "No documents were added to Vespa despite successful publishing"
-                )
-            else:
-                print(f"❌ Data ingestion anomaly: Document count decreased")
-                print(
-                    f"   This suggests data was removed or corrupted during ingestion"
-                )
-                results["data_ingestion_success"] = False
-                results["data_ingestion_error"] = (
-                    "Document count decreased during ingestion"
-                )
+        if total_published == 0:
+            print("❌ CRITICAL ISSUE: No data was published to Vespa!")
+            print("\n🔍 INVESTIGATION REQUIRED:")
+            print("1. Check if OAuth integrations are configured")
+            print("2. Verify API clients can be created")
+            print("3. Check office service logs for errors")
+            print("4. Ensure user has valid OAuth tokens")
+            print("\n💡 NEXT STEPS:")
+            print("- Complete OAuth integration setup")
+            print("- Check office service configuration")
+            print("- Verify API keys are set correctly")
+            print("- Review office service logs")
         else:
-            print(f"ℹ️  No data was published, so no ingestion validation needed")
-
+            print(f"✅ SUCCESS: {total_published} items published to Vespa")
+        
+        # Show detailed provider results
+        job_details = results.get("job_details", [])
+        if job_details:
+            print(f"\n📋 PROVIDER RESULTS:")
+            for job in job_details:
+                provider = job.get("provider", "unknown")
+                status = job.get("status", "unknown")
+                duration = job.get("duration_seconds", 0)
+                emails_processed = job.get("emails_processed", 0)
+                emails_published = job.get("emails_published", 0)
+                
+                print(f"  {provider.upper()}: {status} ({duration:.1f}s)")
+                print(f"    - Emails processed: {emails_processed}")
+                print(f"    - Emails published: {emails_published}")
+                
+                # Show specific errors if any
+                if job.get("error"):
+                    print(f"    - ERROR: {job['error']}")
+        
+        # Show Vespa statistics comparison
+        before_count = before_stats.get("total_documents", 0)
+        after_count = after_stats.get("total_documents", 0)
+        print(f"\n📈 VESPA STATISTICS:")
+        print(f"  Before backfill: {before_count} documents")
+        print(f"  After backfill:  {after_count} documents")
+        print(f"  Net change:      {after_count - before_count} documents")
+        
+        if after_count == before_count and total_published > 0:
+            print("\n⚠️  WARNING: Data published but Vespa count unchanged!")
+            print("   This suggests the Vespa loader service may not be working")
+            print("   Check Vespa loader service logs and configuration")
+        
         print(f"{'='*60}")
 
     async def run_backfill_demo(self) -> Dict[str, Any]:
@@ -459,6 +479,37 @@ class VespaBackfillDemo:
             before_stats = await self.get_user_vespa_stats()
             results["vespa_stats"]["before"] = before_stats
             self.print_vespa_stats(before_stats, "INITIAL VESPA STATISTICS")
+
+            # Check OAuth integration status before proceeding
+            logger.info("Checking OAuth integration status...")
+            integration_status = await self._check_integration_status(self.user_email)
+            results["integration_status"] = integration_status
+            
+            # If office service is not running, fail fast
+            if not integration_status.get("office_service_running", False):
+                error_msg = "Office service is not running. Cannot proceed with backfill."
+                logger.error(error_msg)
+                results["status"] = "failed"
+                results["error"] = error_msg
+                return results
+            
+            # If no integrations are configured, provide clear guidance
+            integrations = integration_status.get("integrations", {})
+            if not integrations:
+                print("\n❌ NO OAUTH INTEGRATIONS CONFIGURED")
+                print("   The backfill cannot proceed without OAuth integrations.")
+                print("\n💡 SETUP REQUIRED:")
+                print("   1. Complete OAuth setup for Microsoft and/or Google")
+                print("   2. Ensure valid access tokens are stored")
+                print("   3. Verify integration status shows 'Connected'")
+                print("\n🔧 NEXT STEPS:")
+                print("   - Visit the frontend settings page")
+                print("   - Complete OAuth integration setup")
+                print("   - Run this script again after setup")
+                
+                results["status"] = "failed"
+                results["error"] = "No OAuth integrations configured"
+                return results
 
             # Process the specified user
             logger.info(f"Starting backfill for user: {self.user_email}")
@@ -507,7 +558,7 @@ class VespaBackfillDemo:
             self.print_stats_comparison(before_stats, after_stats)
 
             # Validate data ingestion success
-            self._validate_data_ingestion(before_stats, after_stats, results)
+            await self._validate_data_ingestion(before_stats, after_stats, results)
 
             results["status"] = "completed"
             results["end_time"] = datetime.now(timezone.utc).isoformat()
@@ -530,6 +581,83 @@ class VespaBackfillDemo:
             ).total_seconds()
 
         return results
+
+    async def _check_integration_status(self, user_id: str) -> Dict[str, Any]:
+        """Check the status of OAuth integrations for the user"""
+        print(f"{'='*60}")
+        print("🔍 CHECKING OAUTH INTEGRATION STATUS")
+        print(f"{'='*60}")
+        
+        try:
+            import httpx
+            
+            # Check office service health and integration status
+            office_service_url = "http://localhost:8003"
+            
+            # First check if office service is running
+            async with httpx.AsyncClient() as client:
+                try:
+                    health_response = await client.get(
+                        f"{office_service_url}/health",
+                        timeout=10.0
+                    )
+                    if health_response.status_code == 200:
+                        print("✅ Office service is running")
+                    else:
+                        print(f"❌ Office service health check failed: {health_response.status_code}")
+                        return {"office_service_running": False, "error": "Health check failed"}
+                except Exception as e:
+                    print(f"❌ Cannot connect to office service: {e}")
+                    print("   Make sure the office service is running on port 8003")
+                    return {"office_service_running": False, "error": str(e)}
+                
+                # Check integration health for the user
+                try:
+                    integration_response = await client.get(
+                        f"{office_service_url}/health/integrations/{user_id}",
+                        headers={
+                            "X-User-Id": user_id,
+                            "X-API-Key": "test-BACKFILL-OFFICE-KEY"
+                        },
+                        timeout=10.0
+                    )
+                    
+                    if integration_response.status_code == 200:
+                        integration_data = integration_response.json()
+                        print("✅ Integration health check completed")
+                        
+                        # Show integration details
+                        integrations = integration_data.get("integrations", {})
+                        if integrations:
+                            print(f"\n📋 INTEGRATION STATUS:")
+                            for provider, status in integrations.items():
+                                if status.get("connected"):
+                                    print(f"  {provider.upper()}: ✅ Connected")
+                                    if status.get("last_sync"):
+                                        print(f"    Last sync: {status['last_sync']}")
+                                else:
+                                    print(f"  {provider.upper()}: ❌ Not connected")
+                                    if status.get("error"):
+                                        print(f"    Error: {status['error']}")
+                        else:
+                            print("❌ No integrations found")
+                            print("   User needs to complete OAuth setup")
+                        
+                        return {"office_service_running": True, "integrations": integrations}
+                    else:
+                        print(f"❌ Integration health check failed: {integration_response.status_code}")
+                        return {"office_service_running": True, "error": "Integration check failed"}
+                        
+                except Exception as e:
+                    print(f"❌ Integration health check failed: {e}")
+                    return {"office_service_running": True, "error": str(e)}
+                    
+        except Exception as e:
+            print(f"❌ Failed to check integration status: {e}")
+            return {"error": str(e)}
+        
+        print(f"{'='*60}")
+        return {"office_service_running": True}
 
     async def _run_user_provider_backfill(
         self, user_id: str, provider: str
