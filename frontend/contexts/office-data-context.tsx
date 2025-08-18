@@ -1,7 +1,7 @@
 "use client";
 
 import { officeApi } from '@/api';
-import type { ContactList } from '@/types/api/office';
+import type { Contact, ContactList } from '@/types/api/office';
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 interface OfficeDataContextType {

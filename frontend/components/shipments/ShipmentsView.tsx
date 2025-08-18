@@ -143,8 +143,8 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
     }, [handleFilterChange]);
 
     const handleRowClick = (shipment: ShipmentItem) => {
-        // Convert ShipmentItem to PackageResponse for the modal
-        const packageResponse: PackageResponse = {
+        // Convert ShipmentItem to PackageOut for the modal
+        const packageResponse: PackageOut = {
             id: shipment.id,
             tracking_number: shipment.tracking_number,
             carrier: shipment.carrier,
@@ -185,7 +185,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
         setSelectedShipment(null);
     };
 
-    const handleShipmentUpdated = (updatedShipment: PackageResponse) => {
+    const handleShipmentUpdated = (updatedShipment: PackageOut) => {
         // Update the shipment in the local state
         setShipments(prevShipments =>
             prevShipments.map(shipment =>

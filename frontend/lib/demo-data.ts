@@ -1,4 +1,4 @@
-import { CalendarEvent } from "@/types/api/office";
+import { CalendarEvent, Provider } from "@/types/api/office";
 
 // Demo data for the demos page
 export interface DemoUser {
@@ -77,7 +77,7 @@ export const demoIntegrations: DemoIntegration[] = [
     {
         id: 1,
         user_id: "demo-user-123",
-        provider: "google",
+        provider: Provider.GOOGLE,
         status: "ACTIVE",
         scopes: ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/gmail.readonly"],
         external_user_id: "demo-google-user",
@@ -95,7 +95,7 @@ export const demoIntegrations: DemoIntegration[] = [
     {
         id: 2,
         user_id: "demo-user-123",
-        provider: "microsoft",
+        provider: Provider.MICROSOFT,
         status: "ACTIVE",
         scopes: ["https://graph.microsoft.com/Calendars.ReadWrite", "https://graph.microsoft.com/Mail.Read"],
         external_user_id: "demo-ms-user",
@@ -314,7 +314,7 @@ export function convertDemoEventsToUnified(demoEvents: DemoCalendarEvent[]): Cal
         },
         status: "confirmed",
         visibility: "default",
-        provider: "google" as const,
+        provider: Provider.GOOGLE,
         provider_event_id: `demo_${demoEvent.id}`,
         account_email: "demo@briefly.com",
         account_name: "Demo User",

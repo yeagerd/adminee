@@ -1,4 +1,4 @@
-import { EmailMessage } from "@/types/api/office";
+import { EmailMessage, Provider } from "@/types/api/office";
 import { renderHook } from '@testing-library/react';
 import { useShipmentDetection } from './use-shipment-detection';
 
@@ -19,7 +19,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -50,7 +50,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -79,7 +79,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -108,7 +108,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -138,7 +138,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -171,7 +171,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -199,7 +199,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -233,7 +233,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -268,7 +268,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -308,7 +308,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -344,7 +344,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -380,7 +380,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -418,7 +418,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -445,7 +445,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };
@@ -474,7 +474,7 @@ describe('useShipmentDetection', () => {
             labels: [],
             is_read: false,
             has_attachments: false,
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'test-message-id',
             account_email: 'test@example.com'
         };

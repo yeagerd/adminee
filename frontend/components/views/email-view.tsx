@@ -12,7 +12,7 @@ import { useIntegrations } from '@/contexts/integrations-context';
 import { useDraftState } from '@/hooks/use-draft-state';
 import { listProviderDraftsForThread } from '@/lib/draft-utils';
 import { safeParseDate } from '@/lib/utils';
-import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from "@/types/api/office";
+import { EmailFolder, EmailMessage, EmailThread as EmailThreadType, Provider } from "@/types/api/office";
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -126,7 +126,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
     // Determine default provider from active integrations, fallback to 'google' if none available
-    const defaultProvider = activeProviders && activeProviders.length > 0 ? activeProviders[0] as 'google' | 'microsoft' : 'google';
+    const defaultProvider = activeProviders && activeProviders.length > 0 ? activeProviders[0] as Provider : Provider.GOOGLE;
 
     const [selectedFolder, setSelectedFolder] = useState<EmailFolder>({
         label: 'inbox',
@@ -152,11 +152,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             let labels: string[] | undefined;
             let folderId: string | undefined;
 
-            if (selectedFolder.provider === 'microsoft') {
+            if (selectedFolder.provider === Provider.MICROSOFT) {
                 // Microsoft: use folder_id for all folders when available
                 folderId = selectedFolder.provider_folder_id;
                 labels = undefined;
-            } else if (selectedFolder.provider === 'google') {
+            } else if (selectedFolder.provider === Provider.GOOGLE) {
                 // Google: use folder_id for system folders, labels for user folders
                 if (isSystemFolder && selectedFolder.provider_folder_id) {
                     folderId = selectedFolder.provider_folder_id;
@@ -470,7 +470,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     // Update selectedFolder provider when activeProviders change
     useEffect(() => {
         if (activeProviders && activeProviders.length > 0) {
-            const newProvider = activeProviders[0] as 'google' | 'microsoft';
+            const newProvider = activeProviders[0] as Provider;
             if (selectedFolder.provider !== newProvider) {
                 setSelectedFolder(prev => ({
                     ...prev,

@@ -1,14 +1,14 @@
 "use client";
 
 import { userApi } from '@/api';
-import type { Integration } from '@/types/api/user';
+import type { IntegrationResponse } from '@/types/api/user';
 import { IntegrationProvider } from '@/types/api/user';
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { INTEGRATION_STATUS } from '../lib/constants';
 
 interface IntegrationsContextType {
-    integrations: Integration[];
+    integrations: IntegrationResponse[];
     loading: boolean;
     error: string | null;
     refreshIntegrations: () => Promise<void>;
@@ -20,7 +20,7 @@ interface IntegrationsContextType {
 const IntegrationsContext = createContext<IntegrationsContextType | undefined>(undefined);
 
 export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [integrations, setIntegrations] = useState<IntegrationResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { status } = useSession();
@@ -34,7 +34,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
             const resp = await userApi.getIntegrations();
             // Convert IntegrationResponse to Integration type
-            const convertedIntegrations: Integration[] = (resp.integrations || []).map(integration => ({
+            const convertedIntegrations: IntegrationResponse[] = (resp.integrations || []).map(integration => ({
                 ...integration,
                 scopes: integration.scopes || []
             }));
@@ -64,7 +64,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, []);
 
     // Helper to determine if an integration is expired but refreshable
-    const isExpiredButRefreshableIntegration = useCallback((i: Integration): boolean => {
+    const isExpiredButRefreshableIntegration = useCallback((i: IntegrationResponse): boolean => {
         return (
             (i.status === INTEGRATION_STATUS.EXPIRED ||
                 (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at))

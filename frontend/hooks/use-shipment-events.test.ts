@@ -1,5 +1,5 @@
 import { shipmentsApi } from '@/api';
-import { PACKAGE_STATUS } from '@/lib/package-status';
+import { PackageStatus } from '@/types/api/shipments';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useShipmentEvents } from './use-shipment-events';
 
@@ -31,7 +31,7 @@ describe('useShipmentEvents', () => {
             {
                 id: '1',
                 event_date: '2024-01-01T10:00:00Z',
-                status: PACKAGE_STATUS.DELIVERED,
+                status: PackageStatus.DELIVERED,
                 location: 'New York, NY',
                 description: 'Package delivered',
                 created_at: '2024-01-01T10:00:00Z',

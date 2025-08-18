@@ -1,5 +1,6 @@
 import { chatApi, officeApi } from '@/api';
 import type {
+    UserDraftRequest,
     UserDraftResponse
 } from '@/types/api/chat';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
