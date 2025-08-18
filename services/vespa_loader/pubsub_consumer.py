@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from services.common.logging_config import get_logger
 from services.vespa_loader.settings import Settings
+from services.vespa_loader.email_processor import EmailContentProcessor
 
 logger = get_logger(__name__)
 
@@ -42,6 +43,9 @@ class PubSubConsumer:
         self.running = False
         self.processed_count = 0
         self.error_count = 0
+        
+        # Initialize email content processor
+        self.email_processor = EmailContentProcessor()
 
         # Configure topics and their processors
         self.topics = {
@@ -428,24 +432,46 @@ class PubSubConsumer:
             # Determine the source type from the data
             source_type = data.get("type", "email")  # Default to email
 
-            # Map the data to the expected format for the ingest endpoint
-            # Note: Ingest endpoint expects 'id', DocumentMapper will map it to 'doc_id' for Vespa
-            document_data = {
-                "id": data.get("id"),  # Keep as 'id' for ingest endpoint validation
-                "user_id": data.get("user_id"),
-                "type": source_type,  # Add type field for DocumentMapper
-                "provider": data.get("provider"),
-                "subject": data.get("subject", ""),  # Keep original field names
-                "body": data.get("body", ""),       # Keep original field names
-                "from": data.get("from", ""),       # Keep original field names
-                "to": data.get("to", []),           # Keep original field names
-                "thread_id": data.get("thread_id", ""),
-                "folder": data.get("folder", ""),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
-                "metadata": data.get("metadata", {}),
-                # Remove 'timestamp' as it's not in Vespa schema
-            }
+            # Process email data using the email processor if it's an email
+            if source_type == "email":
+                processed_data = self.email_processor.process_email(data)
+                document_data = {
+                    "id": processed_data.get("id"),
+                    "user_id": processed_data.get("user_id"),
+                    "type": source_type,
+                    "provider": processed_data.get("provider"),
+                    "subject": processed_data.get("subject", ""),
+                    "body": processed_data.get("body", ""),
+                    "from": processed_data.get("from", ""),
+                    "to": processed_data.get("to", []),
+                    "thread_id": processed_data.get("thread_id", ""),
+                    "folder": processed_data.get("folder", ""),
+                    "created_at": processed_data.get("created_at"),
+                    "updated_at": processed_data.get("updated_at"),
+                    "metadata": processed_data.get("metadata", {}),
+                    # Add processed content fields
+                    "content_chunks": processed_data.get("content_chunks", []),
+                    "quoted_content": processed_data.get("quoted_content", ""),
+                    "thread_summary": processed_data.get("thread_summary", {}),
+                    "search_text": processed_data.get("search_text", ""),
+                }
+            else:
+                # For non-email documents, use basic mapping
+                document_data = {
+                    "id": data.get("id"),
+                    "user_id": data.get("user_id"),
+                    "type": source_type,
+                    "provider": data.get("provider"),
+                    "subject": data.get("subject", ""),
+                    "body": data.get("body", ""),
+                    "from": data.get("from", ""),
+                    "to": data.get("to", []),
+                    "thread_id": data.get("thread_id", ""),
+                    "folder": data.get("folder", ""),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                    "metadata": data.get("metadata", {}),
+                }
 
             logger.info(f"Document data prepared: {document_data}")
             logger.info(f"Making HTTP POST to ingest endpoint for document {message_id}")

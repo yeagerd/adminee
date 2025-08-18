@@ -27,6 +27,10 @@ class DocumentMapper:
                 "folder": "folder",
                 "created_at": "created_at",
                 "updated_at": "updated_at",
+                "content_chunks": "content_chunks",
+                "quoted_content": "quoted_content",
+                "thread_summary": "thread_summary",
+                "search_text": "search_text",
             },
             "calendar": {
                 "id": "doc_id",
@@ -86,6 +90,10 @@ class DocumentMapper:
                 "created_at": None,
                 "updated_at": None,
                 "metadata": {},
+                # Add new email-specific fields
+                "content_chunks": [],
+                "quoted_content": "",
+                "thread_summary": {},
             }
 
             # Map fields according to type
