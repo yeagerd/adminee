@@ -240,9 +240,9 @@ function ParticipantSection({ poll, onResendEmail, resendingEmails, onAddPartici
                         className="flex items-center gap-1"
                     >
                         {showParticipantDetails ? (
-                            ChevronDown
+                            <ChevronDown className="h-4 w-4" />
                         ) : (
-                            ChevronRight
+                            <ChevronRight className="h-4 w-4" />
                         )}
                         <Users className="h-4 w-4" />
                     </Button>
@@ -367,9 +367,9 @@ function TimeSlotRow({ slot, stats, isExpanded, isScheduled, poll, participantRe
                 <td className="px-3 py-2 border cursor-pointer" onClick={onToggleExpansion}>
                     <div className="flex items-center gap-2">
                         {isExpanded ? (
-                            ChevronDown
+                            <ChevronDown className="h-4 w-4" />
                         ) : (
-                            ChevronRight
+                            <ChevronRight className="h-4 w-4" />
                         )}
                         <span className="font-medium">{formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}</span>
                         {isScheduled && (

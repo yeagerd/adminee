@@ -1,7 +1,5 @@
 import { safeFormatDateOrTime, safeParseDate } from '@/lib/utils';
-// TODO: Replace with proper generated types when available
-import type { CalendarEvent } from '@/types/api/office';
-export type EmailMessage = CalendarEvent;
+import type { EmailMessage } from '@/types';
 import DOMPurify from 'dompurify';
 import { Star } from 'lucide-react';
 import React from 'react';

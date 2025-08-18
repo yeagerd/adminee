@@ -4,10 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { safeFormatDateAndTime } from '@/lib/utils';
-// TODO: Replace with proper generated types when available
-// For now, using CalendarEvent as a placeholder since it has similar structure
-import type { CalendarEvent } from '@/types/api/office';
-export type EmailMessage = CalendarEvent;
+import type { EmailMessage } from '@/types';
 import DOMPurify from 'dompurify';
 import { CalendarRange, Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';

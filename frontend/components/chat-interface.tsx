@@ -49,7 +49,7 @@ export interface DraftCalendarEvent {
     title?: string
     start_time?: string
     end_time?: string
-    attendees?: string
+    attendees?: string[]
     location?: string
     description?: string
     thread_id: string

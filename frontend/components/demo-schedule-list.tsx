@@ -2,7 +2,8 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { demoCalendarEvents } from "@/lib/demo-data"
-import type { CalendarEvent } from "@/types/api/office"
+import type { CalendarEvent } from "@/types"
+import { Provider } from "@/types/api/office"
 import { useState } from "react"
 import { CalendarEventItem } from "./calendar-event-item"
 
@@ -33,7 +34,7 @@ export function DemoScheduleList() {
             },
             status: "confirmed",
             visibility: "default",
-            provider: "google" as const,
+            provider: Provider.GOOGLE,
             provider_event_id: `demo_${demoEvent.id}`,
             account_email: "demo@briefly.com",
             account_name: "Demo User",

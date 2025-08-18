@@ -1,6 +1,7 @@
 'use client';
 
-import { userApi, type Integration } from '@/api';
+import { userApi } from '@/api';
+import type { IntegrationResponse } from '@/types/api/user';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import { useEffect, useState } from 'react';
 const OnboardingPage = () => {
     const router = useRouter();
     const { data: session, status } = useSession();
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [integrations, setIntegrations] = useState<IntegrationResponse[]>([]);
     const [connectingProvider, setConnectingProvider] = useState<IntegrationProvider | null>(null);
 
     useEffect(() => {
@@ -26,8 +27,8 @@ const OnboardingPage = () => {
     const loadIntegrations = async () => {
         try {
             const data = await userApi.getIntegrations();
-            // Convert IntegrationResponse to Integration type
-            const convertedIntegrations: Integration[] = (data.integrations || []).map(integration => ({
+            // Convert IntegrationResponse to local format
+            const convertedIntegrations: IntegrationResponse[] = (data.integrations || []).map(integration => ({
                 ...integration,
                 scopes: integration.scopes || [],
                 external_user_id: integration.external_user_id || undefined,

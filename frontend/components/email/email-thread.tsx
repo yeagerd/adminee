@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { safeParseDate } from '@/lib/utils';
-import { EmailThread as EmailThreadType } from "@/types/api/office";
+import { EmailThread as EmailThreadType } from "@/types";
 import { Archive, CalendarRange, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import EmailThreadCard from './email-thread-card';

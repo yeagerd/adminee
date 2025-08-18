@@ -1,6 +1,4 @@
-// TODO: Replace with proper generated types when available
-import type { CalendarEvent } from "@/types/api/office";
-export type EmailMessage = CalendarEvent;
+import type { EmailMessage } from "@/types";
 import React from 'react';
 
 const AISummary: React.FC<{ email: EmailMessage }> = () => {

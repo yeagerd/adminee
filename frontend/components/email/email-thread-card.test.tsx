@@ -1,4 +1,4 @@
-import { EmailMessage } from "@/types/api/office";
+import { EmailMessage, Provider } from "@/types";
 import { render, screen } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
@@ -52,7 +52,7 @@ const baseEmail: EmailMessage = {
     labels: [],
     is_read: true,
     has_attachments: false,
-    provider: 'microsoft',
+    provider: Provider.MICROSOFT,
     provider_message_id: 'pmid',
     account_email: 'user@example.com',
     account_name: 'User'

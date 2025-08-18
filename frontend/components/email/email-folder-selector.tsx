@@ -10,27 +10,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { officeApi } from '@/api';
-// TODO: Replace with proper generated types when available
-export interface EmailFolder {
-    label: string;
-    name: string;
-    provider: 'google' | 'microsoft';
-    provider_folder_id?: string;
-    account_email: string;
-    account_name?: string;
-    is_system: boolean;
-    message_count?: number;
-}
+import type { EmailFolder } from '@/types';
+import { Provider } from '@/types/api/office';
 import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 // Fallback folders in case API fails
 const FALLBACK_FOLDERS: EmailFolder[] = [
-    { label: 'inbox', name: 'Inbox', provider: 'google', account_email: '', is_system: true },
-    { label: 'sent', name: 'Sent', provider: 'google', account_email: '', is_system: true },
-    { label: 'draft', name: 'Drafts', provider: 'google', account_email: '', is_system: true },
-    { label: 'spam', name: 'Spam', provider: 'google', account_email: '', is_system: true },
-    { label: 'trash', name: 'Trash', provider: 'google', account_email: '', is_system: true },
+    { label: 'inbox', name: 'Inbox', provider: Provider.GOOGLE, account_email: '', is_system: true },
+    { label: 'sent', name: 'Sent', provider: Provider.GOOGLE, account_email: '', is_system: true },
+    { label: 'draft', name: 'Drafts', provider: Provider.GOOGLE, account_email: '', is_system: true },
+    { label: 'spam', name: 'Spam', provider: Provider.GOOGLE, account_email: '', is_system: true },
+    { label: 'trash', name: 'Trash', provider: Provider.GOOGLE, account_email: '', is_system: true },
 ];
 
 interface EmailFolderSelectorProps {
@@ -53,8 +44,16 @@ export function EmailFolderSelector({ onFolderSelect, selectedFolder }: EmailFol
 
         try {
             const response = await officeApi.getEmailFolders(activeProviders, true);
-            if (response.success && response.data?.folders) {
-                setFolders(response.data.folders);
+            if (response.success && response.data) {
+                // The generated types don't provide the actual folder structure
+                // We need to cast the data to the expected format
+                const foldersData = response.data as any;
+                if (foldersData.folders && Array.isArray(foldersData.folders)) {
+                    setFolders(foldersData.folders);
+                } else {
+                    console.warn('Unexpected folder data structure, using fallback:', response);
+                    setFolders(FALLBACK_FOLDERS);
+                }
             } else {
                 console.warn('Failed to fetch folders, using fallback:', response);
                 setFolders(FALLBACK_FOLDERS);
