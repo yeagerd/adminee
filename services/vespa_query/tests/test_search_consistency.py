@@ -199,12 +199,15 @@ class TestSearchConsistency:
             assert fields.get("doc_id").strip() != ""
 
     def test_search_query_escaping(self, query_builder):
-        """Test that search queries properly escape special characters."""
-        # Test with quotes
+        """Test that search queries properly escape special characters to prevent YQL injection."""
+        # Test with quotes - should be properly escaped
         query = query_builder.build_search_query(
             'query with "quotes"', "test@example.com"
         )
-        assert 'query with "quotes"' in query["yql"]
+        # The quotes should be escaped (doubled) in the YQL
+        assert 'query with ""quotes""' in query["yql"]
+        # The original unescaped query should NOT be in the YQL (security check)
+        assert 'query with "quotes"' not in query["yql"]
 
         # Test with special characters
         query = query_builder.build_search_query(
@@ -212,11 +215,22 @@ class TestSearchConsistency:
         )
         assert "query with & and < and >" in query["yql"]
 
-        # Test with backslashes
+        # Test with backslashes - should be properly escaped
         query = query_builder.build_search_query(
             "query with \\ backslash", "test@example.com"
         )
-        assert "query with \\ backslash" in query["yql"]
+        # The backslash should be escaped (doubled) in the YQL
+        assert "query with \\\\ backslash" in query["yql"]
+        # The original unescaped query should NOT be in the YQL (security check)
+        assert "query with \\ backslash" not in query["yql"]
+
+        # Test with malicious injection attempt
+        malicious_query = 'query"; DROP TABLE briefly_document; --'
+        query = query_builder.build_search_query(malicious_query, "test@example.com")
+        # The malicious query should be properly escaped
+        assert 'query""; DROP TABLE briefly_document; --' in query["yql"]
+        # The original malicious query should NOT be in the YQL (security check)
+        assert malicious_query not in query["yql"]
 
     def test_empty_search_results_handling(self):
         """Test handling of empty search results."""
