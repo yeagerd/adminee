@@ -41,7 +41,7 @@ type DraftCalendarChange = {
     new_title?: string;
     new_start_time?: string;
     new_end_time?: string;
-    new_attendees?: string;
+    new_attendees?: string[];
     new_location?: string;
     new_description?: string;
     thread_id: string;
