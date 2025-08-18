@@ -359,17 +359,18 @@ class VespaClient:
             return cleaned
         
         # Extract the fields we want to index, mapping to Vespa schema field names
+        # Note: DocumentMapper has already transformed the fields, so we use the transformed names
         vespa_doc = {
             "fields": {
-                "doc_id": document.get("id"),  # Map 'id' to 'doc_id' for Vespa schema
+                "doc_id": document.get("doc_id", document.get("id")),  # DocumentMapper maps 'id' -> 'doc_id'
                 "user_id": document.get("user_id"),
                 "source_type": document.get("source_type", "unknown"),
                 "provider": document.get("provider", "unknown"),
-                "title": document.get("subject", ""),  # Map 'subject' to 'title' for Vespa schema
-                "content": document.get("body", ""),   # Map 'body' to 'content' for Vespa schema
-                "search_text": document.get("body", ""),  # Use body content for search_text
-                "sender": document.get("from", ""),    # Map 'from' to 'sender' for Vespa schema
-                "recipients": document.get("to", []),  # Map 'to' to 'recipients' for Vespa schema
+                "title": document.get("title", document.get("subject", "")),  # DocumentMapper maps 'subject' -> 'title'
+                "content": document.get("content", document.get("body", "")),   # DocumentMapper maps 'body' -> 'content'
+                "search_text": document.get("search_text", document.get("body", "")),  # Use search_text or fallback to body
+                "sender": document.get("sender", document.get("from", "")),    # DocumentMapper maps 'from' -> 'sender'
+                "recipients": document.get("recipients", document.get("to", [])),  # DocumentMapper maps 'to' -> 'recipients'
                 "thread_id": document.get("thread_id", ""),
                 "folder": document.get("folder", ""),
                 "created_at": parse_datetime_to_timestamp(document.get("created_at", "")),
@@ -389,7 +390,8 @@ class VespaClient:
     def _generate_document_id(self, document: Dict[str, Any]) -> str:
         """Generate a unique document ID for Vespa"""
         # Use a combination of fields to create a unique ID
-        doc_id = document.get("id", "")
+        # DocumentMapper maps 'id' -> 'doc_id', so check both
+        doc_id = document.get("doc_id", document.get("id", ""))
         source_type = document.get("source_type", "unknown")
         provider = document.get("provider", "unknown")
 

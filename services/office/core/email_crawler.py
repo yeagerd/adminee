@@ -243,23 +243,41 @@ class EmailCrawler:
                         # The office service already provides normalized data - convert to backfill format
                         emails = []
                         for msg in data["data"]["messages"]:
+                            # Extract text content from HTML if body_text is empty
+                            body_content = msg.get("body_text", "")
+                            if not body_content and msg.get("body_html"):
+                                # Simple HTML to text extraction - remove HTML tags
+                                import re
+                                html_content = msg.get("body_html", "")
+                                # Remove HTML tags and decode HTML entities
+                                body_content = re.sub(r'<[^>]+>', '', html_content)
+                                body_content = body_content.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                                body_content = re.sub(r'\s+', ' ', body_content).strip()
+                            
+                            # Ensure we have some content
+                            if not body_content:
+                                body_content = msg.get("snippet", "No content available")
+                            
+                            # Extract sender email
+                            sender_email = ""
+                            if msg.get("from_address"):
+                                sender_email = msg.get("from_address", {}).get("email", "")
+                            
+                            # Extract recipient emails
+                            recipient_emails = []
+                            if msg.get("to_addresses"):
+                                recipient_emails = [addr.get("email", "") for addr in msg.get("to_addresses", []) if addr.get("email")]
+                            
                             # Convert normalized EmailMessage to backfill format
                             email = {
                                 "id": msg.get("provider_message_id", msg.get("id")),
                                 "user_id": self.user_id,
                                 "provider": provider_str,
                                 "type": "email",
-                                "subject": msg.get("subject", ""),
-                                "body": msg.get("body_text", msg.get("snippet", "")),
-                                "from": (
-                                    msg.get("from_address", {}).get("email", "")
-                                    if msg.get("from_address")
-                                    else ""
-                                ),
-                                "to": [
-                                    addr.get("email", "")
-                                    for addr in msg.get("to_addresses", [])
-                                ],
+                                "subject": msg.get("subject", "No Subject"),
+                                "body": body_content,
+                                "from": sender_email,
+                                "to": recipient_emails,
                                 "thread_id": msg.get("thread_id", ""),
                                 "folder": (
                                     msg.get("labels", ["inbox"])[0]

@@ -990,7 +990,8 @@ class VespaSearchDemo:
 
                 for i, doc in enumerate(docs, 1):
                     fields = doc.get("fields", {})
-                    doc_id = fields.get("doc_id", "unknown")
+                    # Use the correct Vespa field names that match DocumentMapper output
+                    doc_id = fields.get("doc_id", "unknown")  # DocumentMapper maps 'id' -> 'doc_id'
 
                     print(f"\n{i:3d}. 📄 Document ID: {doc_id}")
                     print(f"    {'─' * 60}")
@@ -1011,36 +1012,75 @@ class VespaSearchDemo:
 
                     if fields.get("content"):
                         content = fields.get("content")
-                        print(f"    📄 Content ({len(content)} chars):")
-                        # Show first 200 chars, then truncate
-                        if len(content) > 200:
-                            print(f"      {content[:200]}...")
+                        # Calculate word count for better content understanding
+                        word_count = len(content.split()) if content else 0
+                        print(f"    📄 Content ({len(content)} chars, {word_count} words):")
+                        
+                        # Show more content for emails - first 1000 chars or ~150 words
+                        if len(content) > 1000:
+                            # Find a good break point near 1000 chars
+                            preview = content[:1000]
+                            # Try to break at a sentence or word boundary
+                            last_period = preview.rfind('.')
+                            last_space = preview.rfind(' ')
+                            if last_period > 800:  # If we have a sentence break in reasonable range
+                                preview = preview[:last_period + 1]
+                            elif last_space > 900:  # Otherwise break at word boundary
+                                preview = preview[:last_space]
+                            
+                            print(f"      {preview}...")
+                            print(f"      [Content truncated. Full content: {len(content)} chars, {word_count} words]")
                         else:
                             print(f"      {content}")
 
                     if fields.get("search_text"):
                         search_text = fields.get("search_text")
-                        print(f"    🔍 Search Text ({len(search_text)} chars):")
-                        if len(search_text) > 300:
-                            print(f"      {search_text[:300]}...")
+                        search_word_count = len(search_text.split()) if search_text else 0
+                        print(f"    🔍 Search Text ({len(search_text)} chars, {search_word_count} words):")
+                        if len(search_text) > 500:
+                            print(f"      {search_text[:500]}...")
                         else:
                             print(f"      {search_text}")
 
                     # Type-specific fields
                     if doc_type == "email":
-                        print(f"    📧 From: {fields.get('sender', 'Unknown')}")
+                        # Use the correct Vespa field names from DocumentMapper
+                        print(f"    📧 From: {fields.get('sender', 'Unknown')}")  # DocumentMapper maps 'from' -> 'sender'
                         print(
-                            f"    📮 To: {', '.join(fields.get('recipients', ['Unknown']))}"
+                            f"    📮 To: {', '.join(fields.get('recipients', ['Unknown']))}"  # DocumentMapper maps 'to' -> 'recipients'
                         )
                         print(f"    📂 Folder: {fields.get('folder', 'Unknown')}")
                         print(f"    🧵 Thread: {fields.get('thread_id', 'N/A')}")
 
-                        # Email metadata
+                        # Enhanced email metadata display
                         metadata = fields.get("metadata", {})
                         if metadata:
-                            print(f"    📊 Metadata:")
+                            print(f"    📊 Email Metadata:")
+                            # Show important email metadata first
+                            important_keys = ['is_read', 'is_important', 'has_attachments', 'labels']
+                            for key in important_keys:
+                                if key in metadata:
+                                    value = metadata[key]
+                                    if key == 'labels' and isinstance(value, list):
+                                        if value:
+                                            print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                        else:
+                                            print(f"      • {key}: (empty)")
+                                    else:
+                                        print(f"      • {key}: {value}")
+                            
+                            # Show other metadata
                             for key, value in metadata.items():
-                                print(f"      • {key}: {value}")
+                                if key not in important_keys:
+                                    if isinstance(value, (list, dict)):
+                                        if isinstance(value, list) and value:
+                                            print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                        elif isinstance(value, dict) and value:
+                                            print(f"      • {key}: {dict(list(value.items())[:3])}...")
+                                        else:
+                                            print(f"      • {key}: (empty)")
+                                    else:
+                                        print(f"      • {key}: {value}")
 
                     elif doc_type == "calendar":
                         print(f"    📅 Start: {fields.get('start_time', 'Unknown')}")
@@ -1066,19 +1106,61 @@ class VespaSearchDemo:
                         )
                         print(f"    🏠 Address: {fields.get('address', 'No address')}")
 
-                    # Raw fields for debugging
+                    # Raw fields for debugging - show only the most useful ones
                     print(f"    🔧 Raw Fields:")
+                    useful_fields = [
+                        'doc_id', 'source_type', 'provider', 'created_at', 'updated_at',
+                        'thread_id', 'folder', 'sender', 'recipients', 'title', 'content', 'search_text'
+                    ]
                     for key, value in fields.items():
-                        if key not in [
-                            "content",
-                            "search_text",
-                        ]:  # Skip long content fields
+                        if key in useful_fields:
                             if isinstance(value, (list, dict)):
-                                print(
-                                    f"      • {key}: {type(value).__name__} ({len(value) if hasattr(value, '__len__') else 'N/A'})"
-                                )
+                                if isinstance(value, list) and value:
+                                    if len(value) <= 3:
+                                        print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                    else:
+                                        print(f"      • {key}: {', '.join(str(v) for v in value[:3])}... (and {len(value)-3} more)")
+                                elif isinstance(value, dict) and value:
+                                    print(f"      • {key}: {dict(list(value.items())[:3])}...")
+                                else:
+                                    print(f"      • {key}: (empty)")
                             else:
                                 print(f"      • {key}: {value}")
+                    
+                    # Show a few other interesting fields that might be present
+                    other_interesting = ['search_text', 'metadata']
+                    for key in other_interesting:
+                        if key in fields and key not in useful_fields:
+                            value = fields[key]
+                            if key == 'search_text':
+                                preview = str(value)[:100] if value else "(empty)"
+                                print(f"      • {key}: {preview}...")
+                            elif key == 'metadata':
+                                if isinstance(value, dict) and value:
+                                    print(f"      • {key}: {len(value)} metadata items")
+                                else:
+                                    print(f"      • {key}: (empty)")
+                    
+                    # Debug: Show all available fields to understand document structure
+                    print(f"    🔍 All Available Fields:")
+                    for key, value in fields.items():
+                        if key not in useful_fields + other_interesting:
+                            if isinstance(value, (list, dict)):
+                                if isinstance(value, list) and value:
+                                    if len(value) <= 5:
+                                        print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                    else:
+                                        print(f"      • {key}: {', '.join(str(v) for v in value[:5])}... (and {len(value)-5} more)")
+                                elif isinstance(value, dict) and value:
+                                    print(f"      • {key}: {dict(list(value.items())[:5])}...")
+                                else:
+                                    print(f"      • {key}: (empty)")
+                            else:
+                                # For string values, show preview if long
+                                if isinstance(value, str) and len(value) > 100:
+                                    print(f"      • {key}: {value[:100]}...")
+                                else:
+                                    print(f"      • {key}: {value}")
 
                     print(f"    {'─' * 60}")
 
@@ -1091,6 +1173,28 @@ class VespaSearchDemo:
             print(
                 f"Document Types: {', '.join(f'{t}: {len(docs)}' for t, docs in docs_by_type.items())}"
             )
+            
+            # Content statistics
+            total_content_chars = 0
+            total_content_words = 0
+            content_docs = 0
+            
+            for doc in all_documents:
+                fields = doc.get("fields", {})
+                content = fields.get("content", "")
+                if content:
+                    total_content_chars += len(content)
+                    total_content_words += len(content.split())
+                    content_docs += 1
+            
+            if content_docs > 0:
+                avg_chars = total_content_chars / content_docs
+                avg_words = total_content_words / content_docs
+                print(f"Content Statistics:")
+                print(f"  • Documents with content: {content_docs}")
+                print(f"  • Total content: {total_content_chars:,} characters, {total_content_words:,} words")
+                print(f"  • Average per document: {avg_chars:.0f} chars, {avg_words:.0f} words")
+            
             print(f"Query Time: {query_time:.2f}ms")
             print(f"Vespa Endpoint: {self.vespa_endpoint}")
             print(f"{'='*80}")
