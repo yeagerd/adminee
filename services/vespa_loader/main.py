@@ -129,7 +129,7 @@ app.add_middleware(
 )
 
 # Add request logging middleware
-app.add_middleware(create_request_logging_middleware())
+app.middleware("http")(create_request_logging_middleware())
 
 # Register exception handlers
 register_briefly_exception_handlers(app)
@@ -473,6 +473,97 @@ async def _post_process_batch(successful_docs: int, failed_docs: int) -> None:
         # For example: update analytics, send notifications, etc.
     except Exception as e:
         logger.error(f"Error in batch post-processing: {e}")
+
+
+@app.get("/debug/pubsub")
+async def debug_pubsub_status() -> Dict[str, Any]:
+    """Debug endpoint to check Pub/Sub consumer status"""
+    if not pubsub_consumer:
+        return {"status": "error", "message": "Pub/Sub consumer not initialized"}
+    
+    try:
+        stats = pubsub_consumer.get_stats()
+        return {
+            "status": "success",
+            "pubsub_consumer": stats,
+            "settings": {
+                "project_id": pubsub_consumer.settings.pubsub_project_id,
+                "emulator_host": pubsub_consumer.settings.pubsub_emulator_host,
+                "enable_consumer": pubsub_consumer.settings.enable_pubsub_consumer,
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/debug/pubsub/trigger")
+async def debug_trigger_pubsub_processing() -> Dict[str, Any]:
+    """Debug endpoint to manually trigger Pub/Sub message processing"""
+    if not pubsub_consumer:
+        return {"status": "error", "message": "Pub/Sub consumer not initialized"}
+    
+    try:
+        # Check if there are any pending messages in batches
+        pending_messages = {}
+        for topic_name, batch in pubsub_consumer.message_batches.items():
+            if batch:
+                pending_messages[topic_name] = len(batch)
+        
+        if not pending_messages:
+            return {
+                "status": "info", 
+                "message": "No pending messages to process",
+                "pending_messages": pending_messages
+            }
+        
+        # Process all pending batches
+        results = {}
+        for topic_name, config in pubsub_consumer.topics.items():
+            if pubsub_consumer.message_batches[topic_name]:
+                try:
+                    await pubsub_consumer._process_batch(topic_name, config)
+                    results[topic_name] = "processed"
+                except Exception as e:
+                    results[topic_name] = f"error: {str(e)}"
+        
+        return {
+            "status": "success",
+            "message": "Manually triggered batch processing",
+            "pending_messages": pending_messages,
+            "processing_results": results
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/debug/vespa")
+async def debug_vespa_status() -> Dict[str, Any]:
+    """Debug endpoint to check Vespa connection and stats"""
+    if not vespa_client:
+        return {"status": "error", "message": "Vespa client not initialized"}
+    
+    try:
+        # Test Vespa connection
+        connection_ok = await vespa_client.test_connection()
+        
+        # Get document count for test user
+        test_user_id = "trybriefly@outlook.com"
+        try:
+            doc_count = await vespa_client.get_document_count(test_user_id)
+        except Exception as e:
+            doc_count = f"error: {str(e)}"
+        
+        return {
+            "status": "success",
+            "vespa_connection": connection_ok,
+            "vespa_endpoint": vespa_client.endpoint,
+            "test_user_document_count": doc_count,
+            "test_user_id": test_user_id
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":

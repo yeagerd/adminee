@@ -50,23 +50,36 @@ gcloud pubsub topics create contact-updates \
 # Create subscriptions
 echo "Creating subscriptions..."
 
-# Email router subscription
-echo "Creating email-router-subscription..."
+# Router subscriptions
+echo "Creating router subscriptions..."
 gcloud pubsub subscriptions create email-router-subscription \
     --topic=email-backfill \
     --project=$PUBSUB_PROJECT_ID \
     --quiet
 
-# Calendar router subscription
-echo "Creating calendar-router-subscription..."
 gcloud pubsub subscriptions create calendar-router-subscription \
     --topic=calendar-updates \
     --project=$PUBSUB_PROJECT_ID \
     --quiet
 
-# Contact router subscription
-echo "Creating contact-router-subscription..."
 gcloud pubsub subscriptions create contact-router-subscription \
+    --topic=contact-updates \
+    --project=$PUBSUB_PROJECT_ID \
+    --quiet
+
+# Vespa loader subscriptions
+echo "Creating vespa-loader subscriptions..."
+gcloud pubsub subscriptions create vespa-loader-email-backfill \
+    --topic=email-backfill \
+    --project=$PUBSUB_PROJECT_ID \
+    --quiet
+
+gcloud pubsub subscriptions create vespa-loader-calendar-updates \
+    --topic=calendar-updates \
+    --project=$PUBSUB_PROJECT_ID \
+    --quiet
+
+gcloud pubsub subscriptions create vespa-loader-contact-updates \
     --topic=contact-updates \
     --project=$PUBSUB_PROJECT_ID \
     --quiet

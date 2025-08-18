@@ -43,7 +43,7 @@ class PubSubConsumer:
         self.processed_count = 0
         self.error_count = 0
 
-        # Topic configurations
+        # Configure topics and their processors
         self.topics = {
             "email-backfill": {
                 "subscription_name": "vespa-loader-email-backfill",
@@ -79,6 +79,11 @@ class PubSubConsumer:
             return False
 
         try:
+            logger.info("Starting Pub/Sub consumer...")
+            logger.info(f"Project ID: {self.settings.pubsub_project_id}")
+            logger.info(f"Emulator host: {self.settings.pubsub_emulator_host}")
+            logger.info(f"Topics configured: {list(self.topics.keys())}")
+            
             # Initialize subscriber client with emulator configuration
             if hasattr(self.settings, "pubsub_emulator_host"):
                 # Use local emulator
@@ -90,9 +95,11 @@ class PubSubConsumer:
                 )
 
             self.subscriber = pubsub_v1.SubscriberClient()
+            logger.info("Pub/Sub subscriber client initialized")
 
             # Store event loop reference for cross-thread communication
             self.loop = asyncio.get_running_loop()
+            logger.info("Event loop reference stored")
 
             # Create subscriptions if they don't exist
             await self._ensure_subscriptions()
@@ -111,6 +118,7 @@ class PubSubConsumer:
 
     async def stop(self) -> None:
         """Stop the Pub/Sub consumer"""
+        logger.info("Stopping Pub/Sub consumer...")
         self.running = False
 
         # Cancel all subscriptions
@@ -134,32 +142,80 @@ class PubSubConsumer:
     async def _ensure_subscriptions(self) -> None:
         """Ensure all required subscriptions exist"""
         if not self.subscriber:
+            logger.error("Subscriber not initialized")
             return
 
+        logger.info("Ensuring subscriptions exist...")
         for topic_name, config in self.topics.items():
             try:
                 subscription_path = self.subscriber.subscription_path(
                     self.settings.pubsub_project_id, config["subscription_name"]
                 )
 
-                # Check if subscription exists (this is a simplified check)
-                # In production, you might want to create subscriptions if they don't exist
+                # Check if subscription exists and create if it doesn't
                 logger.info(f"Subscription path for {topic_name}: {subscription_path}")
+                logger.info(f"Subscription name: {config['subscription_name']}")
+                
+                # Try to create the subscription using REST API
+                await self._create_subscription_if_not_exists(topic_name, config)
 
             except Exception as e:
                 logger.error(f"Error setting up subscription for {topic_name}: {e}")
+
+    async def _create_subscription_if_not_exists(self, topic_name: str, config: Dict[str, Any]) -> None:
+        """Create a subscription if it doesn't exist using Python Pub/Sub client"""
+        try:
+            import asyncio
+            
+            subscription_name = config['subscription_name']
+            topic_path = f"projects/{self.settings.pubsub_project_id}/topics/{topic_name}"
+            subscription_path = f"projects/{self.settings.pubsub_project_id}/subscriptions/{subscription_name}"
+            
+            # Check if subscription already exists by trying to get it
+            try:
+                # Use the subscriber client to check if subscription exists
+                subscription = self.subscriber.get_subscription(request={"subscription": subscription_path})
+                if subscription:
+                    logger.info(f"Subscription {subscription_name} already exists for topic {topic_name}")
+                    return
+            except Exception:
+                # Subscription doesn't exist, create it
+                pass
+            
+            # Create the subscription using the subscriber client
+            try:
+                # The subscriber client can create subscriptions
+                subscription = self.subscriber.create_subscription(
+                    request={
+                        "name": subscription_path,
+                        "topic": topic_path
+                    }
+                )
+                logger.info(f"Successfully created subscription {subscription_name} for topic {topic_name}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to create subscription {subscription_name} using subscriber client: {e}")
+                
+        except Exception as e:
+            logger.warning(f"Could not create subscription {config['subscription_name']} for topic {topic_name}: {e}")
+            # Don't fail startup if subscription creation fails
 
     async def _start_topic_consumer(
         self, topic_name: str, config: Dict[str, Any]
     ) -> None:
         """Start consuming from a specific topic using async callbacks"""
         if not self.subscriber:
+            logger.error("Subscriber not initialized")
             return
 
         try:
             subscription_path = self.subscriber.subscription_path(
                 self.settings.pubsub_project_id, config["subscription_name"]
             )
+
+            logger.info(f"Starting consumer for topic: {topic_name}")
+            logger.info(f"Subscription path: {subscription_path}")
+            logger.info(f"Batch size: {config['batch_size']}")
 
             # Use the subscribe method with callbacks instead of polling
             subscription = self.subscriber.subscribe(
@@ -189,28 +245,37 @@ class PubSubConsumer:
 
         def message_callback(message: Any) -> None:
             try:
+                logger.debug(f"Received message from {topic_name}: {message.message_id}")
+                logger.debug(f"Message data length: {len(message.data)} bytes")
+                
                 # Parse message data
                 data = json.loads(message.data.decode("utf-8"))
+                logger.debug(f"Parsed message data: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}")
 
                 # Add to batch
                 self.message_batches[topic_name].append(
                     {"message": message, "data": data, "timestamp": time.time()}
                 )
+                logger.debug(f"Added message to batch for {topic_name}. Batch size: {len(self.message_batches[topic_name])}")
 
-                # Process batch if it's full or start timer for partial batch
+                # Process batch if it's full
                 if len(self.message_batches[topic_name]) >= config["batch_size"]:
+                    logger.info(f"Batch full for {topic_name}, processing immediately")
                     # Schedule async processing
                     if self.loop:
                         asyncio.run_coroutine_threadsafe(
                             self._process_batch(topic_name, config), self.loop
                         )
                 else:
-                    # Start timer for partial batch
-                    if self.loop:
-                        asyncio.run_coroutine_threadsafe(
-                            self._schedule_batch_processing(topic_name, config),
-                            self.loop,
-                        )
+                    # Only start timer if one doesn't already exist
+                    if topic_name not in self.batch_timers or not self.batch_timers[topic_name] or self.batch_timers[topic_name].done():
+                        logger.debug(f"Starting timer for partial batch in {topic_name}")
+                        # Start timer for partial batch
+                        if self.loop:
+                            asyncio.run_coroutine_threadsafe(
+                                self._schedule_batch_processing(topic_name, config),
+                                self.loop,
+                            )
 
             except Exception as e:
                 logger.error(f"Error handling message from {topic_name}: {e}")
@@ -223,13 +288,15 @@ class PubSubConsumer:
         self, topic_name: str, config: Dict[str, Any]
     ) -> None:
         """Schedule batch processing for a topic"""
-        # Cancel existing timer if any
+        # Only create timer if one doesn't exist or is done
         if topic_name in self.batch_timers and self.batch_timers[topic_name]:
             timer = self.batch_timers[topic_name]
             if timer and not timer.done():
-                timer.cancel()
+                logger.info(f"Timer already exists for {topic_name}, skipping")
+                return
 
         # Create new timer
+        logger.info(f"Creating timer for {topic_name} with {self.batch_timeout}s delay")
         self.batch_timers[topic_name] = asyncio.create_task(
             self._delayed_batch_processing(topic_name, config)
         )
@@ -238,20 +305,25 @@ class PubSubConsumer:
         self, topic_name: str, config: Dict[str, Any]
     ) -> None:
         """Process batch after timeout delay"""
+        logger.info(f"Timer expired for {topic_name}, processing batch")
         await asyncio.sleep(self.batch_timeout)
 
         if self.message_batches[topic_name]:
             await self._process_batch(topic_name, config)
+        else:
+            logger.info(f"No messages in batch for {topic_name} after timer")
 
     async def _process_batch(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Process a batch of messages"""
         if not self.message_batches[topic_name]:
+            logger.info(f"No messages to process for {topic_name}")
             return
 
         batch = self.message_batches[topic_name]
         self.message_batches[topic_name] = []
-
+        
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
+        logger.info(f"Message IDs: {[item['data'].get('id', 'unknown') for item in batch]}")
 
         # Process messages in parallel
         tasks = []
@@ -287,12 +359,15 @@ class PubSubConsumer:
         try:
             # Call the appropriate processor
             processor = config["processor"]
+            message_id = item['data'].get('id', 'unknown')
+            user_id = item['data'].get('user_id', 'unknown')
+            
             logger.info(
-                f"Calling processor for message from {topic_name}: {item['data'].get('id', 'unknown')}"
+                f"Calling processor for message from {topic_name}: {message_id} for user {user_id}"
             )
             result = await processor(item["data"])
             logger.info(
-                f"Successfully processed message from {topic_name}: {item['data'].get('id', 'unknown')}"
+                f"Successfully processed message from {topic_name}: {message_id}"
             )
             return result
 
@@ -302,17 +377,25 @@ class PubSubConsumer:
 
     async def _process_email_message(self, data: Dict[str, Any]) -> None:
         """Process an email message for Vespa indexing"""
+        message_id = data.get('id', 'unknown')
+        user_id = data.get('user_id', 'unknown')
+        
         logger.info(
-            f"Processing email message: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}"
+            f"Processing email message: {message_id} for user {user_id}"
         )
+        logger.info(f"Email subject: {data.get('subject', 'no subject')}")
+        logger.info(f"Email provider: {data.get('provider', 'unknown')}")
 
         # Call the ingest endpoint to index the document
         await self._call_ingest_endpoint(data)
 
     async def _process_calendar_message(self, data: Dict[str, Any]) -> None:
         """Process a calendar message for Vespa indexing"""
+        message_id = data.get('id', 'unknown')
+        user_id = data.get('user_id', 'unknown')
+        
         logger.info(
-            f"Processing calendar message: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}"
+            f"Processing calendar message: {message_id} for user {user_id}"
         )
 
         # Call the ingest endpoint to index the document
@@ -320,8 +403,11 @@ class PubSubConsumer:
 
     async def _process_contact_message(self, data: Dict[str, Any]) -> None:
         """Process a contact message for Vespa indexing"""
+        message_id = data.get('id', 'unknown')
+        user_id = data.get('user_id', 'unknown')
+        
         logger.info(
-            f"Processing contact message: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}"
+            f"Processing contact message: {message_id} for user {user_id}"
         )
 
         # Call the ingest endpoint to index the document
@@ -332,55 +418,57 @@ class PubSubConsumer:
         try:
             import httpx
 
+            message_id = data.get('id')
+            user_id = data.get('user_id')
+            
             logger.info(
-                f"Starting ingest for document {data.get('id')} from user {data.get('user_id')}"
+                f"Starting ingest for document {message_id} from user {user_id}"
             )
 
             # Determine the source type from the data
             source_type = data.get("type", "email")  # Default to email
 
             # Map the data to the expected format for the ingest endpoint
+            # Note: Ingest endpoint expects 'id', DocumentMapper will map it to 'doc_id' for Vespa
             document_data = {
-                "id": data.get("id"),
+                "id": data.get("id"),  # Keep as 'id' for ingest endpoint validation
                 "user_id": data.get("user_id"),
-                "source_type": source_type,
+                "type": source_type,  # Add type field for DocumentMapper
                 "provider": data.get("provider"),
-                "subject": data.get("subject", ""),
-                "body": data.get("body", ""),
-                "from": data.get("from", ""),
-                "to": data.get("to", []),
+                "subject": data.get("subject", ""),  # Keep original field names
+                "body": data.get("body", ""),       # Keep original field names
+                "from": data.get("from", ""),       # Keep original field names
+                "to": data.get("to", []),           # Keep original field names
                 "thread_id": data.get("thread_id", ""),
                 "folder": data.get("folder", ""),
                 "created_at": data.get("created_at"),
                 "updated_at": data.get("updated_at"),
                 "metadata": data.get("metadata", {}),
-                "timestamp": data.get("timestamp"),
+                # Remove 'timestamp' as it's not in Vespa schema
             }
 
             logger.info(f"Document data prepared: {document_data}")
+            logger.info(f"Making HTTP POST to ingest endpoint for document {message_id}")
 
             # Call the ingest endpoint
             async with httpx.AsyncClient() as client:
-                logger.info(
-                    f"Making HTTP POST to ingest endpoint for document {data.get('id')}"
-                )
                 response = await client.post(
                     "http://localhost:9001/ingest", json=document_data, timeout=30.0
                 )
 
                 logger.info(
-                    f"Received response for document {data.get('id')}: {response.status_code}"
+                    f"Received response for document {message_id}: {response.status_code}"
                 )
 
                 if response.status_code == 200:
                     result = response.json()
                     logger.info(
-                        f"Successfully indexed document {data.get('id')}: {result}"
+                        f"Successfully indexed document {message_id}: {result}"
                     )
                     return result
                 else:
                     logger.error(
-                        f"Failed to index document {data.get('id')}: {response.status_code} - {response.text}"
+                        f"Failed to index document {message_id}: {response.status_code} - {response.text}"
                     )
                     raise Exception(f"HTTP {response.status_code}: {response.text}")
 
@@ -392,7 +480,7 @@ class PubSubConsumer:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get consumer statistics"""
-        return {
+        stats = {
             "running": self.running,
             "processed_count": self.processed_count,
             "error_count": self.error_count,
@@ -400,4 +488,12 @@ class PubSubConsumer:
                 topic: len(batch) for topic, batch in self.message_batches.items()
             },
             "subscriptions": list(self.subscriptions.keys()),
+            "subscription_details": {
+                topic: {
+                    "active": sub.get("active", False),
+                    "path": sub.get("path", "unknown")
+                } for topic, sub in self.subscriptions.items()
+            }
         }
+        logger.info(f"Consumer stats: {stats}")
+        return stats

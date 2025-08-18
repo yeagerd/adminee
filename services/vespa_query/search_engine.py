@@ -155,6 +155,7 @@ class SearchEngine:
                     "hits": limit,
                     "timeout": "2.0s",
                     "ranking": "autocomplete",
+                    "streaming.groupname": user_id,  # Add streaming group parameter
                 }
 
                 url = f"{self.vespa_endpoint}/search/"
@@ -228,6 +229,7 @@ class SearchEngine:
                     "timeout": "5.0s",
                     "ranking": "similarity",
                     "ranking.features.query(queryEmbedding)": "embedding",
+                    "streaming.groupname": user_id,  # Add streaming group parameter
                 }
 
                 url = f"{self.vespa_endpoint}/search/"
@@ -298,6 +300,7 @@ class SearchEngine:
                     "hits": 0,  # We only want facets, not documents
                     "timeout": "5.0s",
                     "presentation.timing": True,
+                    "streaming.groupname": user_id,  # Add streaming group parameter
                 }
 
                 # Add facet specifications
@@ -378,6 +381,7 @@ class SearchEngine:
                     "timeout": "5.0s",
                     "ranking": "trending",
                     "ranking.features.query(timeDecay)": time_range,
+                    "streaming.groupname": user_id,  # Add streaming group parameter
                 }
 
                 url = f"{self.vespa_endpoint}/search/"
@@ -445,6 +449,7 @@ class SearchEngine:
                     "hits": 0,  # We only want analytics, not documents
                     "timeout": "10.0s",
                     "presentation.timing": True,
+                    "streaming.groupname": user_id,  # Add streaming group parameter
                     "grouping": {
                         "source_type": {"count": 100},
                         "provider": {"count": 100},

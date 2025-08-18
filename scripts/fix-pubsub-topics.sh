@@ -40,6 +40,9 @@ done
 
 # Create subscriptions
 echo "Creating subscriptions..."
+
+# Router subscriptions
+echo "Creating router subscriptions..."
 gcloud pubsub subscriptions create email-router-subscription \
     --topic=email-backfill \
     --project=$PUBSUB_PROJECT_ID \
@@ -51,6 +54,23 @@ gcloud pubsub subscriptions create calendar-router-subscription \
     --quiet || echo "Subscription may already exist"
 
 gcloud pubsub subscriptions create contact-router-subscription \
+    --topic=contact-updates \
+    --project=$PUBSUB_PROJECT_ID \
+    --quiet || echo "Subscription may already exist"
+
+# Vespa loader subscriptions
+echo "Creating vespa-loader subscriptions..."
+gcloud pubsub subscriptions create vespa-loader-email-backfill \
+    --topic=email-backfill \
+    --project=$PUBSUB_PROJECT_ID \
+    --quiet || echo "Subscription may already exist"
+
+gcloud pubsub subscriptions create vespa-loader-calendar-updates \
+    --topic=calendar-updates \
+    --project=$PUBSUB_PROJECT_ID \
+    --quiet || echo "Subscription may already exist"
+
+gcloud pubsub subscriptions create vespa-loader-contact-updates \
     --topic=contact-updates \
     --project=$PUBSUB_PROJECT_ID \
     --quiet || echo "Subscription may already exist"

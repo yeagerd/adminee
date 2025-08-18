@@ -281,10 +281,11 @@ class VespaClient:
                 await self.start()
 
             try:
-                # Use a simple search query to get count
+                # Use streaming search query to get count for the specific user group
                 search_query = {
-                    "yql": f'select count() from briefly_document where user_id="{user_id}"',
+                    "yql": f'select count() from briefly_document where user_id contains "{user_id}"',
                     "timeout": "5.0s",
+                    "streaming.groupname": user_id,  # Add streaming group parameter
                 }
 
                 url = f"{self.vespa_endpoint}/search/"
@@ -327,27 +328,58 @@ class VespaClient:
         self, document: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Prepare a document for Vespa indexing"""
-        # Extract the fields we want to index
+        # Helper function to convert ISO datetime to Unix timestamp
+        def parse_datetime_to_timestamp(datetime_str: str) -> int:
+            """Convert ISO datetime string to Unix timestamp (seconds since epoch)"""
+            try:
+                from datetime import datetime
+                # Parse the ISO datetime string
+                dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+                # Convert to Unix timestamp (seconds since epoch)
+                return int(dt.timestamp())
+            except (ValueError, TypeError):
+                # If parsing fails, return current timestamp as fallback
+                from datetime import datetime, timezone
+                return int(datetime.now(timezone.utc).timestamp())
+        
+        # Helper function to clean metadata for Vespa schema
+        def clean_metadata_for_vespa(metadata: Any) -> Dict[str, str]:
+            """Clean metadata to ensure it only contains string values for Vespa map<string,string>"""
+            if not isinstance(metadata, dict):
+                return {}
+            
+            cleaned = {}
+            for key, value in metadata.items():
+                if isinstance(key, str) and isinstance(value, str):
+                    cleaned[key] = value
+                elif isinstance(key, str) and value is not None:
+                    # Convert non-string values to strings
+                    cleaned[key] = str(value)
+            
+            return cleaned
+        
+        # Extract the fields we want to index, mapping to Vespa schema field names
         vespa_doc = {
             "fields": {
-                "id": document.get("id"),
+                "doc_id": document.get("id"),  # Map 'id' to 'doc_id' for Vespa schema
                 "user_id": document.get("user_id"),
                 "source_type": document.get("source_type", "unknown"),
                 "provider": document.get("provider", "unknown"),
-                "subject": document.get("subject", ""),
-                "body": document.get("body", ""),
-                "from_address": document.get("from", ""),
-                "to_addresses": document.get("to", []),
+                "title": document.get("subject", ""),  # Map 'subject' to 'title' for Vespa schema
+                "content": document.get("body", ""),   # Map 'body' to 'content' for Vespa schema
+                "search_text": document.get("body", ""),  # Use body content for search_text
+                "sender": document.get("from", ""),    # Map 'from' to 'sender' for Vespa schema
+                "recipients": document.get("to", []),  # Map 'to' to 'recipients' for Vespa schema
                 "thread_id": document.get("thread_id", ""),
                 "folder": document.get("folder", ""),
-                "created_at": document.get("created_at"),
-                "updated_at": document.get("updated_at"),
-                "metadata": document.get("metadata", {}),
-                "timestamp": document.get("timestamp"),
+                "created_at": parse_datetime_to_timestamp(document.get("created_at", "")),
+                "updated_at": parse_datetime_to_timestamp(document.get("updated_at", "")),
+                "metadata": clean_metadata_for_vespa(document.get("metadata", {})),
+                # Remove 'timestamp' as it's not in Vespa schema
             }
         }
 
-        # Add any additional fields that might be present
+        # Add any additional fields that might be present (but avoid duplicates)
         for key, value in document.items():
             if key not in vespa_doc["fields"] and value is not None:
                 vespa_doc["fields"][key] = value
