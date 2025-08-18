@@ -205,9 +205,7 @@ async def autocomplete(
         if not search_engine:
             raise HTTPException(status_code=500, detail="Search engine not initialized")
 
-        vespa_results = await search_engine.autocomplete(
-            query, user_id, max_suggestions
-        )
+        vespa_results = await search_engine.autocomplete(autocomplete_query)
 
         # Process results
         if not result_processor:
@@ -248,7 +246,7 @@ async def find_similar(
         if not search_engine:
             raise HTTPException(status_code=500, detail="Search engine not initialized")
 
-        vespa_results = await search_engine.find_similar(document_id, user_id, max_hits)
+        vespa_results = await search_engine.find_similar(similarity_query)
 
         # Process results
         if not result_processor:
@@ -295,7 +293,7 @@ async def get_facets(
         if not search_engine:
             raise HTTPException(status_code=500, detail="Search engine not initialized")
 
-        vespa_results = await search_engine.get_facets(user_id)
+        vespa_results = await search_engine.get_facets(facets_query)
 
         # Process results
         if not result_processor:
@@ -334,7 +332,7 @@ async def get_trending(
         if not search_engine:
             raise HTTPException(status_code=500, detail="Search engine not initialized")
 
-        vespa_results = await search_engine.get_trending(user_id, time_range, max_hits)
+        vespa_results = await search_engine.get_trending(trending_query)
 
         # Process results
         if not result_processor:
@@ -372,7 +370,7 @@ async def get_analytics(
         if not search_engine:
             raise HTTPException(status_code=500, detail="Search engine not initialized")
 
-        vespa_results = await search_engine.get_analytics(user_id, time_range)
+        vespa_results = await search_engine.get_analytics(analytics_query)
 
         # Process results
         if not result_processor:

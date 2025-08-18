@@ -132,31 +132,21 @@ class SearchEngine:
                 span.record_exception(e)
                 raise
 
-    async def autocomplete(
-        self, query: str, user_id: str, limit: int = 10
-    ) -> Dict[str, Any]:
+    async def autocomplete(self, autocomplete_query: Dict[str, Any]) -> Dict[str, Any]:
         """Execute an autocomplete query"""
         with tracer.start_as_current_span("vespa.autocomplete") as span:
             span.set_attribute("vespa.query.type", "autocomplete")
-            span.set_attribute("vespa.query.text", query)
-            span.set_attribute("vespa.query.user_id", user_id)
-            span.set_attribute("vespa.query.limit", limit)
+            span.set_attribute("vespa.query.text", autocomplete_query.get("query", ""))
+            span.set_attribute(
+                "vespa.query.user_id", autocomplete_query.get("streaming.groupname", "")
+            )
+            span.set_attribute("vespa.query.limit", autocomplete_query.get("hits", 10))
 
             if not self.session:
                 await self.start()
 
             try:
                 start_time = time.time()
-
-                # Build autocomplete query
-                autocomplete_query = {
-                    "yql": f'select * from briefly_document where user_id="{user_id}" and userInput(@query)',
-                    "query": query,
-                    "hits": limit,
-                    "timeout": "2.0s",
-                    "ranking": "autocomplete",
-                    "streaming.groupname": user_id,  # Add streaming group parameter
-                }
 
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
@@ -206,31 +196,28 @@ class SearchEngine:
                 span.record_exception(e)
                 raise
 
-    async def find_similar(
-        self, document_id: str, user_id: str, limit: int = 10
-    ) -> Dict[str, Any]:
+    async def find_similar(self, similarity_query: Dict[str, Any]) -> Dict[str, Any]:
         """Find similar documents"""
         with tracer.start_as_current_span("vespa.find_similar") as span:
             span.set_attribute("vespa.query.type", "similarity")
-            span.set_attribute("vespa.document.id", document_id)
-            span.set_attribute("vespa.query.user_id", user_id)
-            span.set_attribute("vespa.query.limit", limit)
+            span.set_attribute(
+                "vespa.document.id",
+                (
+                    similarity_query.get("yql", "").split('id!="')[1].split('"')[0]
+                    if 'id!="' in similarity_query.get("yql", "")
+                    else ""
+                ),
+            )
+            span.set_attribute(
+                "vespa.query.user_id", similarity_query.get("streaming.groupname", "")
+            )
+            span.set_attribute("vespa.query.limit", similarity_query.get("hits", 10))
 
             if not self.session:
                 await self.start()
 
             try:
                 start_time = time.time()
-
-                # Build similarity query
-                similarity_query = {
-                    "yql": f'select * from briefly_document where user_id="{user_id}" and id!="{document_id}"',
-                    "hits": limit,
-                    "timeout": "5.0s",
-                    "ranking": "similarity",
-                    "ranking.features.query(queryEmbedding)": "embedding",
-                    "streaming.groupname": user_id,  # Add streaming group parameter
-                }
 
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
@@ -280,39 +267,19 @@ class SearchEngine:
                 span.record_exception(e)
                 raise
 
-    async def get_facets(
-        self, user_id: str, filters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def get_facets(self, facets_query: Dict[str, Any]) -> Dict[str, Any]:
         """Get facet information for documents"""
         with tracer.start_as_current_span("vespa.get_facets") as span:
             span.set_attribute("vespa.query.type", "facets")
-            span.set_attribute("vespa.query.user_id", user_id)
+            span.set_attribute(
+                "vespa.query.user_id", facets_query.get("streaming.groupname", "")
+            )
 
             if not self.session:
                 await self.start()
 
             try:
                 start_time = time.time()
-
-                # Build facets query
-                facets_query = {
-                    "yql": f'select * from briefly_document where user_id="{user_id}"',
-                    "hits": 0,  # We only want facets, not documents
-                    "timeout": "5.0s",
-                    "presentation.timing": True,
-                    "streaming.groupname": user_id,  # Add streaming group parameter
-                }
-
-                # Add facet specifications
-                if filters:
-                    facets_query["facets"] = filters
-                else:
-                    # Default facets
-                    facets_query["facets"] = {
-                        "source_type": {"count": 100},
-                        "provider": {"count": 100},
-                        "folder": {"count": 100},
-                    }
 
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
@@ -358,31 +325,24 @@ class SearchEngine:
                 span.record_exception(e)
                 raise
 
-    async def get_trending(
-        self, user_id: str, time_range: str = "7d", limit: int = 10
-    ) -> Dict[str, Any]:
+    async def get_trending(self, trending_query: Dict[str, Any]) -> Dict[str, Any]:
         """Get trending documents"""
         with tracer.start_as_current_span("vespa.get_trending") as span:
             span.set_attribute("vespa.query.type", "trending")
-            span.set_attribute("vespa.query.user_id", user_id)
-            span.set_attribute("vespa.query.time_range", time_range)
-            span.set_attribute("vespa.query.limit", limit)
+            span.set_attribute(
+                "vespa.query.user_id", trending_query.get("streaming.groupname", "")
+            )
+            span.set_attribute(
+                "vespa.query.time_range",
+                trending_query.get("ranking.features.query(timeDecay)", "7d"),
+            )
+            span.set_attribute("vespa.query.limit", trending_query.get("hits", 10))
 
             if not self.session:
                 await self.start()
 
             try:
                 start_time = time.time()
-
-                # Build trending query
-                trending_query = {
-                    "yql": f'select * from briefly_document where user_id="{user_id}"',
-                    "hits": limit,
-                    "timeout": "5.0s",
-                    "ranking": "trending",
-                    "ranking.features.query(timeDecay)": time_range,
-                    "streaming.groupname": user_id,  # Add streaming group parameter
-                }
 
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
@@ -428,34 +388,19 @@ class SearchEngine:
                 span.record_exception(e)
                 raise
 
-    async def get_analytics(
-        self, user_id: str, time_range: str = "30d"
-    ) -> Dict[str, Any]:
+    async def get_analytics(self, analytics_query: Dict[str, Any]) -> Dict[str, Any]:
         """Get analytics data for documents"""
         with tracer.start_as_current_span("vespa.get_analytics") as span:
             span.set_attribute("vespa.query.type", "analytics")
-            span.set_attribute("vespa.query.user_id", user_id)
-            span.set_attribute("vespa.query.time_range", time_range)
+            span.set_attribute(
+                "vespa.query.user_id", analytics_query.get("streaming.groupname", "")
+            )
 
             if not self.session:
                 await self.start()
 
             try:
                 start_time = time.time()
-
-                # Build analytics query
-                analytics_query = {
-                    "yql": f'select * from briefly_document where user_id="{user_id}"',
-                    "hits": 0,  # We only want analytics, not documents
-                    "timeout": "10.0s",
-                    "presentation.timing": True,
-                    "streaming.groupname": user_id,  # Add streaming group parameter
-                    "grouping": {
-                        "source_type": {"count": 100},
-                        "provider": {"count": 100},
-                        "time_buckets": {"count": 100},
-                    },
-                }
 
                 url = f"{self.vespa_endpoint}/search/"
                 span.set_attribute("vespa.request.url", url)
