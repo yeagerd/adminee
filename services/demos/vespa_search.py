@@ -109,7 +109,7 @@ class VespaSearchDemo:
                 "expected": "Basic search responses",
             },
         ]
-        
+
         # Initialize advanced scenarios
         self.advanced_scenarios = [
             {
@@ -179,10 +179,12 @@ class VespaSearchDemo:
                 await self.vespa_search.search_engine.close()
 
             # UserDataSearchTool has a VespaSearchTool which has a SearchEngine
-            if (self.user_data_search and 
-                hasattr(self.user_data_search, "vespa_search") and 
-                self.user_data_search.vespa_search and
-                hasattr(self.user_data_search.vespa_search, "search_engine")):
+            if (
+                self.user_data_search
+                and hasattr(self.user_data_search, "vespa_search")
+                and self.user_data_search.vespa_search
+                and hasattr(self.user_data_search.vespa_search, "search_engine")
+            ):
                 await self.user_data_search.vespa_search.search_engine.close()
 
             if self.semantic_search and hasattr(self.semantic_search, "search_engine"):
@@ -283,7 +285,10 @@ class VespaSearchDemo:
                         query, max_results=10
                     )
                 else:
-                    results = {"status": "error", "error": "User data search not initialized"}
+                    results = {
+                        "status": "error",
+                        "error": "User data search not initialized",
+                    }
 
                 response_time = (time.time() - start_time) * 1000
 
@@ -351,7 +356,10 @@ class VespaSearchDemo:
                         ranking_profile=scenario["ranking_profile"],
                     )
                 else:
-                    results = {"status": "error", "error": "Vespa search not initialized"}
+                    results = {
+                        "status": "error",
+                        "error": "Vespa search not initialized",
+                    }
 
                 response_time = (time.time() - start_time) * 1000
 
@@ -521,7 +529,10 @@ class VespaSearchDemo:
                     query, max_results=20
                 )
             else:
-                search_results = {"status": "error", "error": "User data search not initialized"}
+                search_results = {
+                    "status": "error",
+                    "error": "User data search not initialized",
+                }
 
             response_time = (time.time() - start_time) * 1000
 

@@ -5,24 +5,24 @@ Office Router Service - Central routing service for office data distribution
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional, Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from services.common.logging_config import (
-    setup_service_logging,
-    create_request_logging_middleware,
-    log_service_startup,
-    log_service_shutdown
-)
 from services.common.http_errors import (
-    register_briefly_exception_handlers,
-    ValidationError,
-    NotFoundError,
     AuthError,
-    ServiceError
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+    register_briefly_exception_handlers,
+)
+from services.common.logging_config import (
+    create_request_logging_middleware,
+    log_service_shutdown,
+    log_service_startup,
+    setup_service_logging,
 )
 from services.office_router.pubsub_consumer import PubSubConsumer
 from services.office_router.router import OfficeRouter
@@ -33,13 +33,12 @@ router: Optional[OfficeRouter] = None
 pubsub_consumer: Optional[PubSubConsumer] = None
 settings: Optional[Settings] = None
 
-async def verify_api_key(
-    x_api_key: str = Header(..., alias="X-API-Key")
-) -> str:
+
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
     """Verify API key for inter-service communication"""
     if not settings:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     if x_api_key not in [
         settings.api_frontend_office_router_key,
         settings.api_office_router_user_key,
@@ -47,6 +46,7 @@ async def verify_api_key(
     ]:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return x_api_key
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -141,8 +141,7 @@ async def service_status() -> dict[str, Any]:
 
 @app.post("/route/email")
 async def route_email(
-    email_data: dict,
-    api_key: str = Depends(verify_api_key)
+    email_data: dict, api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     """Route email data to downstream services"""
     if not router:
@@ -158,8 +157,7 @@ async def route_email(
 
 @app.post("/route/calendar")
 async def route_calendar(
-    calendar_data: dict,
-    api_key: str = Depends(verify_api_key)
+    calendar_data: dict, api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     """Route calendar data to downstream services"""
     if not router:
@@ -175,8 +173,7 @@ async def route_calendar(
 
 @app.post("/route/contact")
 async def route_contact(
-    contact_data: dict,
-    api_key: str = Depends(verify_api_key)
+    contact_data: dict, api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     """Route contact data to downstream services"""
     if not router:

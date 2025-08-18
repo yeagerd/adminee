@@ -3,10 +3,11 @@
 Tests for the office router service main endpoints
 """
 
+import os
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-import os
 
 # Mock environment variables before importing the app
 os.environ["ENVIRONMENT"] = "test"
@@ -36,16 +37,18 @@ def mock_settings():
 @pytest.fixture
 def mock_router_and_pubsub():
     """Mock router and pubsub consumer for testing"""
-    with patch("services.office_router.main.router") as mock_router, \
-         patch("services.office_router.main.pubsub_consumer") as mock_pubsub:
-        
+    with (
+        patch("services.office_router.main.router") as mock_router,
+        patch("services.office_router.main.pubsub_consumer") as mock_pubsub,
+    ):
+
         # Mock router
         mock_router.get_downstream_services.return_value = {"test": "service"}
-        
+
         # Mock pubsub consumer
         mock_pubsub.get_running_status.return_value = True
         mock_pubsub.get_subscription_status.return_value = {"test": "subscription"}
-        
+
         yield mock_router, mock_pubsub
 
 
@@ -70,7 +73,7 @@ def test_service_status_not_ready(client):
 def test_service_status_ready(client, mock_router_and_pubsub):
     """Test service status when ready"""
     mock_router, mock_pubsub = mock_router_and_pubsub
-    
+
     response = client.get("/status")
     assert response.status_code == 200
     data = response.json()
@@ -87,9 +90,7 @@ def test_route_email_missing_api_key(client):
 def test_route_email_invalid_api_key(client, mock_settings):
     """Test route email with invalid API key"""
     response = client.post(
-        "/route/email",
-        json={"test": "data"},
-        headers={"X-API-Key": "invalid-key"}
+        "/route/email", json={"test": "data"}, headers={"X-API-Key": "invalid-key"}
     )
     assert response.status_code == 401
     assert "Invalid API key" in response.json()["message"]

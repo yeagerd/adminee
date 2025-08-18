@@ -2733,12 +2733,20 @@ async def get_internal_email_count(
                 )
 
                 # Count messages from the response
-                if provider == "microsoft" and isinstance(messages, dict) and "value" in messages:
+                if (
+                    provider == "microsoft"
+                    and isinstance(messages, dict)
+                    and "value" in messages
+                ):
                     total_count += len(messages["value"])
                     logger.info(
                         f"Microsoft API returned {len(messages['value'])} messages in 'value' array"
                     )
-                elif provider == "google" and isinstance(messages, dict) and "messages" in messages:
+                elif (
+                    provider == "google"
+                    and isinstance(messages, dict)
+                    and "messages" in messages
+                ):
                     total_count += len(messages["messages"])
                     logger.info(
                         f"Google API returned {len(messages['messages'])} messages in 'messages' array"

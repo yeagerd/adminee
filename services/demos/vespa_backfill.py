@@ -1060,7 +1060,10 @@ class VespaBackfillDemo:
         try:
             # Initialize email crawler
             email_crawler = EmailCrawler(
-                user_id, provider, self.user_email, max_email_count=self.max_emails_per_user
+                user_id,
+                provider,
+                self.user_email,
+                max_email_count=self.max_emails_per_user,
             )
 
             # Set rate limit

@@ -13,7 +13,7 @@ import re
 from typing import Any, Dict, Optional
 
 from bs4 import BeautifulSoup
-from bs4.element import Tag, PageElement, NavigableString
+from bs4.element import NavigableString, PageElement, Tag
 
 
 class EmailContentSplitter:
@@ -70,7 +70,11 @@ class EmailContentSplitter:
         Returns:
             Dict with keys: visible_content, quoted_content, thread_summary
         """
-        result: Dict[str, Any] = {"visible_content": "", "quoted_content": "", "thread_summary": {}}
+        result: Dict[str, Any] = {
+            "visible_content": "",
+            "quoted_content": "",
+            "thread_summary": {},
+        }
 
         # Try HTML splitting first if available
         if html_content:

@@ -77,7 +77,7 @@ class PubSubConsumer:
         """Start consuming from email subscription"""
         if not self.subscriber:
             raise RuntimeError("Subscriber not initialized")
-            
+
         subscription_path = self.subscriber.subscription_path(
             self.settings.pubsub_project_id, self.settings.pubsub_email_subscription
         )
@@ -97,7 +97,7 @@ class PubSubConsumer:
         """Start consuming from calendar subscription"""
         if not self.subscriber:
             raise RuntimeError("Subscriber not initialized")
-            
+
         subscription_path = self.subscriber.subscription_path(
             self.settings.pubsub_project_id, self.settings.pubsub_calendar_subscription
         )
