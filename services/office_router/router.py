@@ -117,7 +117,7 @@ class OfficeRouter:
 
         # For now, only route to vespa and notifications
         routing_tasks = []
-        results = {}
+        results: Dict[str, Any] = {}
 
         # Route to vespa for search indexing
         if self.downstream_services["vespa"].enabled:
@@ -166,7 +166,7 @@ class OfficeRouter:
 
         # Route to vespa and contacts service
         routing_tasks = []
-        results = {}
+        results: Dict[str, Any] = {}
 
         if self.downstream_services["vespa"].enabled:
             task = self._route_to_service(

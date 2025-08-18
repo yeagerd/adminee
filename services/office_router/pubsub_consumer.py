@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from google.api_core import retry
-from google.cloud import pubsub_v1
+from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
 from services.office_router.router import OfficeRouter
 from services.office_router.settings import Settings
@@ -54,7 +54,7 @@ class PubSubConsumer:
             logger.error(f"Failed to start PubSub consumer: {e}")
             raise
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the PubSub consumer"""
         self.is_running = False
 
@@ -73,8 +73,11 @@ class PubSubConsumer:
 
         logger.info("PubSub consumer stopped")
 
-    async def _start_email_subscription(self):
+    async def _start_email_subscription(self) -> None:
         """Start consuming from email subscription"""
+        if not self.subscriber:
+            raise RuntimeError("Subscriber not initialized")
+            
         subscription_path = self.subscriber.subscription_path(
             self.settings.pubsub_project_id, self.settings.pubsub_email_subscription
         )
@@ -90,8 +93,11 @@ class PubSubConsumer:
         self.subscriptions["email"] = subscription
         logger.info(f"Started email subscription: {subscription_path}")
 
-    async def _start_calendar_subscription(self):
+    async def _start_calendar_subscription(self) -> None:
         """Start consuming from calendar subscription"""
+        if not self.subscriber:
+            raise RuntimeError("Subscriber not initialized")
+            
         subscription_path = self.subscriber.subscription_path(
             self.settings.pubsub_project_id, self.settings.pubsub_calendar_subscription
         )
@@ -107,7 +113,7 @@ class PubSubConsumer:
         self.subscriptions["calendar"] = subscription
         logger.info(f"Started calendar subscription: {subscription_path}")
 
-    def _email_message_callback(self, message):
+    def _email_message_callback(self, message: Any) -> None:
         """Callback for processing email messages"""
         try:
             self.message_count += 1
@@ -131,7 +137,7 @@ class PubSubConsumer:
             # Nack the message to retry
             message.nack()
 
-    def _calendar_message_callback(self, message):
+    def _calendar_message_callback(self, message: Any) -> None:
         """Callback for processing calendar messages"""
         try:
             self.message_count += 1
@@ -154,7 +160,7 @@ class PubSubConsumer:
             logger.error(f"Error processing calendar message {self.message_count}: {e}")
             # Nack the message to retry
 
-    async def _process_email_message(self, data: Dict[str, Any]):
+    async def _process_email_message(self, data: Dict[str, Any]) -> Any:
         """Process email message asynchronously"""
         try:
             # Add retry logic for routing
@@ -183,7 +189,7 @@ class PubSubConsumer:
             logger.error(f"Failed to process email message: {e}")
             raise
 
-    async def _process_calendar_message(self, data: Dict[str, Any]):
+    async def _process_calendar_message(self, data: Dict[str, Any]) -> Any:
         """Process calendar message asynchronously"""
         try:
             # Add retry logic for routing
