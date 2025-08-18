@@ -34,7 +34,7 @@ export class DefaultService {
      * @returns any Successful Response
      * @throws ApiError
      */
-    public static getOpenapiSchemaOpenapiJsonGet(): CancelablePromise<any> {
+    public static getOpenapiSchemaOpenapiJsonGet(): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/openapi.json',

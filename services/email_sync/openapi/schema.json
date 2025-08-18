@@ -63,7 +63,11 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Openapi Schema Openapi Json Get"
+                }
               }
             }
           }

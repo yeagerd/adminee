@@ -399,12 +399,12 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Test all endpoints return properly typed responses
 - [x] Validate schema generation works correctly
 
-### Task 7.7: Regenerate and Validate Types
-- [ ] Regenerate OpenAPI schemas for all services
-- [ ] Regenerate TypeScript types from improved schemas
-- [ ] Validate generated types have proper structure
-- [ ] Test type compilation and import functionality
-- [ ] Verify no more generic types in generated output
+### Task 7.7: Regenerate and Validate Types ✅
+- [x] Regenerate OpenAPI schemas for all services
+- [x] Regenerate TypeScript types from improved schemas
+- [x] Validate generated types have proper structure
+- [x] Test type compilation and import functionality
+- [x] Verify no more generic types in generated output
 
 ### Task 7.8: Update Frontend Components
 - [ ] Remove custom type definitions that are no longer needed

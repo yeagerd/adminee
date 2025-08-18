@@ -1,4 +1,4 @@
-2025-08-18 11:09:42 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+2025-08-18 11:12:20 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
 {
   "openapi": "3.1.0",
   "info": {
