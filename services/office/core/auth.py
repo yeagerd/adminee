@@ -12,6 +12,8 @@ from fastapi import Request
 from services.common.api_key_auth import (
     APIKeyConfig,
     build_api_key_mapping,
+    get_client_from_api_key,
+    get_permissions_from_api_key,
     make_service_permission_required,
     make_verify_service_authentication,
     verify_api_key,
@@ -68,6 +70,20 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
         ],  # Send emails, read/write calendar, and health check
         settings_key="api_meetings_office_key",
     ),
+    # Backfill service key - can trigger backfill jobs for any user
+    "api_backfill_office_key": APIKeyConfig(
+        client="backfill-service",
+        service="office-service-access",
+        permissions=[
+            "backfill",  # New permission for backfill operations
+            "read_emails",
+            "read_calendar",
+            "read_contacts",
+            "health",
+            "internal_access",  # Allow access to internal endpoints
+        ],
+        settings_key="api_backfill_office_key",  # This maps to the settings field
+    ),
 }
 
 # Service-level permissions fallback (optional, for legacy support)
@@ -82,6 +98,8 @@ SERVICE_PERMISSIONS = {
         "read_contacts",
         "write_contacts",
         "health",
+        "backfill",  # Add backfill permission
+        "internal_access",  # Allow access to internal endpoints
     ],
 }
 
@@ -100,6 +118,81 @@ def service_permission_required(
         get_settings,
         SERVICE_PERMISSIONS,
     )
+
+
+def verify_backfill_api_key(request: Request) -> str:
+    """Verify API key has backfill permission"""
+    try:
+        # Extract API key from request headers
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise AuthError("API key required")
+
+        # Build API key mapping and verify API key
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        service_name = verify_api_key(api_key, api_key_mapping)
+
+        if not service_name:
+            raise AuthError("Invalid API key")
+
+        # Get client and permissions from the API key
+        client_name = get_client_from_api_key(api_key, api_key_mapping)
+        permissions = get_permissions_from_api_key(api_key, api_key_mapping)
+
+        # Check if API key has backfill permission
+        if "backfill" not in permissions:
+            raise AuthError("API key does not have backfill permission")
+
+        # Ensure client_name is not None
+        if not client_name:
+            raise AuthError("Invalid client name from API key")
+
+        return client_name
+
+    except Exception as e:
+        logger.error(f"Backfill API key verification failed: {e}")
+        raise AuthError(f"Backfill API key verification failed: {str(e)}")
+
+
+def get_current_user(request: Request) -> Dict[str, Any]:
+    """
+    Get current user from API key authentication.
+    This function is used by FastAPI dependencies for user authentication.
+
+    Returns:
+        Dict containing user information including user_id
+    """
+    try:
+        # Extract API key from request headers
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise AuthError("API key required")
+
+        # Build API key mapping and verify API key
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        service_name = verify_api_key(api_key, api_key_mapping)
+
+        if not service_name:
+            raise AuthError("Invalid API key")
+
+        # Get client and permissions from the API key
+        client_name = get_client_from_api_key(api_key, api_key_mapping)
+        permissions = get_permissions_from_api_key(api_key, api_key_mapping)
+
+        # Create user context from the API key
+        # In production, this would typically decode a JWT or look up user details
+        user_id = client_name
+
+        return {
+            "user_id": user_id,
+            "client": client_name,
+            "permissions": permissions,
+            "authenticated": True,
+        }
+
+    except Exception as e:
+        logger.error(f"Authentication failed: {e}")
+        raise AuthError(f"Authentication failed: {str(e)}")
 
 
 def optional_service_auth(request: Request) -> Optional[str]:
