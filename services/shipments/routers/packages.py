@@ -2,7 +2,7 @@
 Package management endpoints for the shipments service
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -64,17 +64,43 @@ router = APIRouter()
 
 
 # Data collection schemas
+class EmailData(BaseModel):
+    """Model for email content data."""
+    
+    subject: str
+    sender: str
+    body: str
+    content_type: str = "text"
+    received_at: Optional[datetime] = None
+    message_id: Optional[str] = None
+
+
+class TrackingData(BaseModel):
+    """Model for tracking information data."""
+    
+    tracking_number: str
+    carrier: Optional[str] = None
+    status: Optional[str] = None
+    estimated_delivery: Optional[date] = None
+    recipient_name: Optional[str] = None
+    shipper_name: Optional[str] = None
+    package_description: Optional[str] = None
+    order_number: Optional[str] = None
+    tracking_link: Optional[str] = None
+    confidence: Optional[float] = None
+
+
 class DataCollectionRequest(BaseModel):
     """Request schema for collecting user-corrected shipment data"""
 
     email_message_id: str = Field(..., description="Original email message ID")
-    original_email_data: Dict[str, Any] = Field(
+    original_email_data: EmailData = Field(
         ..., description="Original email content"
     )
-    auto_detected_data: Dict[str, Any] = Field(
+    auto_detected_data: TrackingData = Field(
         ..., description="Auto-detected shipment data"
     )
-    user_corrected_data: Dict[str, Any] = Field(
+    user_corrected_data: TrackingData = Field(
         ..., description="User-corrected shipment data"
     )
     detection_confidence: float = Field(

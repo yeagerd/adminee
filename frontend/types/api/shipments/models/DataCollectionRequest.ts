@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { EmailData } from './EmailData';
+import type { TrackingData } from './TrackingData';
 /**
  * Request schema for collecting user-corrected shipment data
  */
@@ -13,15 +15,15 @@ export type DataCollectionRequest = {
     /**
      * Original email content
      */
-    original_email_data: Record<string, any>;
+    original_email_data: EmailData;
     /**
      * Auto-detected shipment data
      */
-    auto_detected_data: Record<string, any>;
+    auto_detected_data: TrackingData;
     /**
      * User-corrected shipment data
      */
-    user_corrected_data: Record<string, any>;
+    user_corrected_data: TrackingData;
     /**
      * Original detection confidence
      */

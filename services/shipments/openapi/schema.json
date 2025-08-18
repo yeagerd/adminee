@@ -1455,21 +1455,15 @@
             "description": "Original email message ID"
           },
           "original_email_data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Original Email Data",
+            "$ref": "#/components/schemas/EmailData",
             "description": "Original email content"
           },
           "auto_detected_data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Auto Detected Data",
+            "$ref": "#/components/schemas/TrackingData",
             "description": "Auto-detected shipment data"
           },
           "user_corrected_data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "User Corrected Data",
+            "$ref": "#/components/schemas/TrackingData",
             "description": "User-corrected shipment data"
           },
           "detection_confidence": {
@@ -1542,6 +1536,58 @@
         ],
         "title": "DataCollectionResponse",
         "description": "Response schema for data collection"
+      },
+      "EmailData": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "sender": {
+            "type": "string",
+            "title": "Sender"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type",
+            "default": "text"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "sender",
+          "body"
+        ],
+        "title": "EmailData",
+        "description": "Model for email content data."
       },
       "EmailParseRequest": {
         "properties": {
@@ -2258,6 +2304,120 @@
         ],
         "title": "ParsedTrackingInfo",
         "description": "Individual tracking information found in email"
+      },
+      "TrackingData": {
+        "properties": {
+          "tracking_number": {
+            "type": "string",
+            "title": "Tracking Number"
+          },
+          "carrier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carrier"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "estimated_delivery": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Delivery"
+          },
+          "recipient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Name"
+          },
+          "shipper_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper Name"
+          },
+          "package_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Description"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
+          },
+          "tracking_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracking Link"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tracking_number"
+        ],
+        "title": "TrackingData",
+        "description": "Model for tracking information data."
       },
       "TrackingEventCreate": {
         "properties": {
