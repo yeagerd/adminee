@@ -605,6 +605,9 @@ class VespaBackfillDemo:
 
             # Get final Vespa stats after backfill
             logger.info("Collecting final Vespa statistics...")
+            # Wait for async document processing to complete
+            logger.info("Waiting 5 seconds for async document processing to complete...")
+            await asyncio.sleep(5)
             after_stats = await self.get_user_vespa_stats()
             results["vespa_stats"]["after"] = after_stats
             self.print_vespa_stats(after_stats, "FINAL VESPA STATISTICS")
@@ -694,28 +697,22 @@ class VespaBackfillDemo:
                             for integration in integrations:
                                 provider = integration.get("provider", "unknown")
                                 status = integration.get("status", "unknown")
-                                connected = status == "active"
+                                connected = str(status).upper() == "ACTIVE"
 
+                                status_str = str(status).upper()
                                 if connected:
-                                    print(f"  {provider.upper()}: ✅ Connected")
+                                    print(f"  {provider.upper()}: ✅ {status_str}")
                                     if integration.get("last_sync_at"):
-                                        print(
-                                            f"    Last sync: {integration['last_sync_at']}"
-                                        )
+                                        print(f"    Last sync: {integration['last_sync_at']}")
                                 else:
-                                    print(f"  {provider.upper()}: ❌ Not connected")
+                                    print(f"  {provider.upper()}: {status_str}")
                                     if integration.get("error_message"):
-                                        print(
-                                            f"    Error: {integration['error_message']}"
-                                        )
+                                        print(f"    Error: {integration['error_message']}")
                         else:
                             print("❌ No integrations found")
                             print("   User needs to complete OAuth setup")
 
-                        return {
-                            "office_service_running": True,
-                            "integrations": integrations,
-                        }
+                        return {"office_service_running": True, "user_service_running": True, "user_exists": True, "integrations": integrations}
                     else:
                         print(
                             f"❌ Integration status check failed: {integrations_response.status_code}"
@@ -904,8 +901,8 @@ class VespaBackfillDemo:
                 user_id=user_id,
             )
 
-            # Start backfill job using the office service API
-            job_id = await self._start_backfill_job_via_api(user_id, request)
+            # NOTE: office backfill internal API expects email in user_id query param
+            job_id = await self._start_backfill_job_via_api(self.user_email, request)
 
             if not job_id:
                 return {
@@ -925,7 +922,7 @@ class VespaBackfillDemo:
 
             # Wait for job completion
             job_result = await self._wait_for_job_completion(
-                job_id, user_id, timeout_minutes=job_timeout_minutes
+                job_id, self.user_email, timeout_minutes=job_timeout_minutes
             )
 
             return {
