@@ -2,6 +2,7 @@
 
 import type React from "react"
 
+import { chatApi } from "@/api"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -14,7 +15,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useUserPreferences } from '@/contexts/settings-context'
 import { useToolState } from '@/contexts/tool-context'
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
-import { chatApi } from "@/api"
 import { safeParseDate, safeParseDateToLocaleString } from '@/lib/utils'
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"

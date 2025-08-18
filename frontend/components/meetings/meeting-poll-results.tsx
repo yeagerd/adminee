@@ -2,13 +2,12 @@
 
 import { meetingsApi } from '@/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { PollResponse } from '@/types/api/meetings';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { Calendar, Clock, MapPin, Users, ChevronDown, ChevronRight, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { PollResponse } from '@/types/api/meetings';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Plus, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Participant {

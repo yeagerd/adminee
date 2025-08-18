@@ -1,5 +1,6 @@
 import {
     IntegrationListResponse,
+    IntegrationProvider,
     IntegrationScopeResponse,
     OAuthCallbackRequest,
     OAuthCallbackResponse,
@@ -7,8 +8,7 @@ import {
     OAuthStartResponse,
     UserPreferencesResponse,
     UserPreferencesUpdate,
-    UserResponse,
-    IntegrationProvider
+    UserResponse
 } from '../../types/api/user';
 import { GatewayClient } from './gateway-client';
 
