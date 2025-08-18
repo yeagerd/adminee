@@ -1025,16 +1025,16 @@ class VespaSearchDemo:
                         word_count = len(content.split()) if content else 0
                         print(f"    📄 Content ({len(content)} chars, {word_count} words):")
                         
-                        # Show more content for emails - first 1000 chars or ~150 words
-                        if len(content) > 1000:
-                            # Find a good break point near 1000 chars
-                            preview = content[:1000]
+                        # Show more content for emails - first 2000 chars or ~300 words
+                        if len(content) > 2000:
+                            # Find a good break point near 2000 chars
+                            preview = content[:2000]
                             # Try to break at a sentence or word boundary
                             last_period = preview.rfind('.')
                             last_space = preview.rfind(' ')
-                            if last_period > 800:  # If we have a sentence break in reasonable range
+                            if last_period > 1600:  # If we have a sentence break in reasonable range
                                 preview = preview[:last_period + 1]
-                            elif last_space > 900:  # Otherwise break at word boundary
+                            elif last_space > 1800:  # Otherwise break at word boundary
                                 preview = preview[:last_space]
                             
                             print(f"      {preview}...")
@@ -1081,6 +1081,32 @@ class VespaSearchDemo:
                             # Show other metadata
                             for key, value in metadata.items():
                                 if key not in important_keys:
+                                    if isinstance(value, (list, dict)):
+                                        if isinstance(value, list) and value:
+                                            print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                        elif isinstance(value, dict) and value:
+                                            print(f"      • {key}: {dict(list(value.items())[:3])}...")
+                                        else:
+                                            print(f"      • {key}: (empty)")
+                                    else:
+                                        print(f"      • {key}: {value}")
+                        
+                        # Display thread information
+                        if fields.get("quoted_content"):
+                            quoted_content = fields.get("quoted_content")
+                            quoted_word_count = len(quoted_content.split()) if quoted_content else 0
+                            print(f"    🧵 Quoted Content ({len(quoted_content)} chars, {quoted_word_count} words):")
+                            if len(quoted_content) > 500:
+                                print(f"      {quoted_content[:500]}...")
+                                print(f"      [Quoted content truncated. Full quoted content: {len(quoted_content)} chars, {quoted_word_count} words]")
+                            else:
+                                print(f"      {quoted_content}")
+                        
+                        if fields.get("thread_summary"):
+                            thread_summary = fields.get("thread_summary", {})
+                            if thread_summary:
+                                print(f"    📊 Thread Summary:")
+                                for key, value in thread_summary.items():
                                     if isinstance(value, (list, dict)):
                                         if isinstance(value, list) and value:
                                             print(f"      • {key}: {', '.join(str(v) for v in value)}")

@@ -243,20 +243,35 @@ class EmailCrawler:
                         # The office service already provides normalized data - convert to backfill format
                         emails = []
                         for msg in data["data"]["messages"]:
-                            # Extract text content from HTML if body_text is empty
-                            body_content = msg.get("body_text", "")
-                            if not body_content and msg.get("body_html"):
-                                # Simple HTML to text extraction - remove HTML tags
-                                import re
-                                html_content = msg.get("body_html", "")
-                                # Remove HTML tags and decode HTML entities
-                                body_content = re.sub(r'<[^>]+>', '', html_content)
-                                body_content = body_content.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-                                body_content = re.sub(r'\s+', ' ', body_content).strip()
+                            # Use content splitting to separate visible from quoted content
+                            from services.office.core.email_content_splitter import split_email_content
+                            
+                            # Split content into visible and quoted parts
+                            split_result = split_email_content(
+                                html_content=msg.get("body_html"),
+                                text_content=msg.get("body_text")
+                            )
+                            
+                            # Use visible content as primary body, quoted content for context
+                            visible_content = split_result.get("visible_content", "")
+                            quoted_content = split_result.get("quoted_content", "")
+                            thread_summary = split_result.get("thread_summary", {})
+                            
+                            # Fallback to original content if splitting failed
+                            if not visible_content:
+                                if msg.get("body_html"):
+                                    # Simple HTML to text extraction as fallback
+                                    import re
+                                    html_content = msg.get("body_html", "")
+                                    visible_content = re.sub(r'<[^>]+>', '', html_content)
+                                    visible_content = visible_content.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                                    visible_content = re.sub(r'\s+', ' ', visible_content).strip()
+                                else:
+                                    visible_content = msg.get("body_text", "")
                             
                             # Ensure we have some content
-                            if not body_content:
-                                body_content = msg.get("snippet", "No content available")
+                            if not visible_content:
+                                visible_content = msg.get("snippet", "No content available")
                             
                             # Extract sender email
                             sender_email = ""
@@ -268,14 +283,14 @@ class EmailCrawler:
                             if msg.get("to_addresses"):
                                 recipient_emails = [addr.get("email", "") for addr in msg.get("to_addresses", []) if addr.get("email")]
                             
-                            # Convert normalized EmailMessage to backfill format
+                            # Convert normalized EmailMessage to backfill format with content splitting
                             email = {
                                 "id": msg.get("provider_message_id", msg.get("id")),
                                 "user_id": self.user_id,
                                 "provider": provider_str,
                                 "type": "email",
                                 "subject": msg.get("subject", "No Subject"),
-                                "body": body_content,
+                                "body": visible_content,  # Use visible content only
                                 "from": sender_email,
                                 "to": recipient_emails,
                                 "thread_id": msg.get("thread_id", ""),
@@ -286,6 +301,8 @@ class EmailCrawler:
                                 ),
                                 "created_at": msg.get("date"),
                                 "updated_at": msg.get("date"),
+                                "quoted_content": quoted_content,  # Add quoted content for context
+                                "thread_summary": thread_summary,  # Add thread summary
                                 "metadata": {
                                     "has_attachments": msg.get(
                                         "has_attachments", False

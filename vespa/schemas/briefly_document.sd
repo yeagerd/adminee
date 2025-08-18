@@ -65,6 +65,15 @@ schema briefly_document {
             attribute: fast-search
         }
         
+        field quoted_content type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field thread_summary type map<string, string> {
+            indexing: summary
+        }
+        
         field metadata type map<string, string> {
             indexing: summary
         }
@@ -78,7 +87,7 @@ schema briefly_document {
     }
     
     fieldset default {
-        fields: title, content, search_text
+        fields: title, content, search_text, quoted_content
     }
     
     rank-profile hybrid inherits default {

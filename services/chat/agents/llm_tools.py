@@ -767,6 +767,8 @@ class VespaSearchTool:
                             "recipients": fields.get("recipients", []),
                             "thread_id": fields.get("thread_id"),
                             "folder": fields.get("folder"),
+                            "quoted_content": fields.get("quoted_content", ""),
+                            "thread_summary": fields.get("thread_summary", {}),
                             "is_read": fields.get("metadata", {}).get("is_read", False),
                             "has_attachments": fields.get("metadata", {}).get(
                                 "has_attachments", False

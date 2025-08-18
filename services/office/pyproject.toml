@@ -39,6 +39,8 @@ dependencies = [
     "opentelemetry-distro",
     "opentelemetry-exporter-gcp-trace",
     "itsdangerous>=2.2.0",
+    # HTML Processing
+    "beautifulsoup4>=4.12.0",
 ]
 
 [project.optional-dependencies]

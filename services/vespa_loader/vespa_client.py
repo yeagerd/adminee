@@ -375,6 +375,8 @@ class VespaClient:
                 "folder": document.get("folder", ""),
                 "created_at": parse_datetime_to_timestamp(document.get("created_at", "")),
                 "updated_at": parse_datetime_to_timestamp(document.get("updated_at", "")),
+                "quoted_content": document.get("quoted_content", ""),  # Add quoted content for context
+                "thread_summary": clean_metadata_for_vespa(document.get("thread_summary", {})),  # Add thread summary
                 "metadata": clean_metadata_for_vespa(document.get("metadata", {})),
                 # Remove 'timestamp' as it's not in Vespa schema
             }
