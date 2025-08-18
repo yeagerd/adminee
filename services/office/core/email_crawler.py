@@ -48,93 +48,79 @@ class EmailCrawler:
         """Crawl emails in batches with optional maximum limit"""
         try:
             total_processed = 0
+            async for batch in self._crawl_emails(
+                batch_size, start_date, end_date, folders, resume_from
+            ):
+                # Check if we've reached the max_emails limit
+                if max_emails and total_processed >= max_emails:
+                    break
 
-            if self.provider == "microsoft":
-                async for batch in self._crawl_microsoft_emails(
-                    batch_size, start_date, end_date, folders, resume_from
-                ):
-                    # Check if we've reached the max_emails limit
-                    if max_emails and total_processed >= max_emails:
-                        break
+                # Limit batch size if it would exceed max_emails
+                if max_emails and total_processed + len(batch) > max_emails:
+                    remaining = max_emails - total_processed
+                    batch = batch[:remaining]
 
-                    # Limit batch size if it would exceed max_emails
-                    if max_emails and total_processed + len(batch) > max_emails:
-                        remaining = max_emails - total_processed
-                        batch = batch[:remaining]
+                yield batch
+                total_processed += len(batch)
 
-                    yield batch
-                    total_processed += len(batch)
-
-                    # Check if we've reached the limit after this batch
-                    if max_emails and total_processed >= max_emails:
-                        break
-
-            elif self.provider == "google":
-                async for batch in self._crawl_google_emails(
-                    batch_size, start_date, end_date, folders, resume_from
-                ):
-                    # Check if we've reached the max_emails limit
-                    if max_emails and total_processed >= max_emails:
-                        break
-
-                    # Limit batch size if it would exceed max_emails
-                    if max_emails and total_processed + len(batch) > max_emails:
-                        remaining = max_emails - total_processed
-                        batch = batch[:remaining]
-
-                    yield batch
-                    total_processed += len(batch)
-
-                    # Check if we've reached the limit after this batch
-                    if max_emails and total_processed >= max_emails:
-                        break
-            else:
-                raise ValueError(f"Unsupported provider: {self.provider}")
+                # Check if we've reached the limit after this batch
+                if max_emails and total_processed >= max_emails:
+                    break
 
         except Exception as e:
             logger.error(f"Failed to crawl emails for user {self.user_id}: {e}")
             raise
 
-    async def _get_microsoft_email_count(self) -> int:
-        """Get email count from Microsoft Graph API"""
-        # This would integrate with the existing Microsoft Graph client
-        # For now, return a placeholder count
-        logger.info(
-            f"Getting Microsoft email count for user {self.user_id}",
-            extra={
-                "user_id": self.user_id,
-                "provider": self.provider,
-                "operation": "email_count",
-            },
-        )
 
-        # Simulate API call delay
-        await asyncio.sleep(0.1)
+    async def _get_email_count(self) -> int:
+        """Get email count from the specified provider using the office service's unified API"""
+        try:
+            import httpx
 
-        # Placeholder: in real implementation, this would query Microsoft Graph
-        # from ..clients.microsoft_graph import MicrosoftGraphClient
-        # client = MicrosoftGraphClient(self.user_id)
-        # return await client.get_email_count()
+            # Call the office service's unified /email/messages endpoint to get count
+            office_service_url = "http://localhost:8003"
 
-        return self.max_email_count  # Use parameter instead of hardcoded value
+            # Build query parameters for count
+            params = {
+                "providers": [self.provider],
+                "count_only": True,  # Request count only
+            }
 
-    async def _get_google_email_count(self) -> int:
-        """Get email count from Gmail API"""
-        # This would integrate with the existing Gmail client
-        # For now, return a placeholder count
-        logger.info(f"Getting Gmail email count for user {self.user_id}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{office_service_url}/v1/email/messages",
+                    params=params,
+                    headers={
+                        "X-User-Id": self.user_id,
+                        "X-API-Key": "test-BACKFILL-OFFICE-KEY",  # Use backfill API key
+                    },
+                    timeout=10.0,
+                )
 
-        # Simulate API call delay
-        await asyncio.sleep(0.1)
+                if response.status_code == 200:
+                    data = response.json()
+                    count = data.get("total_count", self.max_email_count)
+                    logger.info(
+                        f"Got email count for user {self.user_id} with provider {self.provider}: {count}",
+                        extra={
+                            "user_id": self.user_id,
+                            "provider": self.provider,
+                            "operation": "email_count",
+                            "count": count,
+                        },
+                    )
+                    return min(count, self.max_email_count)  # Respect max_email_count limit
+                else:
+                    logger.warning(
+                        f"Failed to get email count: {response.status_code} - {response.text}"
+                    )
+                    return self.max_email_count  # Fallback to max count
 
-        # Placeholder: in real implementation, this would query Gmail API
-        # from ..clients.gmail import GmailClient
-        # client = GmailClient(self.user_id)
-        # return await client.get_email_count()
+        except Exception as e:
+            logger.error(f"Error getting email count: {e}")
+            return self.max_email_count  # Fallback to max count
 
-        return self.max_email_count  # Use parameter instead of hardcoded value
-
-    async def _crawl_microsoft_emails(
+    async def _crawl_emails(
         self,
         batch_size: int,
         start_date: Optional[datetime],
@@ -142,9 +128,9 @@ class EmailCrawler:
         folders: Optional[List[str]],
         resume_from: int,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Crawl emails from Microsoft Graph API"""
+        """Crawl emails from the specified provider"""
         logger.info(
-            f"Starting Microsoft email crawl for user {self.user_id}",
+            f"Starting email crawl for user {self.user_id} with provider {self.provider}",
             extra={
                 "user_id": self.user_id,
                 "provider": self.provider,
@@ -156,7 +142,7 @@ class EmailCrawler:
         )
 
         # Calculate total batches
-        total_emails = await self._get_microsoft_email_count()
+        total_emails = await self._get_email_count()
         total_batches = (total_emails + batch_size - 1) // batch_size
 
         # Skip completed batches
@@ -165,8 +151,8 @@ class EmailCrawler:
         for batch_num in range(start_batch, total_batches):
             try:
                 # Get batch of emails
-                emails = await self._get_microsoft_email_batch(
-                    batch_num, batch_size, start_date, end_date, folders
+                emails = await self._get_email_batch(
+                    self.provider, batch_num, batch_size, start_date, end_date, folders
                 )
 
                 # Apply rate limiting
@@ -176,53 +162,13 @@ class EmailCrawler:
                 yield emails
 
                 logger.debug(
-                    f"Processed Microsoft email batch {batch_num + 1}/{total_batches}"
+                    f"Processed email batch {batch_num + 1}/{total_batches} for provider {self.provider}"
                 )
 
             except Exception as e:
                 logger.error(
-                    f"Failed to process Microsoft email batch {batch_num}: {e}"
+                    f"Failed to process email batch {batch_num} for provider {self.provider}: {e}"
                 )
-                # Continue with next batch
-                continue
-
-    async def _crawl_google_emails(
-        self,
-        batch_size: int,
-        start_date: Optional[datetime],
-        end_date: Optional[datetime],
-        folders: Optional[List[str]],
-        resume_from: int,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Crawl emails from Gmail API"""
-        logger.info(f"Starting Gmail email crawl for user {self.user_id}")
-
-        # Calculate total batches
-        total_emails = await self._get_google_email_count()
-        total_batches = (total_emails + batch_size - 1) // batch_size
-
-        # Skip completed batches
-        start_batch = resume_from // batch_size
-
-        for batch_num in range(start_batch, total_batches):
-            try:
-                # Get batch of emails
-                emails = await self._get_gmail_email_batch(
-                    batch_num, batch_size, start_date, end_date, folders
-                )
-
-                # Apply rate limiting
-                if batch_num > start_batch:
-                    await asyncio.sleep(self.rate_limit_delay)
-
-                yield emails
-
-                logger.debug(
-                    f"Processed Gmail email batch {batch_num + 1}/{total_batches}"
-                )
-
-            except Exception as e:
-                logger.error(f"Failed to process Gmail email batch {batch_num}: {e}")
                 # Continue with next batch
                 continue
 
@@ -351,34 +297,7 @@ class EmailCrawler:
         # Return empty list if no emails found
         return []
 
-    async def _get_microsoft_email_batch(
-        self,
-        batch_num: int,
-        batch_size: int,
-        start_date: Optional[datetime],
-        end_date: Optional[datetime],
-        folders: Optional[List[str]],
-    ) -> List[Dict[str, Any]]:
-        """Get a batch of emails from Microsoft using the office service's unified API"""
-        return await self._get_email_batch(
-            "microsoft", batch_num, batch_size, start_date, end_date, folders
-        )
 
-    async def _get_gmail_email_batch(
-        self,
-        batch_num: int,
-        batch_size: int,
-        start_date: Optional[datetime],
-        end_date: Optional[datetime],
-        folders: Optional[List[str]],
-    ) -> List[Dict[str, Any]]:
-        """Get a batch of emails from Gmail using the office service's unified API"""
-        return await self._get_email_batch(
-            "google", batch_num, batch_size, start_date, end_date, folders
-        )
-
-    # Note: Normalization methods removed - we now use the already-normalized data
-    # from the office service's /v1/email/messages endpoint
 
     def set_rate_limit(self, emails_per_second: int):
         """Set the rate limit for email crawling"""
