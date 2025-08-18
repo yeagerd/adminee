@@ -18,6 +18,8 @@ AI-powered calendar and task management platform with intelligent scheduling, do
 - **Database:** PostgreSQL
 - **Vector Database:** Pinecone
 
+> 📚 **New to Briefly?** See our [New Service Guide](documentation/new-service-guide.md) for creating new microservices.
+
 ### Service Communication Flow
 
 ```
