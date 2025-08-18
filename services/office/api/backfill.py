@@ -248,7 +248,7 @@ async def run_backfill_job(
 
         # Initialize email crawler and pubsub publisher
         email_crawler = EmailCrawler(
-            internal_user_id, request.provider, max_email_count=request.max_emails or 10
+            internal_user_id, request.provider, user_id, max_email_count=request.max_emails or 10
         )
         pubsub_publisher = PubSubPublisher()
 

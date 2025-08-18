@@ -16,9 +16,10 @@ logger = get_logger(__name__)
 class EmailCrawler:
     """Crawls emails from email providers for backfill operations"""
 
-    def __init__(self, user_id: str, provider: str, max_email_count: int = 10):
+    def __init__(self, user_id: str, provider: str, user_email: str, max_email_count: int = 10):
         self.user_id = user_id
         self.provider = provider
+        self.user_email = user_email  # Add user_email for normalizer calls
         self.max_email_count = max_email_count  # Add max email count parameter
         self.rate_limit_delay = 1.0  # Default 1 second between batches
 
@@ -203,6 +204,7 @@ class EmailCrawler:
             # Build query parameters
             params = {
                 "user_id": self.user_id,  # Pass user_id as query parameter for internal endpoint
+                "email": self.user_email,  # Pass email for normalizer
                 "providers": [provider_str],
                 "limit": batch_size,
                 "include_body": True,

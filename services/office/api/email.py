@@ -2440,6 +2440,7 @@ async def list_thread_drafts(
 @internal_router.get("/messages", response_model=EmailMessageList)
 async def get_internal_email_messages(
     user_id: str = Query(..., description="User ID to fetch emails for"),
+    email: str = Query(..., description="Email address of the user"),
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -2528,6 +2529,16 @@ async def get_internal_email_messages(
         # Query each provider
         all_messages = []
         total_count = 0
+        
+        # Build filter string if labels are provided
+        filter_str = None
+        if labels:
+            # Convert labels to provider-specific filters
+            if "inbox" in labels:
+                filter_str = "isRead eq false"
+            elif "sent" in labels:
+                filter_str = "from/emailAddress/address eq 'me'"
+            # Add more label filters as needed
 
         for provider in valid_providers:
             try:
@@ -2544,37 +2555,36 @@ async def get_internal_email_messages(
                     continue
 
                 # Get messages from provider
-                if provider == "microsoft":
-                    messages = await client.get_messages(
-                        limit=limit,
-                        include_body=include_body,
-                        labels=labels,
-                        folder_id=folder_id,
-                        q=q,
-                        page_token=page_token,
-                        no_cache=no_cache,
-                    )
-                elif provider == "google":
-                    messages = await client.get_messages(
-                        limit=limit,
-                        include_body=include_body,
-                        labels=labels,
-                        folder_id=folder_id,
-                        q=q,
-                        page_token=page_token,
-                        no_cache=no_cache,
-                    )
-                else:
-                    continue
+                async with client:
+                    if provider == "microsoft":
+                        messages = await client.get_messages(
+                            top=limit,
+                            filter=filter_str,
+                            search=q,
+                            order_by="receivedDateTime desc",
+                        )
+                    elif provider == "google":
+                        messages = await client.get_messages(
+                            top=limit,
+                            filter=filter_str,
+                            search=q,
+                            order_by="receivedDateTime desc",
+                        )
+                    else:
+                        continue
 
                 # Normalize messages
                 if provider == "microsoft":
+                    # Microsoft Graph API returns emails in a 'value' array
+                    email_list = messages.get("value", []) if isinstance(messages, dict) else []
                     normalized_messages = [
-                        normalize_microsoft_email(msg, user_id) for msg in messages
+                        normalize_microsoft_email(msg, email) for msg in email_list
                     ]
                 elif provider == "google":
+                    # Gmail API returns emails in a 'messages' array
+                    email_list = messages.get("messages", []) if isinstance(messages, dict) else []
                     normalized_messages = [
-                        normalize_google_email(msg, user_id) for msg in messages
+                        normalize_google_email(msg, email) for msg in email_list
                     ]
                 else:
                     normalized_messages = messages
@@ -2685,26 +2695,36 @@ async def get_internal_email_count(
                     continue
 
                 # Get messages from provider (just count, not content)
-                if provider == "microsoft":
-                    messages = await client.get_messages(
-                        limit=1,  # Just get 1 to check if we can connect
-                        include_body=False,
-                        no_cache=True,
-                    )
-                elif provider == "google":
-                    messages = await client.get_messages(
-                        limit=1,  # Just get 1 to check if we can connect
-                        include_body=False,
-                        no_cache=True,
-                    )
-                else:
-                    continue
+                async with client:
+                    if provider == "microsoft":
+                        messages = await client.get_messages(
+                            top=100,  # Get up to 100 to get a reasonable count
+                        )
+                    elif provider == "google":
+                        messages = await client.get_messages(
+                            top=100,  # Get up to 100 to get a reasonable count
+                        )
+                    else:
+                        continue
 
-                # Count messages (this is a simplified count)
-                total_count += len(messages) if messages else 0
+                # Debug: Log the response structure
+                logger.info(f"Response from {provider} API: {type(messages)} - Keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}")
+                
+                # Count messages from the response
+                if provider == "microsoft" and "value" in messages:
+                    total_count += len(messages["value"])
+                    logger.info(f"Microsoft API returned {len(messages['value'])} messages in 'value' array")
+                elif provider == "google" and "messages" in messages:
+                    total_count += len(messages["messages"])
+                    logger.info(f"Google API returned {len(messages['messages'])} messages in 'messages' array")
+                else:
+                    # Fallback: count the top-level messages if structure is different
+                    fallback_count = len(messages) if isinstance(messages, list) else 0
+                    total_count += fallback_count
+                    logger.info(f"Fallback count for {provider}: {fallback_count} (response type: {type(messages)})")
 
                 logger.info(
-                    f"Counted {len(messages) if messages else 0} messages from {provider} for user {user_id}"
+                    f"Counted {total_count} total messages from {provider} for user {user_id}"
                 )
 
             except Exception as e:
@@ -2716,7 +2736,16 @@ async def get_internal_email_count(
             "success": True,
             "total_count": total_count,
             "user_id": user_id,
-            "providers": valid_providers
+            "providers": valid_providers,
+            "debug_info": {
+                "api_responses": {
+                    provider: {
+                        "response_type": str(type(messages)) if 'messages' in locals() else "No response",
+                        "response_keys": list(messages.keys()) if isinstance(messages, dict) else "Not a dict",
+                        "response_length": len(messages) if isinstance(messages, (list, dict)) else "Unknown"
+                    } for provider in valid_providers if 'messages' in locals()
+                }
+            }
         }
             
     except Exception as e:
