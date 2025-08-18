@@ -1,8 +1,15 @@
 import { getSession } from 'next-auth/react';
 import { getUserId } from '../../lib/session-utils';
 import type {
+    ContactCreateResponse,
+    ContactDeleteResponse,
     ContactList,
+    ContactUpdateResponse,
     CreateCalendarEventRequest,
+    EmailDraftResponse,
+    EmailFolderList,
+    EmailMessageList,
+    EmailThreadList,
     SendEmailResponse,
     TypedApiResponse_CalendarEventResponse_,
     TypedApiResponse_List_CalendarEvent__
@@ -97,7 +104,7 @@ export class OfficeClient extends GatewayClient {
         noCache?: boolean,
         labels?: string[],
         folderId?: string
-    ): Promise<TypedApiResponse_List_CalendarEvent__> {
+    ): Promise<EmailMessageList> {
         const params = new URLSearchParams();
 
         providers.forEach(provider => params.append('providers', provider));
@@ -108,7 +115,7 @@ export class OfficeClient extends GatewayClient {
         if (labels) labels.forEach(label => params.append('labels', label));
         if (folderId) params.append('folder_id', folderId);
 
-        return this.request<TypedApiResponse_List_CalendarEvent__>(`/api/v1/email/messages?${params.toString()}`);
+        return this.request<EmailMessageList>(`/api/v1/email/messages?${params.toString()}`);
     }
 
     async getThreads(
@@ -120,7 +127,7 @@ export class OfficeClient extends GatewayClient {
         q?: string,
         pageToken?: string,
         noCache?: boolean
-    ): Promise<TypedApiResponse_List_CalendarEvent__> {
+    ): Promise<EmailThreadList> {
         const params = new URLSearchParams();
 
         if (providers) providers.forEach(provider => params.append('providers', provider));
@@ -132,20 +139,20 @@ export class OfficeClient extends GatewayClient {
         if (pageToken) params.append('page_token', pageToken);
         if (noCache) params.append('no_cache', 'true');
 
-        return this.request<TypedApiResponse_List_CalendarEvent__>(`/api/v1/email/threads?${params.toString()}`);
+        return this.request<EmailThreadList>(`/api/v1/email/threads?${params.toString()}`);
     }
 
     async getThread(
         threadId: string,
         includeBody?: boolean,
         noCache?: boolean
-    ): Promise<TypedApiResponse_CalendarEventResponse_> {
+    ): Promise<EmailThreadList> {
         const params = new URLSearchParams();
 
         if (includeBody) params.append('include_body', 'true');
         if (noCache) params.append('no_cache', 'true');
 
-        return this.request<TypedApiResponse_CalendarEventResponse_>(`/api/v1/email/threads/${threadId}?${params.toString()}`);
+        return this.request<EmailThreadList>(`/api/v1/email/threads/${threadId}?${params.toString()}`);
     }
 
     // Provider Email Drafts (Office Service)
@@ -159,8 +166,8 @@ export class OfficeClient extends GatewayClient {
         thread_id?: string;
         reply_to_message_id?: string;
         provider?: 'google' | 'microsoft';
-    }): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; draft?: Record<string, unknown> } | { deleted?: boolean } | { drafts?: unknown[] }; error?: { message?: string }; request_id: string }> {
-        return this.request(`/api/v1/email/drafts`, {
+    }): Promise<EmailDraftResponse> {
+        return this.request<EmailDraftResponse>(`/api/v1/email/drafts`, {
             method: 'POST',
             body: {
                 action: payload.action || 'new',
@@ -183,8 +190,8 @@ export class OfficeClient extends GatewayClient {
         subject?: string;
         body?: string;
         provider: 'google' | 'microsoft';
-    }): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; draft?: Record<string, unknown> }; error?: { message?: string }; request_id: string }> {
-        return this.request(`/api/v1/email/drafts/${draftId}`, {
+    }): Promise<EmailDraftResponse> {
+        return this.request<EmailDraftResponse>(`/api/v1/email/drafts/${draftId}`, {
             method: 'PUT',
             body: {
                 to: payload.to,
@@ -197,27 +204,27 @@ export class OfficeClient extends GatewayClient {
         });
     }
 
-    async deleteEmailDraft(draftId: string, provider: 'google' | 'microsoft') {
+    async deleteEmailDraft(draftId: string, provider: 'google' | 'microsoft'): Promise<EmailDraftResponse> {
         const params = new URLSearchParams();
         params.append('provider', provider);
-        return this.request(`/api/v1/email/drafts/${draftId}?${params.toString()}`, { method: 'DELETE' });
+        return this.request<EmailDraftResponse>(`/api/v1/email/drafts/${draftId}?${params.toString()}`, { method: 'DELETE' });
     }
 
-    async listThreadDrafts(threadId: string): Promise<{ success: boolean; data?: { provider?: 'google' | 'microsoft'; drafts?: unknown[] }; error?: { message?: string }; request_id: string }> {
-        return this.request(`/api/v1/email/threads/${threadId}/drafts`);
+    async listThreadDrafts(threadId: string): Promise<EmailDraftResponse> {
+        return this.request<EmailDraftResponse>(`/api/v1/email/threads/${threadId}/drafts`);
     }
 
     async getMessageThread(
         messageId: string,
         includeBody?: boolean,
         noCache?: boolean
-    ): Promise<TypedApiResponse_CalendarEventResponse_> {
+    ): Promise<EmailThreadList> {
         const params = new URLSearchParams();
 
         if (includeBody) params.append('include_body', 'true');
         if (noCache) params.append('no_cache', 'true');
 
-        return this.request<TypedApiResponse_CalendarEventResponse_>(`/api/v1/email/messages/${messageId}/thread?${params.toString()}`);
+        return this.request<EmailThreadList>(`/api/v1/email/messages/${messageId}/thread?${params.toString()}`);
     }
 
     // Bulk email operations
@@ -250,7 +257,7 @@ export class OfficeClient extends GatewayClient {
     async getEmailFolders(
         providers?: string[],
         noCache?: boolean
-    ): Promise<TypedApiResponse_List_CalendarEvent__> {
+    ): Promise<EmailFolderList> {
         const params = new URLSearchParams();
         if (noCache) params.append('no_cache', 'true');
 
@@ -261,7 +268,7 @@ export class OfficeClient extends GatewayClient {
             });
         }
 
-        return this.request<TypedApiResponse_List_CalendarEvent__>(`/api/v1/email/folders?${params.toString()}`);
+        return this.request<EmailFolderList>(`/api/v1/email/folders?${params.toString()}`);
     }
 
     async getFiles(provider: string, path?: string) {
@@ -272,32 +279,32 @@ export class OfficeClient extends GatewayClient {
     }
 
     // Contacts Service
-    async getContacts(providers?: string[], limit?: number, q?: string, company?: string, noCache?: boolean): Promise<TypedApiResponse_List_CalendarEvent__> {
+    async getContacts(providers?: string[], limit?: number, q?: string, company?: string, noCache?: boolean): Promise<ContactList> {
         const params = new URLSearchParams();
         if (providers) providers.forEach(p => params.append('providers', p));
         if (limit) params.append('limit', String(limit));
         if (q) params.append('q', q);
         if (company) params.append('company', company);
         if (noCache) params.append('no_cache', 'true');
-        return this.request<TypedApiResponse_List_CalendarEvent__>(`/api/v1/contacts?${params.toString()}`);
+        return this.request<ContactList>(`/api/v1/contacts?${params.toString()}`);
     }
 
-    async updateContact(contactId: string, payload: Partial<ContactList>): Promise<TypedApiResponse_CalendarEventResponse_> {
-        return this.request<TypedApiResponse_CalendarEventResponse_>(`/api/v1/contacts/${contactId}`, {
+    async updateContact(contactId: string, payload: Partial<ContactList>): Promise<ContactUpdateResponse> {
+        return this.request<ContactUpdateResponse>(`/api/v1/contacts/${contactId}`, {
             method: 'PUT',
             body: payload,
         });
     }
 
-    async createContact(payload: Partial<ContactList> & { provider?: 'google' | 'microsoft' }): Promise<TypedApiResponse_CalendarEventResponse_> {
-        return this.request<TypedApiResponse_CalendarEventResponse_>(`/api/v1/contacts`, {
+    async createContact(payload: Partial<ContactList> & { provider?: 'google' | 'microsoft' }): Promise<ContactCreateResponse> {
+        return this.request<ContactCreateResponse>(`/api/v1/contacts`, {
             method: 'POST',
             body: payload,
         });
     }
 
-    async deleteContact(contactId: string): Promise<TypedApiResponse_CalendarEventResponse_> {
-        return this.request<TypedApiResponse_CalendarEventResponse_>(`/api/v1/contacts/${contactId}`, {
+    async deleteContact(contactId: string): Promise<ContactDeleteResponse> {
+        return this.request<ContactDeleteResponse>(`/api/v1/contacts/${contactId}`, {
             method: 'DELETE',
         });
     }
