@@ -20,11 +20,13 @@ from typing import Any, Dict, List, Optional
 # Add the services directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+
 # Environment validation - check if virtual environment is active
 def validate_environment():
     """Validate that the virtual environment is active and dependencies are available."""
     try:
         import pydantic
+
         print("✅ Virtual environment is active - pydantic is available")
     except ImportError:
         print("❌ ERROR: Virtual environment is not active!")
@@ -38,15 +40,16 @@ def validate_environment():
         print("\nThis ensures all required dependencies (like pydantic) are available.")
         sys.exit(1)
 
+
 # Validate environment before importing other modules
 validate_environment()
 
 from services.common.logging_config import get_logger
 from services.demos.settings_demos import get_demo_settings
 from services.office.api.backfill import BackfillRequest
-from services.office.models.backfill import ProviderEnum
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
+from services.office.models.backfill import ProviderEnum
 from services.vespa_query.search_engine import SearchEngine
 
 logger = get_logger(__name__)
@@ -99,6 +102,9 @@ class VespaBackfillDemo:
                 self.settings, "api_backfill_office_key", "test-BACKFILL-OFFICE-KEY"
             ),
         }
+
+        # Keep user ID separate from email; resolved later
+        self.user_id: Optional[str] = None
 
     async def clear_pubsub_topics(self) -> None:
         """Clear Pub/Sub topics to stop flooding"""
@@ -171,8 +177,14 @@ class VespaBackfillDemo:
 
             # Get list of running jobs using internal endpoint
             async with httpx.AsyncClient(timeout=10.0) as client:
+                # Prefer resolved user_id; resolve from email if needed
+                target_user_id = (
+                    self.user_id
+                    if getattr(self, "user_id", None)
+                    else await self._resolve_email_to_user_id(self.user_email)
+                )
                 response = await client.get(
-                    f"{self.office_service_url}/internal/backfill/status?user_id={self.user_email}",
+                    f"{self.office_service_url}/internal/backfill/status?user_id={target_user_id}",
                     headers={"X-API-Key": self.api_keys["backfill"]},
                 )
 
@@ -185,7 +197,7 @@ class VespaBackfillDemo:
 
                             # Cancel the job using internal endpoint
                             cancel_response = await client.delete(
-                                f"{self.office_service_url}/internal/backfill/{job_id}?user_id={self.user_email}",
+                                f"{self.office_service_url}/internal/backfill/{job_id}?user_id={target_user_id}",
                                 headers={"X-API-Key": self.api_keys["backfill"]},
                             )
 
@@ -205,7 +217,12 @@ class VespaBackfillDemo:
         """Async context manager entry"""
         return self
 
-    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[Any],
+    ) -> None:
         """Async context manager exit"""
         # Cleanup resources if needed
         if hasattr(self, "search_engine"):
@@ -287,7 +304,9 @@ class VespaBackfillDemo:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
-    def print_vespa_stats(self, stats: Dict[str, Any], label: str = "VESPA STATISTICS") -> None:
+    def print_vespa_stats(
+        self, stats: Dict[str, Any], label: str = "VESPA STATISTICS"
+    ) -> None:
         """Print Vespa statistics in a formatted way"""
         print(f"\n{'='*60}")
         print(f"{label}: {stats['user_email']}")
@@ -404,7 +423,7 @@ class VespaBackfillDemo:
         print(f"{'='*60}")
         print("📊 DATA INGESTION VALIDATION")
         print(f"{'='*60}")
-        
+
         # Check if any data was actually published
         total_published = results.get("total_data_published", 0)
         if total_published == 0:
@@ -421,7 +440,7 @@ class VespaBackfillDemo:
             print("- Review office service logs")
         else:
             print(f"✅ SUCCESS: {total_published} items published to Vespa")
-        
+
         # Show detailed provider results
         job_details = results.get("job_details", [])
         if job_details:
@@ -432,15 +451,15 @@ class VespaBackfillDemo:
                 duration = job.get("duration_seconds", 0)
                 emails_processed = job.get("emails_processed", 0)
                 emails_published = job.get("emails_published", 0)
-                
+
                 print(f"  {provider.upper()}: {status} ({duration:.1f}s)")
                 print(f"    - Emails processed: {emails_processed}")
                 print(f"    - Emails published: {emails_published}")
-                
+
                 # Show specific errors if any
                 if job.get("error"):
                     print(f"    - ERROR: {job['error']}")
-        
+
         # Show Vespa statistics comparison
         before_count = before_stats.get("total_documents", 0)
         after_count = after_stats.get("total_documents", 0)
@@ -448,12 +467,12 @@ class VespaBackfillDemo:
         print(f"  Before backfill: {before_count} documents")
         print(f"  After backfill:  {after_count} documents")
         print(f"  Net change:      {after_count - before_count} documents")
-        
+
         if after_count == before_count and total_published > 0:
             print("\n⚠️  WARNING: Data published but Vespa count unchanged!")
             print("   This suggests the Vespa loader service may not be working")
             print("   Check Vespa loader service logs and configuration")
-        
+
         print(f"{'='*60}")
 
     async def run_backfill_demo(self) -> Dict[str, Any]:
@@ -480,45 +499,81 @@ class VespaBackfillDemo:
             results["vespa_stats"]["before"] = before_stats
             self.print_vespa_stats(before_stats, "INITIAL VESPA STATISTICS")
 
-            # Check OAuth integration status before proceeding
-            logger.info("Checking OAuth integration status...")
-            integration_status = await self._check_integration_status(self.user_email)
-            results["integration_status"] = integration_status
-            
-            # If office service is not running, fail fast
-            if not integration_status.get("office_service_running", False):
-                error_msg = "Office service is not running. Cannot proceed with backfill."
-                logger.error(error_msg)
-                results["status"] = "failed"
-                results["error"] = error_msg
-                return results
-            
-            # If no integrations are configured, provide clear guidance
-            integrations = integration_status.get("integrations", [])
-            if not integrations:
-                print("\n❌ NO OAUTH INTEGRATIONS CONFIGURED")
-                print("   The backfill cannot proceed without OAuth integrations.")
-                print("\n💡 SETUP REQUIRED:")
-                print("   1. Complete OAuth setup for Microsoft and/or Google")
-                print("   2. Ensure valid access tokens are stored")
-                print("   3. Verify integration status shows 'Connected'")
-                print("\n🔧 NEXT STEPS:")
-                print("   - Visit the frontend settings page")
-                print("   - Complete OAuth integration setup")
-                print("   - Run this script again after setup")
-                
-                results["status"] = "failed"
-                results["error"] = "No OAuth integrations configured"
+            # Resolve email to user ID
+            logger.info(f"Resolving email {self.user_email} to user ID...")
+            user_id = await self._resolve_email_to_user_id(self.user_email)
+            if not user_id:
+                print(f"❌ Failed to resolve user ID for email: {self.user_email}")
+                print("   Please ensure the user exists in the user service.")
                 return results
 
+            print(f"✅ Resolved user ID: {user_id} for email: {self.user_email}")
+
+            # Store both email and user ID for use in different contexts
+            original_email = self.user_email
+            self.user_id = user_id
+
+            # Check OAuth integration status before proceeding
+            logger.info("Checking OAuth integration status...")
+            integration_status = await self._check_integration_status(self.user_id)
+            results["integration_status"] = integration_status
+
+            # If office service is not running, fail fast
+            if not integration_status.get("office_service_running", False):
+                print(
+                    "❌ Office service is not running. Please start the office service first."
+                )
+                return results
+
+            # If user service is not running, fail fast
+            if not integration_status.get("user_service_running", False):
+                print(
+                    "❌ User service is not running. Please start the user service first."
+                )
+                return results
+
+            # If user doesn't exist, provide clear guidance
+            if not integration_status.get("user_exists", False):
+                print(
+                    "❌ User not found. Please complete OAuth integration through the frontend first."
+                )
+                return results
+
+            # Refresh OAuth tokens if needed (same logic as frontend)
+            logger.info("Checking and refreshing OAuth tokens if needed...")
+            token_refresh_result = await self._refresh_oauth_tokens_if_needed(
+                self.user_id
+            )
+            results["token_refresh"] = token_refresh_result
+
+            # If no active integrations after token refresh, fail fast
+            if not token_refresh_result.get("success", False):
+                print(
+                    "❌ Failed to refresh OAuth tokens. Please check your integrations."
+                )
+                return results
+
+            active_integrations = token_refresh_result.get("active_integrations", [])
+            if not active_integrations:
+                print("❌ No active OAuth integrations found after token refresh.")
+                print(
+                    "   Please complete OAuth integration through the frontend first."
+                )
+                return results
+
+            print(
+                f"✅ Found {len(active_integrations)} active OAuth integrations: {', '.join(active_integrations)}"
+            )
+            print("🚀 Proceeding with backfill using real data...")
+
             # Process the specified user
-            logger.info(f"Starting backfill for user: {self.user_email}")
+            logger.info(f"Starting backfill for user: {self.user_id}")
 
             try:
                 # Process each provider for the user
                 for provider in self.providers:
                     job_result = await self._run_user_provider_backfill(
-                        self.user_email, provider
+                        self.user_id, provider
                     )
 
                     if job_result["status"] == "success":
@@ -534,11 +589,11 @@ class VespaBackfillDemo:
                 results["users_processed"] += 1
 
             except Exception as e:
-                logger.error(f"Failed to process user {self.user_email}: {e}")
+                logger.error(f"Failed to process user {self.user_id}: {e}")
                 results["failed_jobs"] += 1
                 results["job_details"].append(
                     {
-                        "user_id": self.user_email,
+                        "user_id": self.user_id,
                         "provider": "unknown",
                         "status": "failed",
                         "error": str(e),
@@ -587,30 +642,34 @@ class VespaBackfillDemo:
         print(f"{'='*60}")
         print("🔍 CHECKING OAUTH INTEGRATION STATUS")
         print(f"{'='*60}")
-        
+
         try:
             import httpx
-            
+
             # Check office service health first
             office_service_url = "http://localhost:8003"
-            
+
             # First check if office service is running
             async with httpx.AsyncClient() as client:
                 try:
                     health_response = await client.get(
-                        f"{office_service_url}/health",
-                        timeout=10.0
+                        f"{office_service_url}/health", timeout=10.0
                     )
                     if health_response.status_code == 200:
                         print("✅ Office service is running")
                     else:
-                        print(f"❌ Office service health check failed: {health_response.status_code}")
-                        return {"office_service_running": False, "error": "Health check failed"}
+                        print(
+                            f"❌ Office service health check failed: {health_response.status_code}"
+                        )
+                        return {
+                            "office_service_running": False,
+                            "error": "Health check failed",
+                        }
                 except Exception as e:
                     print(f"❌ Cannot connect to office service: {e}")
                     print("   Make sure the office service is running on port 8003")
                     return {"office_service_running": False, "error": str(e)}
-                
+
                 # Check integration status through the user service
                 user_service_url = "http://localhost:8001"
                 try:
@@ -619,15 +678,15 @@ class VespaBackfillDemo:
                         f"{user_service_url}/v1/users/{user_id}/integrations/",
                         headers={
                             "X-User-Id": user_id,
-                            "X-API-Key": "test-FRONTEND_USER_KEY"
+                            "X-API-Key": "test-FRONTEND_USER_KEY",
                         },
-                        timeout=10.0
+                        timeout=10.0,
                     )
-                    
+
                     if integrations_response.status_code == 200:
                         integrations_data = integrations_response.json()
                         print("✅ Integration status check completed")
-                        
+
                         # Show integration details
                         integrations = integrations_data.get("integrations", [])
                         if integrations:
@@ -636,37 +695,191 @@ class VespaBackfillDemo:
                                 provider = integration.get("provider", "unknown")
                                 status = integration.get("status", "unknown")
                                 connected = status == "active"
-                                
+
                                 if connected:
                                     print(f"  {provider.upper()}: ✅ Connected")
                                     if integration.get("last_sync_at"):
-                                        print(f"    Last sync: {integration['last_sync_at']}")
+                                        print(
+                                            f"    Last sync: {integration['last_sync_at']}"
+                                        )
                                 else:
                                     print(f"  {provider.upper()}: ❌ Not connected")
                                     if integration.get("error_message"):
-                                        print(f"    Error: {integration['error_message']}")
+                                        print(
+                                            f"    Error: {integration['error_message']}"
+                                        )
                         else:
                             print("❌ No integrations found")
                             print("   User needs to complete OAuth setup")
-                        
-                        return {"office_service_running": True, "integrations": integrations}
+
+                        return {
+                            "office_service_running": True,
+                            "integrations": integrations,
+                        }
                     else:
-                        print(f"❌ Integration status check failed: {integrations_response.status_code}")
+                        print(
+                            f"❌ Integration status check failed: {integrations_response.status_code}"
+                        )
                         if integrations_response.status_code == 404:
                             print("   User not found - may need to be created first")
-                        return {"office_service_running": True, "error": "Integration check failed"}
-                        
+                        return {
+                            "office_service_running": True,
+                            "user_service_running": True,
+                            "user_exists": False,
+                            "error": "Integration check failed",
+                        }
+
                 except Exception as e:
                     print(f"❌ Integration status check failed: {e}")
-                    print("   This may indicate the user service is not running or accessible")
-                    return {"office_service_running": True, "error": str(e)}
-                    
+                    print(
+                        "   This may indicate the user service is not running or accessible"
+                    )
+                    return {
+                        "office_service_running": True,
+                        "user_service_running": False,
+                        "error": str(e),
+                    }
+
         except Exception as e:
             print(f"❌ Failed to check integration status: {e}")
             return {"error": str(e)}
-        
+
         print(f"{'='*60}")
-        return {"office_service_running": True}
+        return {
+            "office_service_running": True,
+            "user_service_running": True,
+            "user_exists": True,
+        }
+
+    async def _refresh_oauth_tokens_if_needed(self, user_id: str) -> Dict[str, Any]:
+        """Refresh OAuth tokens if they are expired, following the same logic as the frontend"""
+        print(f"{'='*60}")
+        print("🔄 CHECKING AND REFRESHING OAUTH TOKENS")
+        print(f"{'='*60}")
+
+        try:
+            import httpx
+
+            user_service_url = "http://localhost:8001"
+            office_service_url = "http://localhost:8003"
+
+            async with httpx.AsyncClient() as client:
+                # First, get the user's integrations to check their status
+                try:
+                    integrations_response = await client.get(
+                        f"{user_service_url}/v1/users/{user_id}/integrations/",
+                        headers={
+                            "X-User-Id": user_id,
+                            "X-API-Key": "test-FRONTEND_USER_KEY",
+                        },
+                        timeout=10.0,
+                    )
+
+                    if integrations_response.status_code == 200:
+                        integrations = integrations_response.json()
+                        active_integrations = []
+
+                        for integration in integrations.get("integrations", []):
+                            provider = integration.get("provider")
+                            status = integration.get("status")
+                            token_expires_at = integration.get("token_expires_at")
+
+                            print(f"📋 Provider: {provider}, Status: {status}")
+
+                            # Check if token is expired (same logic as frontend)
+                            if token_expires_at:
+                                try:
+                                    expiration_date = datetime.fromisoformat(
+                                        token_expires_at.replace("Z", "+00:00")
+                                    )
+                                    now = datetime.now(timezone.utc)
+                                    is_expired = expiration_date <= now
+
+                                    if is_expired:
+                                        print(
+                                            f"⚠️  {provider} token expired at {token_expires_at}"
+                                        )
+                                        print(
+                                            f"🔄 Attempting to refresh {provider} tokens..."
+                                        )
+
+                                        # Refresh the expired token
+                                        refresh_response = await client.put(
+                                            f"{user_service_url}/v1/users/{user_id}/integrations/{provider}/refresh",
+                                            headers={
+                                                "X-User-Id": user_id,
+                                                "X-API-Key": "test-FRONTEND_USER_KEY",
+                                            },
+                                            json={"force": True},
+                                            timeout=30.0,
+                                        )
+
+                                        if refresh_response.status_code == 200:
+                                            refresh_result = refresh_response.json()
+                                            if refresh_result.get("success"):
+                                                print(
+                                                    f"✅ {provider} tokens refreshed successfully"
+                                                )
+                                                print(
+                                                    f"   New expiration: {refresh_result.get('token_expires_at')}"
+                                                )
+                                                active_integrations.append(provider)
+                                            else:
+                                                print(
+                                                    f"❌ {provider} token refresh failed: {refresh_result.get('error')}"
+                                                )
+                                        else:
+                                            print(
+                                                f"❌ {provider} token refresh HTTP error: {refresh_response.status_code}"
+                                            )
+
+                                    else:
+                                        print(
+                                            f"✅ {provider} token valid until {token_expires_at}"
+                                        )
+                                        active_integrations.append(provider)
+
+                                except Exception as e:
+                                    print(
+                                        f"❌ Error checking {provider} token expiration: {e}"
+                                    )
+                            else:
+                                print(f"⚠️  {provider} has no token expiration info")
+
+                        return {
+                            "success": True,
+                            "active_integrations": active_integrations,
+                            "total_integrations": len(
+                                integrations.get("integrations", [])
+                            ),
+                            "message": f"Found {len(active_integrations)} active integrations",
+                        }
+
+                    else:
+                        print(
+                            f"❌ Failed to get integrations: HTTP {integrations_response.status_code}"
+                        )
+                        return {
+                            "success": False,
+                            "error": f"HTTP {integrations_response.status_code}",
+                            "message": "Could not retrieve user integrations",
+                        }
+
+                except Exception as e:
+                    print(f"❌ Error checking integrations: {e}")
+                    return {
+                        "success": False,
+                        "error": str(e),
+                        "message": "Failed to check user integrations",
+                    }
+
+        except Exception as e:
+            print(f"❌ Error in token refresh process: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Token refresh process failed",
+            }
 
     async def _run_user_provider_backfill(
         self, user_id: str, provider: str
@@ -978,6 +1191,39 @@ class VespaBackfillDemo:
                 )
 
         print("=" * 60)
+
+    async def _resolve_email_to_user_id(self, email: str) -> Optional[str]:
+        """Resolve email address to user ID using the same endpoint the frontend uses"""
+        try:
+            import httpx
+
+            user_service_url = "http://localhost:8001"
+
+            async with httpx.AsyncClient() as client:
+                # Use the same endpoint the frontend uses: /v1/internal/users/exists
+                response = await client.get(
+                    f"{user_service_url}/v1/internal/users/exists",
+                    params={"email": email},
+                    headers={"X-API-Key": "test-FRONTEND_USER_KEY"},
+                    timeout=10.0,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("exists", False):
+                        user_id = data.get("user_id")
+                        print(f"✅ Found user ID: {user_id} for email: {email}")
+                        return user_id
+                    else:
+                        print(f"❌ No user found for email: {email}")
+                        return None
+                else:
+                    print(f"❌ Failed to resolve email: HTTP {response.status_code}")
+                    return None
+
+        except Exception as e:
+            print(f"❌ Error resolving email to user ID: {e}")
+            return None
 
 
 async def main() -> Optional[Dict[str, Any]]:
