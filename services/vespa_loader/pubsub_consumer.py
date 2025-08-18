@@ -178,10 +178,11 @@ class PubSubConsumer:
             # Check if subscription already exists by trying to get it
             try:
                 # Use the subscriber client to check if subscription exists
-                subscription = self.subscriber.get_subscription(request={"subscription": subscription_path})
-                if subscription:
-                    logger.info(f"Subscription {subscription_name} already exists for topic {topic_name}")
-                    return
+                if self.subscriber:
+                    subscription = self.subscriber.get_subscription(request={"subscription": subscription_path})
+                    if subscription:
+                        logger.info(f"Subscription {subscription_name} already exists for topic {topic_name}")
+                        return
             except Exception:
                 # Subscription doesn't exist, create it
                 pass
@@ -189,13 +190,14 @@ class PubSubConsumer:
             # Create the subscription using the subscriber client
             try:
                 # The subscriber client can create subscriptions
-                subscription = self.subscriber.create_subscription(
-                    request={
-                        "name": subscription_path,
-                        "topic": topic_path
-                    }
-                )
-                logger.info(f"Successfully created subscription {subscription_name} for topic {topic_name}")
+                if self.subscriber:
+                    subscription = self.subscriber.create_subscription(
+                        request={
+                            "name": subscription_path,
+                            "topic": topic_path
+                        }
+                    )
+                    logger.info(f"Successfully created subscription {subscription_name} for topic {topic_name}")
                 
             except Exception as e:
                 logger.warning(f"Failed to create subscription {subscription_name} using subscriber client: {e}")
@@ -272,7 +274,8 @@ class PubSubConsumer:
                         )
                 else:
                     # Only start timer if one doesn't already exist
-                    if topic_name not in self.batch_timers or not self.batch_timers[topic_name] or self.batch_timers[topic_name].done():
+                    timer = self.batch_timers.get(topic_name)
+                    if topic_name not in self.batch_timers or not timer or (timer is not None and timer.done()):
                         logger.debug(f"Starting timer for partial batch in {topic_name}")
                         # Start timer for partial batch
                         if self.loop:
@@ -295,7 +298,7 @@ class PubSubConsumer:
         # Only create timer if one doesn't exist or is done
         if topic_name in self.batch_timers and self.batch_timers[topic_name]:
             timer = self.batch_timers[topic_name]
-            if timer and not timer.done():
+            if timer is not None and not timer.done():
                 logger.info(f"Timer already exists for {topic_name}, skipping")
                 return
 

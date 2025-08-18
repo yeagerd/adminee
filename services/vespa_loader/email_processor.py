@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 class EmailContentProcessor:
     """Processes email content for optimal Vespa indexing"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.max_chunk_size = 1000  # Maximum characters per chunk
         self.min_chunk_size = 200   # Minimum characters per chunk
         self.quote_patterns = [
