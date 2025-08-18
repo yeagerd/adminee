@@ -258,7 +258,7 @@ class TokenManager:
             headers = {}
             if request_id and request_id != "uninitialized":
                 headers["X-Request-Id"] = request_id
-            
+
             # Add API key authentication for service-to-service communication
             api_key = get_settings().api_office_user_key
             if api_key:

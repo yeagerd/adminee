@@ -186,7 +186,12 @@ class VespaSearchDemo:
         """Async context manager entry"""
         return self
 
-    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[Any],
+    ) -> None:
         """Async context manager exit with cleanup"""
         await self.cleanup()
 

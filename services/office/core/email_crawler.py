@@ -238,24 +238,24 @@ class EmailCrawler:
         """Get a batch of emails from the specified provider using the office service's unified API"""
         try:
             import httpx
-            
+
             # Call the office service's unified /email/messages endpoint
             # This is the same endpoint the frontend uses
             office_service_url = "http://localhost:8003"
-            
+
             # Build query parameters
             params = {
                 "providers": [provider],
                 "limit": batch_size,
                 "include_body": True,
-                "no_cache": True  # Always get fresh data for backfill
+                "no_cache": True,  # Always get fresh data for backfill
             }
-            
+
             # Add folder filtering if specified
             if folders:
                 # For both providers, folders are typically labels
                 params["labels"] = folders
-            
+
             # Add date filtering if specified
             if start_date or end_date:
                 # Build search query with date filters
@@ -266,18 +266,18 @@ class EmailCrawler:
                     query_parts.append(f"before:{end_date.strftime('%Y/%m/%d')}")
                 if query_parts:
                     params["q"] = " ".join(query_parts)
-            
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     f"{office_service_url}/v1/email/messages",
                     params=params,
                     headers={
                         "X-User-Id": self.user_id,
-                        "X-API-Key": "test-BACKFILL-OFFICE-KEY"  # Use backfill API key
+                        "X-API-Key": "test-BACKFILL-OFFICE-KEY",  # Use backfill API key
                     },
-                    timeout=30.0
+                    timeout=30.0,
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("success") and data.get("data", {}).get("messages"):
@@ -292,39 +292,62 @@ class EmailCrawler:
                                 "type": "email",
                                 "subject": msg.get("subject", ""),
                                 "body": msg.get("body_text", msg.get("snippet", "")),
-                                "from": msg.get("from_address", {}).get("email", "") if msg.get("from_address") else "",
-                                "to": [addr.get("email", "") for addr in msg.get("to_addresses", [])],
+                                "from": (
+                                    msg.get("from_address", {}).get("email", "")
+                                    if msg.get("from_address")
+                                    else ""
+                                ),
+                                "to": [
+                                    addr.get("email", "")
+                                    for addr in msg.get("to_addresses", [])
+                                ],
                                 "thread_id": msg.get("thread_id", ""),
-                                "folder": msg.get("labels", ["inbox"])[0] if msg.get("labels") else "inbox",
+                                "folder": (
+                                    msg.get("labels", ["inbox"])[0]
+                                    if msg.get("labels")
+                                    else "inbox"
+                                ),
                                 "created_at": msg.get("date"),
                                 "updated_at": msg.get("date"),
                                 "metadata": {
-                                    "has_attachments": msg.get("has_attachments", False),
-                                    "is_read": msg.get("is_read", True)
-                                }
+                                    "has_attachments": msg.get(
+                                        "has_attachments", False
+                                    ),
+                                    "is_read": msg.get("is_read", True),
+                                },
                             }
                             emails.append(email)
-                        
-                        logger.info(f"Retrieved {len(emails)} real emails from {provider} using office service unified API")
+
+                        logger.info(
+                            f"Retrieved {len(emails)} real emails from {provider} using office service unified API"
+                        )
                         return emails
                     else:
                         logger.warning("Office service returned no emails or error")
                         if not data.get("success"):
-                            logger.error(f"Office service error: {data.get('error', 'Unknown error')}")
+                            logger.error(
+                                f"Office service error: {data.get('error', 'Unknown error')}"
+                            )
                         return []
                 else:
-                    logger.error(f"Office service returned status {response.status_code}: {response.text}")
+                    logger.error(
+                        f"Office service returned status {response.status_code}: {response.text}"
+                    )
                     return []
-                    
+
         except Exception as e:
-            logger.error(f"Failed to get real emails from office service unified API for {provider}: {e}")
+            logger.error(
+                f"Failed to get real emails from office service unified API for {provider}: {e}"
+            )
             logger.error("This could be due to:")
             logger.error("1. Office service not running")
             logger.error("2. Invalid API key")
             logger.error("3. Network connectivity issues")
             logger.error("4. Office service internal errors")
-            raise Exception(f"Failed to retrieve real emails from {provider} via office service: {e}")
-        
+            raise Exception(
+                f"Failed to retrieve real emails from {provider} via office service: {e}"
+            )
+
         # Return empty list if no emails found
         return []
 
@@ -337,7 +360,9 @@ class EmailCrawler:
         folders: Optional[List[str]],
     ) -> List[Dict[str, Any]]:
         """Get a batch of emails from Microsoft using the office service's unified API"""
-        return await self._get_email_batch("microsoft", batch_num, batch_size, start_date, end_date, folders)
+        return await self._get_email_batch(
+            "microsoft", batch_num, batch_size, start_date, end_date, folders
+        )
 
     async def _get_gmail_email_batch(
         self,
@@ -348,9 +373,11 @@ class EmailCrawler:
         folders: Optional[List[str]],
     ) -> List[Dict[str, Any]]:
         """Get a batch of emails from Gmail using the office service's unified API"""
-        return await self._get_email_batch("google", batch_num, batch_size, start_date, end_date, folders)
+        return await self._get_email_batch(
+            "google", batch_num, batch_size, start_date, end_date, folders
+        )
 
-    # Note: Normalization methods removed - we now use the already-normalized data 
+    # Note: Normalization methods removed - we now use the already-normalized data
     # from the office service's /v1/email/messages endpoint
 
     def set_rate_limit(self, emails_per_second: int):
