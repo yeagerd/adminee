@@ -24,6 +24,7 @@ from services.user.models.user import User
 from services.user.schemas.integration import (
     InternalTokenResponse,
     InternalUserStatusResponse,
+    ProviderRevocationResponse,
     TokenRevocationResponse,
 )
 from services.user.security.encryption import TokenEncryption
@@ -769,6 +770,15 @@ class TokenService:
             # Invalidate cache for this user/provider combination
             # self._invalidate_cache(user_id, provider) # Removed cache invalidation
 
+            # Create a summary ProviderRevocationResponse
+            provider_response = ProviderRevocationResponse(
+                success=overall_success,
+                message=f"Revoked {len(revocation_results)} tokens",
+                error_code="; ".join([str(r.get("error", "")) for r in revocation_results if r.get("error")]) if errors else None,
+                error_description="; ".join(errors) if errors else None,
+                timestamp=datetime.now(timezone.utc),
+            )
+
             return TokenRevocationResponse(
                 success=overall_success,
                 provider=provider,
@@ -777,7 +787,7 @@ class TokenService:
                 revoked_at=datetime.now(timezone.utc),
                 reason=reason,
                 error="; ".join(errors) if errors else None,
-                provider_response={"results": revocation_results},
+                provider_response=provider_response,
             )
 
         except Exception as e:
