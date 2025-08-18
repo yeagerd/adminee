@@ -494,7 +494,7 @@ class VespaBackfillDemo:
                 return results
             
             # If no integrations are configured, provide clear guidance
-            integrations = integration_status.get("integrations", {})
+            integrations = integration_status.get("integrations", [])
             if not integrations:
                 print("\n❌ NO OAUTH INTEGRATIONS CONFIGURED")
                 print("   The backfill cannot proceed without OAuth integrations.")
@@ -591,7 +591,7 @@ class VespaBackfillDemo:
         try:
             import httpx
             
-            # Check office service health and integration status
+            # Check office service health first
             office_service_url = "http://localhost:8003"
             
             # First check if office service is running
@@ -611,45 +611,54 @@ class VespaBackfillDemo:
                     print("   Make sure the office service is running on port 8003")
                     return {"office_service_running": False, "error": str(e)}
                 
-                # Check integration health for the user
+                # Check integration status through the user service
+                user_service_url = "http://localhost:8001"
                 try:
-                    integration_response = await client.get(
-                        f"{office_service_url}/health/integrations/{user_id}",
+                    # Get user's integrations list
+                    integrations_response = await client.get(
+                        f"{user_service_url}/v1/users/{user_id}/integrations/",
                         headers={
                             "X-User-Id": user_id,
-                            "X-API-Key": "test-BACKFILL-OFFICE-KEY"
+                            "X-API-Key": "test-FRONTEND_USER_KEY"
                         },
                         timeout=10.0
                     )
                     
-                    if integration_response.status_code == 200:
-                        integration_data = integration_response.json()
-                        print("✅ Integration health check completed")
+                    if integrations_response.status_code == 200:
+                        integrations_data = integrations_response.json()
+                        print("✅ Integration status check completed")
                         
                         # Show integration details
-                        integrations = integration_data.get("integrations", {})
+                        integrations = integrations_data.get("integrations", [])
                         if integrations:
                             print(f"\n📋 INTEGRATION STATUS:")
-                            for provider, status in integrations.items():
-                                if status.get("connected"):
+                            for integration in integrations:
+                                provider = integration.get("provider", "unknown")
+                                status = integration.get("status", "unknown")
+                                connected = status == "active"
+                                
+                                if connected:
                                     print(f"  {provider.upper()}: ✅ Connected")
-                                    if status.get("last_sync"):
-                                        print(f"    Last sync: {status['last_sync']}")
+                                    if integration.get("last_sync_at"):
+                                        print(f"    Last sync: {integration['last_sync_at']}")
                                 else:
                                     print(f"  {provider.upper()}: ❌ Not connected")
-                                    if status.get("error"):
-                                        print(f"    Error: {status['error']}")
+                                    if integration.get("error_message"):
+                                        print(f"    Error: {integration['error_message']}")
                         else:
                             print("❌ No integrations found")
                             print("   User needs to complete OAuth setup")
                         
                         return {"office_service_running": True, "integrations": integrations}
                     else:
-                        print(f"❌ Integration health check failed: {integration_response.status_code}")
+                        print(f"❌ Integration status check failed: {integrations_response.status_code}")
+                        if integrations_response.status_code == 404:
+                            print("   User not found - may need to be created first")
                         return {"office_service_running": True, "error": "Integration check failed"}
                         
                 except Exception as e:
-                    print(f"❌ Integration health check failed: {e}")
+                    print(f"❌ Integration status check failed: {e}")
+                    print("   This may indicate the user service is not running or accessible")
                     return {"office_service_running": True, "error": str(e)}
                     
         except Exception as e:
