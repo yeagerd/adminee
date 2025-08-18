@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
-from google.cloud import pubsub_v1
+from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class PubSubClient:
         # Initialize publisher client
         self.publisher = pubsub_v1.PublisherClient()
 
-    def publish_message(self, topic_name: str, data: Dict[str, Any], **kwargs) -> str:
+    def publish_message(self, topic_name: str, data: Dict[str, Any], **kwargs: Any) -> str:
         """Publish a message to a PubSub topic"""
         try:
             topic_path = self.publisher.topic_path(self.project_id, topic_name)
@@ -70,7 +70,7 @@ class PubSubClient:
         """Publish contact data to the specified topic"""
         return self.publish_message(topic_name, contact_data)
 
-    def close(self):
+    def close(self) -> None:
         """Close the publisher client"""
         if self.publisher:
             self.publisher.close()
@@ -90,11 +90,11 @@ class PubSubConsumer:
 
         # Initialize subscriber client
         self.subscriber = pubsub_v1.SubscriberClient()
-        self.subscriptions = {}
+        self.subscriptions: Dict[str, Any] = {}
 
     def subscribe(
-        self, topic_name: str, subscription_name: str, callback: Callable, **kwargs
-    ):
+        self, topic_name: str, subscription_name: str, callback: Callable[..., Any], **kwargs: Any
+    ) -> Any:
         """Subscribe to a topic with the specified callback"""
         try:
             subscription_path = self.subscriber.subscription_path(
@@ -122,7 +122,7 @@ class PubSubConsumer:
             logger.error(f"Failed to subscribe to topic {topic_name}: {e}")
             raise
 
-    def unsubscribe(self, subscription_name: str):
+    def unsubscribe(self, subscription_name: str) -> None:
         """Unsubscribe from a topic"""
         if subscription_name in self.subscriptions:
             try:
@@ -132,7 +132,7 @@ class PubSubConsumer:
             except Exception as e:
                 logger.error(f"Failed to unsubscribe from {subscription_name}: {e}")
 
-    def close(self):
+    def close(self) -> None:
         """Close all subscriptions and the subscriber client"""
         for subscription_name in list(self.subscriptions.keys()):
             self.unsubscribe(subscription_name)
@@ -141,7 +141,7 @@ class PubSubConsumer:
             self.subscriber.close()
 
 
-def create_test_message(data_type: str, **kwargs) -> Dict[str, Any]:
+def create_test_message(data_type: str, **kwargs: Any) -> Dict[str, Any]:
     """Create a test message for testing purposes"""
     base_message = {
         "id": kwargs.get("id", f"test-{data_type}-{datetime.utcnow().timestamp()}"),

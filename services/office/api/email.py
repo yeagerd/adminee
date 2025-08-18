@@ -2561,25 +2561,20 @@ async def get_internal_email_messages(
 
                 # Get messages from provider
                 async with client:
-                    if provider == "microsoft":
+                    if provider == "microsoft" and isinstance(client, MicrosoftAPIClient):
+                        # Microsoft client uses top, filter, search, order_by
                         messages = await client.get_messages(
                             top=limit,
                             filter=filter_str,
                             search=q,
                             order_by="receivedDateTime desc",
                         )
-                    elif provider == "google":
-                        # Google client uses different parameter names (max_results, query)
-                        # but our unified factory likely returns GoogleAPIClient for google
-                        # So call with google-style args conditionally via getattr
-                        if hasattr(client, "get_messages"):
-                            # type: ignore[no-any-return]
-                            messages = await client.get_messages(  # type: ignore[misc]
-                                max_results=limit,  # type: ignore[call-arg]
-                                query=q,  # type: ignore[call-arg]
-                            )
-                        else:
-                            messages = {"messages": []}
+                    elif provider == "google" and isinstance(client, GoogleAPIClient):
+                        # Google client uses max_results, query
+                        messages = await client.get_messages(
+                            max_results=limit,
+                            query=q,
+                        )
                     else:
                         continue
 
@@ -2717,13 +2712,13 @@ async def get_internal_email_count(
 
                 # Get messages from provider (just count, not content)
                 async with client:
-                    if provider == "microsoft":
+                    if provider == "microsoft" and isinstance(client, MicrosoftAPIClient):
                         messages = await client.get_messages(
                             top=100,  # Get up to 100 to get a reasonable count
                         )
-                    elif provider == "google":
+                    elif provider == "google" and isinstance(client, GoogleAPIClient):
                         # Google client supports max_results, not top
-                        messages = await client.get_messages(max_results=100)  # type: ignore[misc,call-arg]
+                        messages = await client.get_messages(max_results=100)
                     else:
                         continue
 
