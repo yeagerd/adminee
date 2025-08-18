@@ -275,7 +275,7 @@ class TestVespaClientIntegration(BaseSelectiveHTTPIntegrationTest):
         delete_result = await vespa_client.delete_document(
             sample_document["user_id"], sample_document["doc_id"]
         )
-        assert delete_result["status"] == "success"
+        assert delete_result is True
 
     async def test_document_id_format_validation(self, vespa_client, sample_document):
         """Test that document IDs follow the correct Vespa format."""
@@ -312,13 +312,13 @@ class TestVespaClientIntegration(BaseSelectiveHTTPIntegrationTest):
         delete_result = await vespa_client.delete_document(
             sample_document["user_id"], sample_document["doc_id"]
         )
-        assert delete_result["status"] == "success"
+        assert delete_result is True
 
         # 4. Verify deletion was successful
         # Note: Our mock doesn't track document state changes, so we can't verify
         # that the document is actually gone from search results. In a real scenario,
         # this would work correctly.
-        assert delete_result["status"] == "success"
+        assert delete_result is True
 
     async def test_corrupted_id_handling(
         self, vespa_client, sample_document_with_duplicated_id
@@ -357,9 +357,15 @@ class TestVespaClientIntegration(BaseSelectiveHTTPIntegrationTest):
             for i in range(5)
         ]
 
-        # Batch index
-        batch_result = await vespa_client.batch_index_documents(documents)
-        assert batch_result["status"] == "completed"
+        # Batch index - use individual indexing since batch method doesn't exist
+        batch_results = []
+        for doc in documents:
+            result = await vespa_client.index_document(doc)
+            batch_results.append(result)
+        
+        # Check that all documents were indexed successfully
+        for result in batch_results:
+            assert result["status"] == "success"
 
         # Verify all documents have correct ID format
         for doc in documents:
@@ -389,7 +395,7 @@ class TestVespaClientIntegration(BaseSelectiveHTTPIntegrationTest):
         )
 
         # Verify deletion was successful
-        assert delete_result["status"] == "success"
+        assert delete_result is True
 
     async def test_search_result_consistency(self, vespa_client):
         """Test that search results are consistent with document counts."""

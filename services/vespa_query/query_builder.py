@@ -235,7 +235,8 @@ class QueryBuilder:
         folders: Optional[List[str]] = None,
     ) -> str:
         """Build the YQL query string"""
-        yql_parts = ["select * from briefly_document where userInput(@query)"]
+        # Build a more specific query that searches in search_text and content fields
+        yql_parts = [f'select * from briefly_document where (search_text contains "{query}" or content contains "{query}")']
 
         # Add source type filter
         if source_types:
