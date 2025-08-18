@@ -378,12 +378,12 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Ensure all response models have proper type definitions
 - [x] Test API endpoints with updated schemas
 
-### Task 7.4: Fix User Service Response Models
-- [ ] Update integration response models to use specific types
-- [ ] Update user preference response models to use specific types
-- [ ] Update OAuth response models to use specific types
-- [ ] Ensure all response models have proper type definitions
-- [ ] Test API endpoints with updated schemas
+### Task 7.4: Fix User Service Response Models ✅
+- [x] Update integration response models to use specific types
+- [x] Update user preference response models to use specific types
+- [x] Update OAuth response models to use specific types
+- [x] Ensure all response models have proper type definitions
+- [x] Test API endpoints with updated schemas
 
 ### Task 7.5: Fix Shipments Service Response Models
 - [ ] Update package response models to use specific types

@@ -161,6 +161,18 @@ class OAuthStartResponse(BaseModel):
     )
 
 
+class ExternalUserInfo(BaseModel):
+    """Model for external user information from OAuth providers."""
+    
+    id: str
+    email: str
+    name: Optional[str] = None
+    picture: Optional[str] = None
+    locale: Optional[str] = None
+    verified_email: Optional[bool] = None
+    provider: str
+
+
 class OAuthCallbackRequest(BaseModel):
     """Request model for OAuth callback handling."""
 
@@ -224,7 +236,7 @@ class OAuthCallbackResponse(BaseModel):
     provider: IntegrationProvider = Field(..., description="OAuth provider")
     status: IntegrationStatus = Field(..., description="Integration status")
     scopes: List[str] = Field(default_factory=list, description="Granted scopes")
-    external_user_info: Optional[Dict[str, Any]] = Field(
+    external_user_info: Optional[ExternalUserInfo] = Field(
         None, description="User info from external provider"
     )
     error: Optional[str] = Field(None, description="Error message if failed")
@@ -286,6 +298,29 @@ class IntegrationHealthResponse(BaseModel):
     )
 
 
+class IntegrationErrorSummary(BaseModel):
+    """Model for integration error summary."""
+    
+    integration_id: int
+    provider: str
+    error_type: str
+    error_message: str
+    occurred_at: datetime
+    retry_count: int = 0
+
+
+class SyncStats(BaseModel):
+    """Model for synchronization statistics."""
+    
+    total_syncs: int = 0
+    successful_syncs: int = 0
+    failed_syncs: int = 0
+    last_successful_sync: Optional[datetime] = None
+    last_failed_sync: Optional[datetime] = None
+    average_sync_duration: Optional[float] = None  # seconds
+    sync_errors_by_type: Dict[str, int] = Field(default_factory=dict)
+
+
 class IntegrationStatsResponse(BaseModel):
     """Response model for integration statistics."""
 
@@ -301,12 +336,12 @@ class IntegrationStatsResponse(BaseModel):
         default_factory=dict, description="Integration counts by status"
     )
 
-    recent_errors: List[Dict[str, Any]] = Field(
+    recent_errors: List[IntegrationErrorSummary] = Field(
         default_factory=list, description="Recent integration errors"
     )
 
-    sync_stats: Dict[str, Any] = Field(
-        default_factory=dict, description="Synchronization statistics"
+    sync_stats: SyncStats = Field(
+        default_factory=SyncStats, description="Synchronization statistics"
     )
 
 
@@ -367,12 +402,22 @@ class IntegrationSyncResponse(BaseModel):
 
 
 # Error response schemas
+class ErrorDetail(BaseModel):
+    """Model for detailed error information."""
+    
+    field: Optional[str] = None
+    value: Optional[str] = None
+    constraint: Optional[str] = None
+    code: Optional[str] = None
+    context: Optional[Dict[str, str]] = None
+
+
 class IntegrationErrorResponse(BaseModel):
     """Error response for integration operations."""
 
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
-    details: Optional[Dict[str, Any]] = Field(
+    details: Optional[List[ErrorDetail]] = Field(
         None, description="Additional error details"
     )
     provider: Optional[IntegrationProvider] = Field(
@@ -463,6 +508,16 @@ class InternalUserStatusResponse(BaseModel):
     )
 
 
+class ProviderRevocationResponse(BaseModel):
+    """Model for provider token revocation response."""
+    
+    success: bool
+    message: Optional[str] = None
+    error_code: Optional[str] = None
+    error_description: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
 class TokenRevocationResponse(BaseModel):
     """Response model for token revocation requests."""
 
@@ -473,6 +528,6 @@ class TokenRevocationResponse(BaseModel):
     revoked_at: Optional[datetime] = Field(None, description="Revocation timestamp")
     reason: Optional[str] = Field(None, description="Reason for revocation")
     error: Optional[str] = Field(None, description="Error message if failed")
-    provider_response: Optional[Dict[str, Any]] = Field(
+    provider_response: Optional[ProviderRevocationResponse] = Field(
         None, description="Provider revocation response"
     )
