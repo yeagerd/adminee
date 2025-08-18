@@ -35,6 +35,7 @@ from services.office.schemas import (
     CalendarEventApiResponse,
     CalendarEventListApiResponse,
     CalendarEventResponse,
+    CalendarEventDetailResponse,
     CreateCalendarEventRequest,
 )
 
@@ -580,12 +581,12 @@ async def get_calendar_events(
         raise ServiceError(message=f"Failed to fetch calendar events: {str(e)}")
 
 
-@router.get("/events/{event_id}", response_model=ApiResponse)
+@router.get("/events/{event_id}", response_model=CalendarEventDetailResponse)
 async def get_calendar_event(
     request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     service_name: str = Depends(service_permission_required(["read_calendar"])),
-) -> ApiResponse:
+) -> CalendarEventDetailResponse:
     """
     Get a specific calendar event by ID.
 
@@ -621,7 +622,7 @@ async def get_calendar_event(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for event detail", request_id=request_id)
-            return ApiResponse(
+            return CalendarEventDetailResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
 
@@ -649,7 +650,7 @@ async def get_calendar_event(
 
         logger.info(f"Event detail request completed in {response_time_ms}ms")
 
-        return ApiResponse(
+        return CalendarEventDetailResponse(
             success=True,
             data=response_data,
             cache_hit=False,
@@ -783,13 +784,13 @@ async def create_calendar_event(
         raise ServiceError(message=f"Failed to create calendar event: {str(e)}")
 
 
-@router.put("/events/{event_id}", response_model=ApiResponse)
+@router.put("/events/{event_id}", response_model=CalendarEventResponse)
 async def update_calendar_event(
     request: Request,
     event_data: CreateCalendarEventRequest,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     service_name: str = Depends(service_permission_required(["write_calendar"])),
-) -> ApiResponse:
+) -> CalendarEventResponse:
     """
     Update a calendar event by ID.
 
@@ -904,14 +905,33 @@ async def update_calendar_event(
             f"Calendar event updated successfully in {response_time_ms}ms via {provider}"
         )
 
-        return ApiResponse(
-            success=True,
-            data=response_data,
-            cache_hit=False,
-            provider_used=(
-                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+        return CalendarEventResponse(
+            event_id=event_id,
+            provider=provider,
+            status="updated",
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            event_data=CalendarEvent(
+                id=event_id,
+                calendar_id="primary",
+                title=actual_title,
+                description=actual_description,
+                start_time=actual_start_time,
+                end_time=actual_end_time,
+                all_day=False,
+                location=actual_location,
+                attendees=event_data.attendees or [],
+                organizer=None,
+                status="confirmed",
+                visibility="default",
+                provider=Provider(provider),
+                provider_event_id=original_event_id,
+                account_email="",  # Will be filled by the client
+                account_name="",   # Will be filled by the client
+                calendar_name="Primary Calendar",
+                created_at=datetime.now(timezone.utc).isoformat(),
+                updated_at=datetime.now(timezone.utc).isoformat(),
             ),
-            request_id=request_id,
+            request_metadata=response_data["request_metadata"],
         )
 
     except ValidationError:
@@ -1208,12 +1228,12 @@ async def update_microsoft_event(
         raise
 
 
-@router.delete("/events/{event_id}", response_model=ApiResponse)
+@router.delete("/events/{event_id}", response_model=CalendarEventResponse)
 async def delete_calendar_event(
     request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     service_name: str = Depends(service_permission_required(["write_calendar"])),
-) -> ApiResponse:
+) -> CalendarEventResponse:
     """
     Delete a calendar event by ID.
 
@@ -1278,14 +1298,13 @@ async def delete_calendar_event(
             f"Calendar event deleted successfully in {response_time_ms}ms via {provider}"
         )
 
-        return ApiResponse(
-            success=True,
-            data=response_data,
-            cache_hit=False,
-            provider_used=(
-                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
-            ),
-            request_id=request_id,
+        return CalendarEventResponse(
+            event_id=event_id,
+            provider=provider,
+            status="deleted",
+            deleted_at=datetime.now(timezone.utc).isoformat(),
+            event_data=None,  # No event data for deletions
+            request_metadata=response_data["request_metadata"],
         )
 
     except AuthError:

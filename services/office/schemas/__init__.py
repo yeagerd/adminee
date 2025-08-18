@@ -543,6 +543,17 @@ class CalendarEventResponse(BaseModel):
     request_metadata: Dict[str, Any]
 
 
+class CalendarEventDetailResponse(BaseModel):
+    """Response model for calendar event detail operations."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains event, provider, request_metadata
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
 class PaginatedResponse(BaseModel):
     items: List[Any]
     total_count: Optional[int] = None
@@ -606,6 +617,66 @@ class ContactList(BaseModel):
 
     success: bool
     data: Optional[List[Contact]] = None  # ✅ Contains contacts, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class ContactCreateResponse(BaseModel):
+    """Response model for contact creation."""
+
+    success: bool
+    contact: Optional[Contact] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class ContactUpdateResponse(BaseModel):
+    """Response model for contact updates."""
+
+    success: bool
+    contact: Optional[Contact] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class ContactDeleteResponse(BaseModel):
+    """Response model for contact deletion."""
+
+    success: bool
+    deleted_contact_id: Optional[str] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class FileListResponse(BaseModel):
+    """Response model for file list operations."""
+
+    success: bool
+    data: Optional[List[Dict[str, Any]]] = None  # List of files
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class FileDetailResponse(BaseModel):
+    """Response model for file detail operations."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # File details
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class FileSearchResponse(BaseModel):
+    """Response model for file search operations."""
+
+    success: bool
+    data: Optional[List[Dict[str, Any]]] = None  # Search results
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None

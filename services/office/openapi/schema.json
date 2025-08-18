@@ -1,4 +1,4 @@
-2025-08-18 11:12:20 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+2025-08-18 12:44:00 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
 {
   "openapi": "3.1.0",
   "info": {
@@ -1170,7 +1170,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "$ref": "#/components/schemas/CalendarEventDetailResponse"
                 }
               }
             }
@@ -1223,7 +1223,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "$ref": "#/components/schemas/CalendarEventResponse"
                 }
               }
             }
@@ -1266,7 +1266,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "$ref": "#/components/schemas/CalendarEventResponse"
                 }
               }
             }
@@ -1423,7 +1423,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "$ref": "#/components/schemas/FileListResponse"
                 }
               }
             }
@@ -1524,7 +1524,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "$ref": "#/components/schemas/FileSearchResponse"
                 }
               }
             }
@@ -1581,7 +1581,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "$ref": "#/components/schemas/FileDetailResponse"
                 }
               }
             }
@@ -1879,9 +1879,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Create Contact V1 Contacts  Post"
+                  "$ref": "#/components/schemas/ContactCreateResponse"
                 }
               }
             }
@@ -2078,9 +2076,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Update Contact V1 Contacts  Contact Id  Put"
+                  "$ref": "#/components/schemas/ContactUpdateResponse"
                 }
               }
             }
@@ -2138,9 +2134,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Delete Contact V1 Contacts  Contact Id  Delete"
+                  "$ref": "#/components/schemas/ContactDeleteResponse"
                 }
               }
             }
@@ -2228,61 +2222,6 @@
   },
   "components": {
     "schemas": {
-      "ApiResponse": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "cache_hit": {
-            "type": "boolean",
-            "title": "Cache Hit",
-            "default": false
-          },
-          "provider_used": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Provider"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "request_id": {
-            "type": "string",
-            "title": "Request Id"
-          },
-          "data": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data"
-          }
-        },
-        "type": "object",
-        "required": [
-          "success",
-          "request_id"
-        ],
-        "title": "ApiResponse",
-        "description": "Generic API response for backward compatibility."
-      },
       "AvailabilityResponse": {
         "properties": {
           "available_slots": {
@@ -2496,6 +2435,64 @@
         ],
         "title": "CalendarEvent"
       },
+      "CalendarEventDetailResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "CalendarEventDetailResponse",
+        "description": "Response model for calendar event detail operations."
+      },
       "CalendarEventResponse": {
         "properties": {
           "event_id": {
@@ -2706,6 +2703,89 @@
         ],
         "title": "Contact"
       },
+      "ContactCreateResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Contact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "ContactCreateResponse",
+        "description": "Response model for contact creation."
+      },
+      "ContactDeleteResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "deleted_contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted Contact Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "ContactDeleteResponse",
+        "description": "Response model for contact deletion."
+      },
       "ContactList": {
         "properties": {
           "success": {
@@ -2791,6 +2871,47 @@
           "number"
         ],
         "title": "ContactPhone"
+      },
+      "ContactUpdateResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Contact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "ContactUpdateResponse",
+        "description": "Response model for contact updates."
       },
       "CreateCalendarEventRequest": {
         "properties": {
@@ -3883,6 +4004,186 @@
         ],
         "title": "EmailThreadListData",
         "description": "Data structure for email thread list responses."
+      },
+      "FileDetailResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "FileDetailResponse",
+        "description": "Response model for file detail operations."
+      },
+      "FileListResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "FileListResponse",
+        "description": "Response model for file list operations."
+      },
+      "FileSearchResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "FileSearchResponse",
+        "description": "Response model for file search operations."
       },
       "HTTPValidationError": {
         "properties": {

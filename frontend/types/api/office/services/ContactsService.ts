@@ -4,7 +4,10 @@
 /* eslint-disable */
 import type { _ContactCreatePayload } from '../models/_ContactCreatePayload';
 import type { _ContactUpdatePayload } from '../models/_ContactUpdatePayload';
+import type { ContactCreateResponse } from '../models/ContactCreateResponse';
+import type { ContactDeleteResponse } from '../models/ContactDeleteResponse';
 import type { ContactList } from '../models/ContactList';
+import type { ContactUpdateResponse } from '../models/ContactUpdateResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -52,7 +55,7 @@ export class ContactsService {
      * @param jobTitle
      * @param phones
      * @param requestBody
-     * @returns any Successful Response
+     * @returns ContactCreateResponse Successful Response
      * @throws ApiError
      */
     public static createContactV1ContactsPost(
@@ -65,7 +68,7 @@ export class ContactsService {
         jobTitle?: (string | null),
         phones?: (Array<string> | null),
         requestBody?: (_ContactCreatePayload | null),
-    ): CancelablePromise<Record<string, any>> {
+    ): CancelablePromise<ContactCreateResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/v1/contacts/',
@@ -98,7 +101,7 @@ export class ContactsService {
      * @param emails
      * @param phones
      * @param requestBody
-     * @returns any Successful Response
+     * @returns ContactUpdateResponse Successful Response
      * @throws ApiError
      */
     public static updateContactV1ContactsContactIdPut(
@@ -112,7 +115,7 @@ export class ContactsService {
         emails?: (Array<string> | null),
         phones?: (Array<string> | null),
         requestBody?: (_ContactUpdatePayload | null),
-    ): CancelablePromise<Record<string, any>> {
+    ): CancelablePromise<ContactUpdateResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/v1/contacts/{contact_id}',
@@ -140,13 +143,13 @@ export class ContactsService {
      * Delete Contact
      * @param contactId
      * @param provider Provider to delete in (if unified id not used)
-     * @returns any Successful Response
+     * @returns ContactDeleteResponse Successful Response
      * @throws ApiError
      */
     public static deleteContactV1ContactsContactIdDelete(
         contactId: string,
         provider?: (string | null),
-    ): CancelablePromise<Record<string, any>> {
+    ): CancelablePromise<ContactDeleteResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/v1/contacts/{contact_id}',

@@ -2,7 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ApiResponse } from '../models/ApiResponse';
+import type { FileDetailResponse } from '../models/FileDetailResponse';
+import type { FileListResponse } from '../models/FileListResponse';
+import type { FileSearchResponse } from '../models/FileSearchResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -34,7 +36,7 @@ export class FilesService {
      * @param q Search query to filter files
      * @param orderBy Sort order (modifiedTime, name, size)
      * @param includeFolders Whether to include folders in results
-     * @returns ApiResponse Successful Response
+     * @returns FileListResponse Successful Response
      * @throws ApiError
      */
     public static getFilesV1FilesGet(
@@ -45,7 +47,7 @@ export class FilesService {
         q?: (string | null),
         orderBy?: (string | null),
         includeFolders: boolean = true,
-    ): CancelablePromise<ApiResponse> {
+    ): CancelablePromise<FileListResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/v1/files/',
@@ -82,7 +84,7 @@ export class FilesService {
      * @param providers Providers to search in (google, microsoft)
      * @param limit Maximum number of results per provider
      * @param fileTypes Filter by file types/mime types
-     * @returns ApiResponse Successful Response
+     * @returns FileSearchResponse Successful Response
      * @throws ApiError
      */
     public static searchFilesV1FilesSearchGet(
@@ -90,7 +92,7 @@ export class FilesService {
         providers?: (Array<string> | null),
         limit: number = 50,
         fileTypes?: (Array<string> | null),
-    ): CancelablePromise<ApiResponse> {
+    ): CancelablePromise<FileSearchResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/v1/files/search',
@@ -120,13 +122,13 @@ export class FilesService {
      * ApiResponse with the specific file
      * @param fileId File ID (format: provider_originalId)
      * @param includeDownloadUrl Whether to include download URL
-     * @returns ApiResponse Successful Response
+     * @returns FileDetailResponse Successful Response
      * @throws ApiError
      */
     public static getFileV1FilesFileIdGet(
         fileId: string,
         includeDownloadUrl: boolean = false,
-    ): CancelablePromise<ApiResponse> {
+    ): CancelablePromise<FileDetailResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/v1/files/{file_id}',

@@ -2,7 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ApiResponse } from '../models/ApiResponse';
+import type { CalendarEventDetailResponse } from '../models/CalendarEventDetailResponse';
+import type { CalendarEventResponse } from '../models/CalendarEventResponse';
 import type { CreateCalendarEventRequest } from '../models/CreateCalendarEventRequest';
 import type { TypedApiResponse_AvailabilityResponse_ } from '../models/TypedApiResponse_AvailabilityResponse_';
 import type { TypedApiResponse_CalendarEventResponse_ } from '../models/TypedApiResponse_CalendarEventResponse_';
@@ -154,12 +155,12 @@ export class CalendarService {
      * Returns:
      * ApiResponse with the specific calendar event
      * @param eventId Event ID (format: provider_originalId)
-     * @returns ApiResponse Successful Response
+     * @returns CalendarEventDetailResponse Successful Response
      * @throws ApiError
      */
     public static getCalendarEventV1CalendarEventsEventIdGet(
         eventId: string,
-    ): CancelablePromise<ApiResponse> {
+    ): CancelablePromise<CalendarEventDetailResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/v1/calendar/events/{event_id}',
@@ -186,13 +187,13 @@ export class CalendarService {
      * ApiResponse with updated event details
      * @param eventId Event ID (format: provider_originalId)
      * @param requestBody
-     * @returns ApiResponse Successful Response
+     * @returns CalendarEventResponse Successful Response
      * @throws ApiError
      */
     public static updateCalendarEventV1CalendarEventsEventIdPut(
         eventId: string,
         requestBody: CreateCalendarEventRequest,
-    ): CancelablePromise<ApiResponse> {
+    ): CancelablePromise<CalendarEventResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/v1/calendar/events/{event_id}',
@@ -219,12 +220,12 @@ export class CalendarService {
      * Returns:
      * ApiResponse confirming deletion
      * @param eventId Event ID (format: provider_originalId)
-     * @returns ApiResponse Successful Response
+     * @returns CalendarEventResponse Successful Response
      * @throws ApiError
      */
     public static deleteCalendarEventV1CalendarEventsEventIdDelete(
         eventId: string,
-    ): CancelablePromise<ApiResponse> {
+    ): CancelablePromise<CalendarEventResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/v1/calendar/events/{event_id}',

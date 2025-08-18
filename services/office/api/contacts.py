@@ -18,7 +18,7 @@ from services.office.core.normalizer import (
     normalize_microsoft_contact,
 )
 from services.office.models import Provider
-from services.office.schemas import Contact, ContactList
+from services.office.schemas import Contact, ContactList, ContactCreateResponse, ContactUpdateResponse, ContactDeleteResponse
 
 logger = get_logger(__name__)
 
@@ -317,7 +317,7 @@ async def list_contacts(
         raise ServiceError(message=f"Failed to fetch contacts: {str(e)}")
 
 
-@router.post("/", response_model=Dict[str, Any])
+@router.post("/", response_model=ContactCreateResponse)
 async def create_contact(
     request: Request,
     service_name: str = Depends(service_permission_required(["write_contacts"])),
@@ -333,7 +333,7 @@ async def create_contact(
     job_title: Optional[str] = Query(None),
     phones: Optional[List[str]] = Query(None),
     payload: Optional[_ContactCreatePayload] = Body(None),
-) -> Dict[str, Any]:
+) -> ContactCreateResponse:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
     # Prefer JSON body if present, else use query params for backward compatibility
@@ -424,16 +424,16 @@ async def create_contact(
 
         # Invalidate contacts cache for this user
         await _invalidate_contacts_cache(user_id)
-        return {
-            "success": True,
-            "data": {"contact": normalized},
-            "request_id": request_id,
-        }
+        return ContactCreateResponse(
+            success=True,
+            contact=normalized,
+            request_id=request_id,
+        )
     except Exception as e:
         raise ServiceError(message=f"Failed to create contact: {str(e)}")
 
 
-@router.put("/{contact_id:path}", response_model=Dict[str, Any])
+@router.put("/{contact_id:path}", response_model=ContactUpdateResponse)
 async def update_contact(
     request: Request,
     contact_id: str = Path(
@@ -453,7 +453,7 @@ async def update_contact(
     emails: Optional[List[str]] = Query(None),
     phones: Optional[List[str]] = Query(None),
     payload: Optional[_ContactUpdatePayload] = Body(None),
-) -> Dict[str, Any]:
+) -> ContactUpdateResponse:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
 
@@ -560,16 +560,16 @@ async def update_contact(
             raise ServiceError(message=f"Unsupported provider: {prov}")
 
         await _invalidate_contacts_cache(user_id)
-        return {
-            "success": True,
-            "data": {"contact": normalized},
-            "request_id": request_id,
-        }
+        return ContactUpdateResponse(
+            success=True,
+            contact=normalized,
+            request_id=request_id,
+        )
     except Exception as e:
         raise ServiceError(message=f"Failed to update contact: {str(e)}")
 
 
-@router.delete("/{contact_id:path}", response_model=Dict[str, Any])
+@router.delete("/{contact_id:path}", response_model=ContactDeleteResponse)
 async def delete_contact(
     contact_id: str,
     request: Request,
@@ -577,7 +577,7 @@ async def delete_contact(
     provider: Optional[str] = Query(
         None, description="Provider to delete in (if unified id not used)"
     ),
-) -> Dict[str, Any]:
+) -> ContactDeleteResponse:
     user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
 
@@ -619,6 +619,10 @@ async def delete_contact(
             raise ServiceError(message=f"Unsupported provider: {prov}")
         # Invalidate caches for this user's contacts
         await _invalidate_contacts_cache(user_id)
-        return {"success": True, "data": {"deleted": True}, "request_id": request_id}
+        return ContactDeleteResponse(
+            success=True,
+            deleted_contact_id=contact_id,
+            request_id=request_id,
+        )
     except Exception as e:
         raise ServiceError(message=f"Failed to delete contact: {str(e)}")
