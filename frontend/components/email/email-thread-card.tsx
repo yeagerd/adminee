@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { safeFormatDateAndTime } from '@/lib/utils';
-import type { EmailMessage } from '@/types';
+import type { EmailMessage } from '@/types/api/office';
 import DOMPurify from 'dompurify';
 import { CalendarRange, Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';

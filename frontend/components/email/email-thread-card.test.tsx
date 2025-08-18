@@ -1,4 +1,5 @@
-import { EmailMessage, Provider } from "@/types";
+import type { EmailMessage } from "@/types/api/office";
+import { Provider } from "@/types/api/office";
 import { render, screen } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import React from 'react';

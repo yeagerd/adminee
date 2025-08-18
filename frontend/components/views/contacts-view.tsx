@@ -52,7 +52,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
 
       const resp = await officeApi.getContacts(activeProviders, 200, search || undefined, companyFilter || undefined, noCache);
       if (resp.success && resp.data) {
-        const list = (resp.data.contacts || []) as Contact[];
+        const list = resp.data as Contact[];
         setContacts(list);
         setError(null);
       } else {

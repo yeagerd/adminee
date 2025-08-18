@@ -491,7 +491,7 @@ function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRo
         }).filter(item => item.participant).map(item => ({
             participant: item.participant!,
             response: item.response,
-            comment: item.comment,
+            comment: item.comment || undefined,
             respondedAt: item.respondedAt
         }));
     };

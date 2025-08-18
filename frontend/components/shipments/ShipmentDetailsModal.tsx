@@ -1,5 +1,5 @@
 import { shipmentsApi } from '@/api';
-import { PackageResponse } from '@/api/clients/shipments-client';
+import type { PackageOut } from '@/types/api/shipments';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,8 +16,8 @@ import React, { useEffect, useState } from 'react';
 interface ShipmentDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    shipment: PackageResponse;
-    onShipmentUpdated?: (updatedShipment: PackageResponse) => void;
+    shipment: PackageOut;
+    onShipmentUpdated?: (updatedShipment: PackageOut) => void;
 }
 
 interface ShipmentFormData {

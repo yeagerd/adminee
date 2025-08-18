@@ -186,7 +186,25 @@ export default function PackageDashboard() {
             // Cache the result
             setCachedData(cacheKey, res);
 
-            setPackages(res.packages || []);
+            setPackages((res.packages || []).map(pkg => ({
+                id: pkg.id,
+                tracking_number: pkg.tracking_number,
+                carrier: pkg.carrier,
+                status: pkg.status,
+                estimated_delivery: pkg.estimated_delivery || undefined,
+                actual_delivery: pkg.actual_delivery || undefined,
+                recipient_name: pkg.recipient_name || undefined,
+                recipient_address: undefined, // Not available in PackageOut
+                shipper_name: pkg.shipper_name || undefined,
+                package_description: pkg.package_description || undefined,
+                order_number: pkg.order_number || undefined,
+                tracking_link: pkg.tracking_link || undefined,
+                email_message_id: undefined, // Not available in PackageOut
+                updated_at: pkg.updated_at,
+                events_count: pkg.events_count,
+                labels: pkg.labels.map(label => label.name),
+                events: [], // Not available in PackageOut
+            })));
             setPaginationData({
                 hasNext: res.has_next,
                 hasPrev: res.has_prev,

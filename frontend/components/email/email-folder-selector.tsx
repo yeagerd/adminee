@@ -10,7 +10,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
-import type { EmailFolder } from '@/types';
+import type { EmailFolder } from '@/types/api/office';
 import { Provider } from '@/types/api/office';
 import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';

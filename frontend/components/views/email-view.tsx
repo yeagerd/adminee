@@ -1,5 +1,4 @@
 import { officeApi } from '@/api';
-import { BulkActionType } from "@/types/api/user";
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailListCard from '@/components/email/email-list-card';
@@ -25,6 +24,15 @@ interface EmailViewProps {
 
 type ViewMode = 'tight' | 'expanded';
 type ReadingPaneMode = 'none' | 'right';
+
+// Local enum for bulk actions since it's not defined in the backend
+enum BulkActionType {
+    ARCHIVE = 'archive',
+    DELETE = 'delete',
+    SNOOZE = 'snooze',
+    MARK_READ = 'mark_read',
+    MARK_UNREAD = 'mark_unread',
+}
 
 const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
     // Helper function to get proper present participle form of action verbs

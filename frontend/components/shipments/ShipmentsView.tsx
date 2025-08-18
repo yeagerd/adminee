@@ -1,4 +1,5 @@
-import { PackageResponse, shipmentsApi } from '@/api';
+import { shipmentsApi } from '@/api';
+import type { PackageOut } from '@/types/api/shipments';
 import { usePagination } from '@/hooks/use-pagination';
 import { PackageStatus } from '@/lib/package-status';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -27,7 +28,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
     const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Modal states
-    const [selectedShipment, setSelectedShipment] = useState<PackageResponse | null>(null);
+    const [selectedShipment, setSelectedShipment] = useState<PackageOut | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Pagination hook
@@ -64,8 +65,8 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
                 });
             }
 
-            // Transform PackageResponse to ShipmentItem
-            const transformedShipments: ShipmentItem[] = response.packages.map((pkg: PackageResponse) => ({
+            // Transform PackageOut to ShipmentItem
+            const transformedShipments: ShipmentItem[] = response.packages.map((pkg: PackageOut) => ({
                 id: pkg.id,
                 tracking_number: pkg.tracking_number,
                 carrier: pkg.carrier,

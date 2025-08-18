@@ -1,5 +1,6 @@
 import { shipmentsApi } from '@/api';
-import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
+import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS } from '@/lib/package-status';
+import { PackageStatus } from '@/types/api/shipments';
 import { useState } from 'react';
 
 export interface TrackingEvent {
@@ -34,7 +35,7 @@ export interface Package {
 const initialState: Package = {
     tracking_number: '',
     carrier: '',
-    status: PACKAGE_STATUS.PENDING,
+    status: PackageStatus.PENDING,
     estimated_delivery: '',
     actual_delivery: '',
     recipient_name: '',
@@ -67,7 +68,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
             await shipmentsApi.createPackage({
                 tracking_number: form.tracking_number,
                 carrier: form.carrier,
-                status: form.status,
+                status: form.status as PackageStatus,
                 estimated_delivery: form.estimated_delivery || undefined,
                 actual_delivery: form.actual_delivery || undefined,
                 recipient_name: form.recipient_name || undefined,

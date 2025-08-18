@@ -1,5 +1,5 @@
 import { safeFormatDateOrTime, safeParseDate } from '@/lib/utils';
-import type { EmailMessage } from '@/types';
+import type { EmailMessage } from '@/types/api/office';
 import DOMPurify from 'dompurify';
 import { Star } from 'lucide-react';
 import React from 'react';

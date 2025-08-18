@@ -367,12 +367,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             }
 
             const dataCollectionRequest: DataCollectionRequest = {
-                user_id: session?.user?.id || '',
                 email_message_id: email.id,
                 original_email_data: {
-                    subject: email.subject,
-                    sender: email.from_address?.email,
-                    body: email.body_html || email.body_text,
+                    subject: email.subject || 'No Subject',
+                    sender: email.from_address?.email || 'unknown@example.com',
+                    body: email.body_html || email.body_text || 'No body content',
                 },
                 auto_detected_data: {
                     tracking_number: initialFormData.tracking_number,
@@ -459,13 +458,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 const packageData: PackageCreate = {
                     tracking_number: formData.tracking_number,
                     carrier: formData.carrier,
-                    status: formData.status as PackageStatus, // Use the local PackageStatus type for now
-                    recipient_name: formData.recipient_name || undefined,
-                    shipper_name: formData.shipper_name || undefined,
-                    package_description: formData.package_description || undefined,
-                    order_number: formData.order_number || undefined,
-                    tracking_link: formData.tracking_link || undefined,
-                    expected_delivery: formData.expected_delivery || undefined,
+                    status: formData.status || null,
+                    estimated_delivery: formData.expected_delivery || null,
+                    recipient_name: formData.recipient_name || null,
+                    shipper_name: formData.shipper_name || null,
+                    package_description: formData.package_description || null,
+                    order_number: formData.order_number || null,
+                    tracking_link: formData.tracking_link || null,
                 };
                 await onTrackShipment(packageData);
             }

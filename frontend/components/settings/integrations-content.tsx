@@ -1,6 +1,7 @@
 'use client';
 
-import { userApi, type Integration } from '@/api';
+import { userApi } from '@/api';
+import type { IntegrationResponse } from '@/types/api/user';
 import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -191,7 +192,7 @@ export function IntegrationsContent() {
         }
     };
 
-    const getIntegrationStatus = (provider: string): Integration | undefined => {
+    const getIntegrationStatus = (provider: string): IntegrationResponse | undefined => {
         return integrations.find(integration => integration.provider === provider);
     };
 
