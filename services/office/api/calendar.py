@@ -37,6 +37,7 @@ from services.office.schemas import (
     CalendarEventResponse,
     CalendarEventDetailResponse,
     CreateCalendarEventRequest,
+    TimeRange,
 )
 
 logger = get_logger(__name__)
@@ -252,10 +253,7 @@ async def get_user_availability(
         response_data = AvailabilityResponse(
             available_slots=available_slot_models,
             total_slots=len(available_slots),
-            time_range={
-                "start": start_dt.isoformat(),
-                "end": end_dt.isoformat(),
-            },
+            time_range=TimeRange(start=start_dt.isoformat(), end=end_dt.isoformat()),
             providers_used=providers_used,
             provider_errors=provider_errors if provider_errors else None,
             request_metadata={
@@ -905,6 +903,8 @@ async def update_calendar_event(
             f"Calendar event updated successfully in {response_time_ms}ms via {provider}"
         )
 
+        # Help type checker understand the dict type
+        request_metadata: Dict[str, Any] = cast(Dict[str, Any], response_data["request_metadata"])
         return CalendarEventResponse(
             event_id=event_id,
             provider=provider,
@@ -915,8 +915,8 @@ async def update_calendar_event(
                 calendar_id="primary",
                 title=actual_title,
                 description=actual_description,
-                start_time=actual_start_time,
-                end_time=actual_end_time,
+                start_time=datetime.fromisoformat(actual_start_time),
+                end_time=datetime.fromisoformat(actual_end_time),
                 all_day=False,
                 location=actual_location,
                 attendees=event_data.attendees or [],
@@ -928,10 +928,10 @@ async def update_calendar_event(
                 account_email="",  # Will be filled by the client
                 account_name="",   # Will be filled by the client
                 calendar_name="Primary Calendar",
-                created_at=datetime.now(timezone.utc).isoformat(),
-                updated_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             ),
-            request_metadata=response_data["request_metadata"],
+            request_metadata=request_metadata,
         )
 
     except ValidationError:

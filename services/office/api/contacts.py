@@ -424,9 +424,11 @@ async def create_contact(
 
         # Invalidate contacts cache for this user
         await _invalidate_contacts_cache(user_id)
+        # Ensure Contact object for typed response
+        contact_model = normalized if isinstance(normalized, Contact) else Contact(**normalized)
         return ContactCreateResponse(
             success=True,
-            contact=normalized,
+            contact=contact_model,
             request_id=request_id,
         )
     except Exception as e:
@@ -560,9 +562,10 @@ async def update_contact(
             raise ServiceError(message=f"Unsupported provider: {prov}")
 
         await _invalidate_contacts_cache(user_id)
+        contact_model = normalized if isinstance(normalized, Contact) else Contact(**normalized)
         return ContactUpdateResponse(
             success=True,
-            contact=normalized,
+            contact=contact_model,
             request_id=request_id,
         )
     except Exception as e:
