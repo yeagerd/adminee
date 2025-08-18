@@ -8,6 +8,7 @@ from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
+from services.common.config_secrets import get_secret
 
 
 class Settings(BaseSettings):
@@ -15,8 +16,13 @@ class Settings(BaseSettings):
 
     # Service configuration
     service_name: str = "office-router"
-    service_port: int = Field(default=8000, env="OFFICE_ROUTER_PORT")
+    service_port: int = Field(default=8006, env="OFFICE_ROUTER_PORT")
     service_host: str = Field(default="0.0.0.0", env="OFFICE_ROUTER_HOST")
+
+    # API Keys
+    api_frontend_office_router_key: str = get_secret("API_FRONTEND_OFFICE_ROUTER_KEY")
+    api_office_router_user_key: str = get_secret("API_OFFICE_ROUTER_USER_KEY")
+    api_office_router_office_key: str = get_secret("API_OFFICE_ROUTER_OFFICE_KEY")
 
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
