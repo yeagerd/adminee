@@ -363,13 +363,14 @@ cleanup_vespa() {
 # Helper function to convert email to internal user ID
 resolve_email_to_user_id() {
     local email="$1"
+    local api_key="$2"
     local user_service_url="http://localhost:8001"
     
     log_info "Resolving email $email to internal user ID..."
     
-    # Call the user service to get the internal user ID
+    # Call the user service to get the internal user ID with API key authentication
     local response
-    response=$(curl -s "$user_service_url/v1/internal/users/exists?email=$email")
+    response=$(curl -s -H "X-API-Key: $api_key" "$user_service_url/v1/internal/users/exists?email=$email")
     
     if [[ $? -eq 0 && "$response" != *'"message"'* ]]; then
         # Extract user ID from response
@@ -471,11 +472,24 @@ clear_vespa_data() {
     local force_flag=false
     local user_id=""
     
-    # Parse arguments to find user input and --force flag
+    # Parse arguments to find user input, --force flag, and --env-file
+    local env_file=""
     for arg in "$@"; do
         if [[ "$arg" == "--force" ]]; then
             force_flag=true
-        elif [[ "$arg" != "--clear-data" && "$arg" != "--force" ]]; then
+        elif [[ "$arg" == "--env-file" ]]; then
+            # Get the next argument as the filename
+            local next_arg=false
+            for env_arg in "$@"; do
+                if [[ "$next_arg" == true ]]; then
+                    env_file="$env_arg"
+                    break
+                fi
+                if [[ "$env_arg" == "--env-file" ]]; then
+                    next_arg=true
+                fi
+            done
+        elif [[ "$arg" != "--clear-data" && "$arg" != "--force" && "$arg" != "--env-file" && "$arg" != "$env_file" ]]; then
             # This is the user input (email or ID)
             user_input="$arg"
         fi
@@ -530,13 +544,44 @@ clear_vespa_data() {
         log_success "Data clearing completed for all ${#group_ids[@]} group IDs!"
         return 0
     else
+        # Single user operation - require --env-file for API key
+        if [[ -z "$env_file" ]]; then
+            log_error "Single-user --clear-data mode requires --env-file {filename} parameter"
+            log_error "Usage: $0 --clear-data [email_or_user_id] --env-file {filename} [--force]"
+            exit 1
+        fi
+        
+        if [[ ! -f "$env_file" ]]; then
+            log_error "Environment file not found: $env_file"
+            exit 1
+        fi
+        
+        # Read API key from environment file
+        local api_key=""
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^[[:space:]]*API_OFFICE_USER_KEY[[:space:]]*=[[:space:]]*(.+)$ ]]; then
+                api_key="${BASH_REMATCH[1]}"
+                # Remove quotes if present
+                api_key="${api_key%\"}"
+                api_key="${api_key#\"}"
+                break
+            fi
+        done < "$env_file"
+        
+        if [[ -z "$api_key" ]]; then
+            log_error "Could not find API_OFFICE_USER_KEY in environment file: $env_file"
+            exit 1
+        fi
+        
+        log_info "Using API key from environment file: $env_file"
+        
         # Single user operation - resolve email to user ID
         local user_id=""
         
         if [[ "$user_input" == *"@"* ]]; then
             # This looks like an email, try to resolve to user ID
             log_info "Email provided, resolving to user ID..."
-            user_id=$(resolve_email_to_user_id "$user_input")
+            user_id=$(resolve_email_to_user_id "$user_input" "$api_key")
             if [[ $? -ne 0 ]]; then
                 log_error "Failed to resolve email to user ID. Cannot proceed."
                 exit 1
@@ -801,7 +846,7 @@ case "${1:-}" in
         echo "  --deploy   Deploy the Briefly application to Vespa"
         echo "  --stop     Stop Vespa container only"
         echo "  --cleanup  Stop and remove the Vespa container"
-        echo "  --clear-data [--force] Clear all data from Vespa (useful for testing)"
+        echo "  --clear-data [email_or_user_id] --env-file {filename} [--force] Clear data for specific user (requires env file with api_office_user_key)"
         echo "  --clear-data-all-users Clear all data from Vespa for ALL discovered users"
         echo "  --clear-all-data Clear all data from Vespa for ALL users"
         echo "  --restart  Restart Vespa container only"
