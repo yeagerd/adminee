@@ -60,30 +60,12 @@ app = FastAPI(
         "name": "Private",
     },
     openapi_tags=[
-        {
-            "name": "polls",
-            "description": "Meeting poll creation and management"
-        },
-        {
-            "name": "slots",
-            "description": "Available time slots for meetings"
-        },
-        {
-            "name": "invitations",
-            "description": "Meeting invitation management"
-        },
-        {
-            "name": "public",
-            "description": "Public endpoints for poll participation"
-        },
-        {
-            "name": "email",
-            "description": "Email response processing for meetings"
-        },
-        {
-            "name": "bookings",
-            "description": "Meeting booking and scheduling"
-        }
+        {"name": "polls", "description": "Meeting poll creation and management"},
+        {"name": "slots", "description": "Available time slots for meetings"},
+        {"name": "invitations", "description": "Meeting invitation management"},
+        {"name": "public", "description": "Public endpoints for poll participation"},
+        {"name": "email", "description": "Email response processing for meetings"},
+        {"name": "bookings", "description": "Meeting booking and scheduling"},
     ],
     lifespan=lifespan,
 )

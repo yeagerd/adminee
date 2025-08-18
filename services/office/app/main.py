@@ -62,20 +62,17 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "email",
-            "description": "Email operations including sending, receiving, and management"
+            "description": "Email operations including sending, receiving, and management",
         },
         {
             "name": "calendar",
-            "description": "Calendar operations including events and availability"
+            "description": "Calendar operations including events and availability",
         },
         {
             "name": "files",
-            "description": "File operations including upload, download, and management"
+            "description": "File operations including upload, download, and management",
         },
-        {
-            "name": "contacts",
-            "description": "Contact management and operations"
-        }
+        {"name": "contacts", "description": "Contact management and operations"},
     ],
     debug=False,
     lifespan=lifespan,

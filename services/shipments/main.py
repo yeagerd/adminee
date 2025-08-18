@@ -62,20 +62,11 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "packages",
-            "description": "Package management and tracking operations"
+            "description": "Package management and tracking operations",
         },
-        {
-            "name": "labels",
-            "description": "Shipping label generation and management"
-        },
-        {
-            "name": "carriers",
-            "description": "Carrier configuration and integration"
-        },
-        {
-            "name": "events",
-            "description": "Shipment event tracking and management"
-        }
+        {"name": "labels", "description": "Shipping label generation and management"},
+        {"name": "carriers", "description": "Carrier configuration and integration"},
+        {"name": "events", "description": "Shipment event tracking and management"},
     ],
     lifespan=lifespan,
 )

@@ -47,7 +47,7 @@ export function IntegrationsContent() {
     const { integrations, loading, error, refreshIntegrations } = useIntegrations();
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
     const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
-    const [providerScopes, setProviderScopes] = useState<Record<string, OAuthScope[]>>({});
+    const [providerScopes] = useState<Record<string, OAuthScope[]>>({});
     const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
     const [currentProvider, setCurrentProvider] = useState<string | null>(null);
     const [availableScopes, setAvailableScopes] = useState<string[]>([]);
@@ -58,10 +58,10 @@ export function IntegrationsContent() {
             // IntegrationScopeResponse is an array of scope objects
             if (response && Array.isArray(response)) {
                 const scopes = response;
-                console.log(`Loaded scopes for ${provider}:`, scopes.map((s: any) => s.name));
+                console.log(`Loaded scopes for ${provider}:`, scopes.map((s: { name: string }) => s.name));
 
                 // Extract scope names for display
-                const allScopeNames = scopes.map((scope: any) => scope.name);
+                const allScopeNames = scopes.map((scope: { name: string }) => scope.name);
                 setAvailableScopes(allScopeNames);
                 return scopes; // Return the scopes array
             }
@@ -145,7 +145,7 @@ export function IntegrationsContent() {
                 // Load provider scopes and use all of them
                 const scopes = await loadProviderScopes(config.provider as IntegrationProvider);
                 if (scopes && Array.isArray(scopes)) {
-                    scopesToUse = scopes.map((scope: any) => scope.name);
+                    scopesToUse = scopes.map((scope: { name: string }) => scope.name);
                 }
             }
 

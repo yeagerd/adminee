@@ -87,18 +87,15 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "chat",
-            "description": "Chat operations including conversations, drafts, and AI interactions"
+            "description": "Chat operations including conversations, drafts, and AI interactions",
         },
         {
             "name": "drafts",
-            "description": "Draft management for emails and calendar events"
+            "description": "Draft management for emails and calendar events",
         },
-        {
-            "name": "health",
-            "description": "Health check and service status endpoints"
-        }
+        {"name": "health", "description": "Health check and service status endpoints"},
     ],
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add centralized request logging middleware

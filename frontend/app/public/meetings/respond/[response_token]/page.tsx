@@ -2,19 +2,12 @@
 import { meetingsApi } from '@/api';
 import type {
     MeetingPoll,
-    PollParticipant,
-    PollResponseCreate,
-    TimeSlot
+    PollResponseCreate
 } from '@/types/api/meetings';
 import { Check, ChevronDown, ChevronUp, HelpCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 // Legacy types for backward compatibility - these should be removed once all components are updated
-type Participant =
-    PollParticipant & {
-        reminder_sent_count: number;
-        response_token: string;
-    };
 
 type Poll = MeetingPoll;
 
@@ -29,8 +22,6 @@ export default function PollResponsePage() {
         response_token = match ? match[1] : undefined;
     }
     const [poll, setPoll] = useState<Poll | null>(null);
-    const [participants, setParticipants] = useState<Participant[]>([]);
-    const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
     const [responses, setResponses] = useState<PollResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitted, setSubmitted] = useState(false);
@@ -40,13 +31,11 @@ export default function PollResponsePage() {
     useEffect(() => {
         if (!response_token) return;
         meetingsApi.publicPolls.getPollResponse(response_token)
-            .then((data: any) => {
-                setPoll(data.poll);
-                setParticipants(data.participants || []);
-                setTimeSlots(data.time_slots || []);
+            .then((data: Record<string, unknown>) => {
+                setPoll(data.poll as Poll);
                 setLoading(false);
             })
-            .catch((error: any) => {
+            .catch((error: unknown) => {
                 console.error('Failed to fetch poll:', error);
                 setError('Failed to load poll data');
                 setLoading(false);

@@ -129,9 +129,9 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
 }
 
 // TODO: Replace with generated types from @/types/api/chat
-// For now, keeping these as any to avoid breaking existing code
-export type CreateDraftRequest = any;
-export type UpdateDraftRequest = any;
+// For now, keeping these as unknown to avoid breaking existing code
+export type CreateDraftRequest = unknown;
+export type UpdateDraftRequest = unknown;
 
 export interface DraftActionResult {
     success: boolean;
@@ -181,12 +181,12 @@ export function mapDraftFromApi(apiDraft: UserDraftResponse): Draft {
 
 // Draft CRUD operations
 export async function createDraft(request: CreateDraftRequest): Promise<Draft> {
-    const data = await chatApi.createDraft(request);
+    const data = await chatApi.createDraft(request as UserDraftRequest);
     return mapDraftFromApi(data);
 }
 
 export async function updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
-    const data = await chatApi.updateDraft(draftId, request);
+    const data = await chatApi.updateDraft(draftId, request as Partial<UserDraftRequest>);
     return mapDraftFromApi(data);
 }
 

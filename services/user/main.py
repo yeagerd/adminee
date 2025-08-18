@@ -164,26 +164,23 @@ def create_app() -> FastAPI:
             "name": "Private",
         },
         openapi_tags=[
-            {
-                "name": "users",
-                "description": "User profile management and operations"
-            },
+            {"name": "users", "description": "User profile management and operations"},
             {
                 "name": "preferences",
-                "description": "User preferences and settings management"
+                "description": "User preferences and settings management",
             },
             {
                 "name": "integrations",
-                "description": "OAuth integrations and provider management"
+                "description": "OAuth integrations and provider management",
             },
             {
                 "name": "providers",
-                "description": "Authentication provider configuration"
+                "description": "Authentication provider configuration",
             },
             {
                 "name": "internal",
-                "description": "Internal service-to-service endpoints"
-            }
+                "description": "Internal service-to-service endpoints",
+            },
         ],
         lifespan=lifespan,
     )

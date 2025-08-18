@@ -48,18 +48,9 @@ app = FastAPI(
         "name": "Private",
     },
     openapi_tags=[
-        {
-            "name": "sync",
-            "description": "Email synchronization operations"
-        },
-        {
-            "name": "processing",
-            "description": "Email processing and analysis"
-        },
-        {
-            "name": "health",
-            "description": "Health check and service status endpoints"
-        }
+        {"name": "sync", "description": "Email synchronization operations"},
+        {"name": "processing", "description": "Email processing and analysis"},
+        {"name": "health", "description": "Health check and service status endpoints"},
     ],
     lifespan=lifespan,
 )
@@ -93,6 +84,6 @@ def health() -> dict:
 
 
 @app.get("/openapi.json")
-def get_openapi_schema():
+def get_openapi_schema() -> dict:
     """Return the OpenAPI schema for this service."""
     return app.openapi()

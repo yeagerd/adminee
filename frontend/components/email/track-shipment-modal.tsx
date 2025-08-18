@@ -416,7 +416,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 // If package exists, create a tracking event instead of new package
                 const eventData: TrackingEventCreate = {
                     event_date: new Date().toISOString(),
-                    status: formData.status as any, // Use the local PackageStatus type for now
+                    status: formData.status as PackageStatus, // Use the local PackageStatus type for now
                     location: undefined,
                     description: undefined,
                     email_message_id: email.id, // Include the email message ID to prevent duplicates
@@ -458,7 +458,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 const packageData: PackageCreateRequest = {
                     tracking_number: formData.tracking_number,
                     carrier: formData.carrier,
-                    status: formData.status as any, // Use the local PackageStatus type for now
+                    status: formData.status as PackageStatus, // Use the local PackageStatus type for now
                     recipient_name: formData.recipient_name || undefined,
                     shipper_name: formData.shipper_name || undefined,
                     package_description: formData.package_description || undefined,
