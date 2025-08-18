@@ -16,8 +16,8 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Service configuration
-SERVICES="chat meetings office user shipments common email_sync vector_db"
-SERVICE_PATHS="services/chat services/meetings services/office services/user services/shipments services/common services/email_sync services/vector_db"
+SERVICES="chat meetings office shipments email_sync vector_db"
+SERVICE_PATHS="services/chat services/meetings services/office services/shipments services/email_sync services/vector_db"
 
 # Function to print colored output
 print_status() {
@@ -41,8 +41,14 @@ check_service() {
         return 1
     fi
     
-    if [[ ! -f "$PROJECT_ROOT/$service_path/main.py" ]]; then
-        print_status "warning" "Main file not found: $service_path/main.py"
+    # Check for different possible main.py locations
+    local main_file=""
+    if [[ -f "$PROJECT_ROOT/$service_path/main.py" ]]; then
+        main_file="$PROJECT_ROOT/$service_path/main.py"
+    elif [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
+        main_file="$PROJECT_ROOT/$service_path/app/main.py"
+    else
+        print_status "warning" "Main file not found: $service_path/main.py or $service_path/app/main.py"
         return 1
     fi
     
@@ -63,7 +69,16 @@ create_openapi_dir() {
 # Function to find FastAPI app variable name
 find_app_name() {
     local service_path=$1
-    local main_file="$PROJECT_ROOT/$service_path/main.py"
+    
+    # Determine the correct main.py path
+    local main_file=""
+    if [[ -f "$PROJECT_ROOT/$service_path/main.py" ]]; then
+        main_file="$PROJECT_ROOT/$service_path/main.py"
+    elif [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
+        main_file="$PROJECT_ROOT/$service_path/app/main.py"
+    else
+        return 1
+    fi
     
     # Look for common FastAPI app variable names and extract just the variable name
     local app_line=$(grep -E "^(app|fastapi_app|api)\s*=\s*FastAPI\(" "$main_file" | head -1)
@@ -104,14 +119,22 @@ generate_schema() {
     local output_file="$PROJECT_ROOT/$service_path/openapi/schema.json"
     local temp_output
     
-    if temp_output=$(cd "$PROJECT_ROOT/$service_path" && python -c "
+    # Determine the correct working directory and import path
+    local working_dir="$PROJECT_ROOT/$service_path"
+    local import_path="main"
+    if [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
+        working_dir="$PROJECT_ROOT/$service_path/app"
+        import_path="main"
+    fi
+    
+    if temp_output=$(cd "$working_dir" && python -c "
 import sys
 import json
 from pathlib import Path
 sys.path.insert(0, str(Path('.').resolve()))
 
 try:
-    from main import $app_name
+    from $import_path import $app_name
     schema = $app_name.openapi()
     print(json.dumps(schema, indent=2))
 except Exception as e:

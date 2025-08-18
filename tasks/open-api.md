@@ -234,6 +234,24 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 
 **Note:** The build pipeline is now fully integrated with type generation. While there are still some type compatibility issues between the generated types and existing components (137 errors in 32 files), the infrastructure is complete and working. The remaining errors are due to using `CalendarEvent` as a placeholder for email-related types that don't exist in the generated schemas.
 
+### Task 5.5.1: Add CI Job to Check Generated Files ✅
+- [x] Add check-generated-files job to ci.yml
+- [x] Configure job to run on PRs
+- [x] Generate OpenAPI schemas and TypeScript types
+- [x] Fail if generated files have changed
+- [x] Update docker-build job dependencies
+- [x] Test CI job functionality
+
+**Completed:**
+- Added `check-generated-files` job to `.github/workflows/ci.yml` that runs on all PRs
+- Job generates OpenAPI schemas using `scripts/generate-openapi-schemas.sh`
+- Job generates TypeScript types using `npm run generate-types`
+- Fails with helpful error message if any generated files have changed
+- Updated `docker-build` job to depend on generated files check
+- Excluded `common` service (shared library) and `user` service (complex imports)
+- Successfully tested with 6/6 services generating schemas and types
+- Ensures PRs always include latest generated files, preventing type drift
+
 ### Task 5.5: Implement Schema Versioning Strategy ✅
 - [x] Design schema versioning approach
 - [x] Implement version tracking in OpenAPI schemas

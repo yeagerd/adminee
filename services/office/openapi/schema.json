@@ -1,0 +1,3777 @@
+2025-08-18 07:45:57 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Briefly Office Service",
+    "description": "Backend microservice for Google and Microsoft integrations including email, calendar, files, and contacts",
+    "contact": {
+      "name": "Briefly Team",
+      "email": "support@briefly.ai"
+    },
+    "license": {
+      "name": "Private"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/email/messages": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Get Email Messages",
+        "description": "Get unified email messages from multiple providers.\n\nFetches email messages from Google Gmail and Microsoft Outlook APIs,\nnormalizes them to a unified format, and returns aggregated results.\nResponses are cached for improved performance.\n\nArgs:\n    user_id: ID of the user to fetch emails for\n    providers: List of providers to query (defaults to all available)\n    limit: Maximum messages per provider\n    include_body: Whether to include full message bodies\n    labels: Filter by message labels/categories\n    q: Search query string\n    page_token: Pagination token\n\nReturns:\n    EmailMessageList with aggregated email messages",
+        "operationId": "get_email_messages_v1_email_messages_get",
+        "parameters": [
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+              "title": "Providers"
+            },
+            "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Maximum number of messages to return per provider",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of messages to return per provider"
+          },
+          {
+            "name": "include_body",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include message body content",
+              "default": false,
+              "title": "Include Body"
+            },
+            "description": "Whether to include message body content"
+          },
+          {
+            "name": "labels",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by labels (inbox, sent, etc.)",
+              "title": "Labels"
+            },
+            "description": "Filter by labels (inbox, sent, etc.)"
+          },
+          {
+            "name": "folder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Folder ID to fetch messages from (provider-specific)",
+              "title": "Folder Id"
+            },
+            "description": "Folder ID to fetch messages from (provider-specific)"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search query to filter messages",
+              "title": "Q"
+            },
+            "description": "Search query to filter messages"
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Pagination token for next page",
+              "title": "Page Token"
+            },
+            "description": "Pagination token for next page"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailMessageList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/folders": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Get Email Folders",
+        "description": "Get unified email folders/labels from multiple providers.\n\nFetches email folders from Microsoft Outlook and labels from Google Gmail APIs,\nnormalizes them to a unified format, and returns aggregated results.\nResponses are cached for improved performance.\n\nArgs:\n    user_id: ID of the user to fetch folders for\n    providers: List of providers to query (defaults to all available)\n    no_cache: Bypass cache and fetch fresh data\n\nReturns:\n    EmailFolderList with aggregated email folders",
+        "operationId": "get_email_folders_v1_email_folders_get",
+        "parameters": [
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+              "title": "Providers"
+            },
+            "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailFolderList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/messages/{message_id}": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Get Email Message",
+        "description": "Get a specific email message by ID.\n\nThe message_id should be in the format \"provider_originalId\" (e.g., \"gmail_abc123\" or \"outlook_xyz789\").\nThis endpoint determines the correct provider from the message ID and fetches the full message details.\n\nArgs:\n    message_id: Message ID with provider prefix\n    user_id: ID of the user who owns the message\n    include_body: Whether to include full message body\n\nReturns:\n    EmailMessageList with the specific email message",
+        "operationId": "get_email_message_v1_email_messages__message_id__get",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Message ID (format: provider_originalId)",
+              "title": "Message Id"
+            },
+            "description": "Message ID (format: provider_originalId)"
+          },
+          {
+            "name": "include_body",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include message body content",
+              "default": true,
+              "title": "Include Body"
+            },
+            "description": "Whether to include message body content"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailMessageList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/send": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Send Email",
+        "description": "Send an email message.\n\nThis endpoint supports sending emails through Gmail and Outlook.\nThe provider can be specified in the request, otherwise it uses the user's default preference.",
+        "operationId": "send_email_v1_email_send_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendEmailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/threads": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Get Email Threads",
+        "description": "Get email threads from multiple providers.\n\nThis endpoint fetches email threads from Gmail and/or Outlook,\nnormalizes them to a unified format, and returns them grouped by thread.",
+        "operationId": "get_email_threads_v1_email_threads_get",
+        "parameters": [
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+              "title": "Providers"
+            },
+            "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Maximum number of threads to return per provider",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of threads to return per provider"
+          },
+          {
+            "name": "include_body",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include message body content",
+              "default": false,
+              "title": "Include Body"
+            },
+            "description": "Whether to include message body content"
+          },
+          {
+            "name": "labels",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by labels (inbox, sent, etc.)",
+              "title": "Labels"
+            },
+            "description": "Filter by labels (inbox, sent, etc.)"
+          },
+          {
+            "name": "folder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Folder ID to fetch threads from (provider-specific)",
+              "title": "Folder Id"
+            },
+            "description": "Folder ID to fetch threads from (provider-specific)"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search query to filter threads",
+              "title": "Q"
+            },
+            "description": "Search query to filter threads"
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Pagination token for next page",
+              "title": "Page Token"
+            },
+            "description": "Pagination token for next page"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailThreadList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/threads/{thread_id}": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Get Email Thread",
+        "description": "Get a specific email thread with all its messages.\n\nThis endpoint fetches a specific thread and all its messages from the provider.",
+        "operationId": "get_email_thread_v1_email_threads__thread_id__get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Thread ID (format: provider_originalId)",
+              "title": "Thread Id"
+            },
+            "description": "Thread ID (format: provider_originalId)"
+          },
+          {
+            "name": "include_body",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include message body content",
+              "default": true,
+              "title": "Include Body"
+            },
+            "description": "Whether to include message body content"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailThreadList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/messages/{message_id}/thread": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Get Message Thread",
+        "description": "Get the thread containing a specific message.\n\nThis endpoint finds the thread that contains the specified message and returns all messages in that thread.",
+        "operationId": "get_message_thread_v1_email_messages__message_id__thread_get",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Message ID (format: provider_originalId)",
+              "title": "Message Id"
+            },
+            "description": "Message ID (format: provider_originalId)"
+          },
+          {
+            "name": "include_body",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include message body content",
+              "default": true,
+              "title": "Include Body"
+            },
+            "description": "Whether to include message body content"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailThreadList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/drafts": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Create Email Draft",
+        "description": "Create an email draft in the provider (Gmail or Outlook).",
+        "operationId": "create_email_draft_v1_email_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDraftCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDraftResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/drafts/{draft_id}": {
+      "put": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Update Email Draft",
+        "operationId": "update_email_draft_v1_email_drafts__draft_id__put",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDraftUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDraftResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Delete Email Draft",
+        "operationId": "delete_email_draft_v1_email_drafts__draft_id__delete",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Draft Id"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDraftResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/threads/{thread_id}/drafts": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "List Thread Drafts",
+        "description": "List provider drafts associated with a unified thread id.",
+        "operationId": "list_thread_drafts_v1_email_threads__thread_id__drafts_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDraftResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/calendar/availability": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get User Availability",
+        "description": "Get user availability for a given time range.\n\nChecks the user's calendar across multiple providers to find available time slots\nfor a meeting of the specified duration.\n\nArgs:\n    start: Start time for availability check\n    end: End time for availability check\n    duration: Duration in minutes for the meeting\n    providers: List of providers to check (defaults to all available)\n\nReturns:\n    ApiResponse with available time slots",
+        "operationId": "get_user_availability_v1_calendar_availability_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Start time for availability check (ISO format)",
+              "title": "Start"
+            },
+            "description": "Start time for availability check (ISO format)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "End time for availability check (ISO format)",
+              "title": "End"
+            },
+            "description": "End time for availability check (ISO format)"
+          },
+          {
+            "name": "duration",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Duration in minutes for the meeting",
+              "title": "Duration"
+            },
+            "description": "Duration in minutes for the meeting"
+          },
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to check (google, microsoft). If not specified, checks all available providers",
+              "title": "Providers"
+            },
+            "description": "Providers to check (google, microsoft). If not specified, checks all available providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypedApiResponse_AvailabilityResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/calendar/events": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Calendar Events",
+        "description": "Get unified calendar events from multiple providers.\n\nFetches calendar events from Google Calendar and Microsoft Calendar APIs,\nnormalizes them to a unified format, and returns aggregated results.\nResponses are cached for improved performance.\n\nArgs:\n    user_id: ID of the user to fetch events for\n    providers: List of providers to query (defaults to all available)\n    limit: Maximum events per provider\n    start_date: Start date for filtering (defaults to today)\n    end_date: End date for filtering (defaults to 30 days from start)\n    calendar_ids: Specific calendars to query\n    q: Search query string\n    time_zone: Time zone for date operations\n\nReturns:\n    ApiResponse with aggregated calendar events",
+        "operationId": "get_calendar_events_v1_calendar_events_get",
+        "parameters": [
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+              "title": "Providers"
+            },
+            "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Maximum number of events to return per provider",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of events to return per provider"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date for event range (ISO format: YYYY-MM-DD)",
+              "title": "Start Date"
+            },
+            "description": "Start date for event range (ISO format: YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End date for event range (ISO format: YYYY-MM-DD)",
+              "title": "End Date"
+            },
+            "description": "End date for event range (ISO format: YYYY-MM-DD)"
+          },
+          {
+            "name": "calendar_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Specific calendar IDs to fetch from",
+              "title": "Calendar Ids"
+            },
+            "description": "Specific calendar IDs to fetch from"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search query to filter events",
+              "title": "Q"
+            },
+            "description": "Search query to filter events"
+          },
+          {
+            "name": "time_zone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Time zone for date filtering",
+              "default": "UTC",
+              "title": "Time Zone"
+            },
+            "description": "Time zone for date filtering"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypedApiResponse_List_CalendarEvent__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Create Calendar Event",
+        "description": "Create a calendar event in a specific provider.\n\nThis endpoint takes unified CalendarEvent data, \"de-normalizes\" it into the\nprovider-specific format, and uses the correct API client to create the event.\n\nArgs:\n    event_data: Event content and configuration\n\nReturns:\n    ApiResponse with created event details",
+        "operationId": "create_calendar_event_v1_calendar_events_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCalendarEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypedApiResponse_CalendarEventResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/calendar/events/{event_id}": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Calendar Event",
+        "description": "Get a specific calendar event by ID.\n\nThe event_id should be in the format \"provider_originalId\" (e.g., \"google_abc123\" or \"microsoft_xyz789\").\nThis endpoint determines the correct provider from the event ID and fetches the full event details.\n\nArgs:\n    event_id: Event ID with provider prefix\n\nReturns:\n    ApiResponse with the specific calendar event",
+        "operationId": "get_calendar_event_v1_calendar_events__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Event ID (format: provider_originalId)",
+              "title": "Event Id"
+            },
+            "description": "Event ID (format: provider_originalId)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Update Calendar Event",
+        "description": "Update a calendar event by ID.\n\nThis endpoint takes unified CalendarEvent data, \"de-normalizes\" it into the\nprovider-specific format, and uses the correct API client to update the event.\n\nArgs:\n    event_id: Event ID with provider prefix (e.g., \"google_abc123\")\n    event_data: Updated event content and configuration\n\nReturns:\n    ApiResponse with updated event details",
+        "operationId": "update_calendar_event_v1_calendar_events__event_id__put",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Event ID (format: provider_originalId)",
+              "title": "Event Id"
+            },
+            "description": "Event ID (format: provider_originalId)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCalendarEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Delete Calendar Event",
+        "description": "Delete a calendar event by ID.\n\nThis endpoint requires logic to find the original provider from the event ID\nand use its API to delete the event.\n\nArgs:\n    event_id: Event ID with provider prefix (e.g., \"google_abc123\")\n\nReturns:\n    ApiResponse confirming deletion",
+        "operationId": "delete_calendar_event_v1_calendar_events__event_id__delete",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Event ID (format: provider_originalId)",
+              "title": "Event Id"
+            },
+            "description": "Event ID (format: provider_originalId)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files/": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Get Files",
+        "description": "Get unified files from multiple providers.\n\nFetches files from Google Drive and Microsoft OneDrive APIs,\nnormalizes them to a unified format, and returns aggregated results.\nResponses are cached for improved performance.\n\nArgs:\n    user_id: ID of the user to fetch files for\n    providers: List of providers to query (defaults to all available)\n    limit: Maximum files per provider\n    folder_id: Specific folder to list (provider-specific ID)\n    file_types: Filter by file types/mime types\n    q: Search query string\n    order_by: Sort order for results\n    include_folders: Whether to include folders\n\nReturns:\n    ApiResponse with aggregated files",
+        "operationId": "get_files_v1_files__get",
+        "parameters": [
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+              "title": "Providers"
+            },
+            "description": "Providers to fetch from (google, microsoft). If not specified, fetches from all available providers"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Maximum number of files to return per provider",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of files to return per provider"
+          },
+          {
+            "name": "folder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Folder ID to list files from (provider-specific)",
+              "title": "Folder Id"
+            },
+            "description": "Folder ID to list files from (provider-specific)"
+          },
+          {
+            "name": "file_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by file types/mime types",
+              "title": "File Types"
+            },
+            "description": "Filter by file types/mime types"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search query to filter files",
+              "title": "Q"
+            },
+            "description": "Search query to filter files"
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Sort order (modifiedTime, name, size)",
+              "default": "modifiedTime desc",
+              "title": "Order By"
+            },
+            "description": "Sort order (modifiedTime, name, size)"
+          },
+          {
+            "name": "include_folders",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include folders in results",
+              "default": true,
+              "title": "Include Folders"
+            },
+            "description": "Whether to include folders in results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files/search": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Search Files",
+        "description": "Search files across multiple providers.\n\nPerforms a unified search across Google Drive and Microsoft OneDrive,\nreturning aggregated and normalized results.\n\nArgs:\n    q: Search query string\n    providers: List of providers to search (defaults to all)\n    limit: Maximum results per provider\n    file_types: Filter by file types\n\nReturns:\n    ApiResponse with search results",
+        "operationId": "search_files_v1_files_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Search query",
+              "title": "Q"
+            },
+            "description": "Search query"
+          },
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to search in (google, microsoft)",
+              "title": "Providers"
+            },
+            "description": "Providers to search in (google, microsoft)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Maximum number of results per provider",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of results per provider"
+          },
+          {
+            "name": "file_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by file types/mime types",
+              "title": "File Types"
+            },
+            "description": "Filter by file types/mime types"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files/{file_id}": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Get File",
+        "description": "Get a specific file by ID.\n\nThe file_id should be in the format \"provider_originalId\" (e.g., \"google_abc123\" or \"microsoft_xyz789\").\nThis endpoint determines the correct provider from the file ID and fetches the full file details.\n\nArgs:\n    file_id: File ID with provider prefix\n    include_download_url: Whether to include download URL\n\nReturns:\n    ApiResponse with the specific file",
+        "operationId": "get_file_v1_files__file_id__get",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "File ID (format: provider_originalId)",
+              "title": "File Id"
+            },
+            "description": "File ID (format: provider_originalId)"
+          },
+          {
+            "name": "include_download_url",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include download URL",
+              "default": false,
+              "title": "Include Download Url"
+            },
+            "description": "Whether to include download URL"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/contacts/": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "List Contacts",
+        "operationId": "list_contacts_v1_contacts__get",
+        "parameters": [
+          {
+            "name": "providers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Providers to fetch from (google, microsoft).",
+              "title": "Providers"
+            },
+            "description": "Providers to fetch from (google, microsoft)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Free-text search (name or email)",
+              "title": "Q"
+            },
+            "description": "Free-text search (name or email)"
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by company or email domain",
+              "title": "Company"
+            },
+            "description": "Filter by company or email domain"
+          },
+          {
+            "name": "no_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Bypass cache and fetch fresh data from providers",
+              "default": false,
+              "title": "No Cache"
+            },
+            "description": "Bypass cache and fetch fresh data from providers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Create Contact",
+        "operationId": "create_contact_v1_contacts__post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Provider to create contact in (google, microsoft) - optional if provided in JSON body",
+              "title": "Provider"
+            },
+            "description": "Provider to create contact in (google, microsoft) - optional if provided in JSON body"
+          },
+          {
+            "name": "full_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Full Name"
+            }
+          },
+          {
+            "name": "given_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Given Name"
+            }
+          },
+          {
+            "name": "family_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family Name"
+            }
+          },
+          {
+            "name": "emails",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Emails"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company"
+            }
+          },
+          {
+            "name": "job_title",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Title"
+            }
+          },
+          {
+            "name": "phones",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Phones"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_ContactCreatePayload"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Contact V1 Contacts  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/contacts/{contact_id}": {
+      "put": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Update Contact",
+        "operationId": "update_contact_v1_contacts__contact_id__put",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Unified contact id (provider_originalId) or provider id for write-through",
+              "title": "Contact Id"
+            },
+            "description": "Unified contact id (provider_originalId) or provider id for write-through"
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Provider to update in (if unified id not used) - optional if provided in JSON body",
+              "title": "Provider"
+            },
+            "description": "Provider to update in (if unified id not used) - optional if provided in JSON body"
+          },
+          {
+            "name": "full_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Full Name"
+            }
+          },
+          {
+            "name": "given_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Given Name"
+            }
+          },
+          {
+            "name": "family_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family Name"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company"
+            }
+          },
+          {
+            "name": "job_title",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Title"
+            }
+          },
+          {
+            "name": "emails",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Emails"
+            }
+          },
+          {
+            "name": "phones",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Phones"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_ContactUpdatePayload"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Update Contact V1 Contacts  Contact Id  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Delete Contact",
+        "operationId": "delete_contact_v1_contacts__contact_id__delete",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Provider to delete in (if unified id not used)",
+              "title": "Provider"
+            },
+            "description": "Provider to delete in (if unified id not used)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Contact V1 Contacts  Contact Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Read Root",
+        "description": "Hello World root endpoint",
+        "operationId": "read_root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Read Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint for load balancers and monitoring.\nChecks database connectivity and basic configuration.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Check Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Ready Check",
+        "description": "Simple readiness check.",
+        "operationId": "ready_check_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Ready Check Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "ApiResponse",
+        "description": "Generic API response for backward compatibility."
+      },
+      "AvailabilityResponse": {
+        "properties": {
+          "available_slots": {
+            "items": {
+              "$ref": "#/components/schemas/AvailableSlot"
+            },
+            "type": "array",
+            "title": "Available Slots"
+          },
+          "total_slots": {
+            "type": "integer",
+            "title": "Total Slots"
+          },
+          "time_range": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Time Range"
+          },
+          "providers_used": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Providers Used"
+          },
+          "provider_errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Errors"
+          },
+          "request_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available_slots",
+          "total_slots",
+          "time_range",
+          "providers_used",
+          "request_metadata"
+        ],
+        "title": "AvailabilityResponse",
+        "description": "Response model for availability checks."
+      },
+      "AvailableSlot": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "title": "Duration Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "duration_minutes"
+        ],
+        "title": "AvailableSlot",
+        "description": "Model for an available time slot."
+      },
+      "CalendarEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End Time"
+          },
+          "all_day": {
+            "type": "boolean",
+            "title": "All Day",
+            "default": false
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "attendees": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            },
+            "type": "array",
+            "title": "Attendees",
+            "default": []
+          },
+          "organizer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailAddress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "confirmed"
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": "default"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "provider_event_id": {
+            "type": "string",
+            "title": "Provider Event Id"
+          },
+          "account_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Account Email"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "calendar_name": {
+            "type": "string",
+            "title": "Calendar Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "calendar_id",
+          "title",
+          "start_time",
+          "end_time",
+          "provider",
+          "provider_event_id",
+          "account_email",
+          "calendar_name",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CalendarEvent"
+      },
+      "CalendarEventResponse": {
+        "properties": {
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "event_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Data"
+          },
+          "request_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "status",
+          "request_metadata"
+        ],
+        "title": "CalendarEventResponse",
+        "description": "Response model for calendar event operations."
+      },
+      "ContactList": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "ContactList",
+        "description": "Response model for contact lists."
+      },
+      "CreateCalendarEventRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title",
+            "description": "Event title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Event description"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time",
+            "description": "Event start time"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End Time",
+            "description": "Event end time"
+          },
+          "all_day": {
+            "type": "boolean",
+            "title": "All Day",
+            "description": "Whether this is an all-day event",
+            "default": false
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Event location"
+          },
+          "attendees": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attendees",
+            "description": "List of attendees"
+          },
+          "calendar_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Id",
+            "description": "Calendar ID (uses primary if not specified)"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider",
+            "description": "Provider preference (google, microsoft)"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility",
+            "description": "Event visibility (default, public, private)",
+            "default": "default"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Event status (confirmed, tentative, cancelled)",
+            "default": "confirmed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "start_time",
+          "end_time"
+        ],
+        "title": "CreateCalendarEventRequest",
+        "description": "Request model for creating calendar events."
+      },
+      "EmailAddress": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "Email address"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Display name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "EmailAddress"
+      },
+      "EmailDraftCreateRequest": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "Draft action: new, reply, reply_all, forward",
+            "default": "new"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          },
+          "cc": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cc"
+          },
+          "bcc": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bcc"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          },
+          "reply_to_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To Message Id"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "title": "EmailDraftCreateRequest",
+        "description": "Request model for creating email drafts in providers (Google/Microsoft)."
+      },
+      "EmailDraftResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "EmailDraftResponse",
+        "description": "Response model for email draft operations."
+      },
+      "EmailDraftUpdateRequest": {
+        "properties": {
+          "to": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          },
+          "cc": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cc"
+          },
+          "bcc": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bcc"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "title": "EmailDraftUpdateRequest",
+        "description": "Request model for updating email drafts in providers."
+      },
+      "EmailFolderList": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "EmailFolderList",
+        "description": "Response model for email folder lists."
+      },
+      "EmailMessageList": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "EmailMessageList",
+        "description": "Response model for email message lists."
+      },
+      "EmailThreadList": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "EmailThreadList",
+        "description": "Response model for email thread lists."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Provider": {
+        "type": "string",
+        "enum": [
+          "google",
+          "microsoft"
+        ],
+        "title": "Provider"
+      },
+      "SendEmailRequest": {
+        "properties": {
+          "to": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            },
+            "type": "array",
+            "title": "To"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "cc": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cc"
+          },
+          "bcc": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bcc"
+          },
+          "reply_to_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To Message Id"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "importance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Importance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ],
+        "title": "SendEmailRequest",
+        "description": "Request model for sending emails."
+      },
+      "SendEmailResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "SendEmailResponse",
+        "description": "Response model for sending emails."
+      },
+      "TypedApiResponse_AvailabilityResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AvailabilityResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "TypedApiResponse[AvailabilityResponse]"
+      },
+      "TypedApiResponse_CalendarEventResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarEventResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "TypedApiResponse[CalendarEventResponse]"
+      },
+      "TypedApiResponse_List_CalendarEvent__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "default": false
+          },
+          "provider_used": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CalendarEvent"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "request_id"
+        ],
+        "title": "TypedApiResponse[List[CalendarEvent]]"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "_ContactCreatePayload": {
+        "properties": {
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "given_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Given Name"
+          },
+          "family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Name"
+          },
+          "emails": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emails"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "phones": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phones"
+          }
+        },
+        "type": "object",
+        "title": "_ContactCreatePayload"
+      },
+      "_ContactUpdatePayload": {
+        "properties": {
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "given_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Given Name"
+          },
+          "family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Name"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "emails": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emails"
+          },
+          "phones": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phones"
+          }
+        },
+        "type": "object",
+        "title": "_ContactUpdatePayload"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "email",
+      "description": "Email operations including sending, receiving, and management"
+    },
+    {
+      "name": "calendar",
+      "description": "Calendar operations including events and availability"
+    },
+    {
+      "name": "files",
+      "description": "File operations including upload, download, and management"
+    },
+    {
+      "name": "contacts",
+      "description": "Contact management and operations"
+    }
+  ]
+}
