@@ -414,16 +414,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         try {
             if (existingPackage) {
                 // If package exists, create a tracking event instead of new package
-                const eventData: {
-                    event_date: string;
-                    status: PackageStatus;
-                    location?: string;
-                    description?: string;
-                    email_message_id?: string;
-                } = {
+                const eventData: TrackingEventCreate = {
                     event_date: new Date().toISOString(),
-                    status: formData.status,
-                    description: `New tracking event from email - Status: ${formData.status}`,
+                    status: formData.status as any, // Use the local PackageStatus type for now
+                    location: undefined,
+                    description: undefined,
                     email_message_id: email.id, // Include the email message ID to prevent duplicates
                 };
 
@@ -460,7 +455,18 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 }
             } else {
                 // Create new package
-                await onTrackShipment(formData);
+                const packageData: PackageCreateRequest = {
+                    tracking_number: formData.tracking_number,
+                    carrier: formData.carrier,
+                    status: formData.status as any, // Use the local PackageStatus type for now
+                    recipient_name: formData.recipient_name || undefined,
+                    shipper_name: formData.shipper_name || undefined,
+                    package_description: formData.package_description || undefined,
+                    order_number: formData.order_number || undefined,
+                    tracking_link: formData.tracking_link || undefined,
+                    expected_delivery: formData.expected_delivery || undefined,
+                };
+                await onTrackShipment(packageData);
             }
 
             // Submit data collection if user has consented
