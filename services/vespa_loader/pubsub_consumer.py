@@ -503,7 +503,7 @@ class PubSubConsumer:
             # Call the ingest endpoint
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    "http://localhost:9001/ingest", json=document_data, timeout=30.0
+                    self.settings.ingest_endpoint, json=document_data, timeout=30.0
                 )
 
                 logger.info(

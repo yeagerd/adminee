@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     service_name: str = "vespa-loader"
     service_port: int = Field(default=9001, env="VESPA_LOADER_PORT")
     service_host: str = Field(default="0.0.0.0", env="VESPA_LOADER_HOST")
+    ingest_endpoint: str = Field(
+        default="http://localhost:9001/ingest",
+        validation_alias="VESPA_LOADER_INGEST_ENDPOINT",
+    )
 
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
