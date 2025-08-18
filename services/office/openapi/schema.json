@@ -1,4 +1,4 @@
-2025-08-18 12:44:00 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+2025-08-18 16:43:57 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
 {
   "openapi": "3.1.0",
   "info": {
@@ -1266,7 +1266,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CalendarEventResponse"
+                  "$ref": "#/components/schemas/CalendarEventDetailResponse"
                 }
               }
             }
