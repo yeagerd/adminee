@@ -2,10 +2,10 @@
 
 import { userApi } from '@/api';
 import type { Integration } from '@/api/types/common';
+import { IntegrationProvider } from '@/types/api/user';
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { INTEGRATION_STATUS } from '../lib/constants';
-import { IntegrationProvider } from '@/types/api/user';
 
 interface IntegrationsContextType {
     integrations: Integration[];

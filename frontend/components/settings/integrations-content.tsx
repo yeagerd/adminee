@@ -1,20 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { userApi, type Integration } from '@/api';
 import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
-import { userApi, type Integration } from '@/api';
 import { IntegrationProvider } from '@/types/api/user';
-import { AlertCircle, Calendar, Mail, Settings, CheckCircle, RefreshCw, Trash2, ExternalLink } from 'lucide-react';
+import { AlertCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useCallback } from 'react';
+import { useEffect, useState } from 'react';
 
 interface IntegrationConfig {
     provider: string;
@@ -61,7 +59,7 @@ export function IntegrationsContent() {
             if (response && Array.isArray(response)) {
                 const scopes = response;
                 console.log(`Loaded scopes for ${provider}:`, scopes.map((s: any) => s.name));
-                
+
                 // Extract scope names for display
                 const allScopeNames = scopes.map((scope: any) => scope.name);
                 setAvailableScopes(allScopeNames);

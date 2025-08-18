@@ -10,11 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToolState } from "@/contexts/tool-context";
 import type {
     MeetingPoll,
-    PollParticipant,
     MeetingPollCreate,
-    TimeSlotCreate,
-    PollParticipantCreate,
-    MeetingType
+    MeetingType,
+    PollParticipant
 } from "@/types/api/meetings";
 import type { TypedApiResponse_List_CalendarEvent__ } from "@/types/api/office";
 import { CalendarEvent } from "@/types/office-service";

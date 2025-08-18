@@ -1,20 +1,12 @@
 "use client";
 import { meetingsApi } from '@/api';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import type {
     MeetingPoll,
     PollParticipant,
     PollResponseCreate,
     TimeSlot
 } from '@/types/api/meetings';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Check, HelpCircle, X, ChevronUp, ChevronDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Check, ChevronDown, ChevronUp, HelpCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 // Legacy types for backward compatibility - these should be removed once all components are updated

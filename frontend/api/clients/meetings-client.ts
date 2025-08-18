@@ -3,9 +3,9 @@ import {
     MeetingPollCreate,
     MeetingPollUpdate,
     PollParticipant,
-    SuccessResponse,
+    PollResponseTokenRequest,
     PublicService,
-    PollResponseTokenRequest
+    SuccessResponse
 } from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
 
@@ -15,7 +15,7 @@ export class MeetingsClient extends GatewayClient {
         async getPollResponse(responseToken: string) {
             return PublicService.getPollByResponseTokenApiV1PublicPollsResponseResponseTokenGet(responseToken);
         },
-        
+
         async updatePollResponse(responseToken: string, requestBody: PollResponseTokenRequest) {
             return PublicService.respondWithTokenApiV1PublicPollsResponseResponseTokenPut(responseToken, requestBody);
         }
