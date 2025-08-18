@@ -10,7 +10,7 @@ export { UserClient } from './clients/user-client';
 export * from './clients/bookings-client';
 
 // Export common types
-export * from './types/common';
+// Common types are now imported from generated types
 
 // Export shipments types
 export * from './clients/shipments-client';

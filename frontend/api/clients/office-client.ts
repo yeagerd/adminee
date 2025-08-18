@@ -7,7 +7,14 @@ import type {
     TypedApiResponse_CalendarEventResponse_,
     TypedApiResponse_List_CalendarEvent__
 } from '../../types/api/office';
-import { BulkActionType } from '../types/common';
+// TODO: Replace with proper generated types when available
+export enum BulkActionType {
+    ARCHIVE = 'archive',
+    DELETE = 'delete',
+    SNOOZE = 'snooze',
+    MARK_READ = 'mark_read',
+    MARK_UNREAD = 'mark_unread'
+}
 import { GatewayClient } from './gateway-client';
 
 export class OfficeClient extends GatewayClient {

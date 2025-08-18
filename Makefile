@@ -35,7 +35,6 @@ help:
 # Install dependencies
 install:
 	@echo "Installing dependencies..."
-	@if [ -f "package.json" ]; then npm install; fi
 	@if [ -d "frontend" ]; then cd frontend && npm install; fi
 	@if [ -d "gateway" ]; then cd gateway && npm install; fi
 	@echo "✅ Dependencies installed"
