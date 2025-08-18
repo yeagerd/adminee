@@ -80,6 +80,7 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
             "read_calendar",
             "read_contacts",
             "health",
+            "internal_access",  # Allow access to internal endpoints
         ],
         settings_key="api_backfill_office_key",  # This maps to the settings field
     ),
@@ -98,6 +99,7 @@ SERVICE_PERMISSIONS = {
         "write_contacts",
         "health",
         "backfill",  # Add backfill permission
+        "internal_access",  # Allow access to internal endpoints
     ],
 }
 

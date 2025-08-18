@@ -25,12 +25,8 @@ class EmailCrawler:
     async def get_total_email_count(self) -> int:
         """Get the total number of emails to process"""
         try:
-            if self.provider == "microsoft":
-                return await self._get_microsoft_email_count()
-            elif self.provider == "google":
-                return await self._get_google_email_count()
-            else:
-                raise ValueError(f"Unsupported provider: {self.provider}")
+            # Use the unified email count method
+            return await self._get_email_count()
 
         except Exception as e:
             logger.error(f"Failed to get email count for user {self.user_id}: {e}")
@@ -77,21 +73,28 @@ class EmailCrawler:
         try:
             import httpx
 
-            # Call the office service's unified /email/messages endpoint to get count
+            # Call the office service's internal /internal/messages/count endpoint
             office_service_url = "http://localhost:8003"
+
+            # Ensure provider is a lowercase string - handle both enum and string cases
+            if hasattr(self.provider, 'value'):
+                # It's an enum, get the value
+                provider_str = self.provider.value.lower()
+            else:
+                # It's already a string
+                provider_str = str(self.provider).lower()
 
             # Build query parameters for count
             params = {
-                "providers": [self.provider],
-                "count_only": True,  # Request count only
+                "user_id": self.user_id,
+                "providers": [provider_str],
             }
 
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"{office_service_url}/v1/email/messages",
+                    f"{office_service_url}/internal/messages/count",
                     params=params,
                     headers={
-                        "X-User-Id": self.user_id,
                         "X-API-Key": "test-BACKFILL-OFFICE-KEY",  # Use backfill API key
                     },
                     timeout=10.0,
@@ -99,12 +102,12 @@ class EmailCrawler:
 
                 if response.status_code == 200:
                     data = response.json()
-                    count = data.get("total_count", self.max_email_count)
+                    count = data.get("total_count", 0)
                     logger.info(
-                        f"Got email count for user {self.user_id} with provider {self.provider}: {count}",
+                        f"Got email count for user {self.user_id} with provider {provider_str}: {count}",
                         extra={
                             "user_id": self.user_id,
-                            "provider": self.provider,
+                            "provider": provider_str,
                             "operation": "email_count",
                             "count": count,
                         },
@@ -114,11 +117,11 @@ class EmailCrawler:
                     logger.warning(
                         f"Failed to get email count: {response.status_code} - {response.text}"
                     )
-                    return self.max_email_count  # Fallback to max count
+                    return 0  # Return 0 instead of max_email_count to avoid false positives
 
         except Exception as e:
             logger.error(f"Error getting email count: {e}")
-            return self.max_email_count  # Fallback to max count
+            return 0  # Return 0 instead of max_email_count to avoid false positives
 
     async def _crawl_emails(
         self,
@@ -185,13 +188,22 @@ class EmailCrawler:
         try:
             import httpx
 
-            # Call the office service's unified /email/messages endpoint
+            # Call the office service's internal /internal/messages endpoint
             # This is the same endpoint the frontend uses
             office_service_url = "http://localhost:8003"
 
+            # Ensure provider is a lowercase string - handle both enum and string cases
+            if hasattr(provider, 'value'):
+                # It's an enum, get the value
+                provider_str = provider.value.lower()
+            else:
+                # It's already a string
+                provider_str = str(provider).lower()
+
             # Build query parameters
             params = {
-                "providers": [provider],
+                "user_id": self.user_id,  # Pass user_id as query parameter for internal endpoint
+                "providers": [provider_str],
                 "limit": batch_size,
                 "include_body": True,
                 "no_cache": True,  # Always get fresh data for backfill
@@ -215,10 +227,9 @@ class EmailCrawler:
 
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"{office_service_url}/v1/email/messages",
+                    f"{office_service_url}/internal/messages",
                     params=params,
                     headers={
-                        "X-User-Id": self.user_id,
                         "X-API-Key": "test-BACKFILL-OFFICE-KEY",  # Use backfill API key
                     },
                     timeout=30.0,
@@ -234,7 +245,7 @@ class EmailCrawler:
                             email = {
                                 "id": msg.get("provider_message_id", msg.get("id")),
                                 "user_id": self.user_id,
-                                "provider": provider,
+                                "provider": provider_str,
                                 "type": "email",
                                 "subject": msg.get("subject", ""),
                                 "body": msg.get("body_text", msg.get("snippet", "")),
@@ -265,7 +276,7 @@ class EmailCrawler:
                             emails.append(email)
 
                         logger.info(
-                            f"Retrieved {len(emails)} real emails from {provider} using office service unified API"
+                            f"Retrieved {len(emails)} real emails from {provider_str} using office service internal API"
                         )
                         return emails
                     else:
@@ -283,7 +294,7 @@ class EmailCrawler:
 
         except Exception as e:
             logger.error(
-                f"Failed to get real emails from office service unified API for {provider}: {e}"
+                f"Failed to get real emails from office service internal API for {provider_str if 'provider_str' in locals() else provider}: {e}"
             )
             logger.error("This could be due to:")
             logger.error("1. Office service not running")
@@ -291,7 +302,7 @@ class EmailCrawler:
             logger.error("3. Network connectivity issues")
             logger.error("4. Office service internal errors")
             raise Exception(
-                f"Failed to retrieve real emails from {provider} via office service: {e}"
+                f"Failed to retrieve real emails from {provider_str if 'provider_str' in locals() else provider} via office service: {e}"
             )
 
         # Return empty list if no emails found
