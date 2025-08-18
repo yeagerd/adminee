@@ -19,6 +19,6 @@ export * from './bulk-action-types';
 
 // Re-export commonly used generated types
 export type { UserDraftRequest, UserDraftResponse } from './api/chat';
-export type { CalendarEvent, CalendarEventResponse } from './api/office';
 export { Provider } from './api/office';
+export type { CalendarEvent, CalendarEventResponse } from './api/office';
 

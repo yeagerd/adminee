@@ -6,10 +6,10 @@ import { Archive, CalendarRange, Clock, Download, MoreHorizontal, Reply, Star, T
 import React, { useState } from 'react';
 import EmailThreadCard from './email-thread-card';
 // removed global draft pane wiring for thread-level drafts
-import { getSession } from 'next-auth/react';
-import EmailThreadDraft from './email-thread-draft';
 import { Draft } from '@/types/draft';
+import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import EmailThreadDraft from './email-thread-draft';
 
 interface EmailThreadProps {
     thread: EmailThreadType;

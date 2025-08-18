@@ -1,5 +1,6 @@
 'use client';
 
+import { officeApi } from '@/api';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -9,7 +10,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { officeApi } from '@/api';
 import type { EmailFolder } from '@/types';
 import { Provider } from '@/types/api/office';
 import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';

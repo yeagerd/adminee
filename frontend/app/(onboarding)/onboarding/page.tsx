@@ -1,11 +1,11 @@
 'use client';
 
 import { userApi } from '@/api';
-import type { IntegrationResponse } from '@/types/api/user';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { INTEGRATION_STATUS } from '@/lib/constants';
+import type { IntegrationResponse } from '@/types/api/user';
 import { IntegrationProvider } from '@/types/api/user';
 import { Calendar, CheckCircle, Loader2, Mail, Shield } from 'lucide-react';
 import { useSession } from 'next-auth/react';
