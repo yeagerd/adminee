@@ -235,7 +235,7 @@ class VespaBackfillDemo:
 
             # Query to get total document count for this user
             user_query = {
-                "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select * from briefly_document where true",
                 "hits": 1,  # Use 1 to ensure we get the totalCount field
                 "timeout": "5s",
                 "streaming.groupname": self.user_id,  # Use internal user ID for streaming group
@@ -251,7 +251,7 @@ class VespaBackfillDemo:
 
             # Get breakdown by source type
             source_type_query = {
-                "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select source_type from briefly_document where true",
                 "hits": 1,
                 "timeout": "5s",
                 "grouping": "source_type",
@@ -270,7 +270,7 @@ class VespaBackfillDemo:
 
             # Get breakdown by provider
             provider_query = {
-                "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select provider from briefly_document where true",
                 "hits": 1,
                 "timeout": "5s",
                 "grouping": "provider",
