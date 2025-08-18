@@ -376,11 +376,14 @@ class TestUserIDValidation:
 
                 # This will fail at the validation step before processing
                 from fastapi import BackgroundTasks
+
                 mock_background_tasks = BackgroundTasks()
                 asyncio.run(ingest_document(invalid_document, mock_background_tasks))
 
         # Check that it's an HTTPException with 400 status
-        assert "user_id is required" in str(exc_info.value) or "Document ID and user_id are required" in str(exc_info.value)
+        assert "user_id is required" in str(
+            exc_info.value
+        ) or "Document ID and user_id are required" in str(exc_info.value)
 
     def test_ingest_document_rejects_missing_user_id_nested(self):
         """Test that ingest_document rejects documents without user_id in nested format."""
@@ -411,11 +414,14 @@ class TestUserIDValidation:
 
                 # This will fail at the validation step before processing
                 from fastapi import BackgroundTasks
+
                 mock_background_tasks = BackgroundTasks()
                 asyncio.run(ingest_document(invalid_document, mock_background_tasks))
 
         # Check that it's an HTTPException with 400 status
-        assert "user_id is required" in str(exc_info.value) or "Document ID and user_id are required" in str(exc_info.value)
+        assert "user_id is required" in str(
+            exc_info.value
+        ) or "Document ID and user_id are required" in str(exc_info.value)
 
     def test_ingest_batch_rejects_documents_without_user_id(self):
         """Test that batch ingest rejects any document without user_id."""
@@ -445,21 +451,24 @@ class TestUserIDValidation:
         # We need to mock the dependencies since this is a FastAPI endpoint
         mock_vespa_client = Mock()
         mock_vespa_client.index_document = AsyncMock(return_value={"status": "success"})
-        
+
         mock_content_normalizer = Mock()
         mock_content_normalizer.normalize.return_value = "normalized content"
-        
+
         mock_embedding_generator = Mock()
-        mock_embedding_generator.generate_embedding = AsyncMock(return_value=[0.1] * 384)
-        
+        mock_embedding_generator.generate_embedding = AsyncMock(
+            return_value=[0.1] * 384
+        )
+
         mock_document_mapper = Mock()
+
         def mock_map_to_vespa(doc):
             if doc.get("user_id"):
                 return {
                     "user_id": doc["user_id"],
                     "doc_id": doc["id"],
                     "content": doc.get("body", ""),
-                    "search_text": doc.get("body", "")
+                    "search_text": doc.get("body", ""),
                 }
             else:
                 # This will cause the validation to fail
@@ -467,26 +476,35 @@ class TestUserIDValidation:
                     "user_id": None,
                     "doc_id": doc["id"],
                     "content": doc.get("body", ""),
-                    "search_text": doc.get("body", "")
+                    "search_text": doc.get("body", ""),
                 }
+
         mock_document_mapper.map_to_vespa.side_effect = mock_map_to_vespa
-        
+
         with (
             patch("services.vespa_loader.main.vespa_client", mock_vespa_client),
-            patch("services.vespa_loader.main.content_normalizer", mock_content_normalizer),
-            patch("services.vespa_loader.main.embedding_generator", mock_embedding_generator),
+            patch(
+                "services.vespa_loader.main.content_normalizer", mock_content_normalizer
+            ),
+            patch(
+                "services.vespa_loader.main.embedding_generator",
+                mock_embedding_generator,
+            ),
             patch("services.vespa_loader.main.document_mapper", mock_document_mapper),
         ):
 
             # This should process the batch and return results with errors
             from fastapi import BackgroundTasks
+
             mock_background_tasks = BackgroundTasks()
-            result = asyncio.run(ingest_batch_documents(invalid_batch, mock_background_tasks))
+            result = asyncio.run(
+                ingest_batch_documents(invalid_batch, mock_background_tasks)
+            )
 
         # Check that the batch was processed
         assert result["status"] == "completed"
         assert result["total_documents"] == 2
-        
+
         # Since the batch function doesn't validate user_id at the document level,
         # both documents will be processed successfully through the mapper
         # The validation happens in process_document, not in the batch function

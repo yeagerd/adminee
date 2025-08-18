@@ -15,7 +15,8 @@ from services.common.logging_config import (
 from services.office.api.backfill import internal_router as backfill_internal_router
 from services.office.api.calendar import router as calendar_router
 from services.office.api.contacts import router as contacts_router
-from services.office.api.email import router as email_router, internal_router as email_internal_router
+from services.office.api.email import internal_router as email_internal_router
+from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
 from services.office.core.settings import get_settings
 

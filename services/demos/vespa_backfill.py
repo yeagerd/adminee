@@ -606,7 +606,9 @@ class VespaBackfillDemo:
             # Get final Vespa stats after backfill
             logger.info("Collecting final Vespa statistics...")
             # Wait for async document processing to complete
-            logger.info("Waiting 5 seconds for async document processing to complete...")
+            logger.info(
+                "Waiting 5 seconds for async document processing to complete..."
+            )
             await asyncio.sleep(5)
             after_stats = await self.get_user_vespa_stats()
             results["vespa_stats"]["after"] = after_stats
@@ -703,16 +705,25 @@ class VespaBackfillDemo:
                                 if connected:
                                     print(f"  {provider.upper()}: ✅ {status_str}")
                                     if integration.get("last_sync_at"):
-                                        print(f"    Last sync: {integration['last_sync_at']}")
+                                        print(
+                                            f"    Last sync: {integration['last_sync_at']}"
+                                        )
                                 else:
                                     print(f"  {provider.upper()}: {status_str}")
                                     if integration.get("error_message"):
-                                        print(f"    Error: {integration['error_message']}")
+                                        print(
+                                            f"    Error: {integration['error_message']}"
+                                        )
                         else:
                             print("❌ No integrations found")
                             print("   User needs to complete OAuth setup")
 
-                        return {"office_service_running": True, "user_service_running": True, "user_exists": True, "integrations": integrations}
+                        return {
+                            "office_service_running": True,
+                            "user_service_running": True,
+                            "user_exists": True,
+                            "integrations": integrations,
+                        }
                     else:
                         print(
                             f"❌ Integration status check failed: {integrations_response.status_code}"

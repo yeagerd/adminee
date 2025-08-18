@@ -83,8 +83,6 @@ class Settings(BaseSettings):
         description="Environment (development, staging, production)",
     )
 
-
-
     # Service URLs
     USER_SERVICE_URL: str = Field(
         default="http://localhost:8001", description="User management service URL"

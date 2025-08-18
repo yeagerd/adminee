@@ -236,7 +236,9 @@ class QueryBuilder:
     ) -> str:
         """Build the YQL query string"""
         # Build a more specific query that searches in search_text and content fields
-        yql_parts = [f'select * from briefly_document where (search_text contains "{query}" or content contains "{query}")']
+        yql_parts = [
+            f'select * from briefly_document where (search_text contains "{query}" or content contains "{query}")'
+        ]
 
         # Add source type filter
         if source_types:

@@ -7,10 +7,10 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from services.vespa_loader.content_normalizer import ContentNormalizer
-from services.vespa_loader.vespa_client import VespaClient
 
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
+from services.vespa_loader.content_normalizer import ContentNormalizer
+from services.vespa_loader.vespa_client import VespaClient
 
 
 class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
@@ -150,15 +150,17 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
     ):
         """Test that content normalization doesn't corrupt the doc_id field."""
         # Normalize the email body content
-        normalized_content = content_normalizer.normalize_email(sample_email_data["body"])
+        normalized_content = content_normalizer.normalize_email(
+            sample_email_data["body"]
+        )
 
         # The normalized content should be a string
         assert isinstance(normalized_content, str)
-        
+
         # The normalized content should not contain HTML tags
         assert "<" not in normalized_content
         assert ">" not in normalized_content
-        
+
         # The normalized content should be cleaned up
         assert normalized_content.strip() == normalized_content
 
@@ -169,29 +171,29 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
         # Test HTML normalization
         html_content = "<p>This is <strong>HTML</strong> content</p>"
         normalized_html = content_normalizer.normalize_html(html_content)
-        
+
         # Should remove HTML tags
         assert "<" not in normalized_html
         assert ">" not in normalized_html
-        
+
         # Should preserve text content
         assert "This is HTML content" in normalized_html
-        
+
         # Test email content normalization
         email_content = "From: test@example.com\nSubject: Test\n\nThis is email content"
         normalized_email = content_normalizer.normalize_email(email_content)
-        
+
         # Should remove email headers
         assert "From: test@example.com" not in normalized_email
         assert "Subject: Test" not in normalized_email
-        
+
         # Should preserve email body
         assert "This is email content" in normalized_email
-        
+
         # Test text normalization
         text_content = "  This is   text   content  \n\n\n"
         normalized_text = content_normalizer.normalize_text(text_content)
-        
+
         # Should clean whitespace
         assert normalized_text.strip() == normalized_text
         assert "  " not in normalized_text  # No double spaces
@@ -271,9 +273,9 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
         html_contents = [
             "<p>Simple HTML</p>",
             "<div><h1>Title</h1><p>Content</p></div>",
-            "<table><tr><td>Data</td></tr></table>"
+            "<table><tr><td>Data</td></tr></table>",
         ]
-        
+
         for html_content in html_contents:
             normalized = content_normalizer.normalize_html(html_content)
             # Should always return a string
@@ -283,14 +285,14 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
             assert ">" not in normalized
             # Should preserve text content
             assert len(normalized.strip()) > 0
-        
+
         # Test email content normalization consistency
         email_contents = [
             "From: sender@test.com\n\nSimple email",
             "Subject: Test\nTo: recipient@test.com\n\nEmail with headers",
-            "Date: 2024-01-01\n\nEmail with date"
+            "Date: 2024-01-01\n\nEmail with date",
         ]
-        
+
         for email_content in email_contents:
             normalized = content_normalizer.normalize_email(email_content)
             # Should always return a string
@@ -327,27 +329,31 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
     def test_doc_id_uniqueness_constraints(self, content_normalizer):
         """Test that content normalization maintains content integrity."""
         # Test that normalization doesn't corrupt content meaning
-        original_content = "This is the original content with special characters: &amp; &lt; &gt;"
+        original_content = (
+            "This is the original content with special characters: &amp; &lt; &gt;"
+        )
         normalized_content = content_normalizer.normalize_html(original_content)
-        
+
         # Should decode HTML entities
         assert "&amp;" not in normalized_content
         assert "&lt;" not in normalized_content
         assert "&gt;" not in normalized_content
-        
+
         # Should preserve the actual characters
         assert "&" in normalized_content
         assert "<" in normalized_content
         assert ">" in normalized_content
-        
+
         # Test that email headers are properly removed
-        email_with_headers = "From: sender@test.com\nSubject: Test\n\nActual email content here"
+        email_with_headers = (
+            "From: sender@test.com\nSubject: Test\n\nActual email content here"
+        )
         normalized_email = content_normalizer.normalize_email(email_with_headers)
-        
+
         # Should remove headers
         assert "From: sender@test.com" not in normalized_email
         assert "Subject: Test" not in normalized_email
-        
+
         # Should preserve email body
         assert "Actual email content here" in normalized_email
 

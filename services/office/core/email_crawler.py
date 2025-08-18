@@ -16,7 +16,9 @@ logger = get_logger(__name__)
 class EmailCrawler:
     """Crawls emails from email providers for backfill operations"""
 
-    def __init__(self, user_id: str, provider: str, user_email: str, max_email_count: int = 10):
+    def __init__(
+        self, user_id: str, provider: str, user_email: str, max_email_count: int = 10
+    ):
         self.user_id = user_id
         self.provider = provider
         self.user_email = user_email  # Add user_email for normalizer calls
@@ -68,7 +70,6 @@ class EmailCrawler:
             logger.error(f"Failed to crawl emails for user {self.user_id}: {e}")
             raise
 
-
     async def _get_email_count(self) -> int:
         """Get email count from the specified provider using the office service's unified API"""
         try:
@@ -78,7 +79,7 @@ class EmailCrawler:
             office_service_url = "http://localhost:8003"
 
             # Ensure provider is a lowercase string - handle both enum and string cases
-            if hasattr(self.provider, 'value'):
+            if hasattr(self.provider, "value"):
                 # It's an enum, get the value
                 provider_str = self.provider.value.lower()
             else:
@@ -113,7 +114,9 @@ class EmailCrawler:
                             "count": count,
                         },
                     )
-                    return min(count, self.max_email_count)  # Respect max_email_count limit
+                    return min(
+                        count, self.max_email_count
+                    )  # Respect max_email_count limit
                 else:
                     logger.warning(
                         f"Failed to get email count: {response.status_code} - {response.text}"
@@ -194,7 +197,7 @@ class EmailCrawler:
             office_service_url = "http://localhost:8003"
 
             # Ensure provider is a lowercase string - handle both enum and string cases
-            if hasattr(provider, 'value'):
+            if hasattr(provider, "value"):
                 # It's an enum, get the value
                 provider_str = provider.value.lower()
             else:
@@ -244,45 +247,65 @@ class EmailCrawler:
                         emails = []
                         for msg in data["data"]["messages"]:
                             # Use content splitting to separate visible from quoted content
-                            from services.office.core.email_content_splitter import split_email_content
-                            
+                            from services.office.core.email_content_splitter import (
+                                split_email_content,
+                            )
+
                             # Split content into visible and quoted parts
                             split_result = split_email_content(
                                 html_content=msg.get("body_html"),
-                                text_content=msg.get("body_text")
+                                text_content=msg.get("body_text"),
                             )
-                            
+
                             # Use visible content as primary body, quoted content for context
                             visible_content = split_result.get("visible_content", "")
                             quoted_content = split_result.get("quoted_content", "")
                             thread_summary = split_result.get("thread_summary", {})
-                            
+
                             # Fallback to original content if splitting failed
                             if not visible_content:
                                 if msg.get("body_html"):
                                     # Simple HTML to text extraction as fallback
                                     import re
+
                                     html_content = msg.get("body_html", "")
-                                    visible_content = re.sub(r'<[^>]+>', '', html_content)
-                                    visible_content = visible_content.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-                                    visible_content = re.sub(r'\s+', ' ', visible_content).strip()
+                                    visible_content = re.sub(
+                                        r"<[^>]+>", "", html_content
+                                    )
+                                    visible_content = (
+                                        visible_content.replace("&nbsp;", " ")
+                                        .replace("&amp;", "&")
+                                        .replace("&lt;", "<")
+                                        .replace("&gt;", ">")
+                                    )
+                                    visible_content = re.sub(
+                                        r"\s+", " ", visible_content
+                                    ).strip()
                                 else:
                                     visible_content = msg.get("body_text", "")
-                            
+
                             # Ensure we have some content
                             if not visible_content:
-                                visible_content = msg.get("snippet", "No content available")
-                            
+                                visible_content = msg.get(
+                                    "snippet", "No content available"
+                                )
+
                             # Extract sender email
                             sender_email = ""
                             if msg.get("from_address"):
-                                sender_email = msg.get("from_address", {}).get("email", "")
-                            
+                                sender_email = msg.get("from_address", {}).get(
+                                    "email", ""
+                                )
+
                             # Extract recipient emails
                             recipient_emails = []
                             if msg.get("to_addresses"):
-                                recipient_emails = [addr.get("email", "") for addr in msg.get("to_addresses", []) if addr.get("email")]
-                            
+                                recipient_emails = [
+                                    addr.get("email", "")
+                                    for addr in msg.get("to_addresses", [])
+                                    if addr.get("email")
+                                ]
+
                             # Convert normalized EmailMessage to backfill format with content splitting
                             email = {
                                 "id": msg.get("provider_message_id", msg.get("id")),
@@ -344,8 +367,6 @@ class EmailCrawler:
 
         # Return empty list if no emails found
         return []
-
-
 
     def set_rate_limit(self, emails_per_second: int):
         """Set the rate limit for email crawling"""

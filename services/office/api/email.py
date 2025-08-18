@@ -2474,7 +2474,7 @@ async def get_internal_email_messages(
 ) -> EmailMessageList:
     """
     Internal endpoint for service-to-service communication to get email messages.
-    
+
     This endpoint bypasses gateway authentication and uses API key auth.
     It accepts user_id as a query parameter for direct service calls.
     """
@@ -2520,7 +2520,10 @@ async def get_internal_email_messages(
             if cached_result:
                 logger.info("Cache hit for internal email messages")
                 return EmailMessageList(
-                    success=True, data=cached_result, cache_hit=True, request_id=request_id
+                    success=True,
+                    data=cached_result,
+                    cache_hit=True,
+                    request_id=request_id,
                 )
 
         # Get API client factory
@@ -2529,7 +2532,7 @@ async def get_internal_email_messages(
         # Query each provider
         all_messages = []
         total_count = 0
-        
+
         # Build filter string if labels are provided
         filter_str = None
         if labels:
@@ -2551,7 +2554,9 @@ async def get_internal_email_messages(
                 # Create API client for this provider
                 client = await api_client_factory.create_client(user_id, provider)
                 if not client:
-                    logger.warning(f"Failed to create {provider} client for user {user_id}")
+                    logger.warning(
+                        f"Failed to create {provider} client for user {user_id}"
+                    )
                     continue
 
                 # Get messages from provider
@@ -2576,13 +2581,19 @@ async def get_internal_email_messages(
                 # Normalize messages
                 if provider == "microsoft":
                     # Microsoft Graph API returns emails in a 'value' array
-                    email_list = messages.get("value", []) if isinstance(messages, dict) else []
+                    email_list = (
+                        messages.get("value", []) if isinstance(messages, dict) else []
+                    )
                     normalized_messages = [
                         normalize_microsoft_email(msg, email) for msg in email_list
                     ]
                 elif provider == "google":
                     # Gmail API returns emails in a 'messages' array
-                    email_list = messages.get("messages", []) if isinstance(messages, dict) else []
+                    email_list = (
+                        messages.get("messages", [])
+                        if isinstance(messages, dict)
+                        else []
+                    )
                     normalized_messages = [
                         normalize_google_email(msg, email) for msg in email_list
                     ]
@@ -2598,7 +2609,9 @@ async def get_internal_email_messages(
                 )
 
             except Exception as e:
-                logger.error(f"Error fetching messages from {provider} for user {user_id}: {e}")
+                logger.error(
+                    f"Error fetching messages from {provider} for user {user_id}: {e}"
+                )
                 # Continue with other providers
                 continue
 
@@ -2651,7 +2664,7 @@ async def get_internal_email_count(
 ) -> Dict[str, Any]:
     """
     Internal endpoint to get email count for service-to-service communication.
-    
+
     This endpoint returns only the count of emails, not the actual messages.
     """
     try:
@@ -2677,7 +2690,7 @@ async def get_internal_email_count(
             return {
                 "success": False,
                 "total_count": 0,
-                "error": "No valid providers specified"
+                "error": "No valid providers specified",
             }
 
         for provider in valid_providers:
@@ -2691,7 +2704,9 @@ async def get_internal_email_count(
                 # Create API client for this provider
                 client = await api_client_factory.create_client(user_id, provider)
                 if not client:
-                    logger.warning(f"Failed to create {provider} client for user {user_id}")
+                    logger.warning(
+                        f"Failed to create {provider} client for user {user_id}"
+                    )
                     continue
 
                 # Get messages from provider (just count, not content)
@@ -2708,27 +2723,37 @@ async def get_internal_email_count(
                         continue
 
                 # Debug: Log the response structure
-                logger.info(f"Response from {provider} API: {type(messages)} - Keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}")
-                
+                logger.info(
+                    f"Response from {provider} API: {type(messages)} - Keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
+                )
+
                 # Count messages from the response
                 if provider == "microsoft" and "value" in messages:
                     total_count += len(messages["value"])
-                    logger.info(f"Microsoft API returned {len(messages['value'])} messages in 'value' array")
+                    logger.info(
+                        f"Microsoft API returned {len(messages['value'])} messages in 'value' array"
+                    )
                 elif provider == "google" and "messages" in messages:
                     total_count += len(messages["messages"])
-                    logger.info(f"Google API returned {len(messages['messages'])} messages in 'messages' array")
+                    logger.info(
+                        f"Google API returned {len(messages['messages'])} messages in 'messages' array"
+                    )
                 else:
                     # Fallback: count the top-level messages if structure is different
                     fallback_count = len(messages) if isinstance(messages, list) else 0
                     total_count += fallback_count
-                    logger.info(f"Fallback count for {provider}: {fallback_count} (response type: {type(messages)})")
+                    logger.info(
+                        f"Fallback count for {provider}: {fallback_count} (response type: {type(messages)})"
+                    )
 
                 logger.info(
                     f"Counted {total_count} total messages from {provider} for user {user_id}"
                 )
 
             except Exception as e:
-                logger.error(f"Error counting messages from {provider} for user {user_id}: {e}")
+                logger.error(
+                    f"Error counting messages from {provider} for user {user_id}: {e}"
+                )
                 # Continue with other providers
                 continue
 
@@ -2740,18 +2765,28 @@ async def get_internal_email_count(
             "debug_info": {
                 "api_responses": {
                     provider: {
-                        "response_type": str(type(messages)) if 'messages' in locals() else "No response",
-                        "response_keys": list(messages.keys()) if isinstance(messages, dict) else "Not a dict",
-                        "response_length": len(messages) if isinstance(messages, (list, dict)) else "Unknown"
-                    } for provider in valid_providers if 'messages' in locals()
+                        "response_type": (
+                            str(type(messages))
+                            if "messages" in locals()
+                            else "No response"
+                        ),
+                        "response_keys": (
+                            list(messages.keys())
+                            if isinstance(messages, dict)
+                            else "Not a dict"
+                        ),
+                        "response_length": (
+                            len(messages)
+                            if isinstance(messages, (list, dict))
+                            else "Unknown"
+                        ),
+                    }
+                    for provider in valid_providers
+                    if "messages" in locals()
                 }
-            }
+            },
         }
-            
+
     except Exception as e:
         logger.error(f"Internal email count error: {e}")
-        return {
-            "success": False,
-            "total_count": 0,
-            "error": str(e)
-        }
+        return {"success": False, "total_count": 0, "error": str(e)}

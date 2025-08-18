@@ -32,34 +32,38 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
     """Resolve email address to internal user ID using the user service"""
     try:
         import httpx
-        
+
         user_service_url = get_settings().USER_SERVICE_URL
         # Log what we're getting from settings
         api_key_from_settings = get_settings().api_office_user_key
         logger.info(f"Email resolution - User service URL: {user_service_url}")
-        logger.info(f"Email resolution - API key from settings: {api_key_from_settings}")
-        
+        logger.info(
+            f"Email resolution - API key from settings: {api_key_from_settings}"
+        )
+
         # Use the API key from settings if available, otherwise log an error
         if api_key_from_settings:
             api_key = api_key_from_settings
-            logger.info(f"Email resolution - Using API key from settings: {api_key[:10]}...")
+            logger.info(
+                f"Email resolution - Using API key from settings: {api_key[:10]}..."
+            )
         else:
             logger.error("Email resolution - No API key configured in settings")
             return None
-        
+
         if not user_service_url or not api_key:
             logger.error("User service URL or API key not configured")
             return None
-            
+
         # Call user service to resolve email to user ID
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{user_service_url}/v1/internal/users/exists",
                 params={"email": email},
                 headers={"X-API-Key": api_key},
-                timeout=10.0
+                timeout=10.0,
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 if data.get("exists"):
@@ -70,9 +74,11 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
                     logger.warning(f"Email {email} not found in user service")
                     return None
             else:
-                logger.error(f"Failed to resolve email {email}: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Failed to resolve email {email}: {response.status_code} - {response.text}"
+                )
                 return None
-                
+
     except Exception as e:
         logger.error(f"Error resolving email {email} to user ID: {e}")
         return None
@@ -248,7 +254,10 @@ async def run_backfill_job(
 
         # Initialize email crawler and pubsub publisher
         email_crawler = EmailCrawler(
-            internal_user_id, request.provider, user_id, max_email_count=request.max_emails or 10
+            internal_user_id,
+            request.provider,
+            user_id,
+            max_email_count=request.max_emails or 10,
         )
         pubsub_publisher = PubSubPublisher()
 

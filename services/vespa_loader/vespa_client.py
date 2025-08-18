@@ -328,26 +328,29 @@ class VespaClient:
         self, document: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Prepare a document for Vespa indexing"""
+
         # Helper function to convert ISO datetime to Unix timestamp
         def parse_datetime_to_timestamp(datetime_str: str) -> int:
             """Convert ISO datetime string to Unix timestamp (seconds since epoch)"""
             try:
                 from datetime import datetime
+
                 # Parse the ISO datetime string
-                dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
                 # Convert to Unix timestamp (seconds since epoch)
                 return int(dt.timestamp())
             except (ValueError, TypeError):
                 # If parsing fails, return current timestamp as fallback
                 from datetime import datetime, timezone
+
                 return int(datetime.now(timezone.utc).timestamp())
-        
+
         # Helper function to clean metadata for Vespa schema
         def clean_metadata_for_vespa(metadata: Any) -> Dict[str, str]:
             """Clean metadata to ensure it only contains string values for Vespa map<string,string>"""
             if not isinstance(metadata, dict):
                 return {}
-            
+
             cleaned = {}
             for key, value in metadata.items():
                 if isinstance(key, str) and isinstance(value, str):
@@ -355,28 +358,48 @@ class VespaClient:
                 elif isinstance(key, str) and value is not None:
                     # Convert non-string values to strings
                     cleaned[key] = str(value)
-            
+
             return cleaned
-        
+
         # Extract the fields we want to index, mapping to Vespa schema field names
         # Note: DocumentMapper has already transformed the fields, so we use the transformed names
         vespa_doc = {
             "fields": {
-                "doc_id": document.get("doc_id", document.get("id")),  # DocumentMapper maps 'id' -> 'doc_id'
+                "doc_id": document.get(
+                    "doc_id", document.get("id")
+                ),  # DocumentMapper maps 'id' -> 'doc_id'
                 "user_id": document.get("user_id"),
                 "source_type": document.get("source_type", "unknown"),
                 "provider": document.get("provider", "unknown"),
-                "title": document.get("title", document.get("subject", "")),  # DocumentMapper maps 'subject' -> 'title'
-                "content": document.get("content", document.get("body", "")),   # DocumentMapper maps 'body' -> 'content'
-                "search_text": document.get("search_text", document.get("body", "")),  # Use search_text or fallback to body
-                "sender": document.get("sender", document.get("from", "")),    # DocumentMapper maps 'from' -> 'sender'
-                "recipients": document.get("recipients", document.get("to", [])),  # DocumentMapper maps 'to' -> 'recipients'
+                "title": document.get(
+                    "title", document.get("subject", "")
+                ),  # DocumentMapper maps 'subject' -> 'title'
+                "content": document.get(
+                    "content", document.get("body", "")
+                ),  # DocumentMapper maps 'body' -> 'content'
+                "search_text": document.get(
+                    "search_text", document.get("body", "")
+                ),  # Use search_text or fallback to body
+                "sender": document.get(
+                    "sender", document.get("from", "")
+                ),  # DocumentMapper maps 'from' -> 'sender'
+                "recipients": document.get(
+                    "recipients", document.get("to", [])
+                ),  # DocumentMapper maps 'to' -> 'recipients'
                 "thread_id": document.get("thread_id", ""),
                 "folder": document.get("folder", ""),
-                "created_at": parse_datetime_to_timestamp(document.get("created_at", "")),
-                "updated_at": parse_datetime_to_timestamp(document.get("updated_at", "")),
-                "quoted_content": document.get("quoted_content", ""),  # Add quoted content for context
-                "thread_summary": clean_metadata_for_vespa(document.get("thread_summary", {})),  # Add thread summary
+                "created_at": parse_datetime_to_timestamp(
+                    document.get("created_at", "")
+                ),
+                "updated_at": parse_datetime_to_timestamp(
+                    document.get("updated_at", "")
+                ),
+                "quoted_content": document.get(
+                    "quoted_content", ""
+                ),  # Add quoted content for context
+                "thread_summary": clean_metadata_for_vespa(
+                    document.get("thread_summary", {})
+                ),  # Add thread summary
                 "metadata": clean_metadata_for_vespa(document.get("metadata", {})),
                 # Remove 'timestamp' as it's not in Vespa schema
             }

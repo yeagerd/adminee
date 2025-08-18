@@ -362,7 +362,7 @@ class TestVespaClientIntegration(BaseSelectiveHTTPIntegrationTest):
         for doc in documents:
             result = await vespa_client.index_document(doc)
             batch_results.append(result)
-        
+
         # Check that all documents were indexed successfully
         for result in batch_results:
             assert result["status"] == "success"

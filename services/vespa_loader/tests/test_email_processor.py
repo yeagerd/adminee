@@ -4,6 +4,7 @@ Tests for the EmailContentProcessor
 """
 
 import pytest
+
 from services.vespa_loader.email_processor import EmailContentProcessor
 
 
@@ -73,8 +74,10 @@ class TestEmailContentProcessor:
     def test_process_email_content_splitting(self):
         """Test that email content is properly split into chunks"""
         # Create a long email body
-        long_body = "\n\n".join([f"Paragraph {i} with some content." * 20 for i in range(10)])
-        
+        long_body = "\n\n".join(
+            [f"Paragraph {i} with some content." * 20 for i in range(10)]
+        )
+
         email_data = {
             "id": "test_003",
             "user_id": "user@example.com",
@@ -89,7 +92,7 @@ class TestEmailContentProcessor:
 
         # Should have multiple chunks
         assert len(result["content_chunks"]) > 1
-        
+
         # Each chunk should be within size limits
         for chunk in result["content_chunks"]:
             assert len(chunk) <= self.processor.max_chunk_size
@@ -177,7 +180,9 @@ class TestEmailContentProcessor:
         ]
 
         for pattern in patterns:
-            assert self.processor._is_quote_start(pattern), f"Failed to detect quote: {pattern}"
+            assert self.processor._is_quote_start(
+                pattern
+            ), f"Failed to detect quote: {pattern}"
 
         # Test non-quote lines
         non_quotes = [
@@ -187,7 +192,9 @@ class TestEmailContentProcessor:
         ]
 
         for line in non_quotes:
-            assert not self.processor._is_quote_start(line), f"False positive on: {line}"
+            assert not self.processor._is_quote_start(
+                line
+            ), f"False positive on: {line}"
 
     def test_content_cleaning(self):
         """Test that content is properly cleaned"""
@@ -200,9 +207,9 @@ class TestEmailContentProcessor:
         
         > Quoted content here
         """
-        
+
         clean_content = self.processor._clean_content(dirty_content)
-        
+
         # Should remove excessive whitespace and signature
         assert "This is the main content." in clean_content
         assert "--" not in clean_content

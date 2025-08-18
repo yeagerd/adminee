@@ -86,7 +86,7 @@ class VespaSearchDemo:
 
         # Initialize search engine for stats
         self.search_engine = SearchEngine(self.vespa_endpoint)
-        
+
         # Search tools will be initialized after user_id is resolved
         self.vespa_search = None
         self.user_data_search = None
@@ -96,7 +96,9 @@ class VespaSearchDemo:
         """Initialize search tools after user_id is resolved"""
         if self.user_id:
             self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.user_id)
-            self.user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_id)
+            self.user_data_search = UserDataSearchTool(
+                self.vespa_endpoint, self.user_id
+            )
             self.semantic_search = SemanticSearchTool(self.vespa_endpoint, self.user_id)
 
         # Comprehensive search test scenarios
@@ -128,7 +130,9 @@ class VespaSearchDemo:
                     data = response.json()
                     if data.get("exists", False):
                         user_id = data.get("user_id")
-                        print(f"✅ Found user ID: {user_id} for email: {self.user_email}")
+                        print(
+                            f"✅ Found user ID: {user_id} for email: {self.user_email}"
+                        )
                         return user_id
                     else:
                         print(f"❌ No user found for email: {self.user_email}")
@@ -145,7 +149,7 @@ class VespaSearchDemo:
         """Initialize the search demo by resolving user ID"""
         print(f"🔍 Resolving email {self.user_email} to user ID...")
         self.user_id = await self.resolve_email_to_user_id()
-        
+
         if self.user_id:
             print(f"✅ Resolved user ID: {self.user_id} for email: {self.user_email}")
             # Initialize search tools now that we have the user ID
@@ -928,7 +932,7 @@ class VespaSearchDemo:
 
             # Get all documents for the user
             all_docs_query = {
-                "yql": "select * from briefly_document where source_type contains \"email\"",
+                "yql": 'select * from briefly_document where source_type contains "email"',
                 "hits": 400,  # Respect Vespa's configured limit
                 "timeout": "10s",
                 "streaming.groupname": self.user_id,  # Use resolved user ID for streaming group
@@ -1000,7 +1004,9 @@ class VespaSearchDemo:
                 for i, doc in enumerate(docs, 1):
                     fields = doc.get("fields", {})
                     # Use the correct Vespa field names that match DocumentMapper output
-                    doc_id = fields.get("doc_id", "unknown")  # DocumentMapper maps 'id' -> 'doc_id'
+                    doc_id = fields.get(
+                        "doc_id", "unknown"
+                    )  # DocumentMapper maps 'id' -> 'doc_id'
 
                     print(f"\n{i:3d}. 📄 Document ID: {doc_id}")
                     print(f"    {'─' * 60}")
@@ -1023,29 +1029,39 @@ class VespaSearchDemo:
                         content = fields.get("content")
                         # Calculate word count for better content understanding
                         word_count = len(content.split()) if content else 0
-                        print(f"    📄 Content ({len(content)} chars, {word_count} words):")
-                        
+                        print(
+                            f"    📄 Content ({len(content)} chars, {word_count} words):"
+                        )
+
                         # Show more content for emails - first 2000 chars or ~300 words
                         if len(content) > 2000:
                             # Find a good break point near 2000 chars
                             preview = content[:2000]
                             # Try to break at a sentence or word boundary
-                            last_period = preview.rfind('.')
-                            last_space = preview.rfind(' ')
-                            if last_period > 1600:  # If we have a sentence break in reasonable range
-                                preview = preview[:last_period + 1]
+                            last_period = preview.rfind(".")
+                            last_space = preview.rfind(" ")
+                            if (
+                                last_period > 1600
+                            ):  # If we have a sentence break in reasonable range
+                                preview = preview[: last_period + 1]
                             elif last_space > 1800:  # Otherwise break at word boundary
                                 preview = preview[:last_space]
-                            
+
                             print(f"      {preview}...")
-                            print(f"      [Content truncated. Full content: {len(content)} chars, {word_count} words]")
+                            print(
+                                f"      [Content truncated. Full content: {len(content)} chars, {word_count} words]"
+                            )
                         else:
                             print(f"      {content}")
 
                     if fields.get("search_text"):
                         search_text = fields.get("search_text")
-                        search_word_count = len(search_text.split()) if search_text else 0
-                        print(f"    🔍 Search Text ({len(search_text)} chars, {search_word_count} words):")
+                        search_word_count = (
+                            len(search_text.split()) if search_text else 0
+                        )
+                        print(
+                            f"    🔍 Search Text ({len(search_text)} chars, {search_word_count} words):"
+                        )
                         if len(search_text) > 500:
                             print(f"      {search_text[:500]}...")
                         else:
@@ -1054,7 +1070,9 @@ class VespaSearchDemo:
                     # Type-specific fields
                     if doc_type == "email":
                         # Use the correct Vespa field names from DocumentMapper
-                        print(f"    📧 From: {fields.get('sender', 'Unknown')}")  # DocumentMapper maps 'from' -> 'sender'
+                        print(
+                            f"    📧 From: {fields.get('sender', 'Unknown')}"
+                        )  # DocumentMapper maps 'from' -> 'sender'
                         print(
                             f"    📮 To: {', '.join(fields.get('recipients', ['Unknown']))}"  # DocumentMapper maps 'to' -> 'recipients'
                         )
@@ -1066,42 +1084,59 @@ class VespaSearchDemo:
                         if metadata:
                             print(f"    📊 Email Metadata:")
                             # Show important email metadata first
-                            important_keys = ['is_read', 'is_important', 'has_attachments', 'labels']
+                            important_keys = [
+                                "is_read",
+                                "is_important",
+                                "has_attachments",
+                                "labels",
+                            ]
                             for key in important_keys:
                                 if key in metadata:
                                     value = metadata[key]
-                                    if key == 'labels' and isinstance(value, list):
+                                    if key == "labels" and isinstance(value, list):
                                         if value:
-                                            print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                            print(
+                                                f"      • {key}: {', '.join(str(v) for v in value)}"
+                                            )
                                         else:
                                             print(f"      • {key}: (empty)")
                                     else:
                                         print(f"      • {key}: {value}")
-                            
+
                             # Show other metadata
                             for key, value in metadata.items():
                                 if key not in important_keys:
                                     if isinstance(value, (list, dict)):
                                         if isinstance(value, list) and value:
-                                            print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                            print(
+                                                f"      • {key}: {', '.join(str(v) for v in value)}"
+                                            )
                                         elif isinstance(value, dict) and value:
-                                            print(f"      • {key}: {dict(list(value.items())[:3])}...")
+                                            print(
+                                                f"      • {key}: {dict(list(value.items())[:3])}..."
+                                            )
                                         else:
                                             print(f"      • {key}: (empty)")
                                     else:
                                         print(f"      • {key}: {value}")
-                        
+
                         # Display thread information
                         if fields.get("quoted_content"):
                             quoted_content = fields.get("quoted_content")
-                            quoted_word_count = len(quoted_content.split()) if quoted_content else 0
-                            print(f"    🧵 Quoted Content ({len(quoted_content)} chars, {quoted_word_count} words):")
+                            quoted_word_count = (
+                                len(quoted_content.split()) if quoted_content else 0
+                            )
+                            print(
+                                f"    🧵 Quoted Content ({len(quoted_content)} chars, {quoted_word_count} words):"
+                            )
                             if len(quoted_content) > 500:
                                 print(f"      {quoted_content[:500]}...")
-                                print(f"      [Quoted content truncated. Full quoted content: {len(quoted_content)} chars, {quoted_word_count} words]")
+                                print(
+                                    f"      [Quoted content truncated. Full quoted content: {len(quoted_content)} chars, {quoted_word_count} words]"
+                                )
                             else:
                                 print(f"      {quoted_content}")
-                        
+
                         if fields.get("thread_summary"):
                             thread_summary = fields.get("thread_summary", {})
                             if thread_summary:
@@ -1109,9 +1144,13 @@ class VespaSearchDemo:
                                 for key, value in thread_summary.items():
                                     if isinstance(value, (list, dict)):
                                         if isinstance(value, list) and value:
-                                            print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                            print(
+                                                f"      • {key}: {', '.join(str(v) for v in value)}"
+                                            )
                                         elif isinstance(value, dict) and value:
-                                            print(f"      • {key}: {dict(list(value.items())[:3])}...")
+                                            print(
+                                                f"      • {key}: {dict(list(value.items())[:3])}..."
+                                            )
                                         else:
                                             print(f"      • {key}: (empty)")
                                     else:
@@ -1144,38 +1183,54 @@ class VespaSearchDemo:
                     # Raw fields for debugging - show only the most useful ones
                     print(f"    🔧 Raw Fields:")
                     useful_fields = [
-                        'doc_id', 'source_type', 'provider', 'created_at', 'updated_at',
-                        'thread_id', 'folder', 'sender', 'recipients', 'title', 'content', 'search_text'
+                        "doc_id",
+                        "source_type",
+                        "provider",
+                        "created_at",
+                        "updated_at",
+                        "thread_id",
+                        "folder",
+                        "sender",
+                        "recipients",
+                        "title",
+                        "content",
+                        "search_text",
                     ]
                     for key, value in fields.items():
                         if key in useful_fields:
                             if isinstance(value, (list, dict)):
                                 if isinstance(value, list) and value:
                                     if len(value) <= 3:
-                                        print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                        print(
+                                            f"      • {key}: {', '.join(str(v) for v in value)}"
+                                        )
                                     else:
-                                        print(f"      • {key}: {', '.join(str(v) for v in value[:3])}... (and {len(value)-3} more)")
+                                        print(
+                                            f"      • {key}: {', '.join(str(v) for v in value[:3])}... (and {len(value)-3} more)"
+                                        )
                                 elif isinstance(value, dict) and value:
-                                    print(f"      • {key}: {dict(list(value.items())[:3])}...")
+                                    print(
+                                        f"      • {key}: {dict(list(value.items())[:3])}..."
+                                    )
                                 else:
                                     print(f"      • {key}: (empty)")
                             else:
                                 print(f"      • {key}: {value}")
-                    
+
                     # Show a few other interesting fields that might be present
-                    other_interesting = ['search_text', 'metadata']
+                    other_interesting = ["search_text", "metadata"]
                     for key in other_interesting:
                         if key in fields and key not in useful_fields:
                             value = fields[key]
-                            if key == 'search_text':
+                            if key == "search_text":
                                 preview = str(value)[:100] if value else "(empty)"
                                 print(f"      • {key}: {preview}...")
-                            elif key == 'metadata':
+                            elif key == "metadata":
                                 if isinstance(value, dict) and value:
                                     print(f"      • {key}: {len(value)} metadata items")
                                 else:
                                     print(f"      • {key}: (empty)")
-                    
+
                     # Debug: Show all available fields to understand document structure
                     print(f"    🔍 All Available Fields:")
                     for key, value in fields.items():
@@ -1183,11 +1238,17 @@ class VespaSearchDemo:
                             if isinstance(value, (list, dict)):
                                 if isinstance(value, list) and value:
                                     if len(value) <= 5:
-                                        print(f"      • {key}: {', '.join(str(v) for v in value)}")
+                                        print(
+                                            f"      • {key}: {', '.join(str(v) for v in value)}"
+                                        )
                                     else:
-                                        print(f"      • {key}: {', '.join(str(v) for v in value[:5])}... (and {len(value)-5} more)")
+                                        print(
+                                            f"      • {key}: {', '.join(str(v) for v in value[:5])}... (and {len(value)-5} more)"
+                                        )
                                 elif isinstance(value, dict) and value:
-                                    print(f"      • {key}: {dict(list(value.items())[:5])}...")
+                                    print(
+                                        f"      • {key}: {dict(list(value.items())[:5])}..."
+                                    )
                                 else:
                                     print(f"      • {key}: (empty)")
                             else:
@@ -1208,12 +1269,12 @@ class VespaSearchDemo:
             print(
                 f"Document Types: {', '.join(f'{t}: {len(docs)}' for t, docs in docs_by_type.items())}"
             )
-            
+
             # Content statistics
             total_content_chars = 0
             total_content_words = 0
             content_docs = 0
-            
+
             for doc in all_documents:
                 fields = doc.get("fields", {})
                 content = fields.get("content", "")
@@ -1221,15 +1282,19 @@ class VespaSearchDemo:
                     total_content_chars += len(content)
                     total_content_words += len(content.split())
                     content_docs += 1
-            
+
             if content_docs > 0:
                 avg_chars = total_content_chars / content_docs
                 avg_words = total_content_words / content_docs
                 print(f"Content Statistics:")
                 print(f"  • Documents with content: {content_docs}")
-                print(f"  • Total content: {total_content_chars:,} characters, {total_content_words:,} words")
-                print(f"  • Average per document: {avg_chars:.0f} chars, {avg_words:.0f} words")
-            
+                print(
+                    f"  • Total content: {total_content_chars:,} characters, {total_content_words:,} words"
+                )
+                print(
+                    f"  • Average per document: {avg_chars:.0f} chars, {avg_words:.0f} words"
+                )
+
             print(f"Query Time: {query_time:.2f}ms")
             print(f"Vespa Endpoint: {self.vespa_endpoint}")
             print(f"{'='*80}")
@@ -1286,7 +1351,7 @@ class VespaSearchDemo:
 
             # Query to get total document count for this user
             user_query = {
-                "yql": "select * from briefly_document where source_type contains \"email\"",
+                "yql": 'select * from briefly_document where source_type contains "email"',
                 "hits": 0,  # We only want the count, not the actual documents
                 "timeout": "5s",
                 "streaming.groupname": self.user_id,  # Use resolved user ID for streaming group
@@ -1302,7 +1367,7 @@ class VespaSearchDemo:
 
             # Get breakdown by source type
             source_type_query = {
-                "yql": "select source_type from briefly_document where source_type contains \"email\"",
+                "yql": 'select source_type from briefly_document where source_type contains "email"',
                 "hits": 0,
                 "timeout": "5s",
                 "grouping": "source_type",
@@ -1321,7 +1386,7 @@ class VespaSearchDemo:
 
             # Get breakdown by provider
             provider_query = {
-                "yql": "select provider from briefly_document where source_type contains \"email\"",
+                "yql": 'select provider from briefly_document where source_type contains "email"',
                 "hits": 0,
                 "timeout": "5s",
                 "grouping": "provider",
@@ -1654,7 +1719,7 @@ REQUIREMENTS:
             if not await demo.initialize():
                 print(f"❌ Failed to initialize search demo for email: {args.email}")
                 return None
-            
+
             # Show stats for the current user when starting (unless --stats-only)
             if not args.stats_only:
                 print(f"\nCollecting statistics for user: {args.email}")

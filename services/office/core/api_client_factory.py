@@ -12,7 +12,6 @@ from typing import Dict, List, Optional, Union
 from services.common.logging_config import get_logger
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
-
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenManager
 from services.office.models import Provider
