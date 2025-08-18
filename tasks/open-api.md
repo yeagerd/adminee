@@ -356,6 +356,77 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [ ] Verify no runtime performance degradation
 - [ ] Optimize type generation if needed
 
+## Phase 7: Backend Schema Improvements
+
+### Task 7.1: Analyze Current Schema Issues
+- [ ] Identify all models using generic types (Dict[str, Any], Record[str, any])
+- [ ] Document which response models need specific type definitions
+- [ ] Analyze impact on TypeScript type generation
+- [ ] Create prioritized list of schema improvements
+
+### Task 7.2: Fix Email Response Models
+- [ ] Update `EmailMessageList` to use `List[EmailMessage]` instead of `Dict[str, Any]`
+- [ ] Update `EmailThreadList` to use `List[EmailThread]` instead of `Dict[str, Any]`
+- [ ] Update `EmailFolderList` to use `List[EmailFolder]` instead of `Dict[str, Any]`
+- [ ] Update `SendEmailResponse` to use specific response types
+- [ ] Test schema generation and validation
+
+### Task 7.3: Fix Office Service Response Models
+- [ ] Update calendar event response models to use specific types
+- [ ] Update contact response models to use specific types
+- [ ] Update file/drive response models to use specific types
+- [ ] Ensure all response models have proper type definitions
+- [ ] Test API endpoints with updated schemas
+
+### Task 7.4: Fix User Service Response Models
+- [ ] Update integration response models to use specific types
+- [ ] Update user preference response models to use specific types
+- [ ] Update OAuth response models to use specific types
+- [ ] Ensure all response models have proper type definitions
+- [ ] Test API endpoints with updated schemas
+
+### Task 7.5: Fix Shipments Service Response Models
+- [ ] Update package response models to use specific types
+- [ ] Update tracking event response models to use specific types
+- [ ] Update label response models to use specific types
+- [ ] Ensure all response models have proper type definitions
+- [ ] Test API endpoints with updated schemas
+
+### Task 7.6: Update API Endpoints
+- [ ] Update all FastAPI endpoint response_model annotations
+- [ ] Ensure consistent response structure across services
+- [ ] Update OpenAPI documentation generation
+- [ ] Test all endpoints return properly typed responses
+- [ ] Validate schema generation works correctly
+
+### Task 7.7: Regenerate and Validate Types
+- [ ] Regenerate OpenAPI schemas for all services
+- [ ] Regenerate TypeScript types from improved schemas
+- [ ] Validate generated types have proper structure
+- [ ] Test type compilation and import functionality
+- [ ] Verify no more generic types in generated output
+
+### Task 7.8: Update Frontend Components
+- [ ] Remove custom type definitions that are no longer needed
+- [ ] Update components to use improved generated types
+- [ ] Fix remaining TypeScript type compatibility issues
+- [ ] Test all major user flows with new types
+- [ ] Verify full type safety across the application
+
+### Task 7.9: Schema Validation and Testing
+- [ ] Add runtime validation for all response models
+- [ ] Test API endpoints with various data scenarios
+- [ ] Validate OpenAPI schemas against OpenAPI 3.0 spec
+- [ ] Test schema generation in CI/CD pipeline
+- [ ] Ensure backward compatibility is maintained
+
+### Task 7.10: Documentation and Migration
+- [ ] Update API documentation to reflect improved schemas
+- [ ] Create migration guide for any breaking changes
+- [ ] Document new type-safe response structures
+- [ ] Update developer documentation
+- [ ] Create examples of proper response handling
+
 ## Implementation Notes
 
 ### Recommended Tools
@@ -404,6 +475,9 @@ frontend/
 - [ ] Automated type generation in CI/CD pipeline
 - [ ] Comprehensive API documentation from schemas
 - [ ] Zero type mismatches between frontend and backend
+- [ ] All response models use specific types instead of generic types
+- [ ] Generated TypeScript types provide full intellisense and type safety
+- [ ] No more `Record<string, any>` or `Dict[str, Any]` in generated schemas
 
 ## Timeline
 - **Phase 1-2**: 1-2 weeks (Backend setup + Frontend tooling)
@@ -411,5 +485,6 @@ frontend/
 - **Phase 4**: 1-2 weeks (Frontend integration)
 - **Phase 5**: 1 week (Automation)
 - **Phase 6**: 1 week (Testing & validation)
+- **Phase 7**: 2-3 weeks (Backend schema improvements)
 
-**Total Estimated Time**: 6-9 weeks
+**Total Estimated Time**: 8-12 weeks
