@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Briefly Meetings Service",
-    "description": "Meeting scheduling and polling microservice for Briefly with availability checking and booking management",
+    "title": "Meetings Service API",
+    "description": "OpenAPI schema for meetings service",
     "contact": {
       "name": "Briefly Team",
       "email": "support@briefly.ai"
@@ -10,7 +10,7 @@
     "license": {
       "name": "Private"
     },
-    "version": "0.1.0"
+    "version": "1.0.0-20250818"
   },
   "paths": {
     "/api/v1/meetings/polls": {
@@ -2925,5 +2925,24 @@
       "name": "bookings",
       "description": "Meeting booking and scheduling"
     }
-  ]
+  ],
+  "x-version-info": {
+    "service_name": "meetings",
+    "generated_at": "2025-08-18T07:27:34.263337",
+    "schema_file": "services/meetings/openapi/schema.json",
+    "git_info": {
+      "commit_hash": "0b0220b530ab1d8ea57a2f2460a3fe6089258cbc",
+      "author": "Dan Yeager",
+      "date": "2025-08-17 23:40:01 -0700",
+      "subject": "Complete Task 5.1: Create GitHub Action for automatic type generation"
+    }
+  },
+  "x-compatibility": {
+    "breaking_changes": [],
+    "deprecated_endpoints": [],
+    "migration_notes": [],
+    "supported_versions": [
+      "1.0.0"
+    ]
+  }
 }

@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Briefly Chat Service",
-    "description": "AI-powered chat service with multi-agent workflow for draft management and conversation history",
+    "title": "Chat Service API",
+    "description": "OpenAPI schema for chat service",
     "contact": {
       "name": "Briefly Team",
       "email": "support@briefly.ai"
@@ -10,7 +10,7 @@
     "license": {
       "name": "Private"
     },
-    "version": "0.1.0"
+    "version": "1.0.0-20250818"
   },
   "paths": {
     "/ready": {
@@ -1255,5 +1255,24 @@
       "name": "health",
       "description": "Health check and service status endpoints"
     }
-  ]
+  ],
+  "x-version-info": {
+    "service_name": "chat",
+    "generated_at": "2025-08-18T07:27:34.230814",
+    "schema_file": "services/chat/openapi/schema.json",
+    "git_info": {
+      "commit_hash": "0b0220b530ab1d8ea57a2f2460a3fe6089258cbc",
+      "author": "Dan Yeager",
+      "date": "2025-08-17 23:40:01 -0700",
+      "subject": "Complete Task 5.1: Create GitHub Action for automatic type generation"
+    }
+  },
+  "x-compatibility": {
+    "breaking_changes": [],
+    "deprecated_endpoints": [],
+    "migration_notes": [],
+    "supported_versions": [
+      "1.0.0"
+    ]
+  }
 }

@@ -1,11 +1,8 @@
-/Users/yeagerd/github/briefly/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
-* 'fields' has been removed
-  warnings.warn(message, UserWarning)
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Briefly Shipments Service",
-    "description": "Package shipment tracking microservice for Briefly with carrier integration and label management",
+    "title": "Shipments Service API",
+    "description": "OpenAPI schema for shipments service",
     "contact": {
       "name": "Briefly Team",
       "email": "support@briefly.ai"
@@ -13,7 +10,7 @@
     "license": {
       "name": "Private"
     },
-    "version": "0.1.0"
+    "version": "1.0.0-20250818"
   },
   "paths": {
     "/v1/shipments/packages/": {
@@ -2422,5 +2419,24 @@
       "name": "events",
       "description": "Shipment event tracking and management"
     }
-  ]
+  ],
+  "x-version-info": {
+    "service_name": "shipments",
+    "generated_at": "2025-08-18T07:27:34.211977",
+    "schema_file": "services/shipments/openapi/schema.json",
+    "git_info": {
+      "commit_hash": "0b0220b530ab1d8ea57a2f2460a3fe6089258cbc",
+      "author": "Dan Yeager",
+      "date": "2025-08-17 23:40:01 -0700",
+      "subject": "Complete Task 5.1: Create GitHub Action for automatic type generation"
+    }
+  },
+  "x-compatibility": {
+    "breaking_changes": [],
+    "deprecated_endpoints": [],
+    "migration_notes": [],
+    "supported_versions": [
+      "1.0.0"
+    ]
+  }
 }
