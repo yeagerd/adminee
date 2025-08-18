@@ -1,4 +1,4 @@
-// Package status constants - must match backend enum values
+// Package status constants - must match backend enum values exactly
 export const PACKAGE_STATUS = {
     PENDING: 'PENDING',
     IN_TRANSIT: 'IN_TRANSIT',

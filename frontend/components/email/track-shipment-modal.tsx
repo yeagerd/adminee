@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsApi } from '@/api';
+import { shipmentsApi } from '@/api';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
-import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
-import { EmailMessage } from "@/types/api/office";
+import { EmailMessage } from "@/types";
+import { PackageStatus, PackageCreate, PackageOut, DataCollectionRequest, TrackingEventCreate } from '@/types/api/shipments';
+import { PACKAGE_STATUS_OPTIONS } from '@/lib/package-status-constants';
 import DOMPurify from 'dompurify';
 import { CheckCircle, Info, Loader2, Package, PackageCheck, Search, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -150,13 +151,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [isCheckingPackage, setIsCheckingPackage] = useState(false);
-    const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
-    const [originalPackageData, setOriginalPackageData] = useState<PackageResponse | null>(null);
+    const [existingPackage, setExistingPackage] = useState<PackageOut | null>(null);
+    const [originalPackageData, setOriginalPackageData] = useState<PackageOut | null>(null);
     const [dataCollectionConsent, setDataCollectionConsent] = useState(false);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
-        status: PACKAGE_STATUS.PENDING,
+        status: PackageStatus.PENDING,
         recipient_name: '',
         shipper_name: '',
         package_description: '',
@@ -274,7 +275,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     const detectedData: PackageFormData = {
                         tracking_number: selectedTrackingNumber,
                         carrier: selectedCarrier,
-                        status: PACKAGE_STATUS.PENDING,
+                        status: PackageStatus.PENDING,
                         recipient_name: '',
                         shipper_name: '',
                         package_description: email.subject || '',
@@ -425,7 +426,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 await shipmentsApi.createTrackingEvent(existingPackage.id, eventData);
 
                 // Check if any package fields need to be updated
-                const packageUpdates: Partial<PackageCreateRequest> = {};
+                const packageUpdates: Partial<PackageCreate> = {};
 
                 // Check each field and add to updates if different from original
                 if (originalPackageData) {
@@ -455,7 +456,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 }
             } else {
                 // Create new package
-                const packageData: PackageCreateRequest = {
+                const packageData: PackageCreate = {
                     tracking_number: formData.tracking_number,
                     carrier: formData.carrier,
                     status: formData.status as PackageStatus, // Use the local PackageStatus type for now
