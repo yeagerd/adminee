@@ -344,7 +344,11 @@ class TestOAuthCallbackResponse:
             provider=IntegrationProvider.GOOGLE,
             status=IntegrationStatus.ACTIVE,
             scopes=["email", "profile"],
-            external_user_info={"id": "google123", "email": "user@gmail.com", "provider": "google"},
+            external_user_info={
+                "id": "google123",
+                "email": "user@gmail.com",
+                "provider": "google",
+            },
             error=None,
         )
 
@@ -513,7 +517,7 @@ class TestIntegrationStatsResponse:
     def test_integration_stats_response_creation(self):
         """Test creating integration stats response."""
         from datetime import datetime, timezone
-        
+
         response = IntegrationStatsResponse(
             total_integrations=10,
             active_integrations=8,
@@ -527,14 +531,14 @@ class TestIntegrationStatsResponse:
                     "provider": "google",
                     "error_type": "token_expired",
                     "error_message": "Token expired",
-                    "occurred_at": datetime(2023, 1, 1, tzinfo=timezone.utc)
+                    "occurred_at": datetime(2023, 1, 1, tzinfo=timezone.utc),
                 }
             ],
             sync_stats={
                 "total_syncs": 100,
                 "successful_syncs": 95,
                 "failed_syncs": 5,
-                "last_successful_sync": datetime(2023, 1, 1, tzinfo=timezone.utc)
+                "last_successful_sync": datetime(2023, 1, 1, tzinfo=timezone.utc),
             },
         )
 

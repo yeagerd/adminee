@@ -66,7 +66,7 @@ router = APIRouter()
 # Data collection schemas
 class EmailData(BaseModel):
     """Model for email content data."""
-    
+
     subject: str
     sender: str
     body: str
@@ -77,7 +77,7 @@ class EmailData(BaseModel):
 
 class TrackingData(BaseModel):
     """Model for tracking information data."""
-    
+
     tracking_number: str
     carrier: Optional[str] = None
     status: Optional[str] = None
@@ -94,9 +94,7 @@ class DataCollectionRequest(BaseModel):
     """Request schema for collecting user-corrected shipment data"""
 
     email_message_id: str = Field(..., description="Original email message ID")
-    original_email_data: EmailData = Field(
-        ..., description="Original email content"
-    )
+    original_email_data: EmailData = Field(..., description="Original email content")
     auto_detected_data: TrackingData = Field(
         ..., description="Auto-detected shipment data"
     )

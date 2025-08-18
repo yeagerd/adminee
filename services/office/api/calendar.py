@@ -33,9 +33,9 @@ from services.office.schemas import (
     AvailableSlot,
     CalendarEvent,
     CalendarEventApiResponse,
+    CalendarEventDetailResponse,
     CalendarEventListApiResponse,
     CalendarEventResponse,
-    CalendarEventDetailResponse,
     CreateCalendarEventRequest,
     TimeRange,
 )
@@ -904,7 +904,9 @@ async def update_calendar_event(
         )
 
         # Help type checker understand the dict type
-        request_metadata: Dict[str, Any] = cast(Dict[str, Any], response_data["request_metadata"])
+        request_metadata: Dict[str, Any] = cast(
+            Dict[str, Any], response_data["request_metadata"]
+        )
         return CalendarEventResponse(
             event_id=event_id,
             provider=provider,
@@ -926,7 +928,7 @@ async def update_calendar_event(
                 provider=Provider(provider),
                 provider_event_id=original_event_id,
                 account_email="",  # Will be filled by the client
-                account_name="",   # Will be filled by the client
+                account_name="",  # Will be filled by the client
                 calendar_name="Primary Calendar",
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),

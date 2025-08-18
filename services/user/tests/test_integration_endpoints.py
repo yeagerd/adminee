@@ -294,7 +294,12 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
             provider=IntegrationProvider.GOOGLE,
             status=IntegrationStatus.ACTIVE,
             scopes=["https://www.googleapis.com/auth/calendar"],
-            external_user_info={"id": "google123", "email": "test@example.com", "name": "Test User", "provider": "google"},
+            external_user_info={
+                "id": "google123",
+                "email": "test@example.com",
+                "name": "Test User",
+                "provider": "google",
+            },
             error=None,
         )
 

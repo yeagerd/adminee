@@ -80,7 +80,7 @@ class Conversation(BaseModel):
 
 class EmailThreadListData(BaseModel):
     """Data structure for email thread list responses."""
-    
+
     threads: List[EmailThread]
     total_count: int
     providers_used: List[str]
@@ -115,7 +115,7 @@ class SendEmailRequest(BaseModel):
 
 class EmailSendResult(BaseModel):
     """Result data for email send operations."""
-    
+
     message_id: str
     thread_id: Optional[str] = None
     provider: Provider
@@ -169,7 +169,7 @@ class EmailDraftUpdateRequest(BaseModel):
 
 class EmailDraftResult(BaseModel):
     """Result data for email draft operations."""
-    
+
     draft_id: str
     thread_id: Optional[str] = None
     provider: Provider
@@ -189,7 +189,7 @@ class EmailDraftResponse(BaseModel):
 
 class EmailMessageListData(BaseModel):
     """Data structure for email message list responses."""
-    
+
     messages: List[EmailMessage]
     total_count: int
     providers_used: List[str]
@@ -234,7 +234,7 @@ class EmailFolder(BaseModel):
 
 class EmailFolderListData(BaseModel):
     """Data structure for email folder list responses."""
-    
+
     folders: List[EmailFolder]
     providers_used: List[str]
     provider_errors: Optional[Dict[str, str]] = None
@@ -513,7 +513,7 @@ class AvailableSlot(BaseModel):
 
 class TimeRange(BaseModel):
     """Model for time range with start and end times."""
-    
+
     start: str
     end: str
 
@@ -539,7 +539,9 @@ class CalendarEventResponse(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     deleted_at: Optional[str] = None
-    event_data: Optional[CalendarEvent] = None  # ✅ Specific type instead of Dict[str, Any]
+    event_data: Optional[CalendarEvent] = (
+        None  # ✅ Specific type instead of Dict[str, Any]
+    )
     request_metadata: Dict[str, Any]
 
 

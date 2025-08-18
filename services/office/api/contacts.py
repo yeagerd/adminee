@@ -18,7 +18,13 @@ from services.office.core.normalizer import (
     normalize_microsoft_contact,
 )
 from services.office.models import Provider
-from services.office.schemas import Contact, ContactList, ContactCreateResponse, ContactUpdateResponse, ContactDeleteResponse
+from services.office.schemas import (
+    Contact,
+    ContactCreateResponse,
+    ContactDeleteResponse,
+    ContactList,
+    ContactUpdateResponse,
+)
 
 logger = get_logger(__name__)
 
@@ -182,7 +188,10 @@ async def list_contacts(
             cached = await cache_manager.get_from_cache(cache_key)
             if cached:
                 return ContactList(
-                    success=True, data=cached.get("contacts", []), cache_hit=True, request_id=request_id
+                    success=True,
+                    data=cached.get("contacts", []),
+                    cache_hit=True,
+                    request_id=request_id,
                 )
 
         factory = await get_api_client_factory()
@@ -425,7 +434,9 @@ async def create_contact(
         # Invalidate contacts cache for this user
         await _invalidate_contacts_cache(user_id)
         # Ensure Contact object for typed response
-        contact_model = normalized if isinstance(normalized, Contact) else Contact(**normalized)
+        contact_model = (
+            normalized if isinstance(normalized, Contact) else Contact(**normalized)
+        )
         return ContactCreateResponse(
             success=True,
             contact=contact_model,
@@ -562,7 +573,9 @@ async def update_contact(
             raise ServiceError(message=f"Unsupported provider: {prov}")
 
         await _invalidate_contacts_cache(user_id)
-        contact_model = normalized if isinstance(normalized, Contact) else Contact(**normalized)
+        contact_model = (
+            normalized if isinstance(normalized, Contact) else Contact(**normalized)
+        )
         return ContactUpdateResponse(
             success=True,
             contact=contact_model,

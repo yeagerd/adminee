@@ -1135,7 +1135,9 @@ class IntegrationService:
             # Sort recent errors by timestamp (most recent first)
             recent_errors = sorted(
                 recent_errors, key=lambda x: x.occurred_at, reverse=True
-            )[:10]  # Keep only 10 most recent
+            )[
+                :10
+            ]  # Keep only 10 most recent
 
             # Calculate sync stats
             sync_stats = SyncStats()

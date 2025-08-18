@@ -37,20 +37,20 @@ from services.office.models import Provider
 from services.office.schemas import (
     EmailDraftCreateRequest,
     EmailDraftResponse,
-    EmailDraftUpdateRequest,
     EmailDraftResult,
+    EmailDraftUpdateRequest,
     EmailFolder,
     EmailFolderList,
     EmailFolderListData,
     EmailMessage,
     EmailMessageList,
     EmailMessageListData,
+    EmailSendResult,
     EmailThread,
     EmailThreadList,
     EmailThreadListData,
     SendEmailRequest,
     SendEmailResponse,
-    EmailSendResult,
 )
 
 logger = get_logger(__name__)
@@ -496,8 +496,8 @@ async def get_email_folders(
                     "request_id": request_id,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "providers_requested": valid_providers,
-                    "cache_hit": True
-                }
+                    "cache_hit": True,
+                },
             }
             return EmailFolderList(
                 success=True,
@@ -563,8 +563,10 @@ async def get_email_folders(
                 "request_id": request_id,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "providers_requested": valid_providers,
-                "duration_seconds": (datetime.now(timezone.utc) - start_time).total_seconds()
-            }
+                "duration_seconds": (
+                    datetime.now(timezone.utc) - start_time
+                ).total_seconds(),
+            },
         }
 
         # Convert Pydantic models to dictionaries for caching
@@ -804,8 +806,10 @@ async def send_email(
             thread_id=result.get("threadId"),
             provider=Provider(provider),
             sent_at=datetime.now(timezone.utc),
-            recipient_count=len(email_data.to) + len(email_data.cc or []) + len(email_data.bcc or []),
-            has_attachments=False  # TODO: Implement attachment detection
+            recipient_count=len(email_data.to)
+            + len(email_data.cc or [])
+            + len(email_data.bcc or []),
+            has_attachments=False,  # TODO: Implement attachment detection
         )
 
         return SendEmailResponse(
@@ -902,7 +906,9 @@ async def get_email_threads(
                     ]
                     data_obj = EmailThreadListData(
                         threads=threads_models,
-                        total_count=cached_result.get("total_count", len(threads_models)),
+                        total_count=cached_result.get(
+                            "total_count", len(threads_models)
+                        ),
                         providers_used=cached_result.get("providers_used", []),
                         provider_errors=cached_result.get("provider_errors"),
                         has_more=cached_result.get("has_more", False),
@@ -917,7 +923,7 @@ async def get_email_threads(
                         has_more=False,
                         request_metadata=cached_result.get("request_metadata", {}),
                     )
-                
+
                 return EmailThreadList(
                     success=True,
                     data=data_obj,
@@ -972,8 +978,8 @@ async def get_email_threads(
                 "labels": labels,
                 "folder_id": folder_id,
                 "query": q,
-                "page_token": page_token
-            }
+                "page_token": page_token,
+            },
         }
 
         # Cache the result
@@ -1064,7 +1070,9 @@ async def get_email_thread(
                     ]
                     data_obj = EmailThreadListData(
                         threads=threads_models,
-                        total_count=cached_result.get("total_count", len(threads_models)),
+                        total_count=cached_result.get(
+                            "total_count", len(threads_models)
+                        ),
                         providers_used=cached_result.get("providers_used", []),
                         provider_errors=cached_result.get("provider_errors"),
                         has_more=cached_result.get("has_more", False),
@@ -1111,8 +1119,8 @@ async def get_email_thread(
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "provider": provider,
                 "thread_id": thread_id,
-                "include_body": include_body
-            }
+                "include_body": include_body,
+            },
         }
 
         # Cache the result
@@ -1220,8 +1228,8 @@ async def get_message_thread(
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "provider": provider,
                 "message_id": message_id,
-                "include_body": include_body
-            }
+                "include_body": include_body,
+            },
         }
 
         # Cache the result
@@ -2342,7 +2350,11 @@ async def create_email_draft(
                     provider=Provider.GOOGLE,
                     created_at=datetime.now(timezone.utc),
                     updated_at=None,
-                    action=(draft_request.action or "new") if hasattr(draft_request, "action") else "new",
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
                 )
                 return EmailDraftResponse(
                     success=True,
@@ -2460,7 +2472,11 @@ async def create_email_draft(
                     provider=Provider.MICROSOFT,
                     created_at=datetime.now(timezone.utc),
                     updated_at=None,
-                    action=(draft_request.action or "new") if hasattr(draft_request, "action") else "new",
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
                 )
                 return EmailDraftResponse(
                     success=True,
@@ -2519,7 +2535,11 @@ async def update_email_draft(
                     provider=Provider.GOOGLE,
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc),
-                    action=(draft_request.action or "new") if hasattr(draft_request, "action") else "new",
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
                 )
                 return EmailDraftResponse(
                     success=True,
@@ -2573,7 +2593,11 @@ async def update_email_draft(
                     provider=Provider.MICROSOFT,
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc),
-                    action=(draft_request.action or "new") if hasattr(draft_request, "action") else "new",
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
                 )
                 return EmailDraftResponse(
                     success=True,
@@ -2627,7 +2651,9 @@ async def delete_email_draft(
             data=EmailDraftResult(
                 draft_id=draft_id,
                 thread_id=None,
-                provider=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+                provider=(
+                    Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+                ),
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),
                 action="delete",
@@ -2705,22 +2731,21 @@ async def list_thread_drafts(
         # For listing, return the most recent draft as representative result
         representative = (drafts or [{}])[-1]
         draft_id_value = (
-            representative.get("id")
-            if isinstance(representative, dict)
-            else None
+            representative.get("id") if isinstance(representative, dict) else None
         )
         thread_id_value = None
         if isinstance(representative, dict):
-            thread_id_value = (
-                representative.get("message", {}).get("threadId")
-                or representative.get("conversationId")
-            )
+            thread_id_value = representative.get("message", {}).get(
+                "threadId"
+            ) or representative.get("conversationId")
         return EmailDraftResponse(
             success=True,
             data=EmailDraftResult(
                 draft_id=str(draft_id_value or ""),
                 thread_id=thread_id_value,
-                provider=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+                provider=(
+                    Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+                ),
                 created_at=datetime.now(timezone.utc),
                 updated_at=None,
                 action="list",

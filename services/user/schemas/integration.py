@@ -163,7 +163,7 @@ class OAuthStartResponse(BaseModel):
 
 class ExternalUserInfo(BaseModel):
     """Model for external user information from OAuth providers."""
-    
+
     id: str
     email: str
     name: Optional[str] = None
@@ -300,7 +300,7 @@ class IntegrationHealthResponse(BaseModel):
 
 class IntegrationErrorSummary(BaseModel):
     """Model for integration error summary."""
-    
+
     integration_id: int
     provider: str
     error_type: str
@@ -311,7 +311,7 @@ class IntegrationErrorSummary(BaseModel):
 
 class SyncStats(BaseModel):
     """Model for synchronization statistics."""
-    
+
     total_syncs: int = 0
     successful_syncs: int = 0
     failed_syncs: int = 0
@@ -404,7 +404,7 @@ class IntegrationSyncResponse(BaseModel):
 # Error response schemas
 class ErrorDetail(BaseModel):
     """Model for detailed error information."""
-    
+
     field: Optional[str] = None
     value: Optional[str] = None
     constraint: Optional[str] = None
@@ -510,7 +510,7 @@ class InternalUserStatusResponse(BaseModel):
 
 class ProviderRevocationResponse(BaseModel):
     """Model for provider token revocation response."""
-    
+
     success: bool
     message: Optional[str] = None
     error_code: Optional[str] = None

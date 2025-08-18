@@ -774,7 +774,17 @@ class TokenService:
             provider_response = ProviderRevocationResponse(
                 success=overall_success,
                 message=f"Revoked {len(revocation_results)} tokens",
-                error_code="; ".join([str(r.get("error", "")) for r in revocation_results if r.get("error")]) if errors else None,
+                error_code=(
+                    "; ".join(
+                        [
+                            str(r.get("error", ""))
+                            for r in revocation_results
+                            if r.get("error")
+                        ]
+                    )
+                    if errors
+                    else None
+                ),
                 error_description="; ".join(errors) if errors else None,
                 timestamp=datetime.now(timezone.utc),
             )

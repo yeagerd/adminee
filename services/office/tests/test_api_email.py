@@ -707,26 +707,28 @@ class TestSendEmailEndpoint:
     ):
         """Test email message retrieval with cache hit."""
         cached_data = {
-            "messages": [{
-                "id": "gmail_test123", 
-                "subject": "Test",
-                "date": "2023-01-01T12:00:00Z",
-                "provider": "google",
-                "provider_message_id": "test123",
-                "account_email": "test@example.com",
-                "account_name": "Test Account",
-                "thread_id": None,
-                "snippet": None,
-                "body_text": None,
-                "body_html": None,
-                "from_address": None,
-                "to_addresses": [],
-                "cc_addresses": [],
-                "bcc_addresses": [],
-                "labels": [],
-                "is_read": False,
-                "has_attachments": False
-            }],
+            "messages": [
+                {
+                    "id": "gmail_test123",
+                    "subject": "Test",
+                    "date": "2023-01-01T12:00:00Z",
+                    "provider": "google",
+                    "provider_message_id": "test123",
+                    "account_email": "test@example.com",
+                    "account_name": "Test Account",
+                    "thread_id": None,
+                    "snippet": None,
+                    "body_text": None,
+                    "body_html": None,
+                    "from_address": None,
+                    "to_addresses": [],
+                    "cc_addresses": [],
+                    "bcc_addresses": [],
+                    "labels": [],
+                    "is_read": False,
+                    "has_attachments": False,
+                }
+            ],
             "total_count": 1,
             "providers_used": ["google"],
             "provider_errors": None,
