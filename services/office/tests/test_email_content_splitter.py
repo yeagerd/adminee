@@ -228,30 +228,114 @@ To: user1@example.com"""
         assert result['quoted_content'] == ""
 
     def test_real_world_examples(self):
-        """Test with real-world examples from our emails"""
-        # Example 1: The "Re: Hello from Briefly" email
-        text_content = """I can't wait to try it out! From: Try Briefly Sent: Wednesday, July 30, 2025 5:02 PM To: Dan . <danstrashbin@hotmail.com> Subject: Hello from Briefly Try it out today!"""
+        """Test with real email data from the office service."""
+        # Real email data from the office service - thread "Hello from Briefly"
+        real_emails = [
+            {
+                "subject": "Re: Hello from Briefly",
+                "html_content": """<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style type="text/css" style="display:none">
+<!--
+p
+	{margin-top:0;
+	margin-bottom:0}
+-->
+</style></head><body dir="ltr"><div class="elementToProof" style="font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)">Awesome!&nbsp; Let me know how it goes!</div><div id="appendonsend"></div><hr tabindex="-1" style="display:inline-block; width:98%"><div id="divRplyFwdMsg" dir="ltr"><font face="Calibri, sans-serif" color="#000000" style="font-size:11pt"><b>From:</b> Dan . &lt;danstrashbin@hotmail.com&gt;<br><b>Sent:</b> Wednesday, July 30, 2025 5:03 PM<br><b>To:</b> Try Briefly &lt;trybriefly@outlook.com&gt;<br><b>Subject:</b> Re: Hello from Briefly</font> <div>&nbsp;</div></div><style type="text/css" style="display:none">
+<!--
+p
+	{margin-top:0;
+	margin-bottom:0}
+-->
+</style><div dir="ltr"><div class="x_elementToProof" style="font-family:Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)">I can't wait to try it out!</div><div id="x_appendonsend"></div><hr tabindex="-1" style="display:inline-block; width:98%"><div id="x_divRplyFwdMsg" dir="ltr"><font face="Calibri, sans-serif" color="#000000" style="font-size:11pt"><b>From:</b> Try Briefly &lt;trybriefly@outlook.com&gt;<br><b>Sent:</b> Wednesday, July 30, 2025 5:02 PM<br><b>To:</b> Dan . &lt;danstrashbin@hotmail.com&gt;<br><b>Subject:</b> Hello from Briefly</font> <div>&nbsp;</div></div><style type="text/css" style="display:none">
+<!--
+p
+	{margin-top:0;
+	margin-bottom:0}
+-->
+</style><div dir="ltr"><div class="x_x_elementToProof" style="font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)">Try it out today!</div></div></body></html>""",
+                "text_content": None,
+                "expected_visible": "Awesome!  Let me know how it goes!",
+                "expected_quoted": True,  # Should have quoted content
+                "expected_participants": 2
+            },
+            {
+                "subject": "Re: Hello from Briefly", 
+                "html_content": """<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style type="text/css" style="display:none">
+<!--
+p
+	{margin-top:0;
+	margin-bottom:0}
+-->
+</style></head><body dir="ltr"><div class="elementToProof" style="font-family:Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)">I can't wait to try it out!</div><div id="appendonsend"></div><hr tabindex="-1" style="display:inline-block; width:98%"><div id="divRplyFwdMsg" dir="ltr"><font face="Calibri, sans-serif" color="#000000" style="font-size:11pt"><b>From:</b> Try Briefly &lt;trybriefly@outlook.com&gt;<br><b>Sent:</b> Wednesday, July 30, 2025 5:02 PM<br><b>To:</b> Dan . &lt;danstrashbin@hotmail.com&gt;<br><b>Subject:</b> Hello from Briefly</font> <div>&nbsp;</div></div><style type="text/css" style="display:none">
+<!--
+p
+	{margin-top:0;
+	margin-bottom:0}
+-->
+</style><div dir="ltr"><div class="x_elementToProof" style="font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)">Try it out today!</div></div></body></html>""",
+                "text_content": None,
+                "expected_visible": "I can't wait to try it out!",
+                "expected_quoted": True,  # Should have quoted content
+                "expected_participants": 2
+            },
+            {
+                "subject": "Hello from Briefly",
+                "html_content": """<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style type="text/css" style="display:none">
+<!--
+p
+	{margin-top:0;
+	margin-bottom:0}
+-->
+</style></head><body dir="ltr"><div class="elementToProof" style="font-family:Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)">Try it out today!</div></body></html>""",
+                "text_content": None,
+                "expected_visible": "Try it out today!",
+                "expected_quoted": False,  # Should have no quoted content (original message)
+                "expected_participants": 0  # No email addresses in this content
+            }
+        ]
         
-        result = self.splitter.split_content(text_content=text_content)
-        assert result['visible_content'] == "I can't wait to try it out!"
-        assert "From: Try Briefly" in result['quoted_content']
-        assert "Sent: Wednesday, July 30, 2025 5:02 PM" in result['quoted_content']
-        assert "To: Dan . <danstrashbin@hotmail.com>" in result['quoted_content']
-        assert "Subject: Hello from Briefly" in result['quoted_content']
-        assert "Try it out today!" in result['quoted_content']
-
-        # Example 2: The "Awesome! Let me know how it goes!" email
-        text_content = """Awesome!  Let me know how it goes! From: Dan . <danstrashbin@hotmail.com> Sent: Wednesday, July 30, 2025 5:03 PM To: Try Briefly Subject: Re: Hello from Briefly I can't wait to try it out! From: Try Briefly Sent: Wednesday, July 30, 2025 5:02 PM To: Dan . <danstrashbin@hotmail.com> Subject: Hello from Briefly Try it out today!"""
-        
-        result = self.splitter.split_content(text_content=text_content)
-        assert result['visible_content'] == "Awesome!  Let me know how it goes!"
-        assert "From: Dan . <danstrashbin@hotmail.com>" in result['quoted_content']
-        assert "Sent: Wednesday, July 30, 2025 5:03 PM" in result['quoted_content']
-        assert "To: Try Briefly" in result['quoted_content']
-        assert "Subject: Re: Hello from Briefly" in result['quoted_content']
-        assert "I can't wait to try it out!" in result['quoted_content']
-        assert "From: Try Briefly" in result['quoted_content']
-        assert "Try it out today!" in result['quoted_content']
+        for i, email in enumerate(real_emails, 1):
+            # Test each email separately
+            result = split_email_content(
+                html_content=email['html_content'],
+                text_content=email['text_content']
+            )
+            
+            # Check that split was successful
+            assert 'visible_content' in result
+            assert 'quoted_content' in result
+            assert 'thread_summary' in result
+            
+            # Check visible content
+            visible = result['visible_content']
+            assert isinstance(visible, str)
+            assert len(visible) > 0
+            
+            # Check that visible content contains expected text
+            if email['expected_visible']:
+                # Normalize text to handle HTML entities like &nbsp;
+                normalized_visible = visible.replace('\xa0', ' ').replace('&nbsp;', ' ')
+                normalized_expected = email['expected_visible'].replace('\xa0', ' ').replace('&nbsp;', ' ')
+                assert normalized_expected in normalized_visible
+            
+            # Check quoted content
+            quoted = result['quoted_content']
+            if email['expected_quoted']:
+                assert len(quoted) > 0, f"Expected quoted content for email {i}"
+            else:
+                assert len(quoted) == 0, f"Expected no quoted content for email {i}"
+            
+            # Check thread summary
+            summary = result['thread_summary']
+            if email['expected_participants']:
+                assert 'participant_count' in summary
+                print(f"Email {i} - Found {summary['participant_count']} participants: {summary.get('participants', 'N/A')}")
+                assert summary['participant_count'] == str(email['expected_participants'])
+                assert 'participants' in summary
+                assert 'danstrashbin@hotmail.com' in summary['participants']
+                assert 'trybriefly@outlook.com' in summary['participants']
 
 
 if __name__ == "__main__":

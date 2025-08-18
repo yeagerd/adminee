@@ -19,30 +19,36 @@ class EmailContentSplitter:
     """Splits email content into visible and quoted parts"""
     
     def __init__(self):
-                            # Common patterns for detecting quoted content (based on frontend logic)
-                    self.quote_patterns = [
-                        # Separator lines with newline boundaries (most reliable)
-                        r'\n[-_=*]{5,}\n',
-                        r'\n-{5,}\s*Original Message\s*-{5,}\n',
-                        r'\nBegin forwarded message:\n',
-                        r'\nForwarded message:\n',
-                        r'\nOn .{0,200}?wrote:\n',
-                        # Outlook-style quoted headers with newline boundaries
-                        r'\nFrom:\s.+\s+Sent:\s.+\s+To:\s.+\n',
-                        # More flexible Outlook pattern (From: followed by other headers)
-                        r'\nFrom:\s+[^<]+(?:Sent:\s+[^<]+)?(?:To:\s+[^<]+)?(?:Subject:\s+[^<]+)?',
-                        # Simple From: pattern that's common in Outlook
-                        r'\nFrom:\s+[^<]+',
-                        # Compact Outlook format (no newlines) - this is what we're actually seeing
-                        r'From:\s+[^<]+(?:Sent:\s+[^<]+)?(?:To:\s+[^<]+)?(?:Subject:\s+[^<]+)?',
-                        # Simple From: pattern for compact format
-                        r'From:\s+[^<]+',
-                        # Separator lines without newline boundaries (fallback)
-                        r'[-_=*]{5,}',
-                    ]
-                    
-                    # HTML selectors for quoted content
-                    self.quote_selectors = [
+        """Initialize the email content splitter with common quote patterns."""
+        self.quote_patterns = [
+            # HTML structure patterns (most reliable for real emails)
+            r'<hr[^>]*>',
+            r'<div[^>]*id="divRplyFwdMsg"[^>]*>',
+            r'<div[^>]*id="x_divRplyFwdMsg"[^>]*>',
+            r'<div[^>]*class="x_elementToProof"[^>]*>',
+            
+            # Separator lines with newline boundaries (most reliable)
+            r'\n[-_=*]{5,}\n',
+            r'\n-{5,}\s*Original Message\s*-{5,}\n',
+            r'\nBegin forwarded message:\n',
+            r'\nForwarded message:\n',
+            r'\nOn .{0,200}?wrote:\n',
+            # Outlook-style quoted headers with newline boundaries
+            r'\nFrom:\s.+\s+Sent:\s.+\s+To:\s.+\n',
+            # More flexible Outlook pattern (From: followed by other headers)
+            r'\nFrom:\s+[^<]+(?:Sent:\s+[^<]+)?(?:To:\s+[^<]+)?(?:Subject:\s+[^<]+)?',
+            # Simple From: pattern that's common in Outlook
+            r'\nFrom:\s+[^<]+',
+            # Compact Outlook format (no newlines) - this is what we're actually seeing
+            r'From:\s+[^<]+(?:Sent:\s+[^<]+)?(?:To:\s+[^<]+)?(?:Subject:\s+[^<]+)?',
+            # Simple From: pattern for compact format
+            r'From:\s+[^<]+',
+            # Separator lines without newline boundaries (fallback)
+            r'[-_=*]{5,}',
+        ]
+        
+        # HTML selectors for quoted content
+        self.quote_selectors = [
             '.gmail_quote',
             'blockquote.gmail_quote',
             'blockquote[type="cite"]',
@@ -74,7 +80,8 @@ class EmailContentSplitter:
             if html_result:
                 result['visible_content'] = html_result['visible']
                 result['quoted_content'] = html_result['quoted']
-                result['thread_summary'] = self._extract_thread_summary(html_result['visible'], html_result['quoted'])
+                # Pass full content for thread summary to find all participants
+                result['thread_summary'] = self._extract_thread_summary(html_content, "")
                 return result
         
         # Fall back to text-based splitting
@@ -83,14 +90,17 @@ class EmailContentSplitter:
             if text_result:
                 result['visible_content'] = text_result['visible']
                 result['quoted_content'] = text_result['quoted']
-                result['thread_summary'] = self._extract_thread_summary(text_result['visible'], text_result['quoted'])
+                # Pass full content for thread summary to find all participants
+                result['thread_summary'] = self._extract_thread_summary(text_content, "")
                 return result
         
         # If no splitting possible, use original content as visible
         if html_content:
             result['visible_content'] = self._html_to_text(html_content)
+            result['thread_summary'] = self._extract_thread_summary(html_content, "")
         elif text_content:
             result['visible_content'] = text_content
+            result['thread_summary'] = self._extract_thread_summary(text_content, "")
         
         return result
     
@@ -99,69 +109,75 @@ class EmailContentSplitter:
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
 
-            # Try to find quoted content using selectors
-            quoted_node: Optional[Tag] = None
+            # First, try to find quoted content using selectors (Gmail, Yahoo, etc.)
+            quoted_node = None
             for selector in self.quote_selectors:
                 quoted_node = soup.select_one(selector)
                 if quoted_node:
                     break
 
-            # Try horizontal rule as boundary
+            # If no selector match, try to find the first <hr> tag as a boundary
             if not quoted_node:
                 hr_node = soup.find('hr')
                 if hr_node:
                     quoted_node = hr_node
 
-            # Try pattern-based detection in text content
+            # Try to find divRplyFwdMsg elements
             if not quoted_node:
-                text_content = soup.get_text()
-                for pattern in self.quote_patterns:
-                    match = re.search(pattern, text_content, re.IGNORECASE)
-                    if match:
-                        # Find the element containing this text
-                        quoted_node = self._find_element_containing_text(soup, match.group())
-                        if quoted_node:
-                            break
+                reply_divs = soup.find_all('div', id=lambda x: x and 'divRplyFwdMsg' in x)
+                if reply_divs:
+                    quoted_node = reply_divs[0]
 
-            if not quoted_node:
-                return None
-
-            # Compute visible and quoted parts using string split around the quoted node HTML
-            quoted_html = str(quoted_node)
-
-            # Visible HTML: try splitting the original HTML
-            visible_html = ""
-            remaining_html = ""
-            if quoted_html and quoted_html in html_content:
-                parts = html_content.split(quoted_html, 1)
-                visible_html = parts[0]
-                remaining_html = parts[1] if len(parts) > 1 else ""
-            else:
-                # Fallback: remove the quoted node from a fresh soup
-                visible_soup = BeautifulSoup(html_content, 'html.parser')
-                fallback_node = None
+            if quoted_node:
+                # Use DOM manipulation to properly separate content
+                # Create a copy of the soup to work with
+                working_soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # Find the quoted node in the working soup
+                working_quoted_node = None
                 for selector in self.quote_selectors:
-                    fallback_node = visible_soup.select_one(selector)
-                    if fallback_node:
+                    working_quoted_node = working_soup.select_one(selector)
+                    if working_quoted_node:
                         break
-                if not fallback_node:
-                    fallback_node = visible_soup.find('hr')
-                if fallback_node:
-                    fallback_node.extract()
-                visible_html = str(visible_soup)
-                remaining_html = quoted_html
+                
+                if not working_quoted_node:
+                    working_quoted_node = working_soup.find('hr')
+                
+                if not working_quoted_node:
+                    reply_divs = working_soup.find_all('div', id=lambda x: x and 'divRplyFwdMsg' in x)
+                    if reply_divs:
+                        working_quoted_node = reply_divs[0]
+                
+                if working_quoted_node:
+                    # Extract the quoted content
+                    quoted_text = self._html_to_text(str(working_quoted_node))
+                    
+                    # Remove the quoted node from the working soup to get visible content
+                    working_quoted_node.extract()
+                    visible_text = self._html_to_text(str(working_soup))
+                    
+                    if visible_text.strip() and quoted_text.strip():
+                        return {
+                            'visible': visible_text.strip(),
+                            'quoted': quoted_text.strip(),
+                        }
 
-            visible_text = self._html_to_text(visible_html)
-            quoted_text = self._html_to_text(remaining_html)
+            # Try pattern-based detection in text content as fallback
+            text_content = soup.get_text()
+            for pattern in self.quote_patterns:
+                match = re.search(pattern, text_content, re.IGNORECASE)
+                if match:
+                    split_index = match.start()
+                    visible = text_content[:split_index].strip()
+                    quoted = text_content[split_index:].strip()
+                    
+                    if visible and quoted and len(visible) > 5 and len(quoted) > 20:
+                        return {
+                            'visible': visible,
+                            'quoted': quoted,
+                        }
 
-            # Validate split
-            if not visible_text.strip() and not quoted_text.strip():
-                return None
-
-            return {
-                'visible': visible_text.strip(),
-                'quoted': quoted_text.strip(),
-            }
+            return None
 
         except Exception as e:
             print(f"HTML splitting failed: {e}")
@@ -223,10 +239,17 @@ class EmailContentSplitter:
         """Convert HTML to plain text"""
         try:
             soup = BeautifulSoup(html, 'html.parser')
-            return soup.get_text(separator=' ', strip=True)
+            # Get text and clean up any remaining HTML artifacts
+            text = soup.get_text(separator=' ', strip=True)
+            # Additional cleanup for any remaining HTML-like patterns
+            text = re.sub(r'</?[a-z][^>]*>', '', text, flags=re.IGNORECASE)
+            text = re.sub(r'&[a-z]+;', ' ', text, flags=re.IGNORECASE)
+            return text
         except:
             # Fallback: basic HTML tag removal
-            return re.sub(r'<[^>]+>', '', html)
+            text = re.sub(r'<[^>]+>', '', html)
+            text = re.sub(r'&[a-z]+;', ' ', text, flags=re.IGNORECASE)
+            return text
     
     def _extract_thread_summary(self, visible_content: str, quoted_content: str) -> Dict[str, str]:
         """Extract thread summary information"""
@@ -235,7 +258,20 @@ class EmailContentSplitter:
         # Count participants (simple heuristic)
         email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
         emails = re.findall(email_pattern, visible_content + quoted_content)
-        unique_emails = list(set(emails))
+        
+        # Filter out invalid email addresses (HTML fragments, etc.)
+        valid_emails = []
+        for email in emails:
+            # Skip emails that contain HTML-like characters or are too short
+            if (len(email) > 5 and 
+                not re.search(r'[<>/\\]', email) and  # No HTML-like characters
+                not email.startswith('/') and          # No leading slash
+                not email.endswith('/') and            # No trailing slash
+                '.' in email and                       # Must contain a dot
+                '@' in email):                         # Must contain @
+                valid_emails.append(email)
+        
+        unique_emails = list(set(valid_emails))
         
         # Also look for email addresses in From: and To: patterns
         from_pattern = r'From:\s*[^<]*<([^>]+)>'
@@ -244,7 +280,11 @@ class EmailContentSplitter:
         from_emails = re.findall(from_pattern, visible_content + quoted_content, re.IGNORECASE)
         to_emails = re.findall(to_pattern, visible_content + quoted_content, re.IGNORECASE)
         
-        all_emails = emails + from_emails + to_emails
+        # Filter these as well
+        valid_from_emails = [e for e in from_emails if len(e) > 5 and not re.search(r'[<>/\\]', e)]
+        valid_to_emails = [e for e in to_emails if len(e) > 5 and not re.search(r'[<>/\\]', e)]
+        
+        all_emails = unique_emails + valid_from_emails + valid_to_emails
         unique_all_emails = list(set(all_emails))
         
         if unique_all_emails:
