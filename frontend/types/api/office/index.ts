@@ -19,9 +19,14 @@ export type { CreateCalendarEventRequest } from './models/CreateCalendarEventReq
 export type { EmailAddress } from './models/EmailAddress';
 export type { EmailDraftCreateRequest } from './models/EmailDraftCreateRequest';
 export type { EmailDraftResponse } from './models/EmailDraftResponse';
+export type { EmailDraftResult } from './models/EmailDraftResult';
 export type { EmailDraftUpdateRequest } from './models/EmailDraftUpdateRequest';
+export type { EmailFolder } from './models/EmailFolder';
 export type { EmailFolderList } from './models/EmailFolderList';
+export type { EmailMessage } from './models/EmailMessage';
 export type { EmailMessageList } from './models/EmailMessageList';
+export type { EmailSendResult } from './models/EmailSendResult';
+export type { EmailThread } from './models/EmailThread';
 export type { EmailThreadList } from './models/EmailThreadList';
 export type { HTTPValidationError } from './models/HTTPValidationError';
 export { Provider } from './models/Provider';

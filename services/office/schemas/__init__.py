@@ -82,7 +82,7 @@ class EmailThreadList(BaseModel):
     """Response model for email thread lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains threads, metadata, etc.
+    data: Optional[List[EmailThread]] = None  # ✅ Contains threads, metadata, etc.
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -102,11 +102,22 @@ class SendEmailRequest(BaseModel):
     importance: Optional[str] = None  # "high", "normal", "low"
 
 
+class EmailSendResult(BaseModel):
+    """Result data for email send operations."""
+    
+    message_id: str
+    thread_id: Optional[str] = None
+    provider: Provider
+    sent_at: datetime
+    recipient_count: int
+    has_attachments: bool = False
+
+
 class SendEmailResponse(BaseModel):
     """Response model for sending emails."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[EmailSendResult] = None  # ✅ Specific response type
     error: Optional[Dict[str, Any]] = None
     request_id: str
 
@@ -145,11 +156,22 @@ class EmailDraftUpdateRequest(BaseModel):
     provider: Optional[str] = None
 
 
+class EmailDraftResult(BaseModel):
+    """Result data for email draft operations."""
+    
+    draft_id: str
+    thread_id: Optional[str] = None
+    provider: Provider
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    action: str  # new, reply, reply_all, forward
+
+
 class EmailDraftResponse(BaseModel):
     """Response model for email draft operations."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[EmailDraftResult] = None  # ✅ Specific response type
     error: Optional[Dict[str, Any]] = None
     request_id: str
 
@@ -158,7 +180,7 @@ class EmailMessageList(BaseModel):
     """Response model for email message lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains messages, metadata, etc.
+    data: Optional[List[EmailMessage]] = None  # ✅ Contains messages, metadata, etc.
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -192,7 +214,7 @@ class EmailFolderList(BaseModel):
     """Response model for email folder lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains folders, metadata, etc.
+    data: Optional[List[EmailFolder]] = None  # ✅ Contains folders, metadata, etc.
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None

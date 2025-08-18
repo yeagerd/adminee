@@ -364,12 +364,12 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Analyze impact on TypeScript type generation
 - [x] Create prioritized list of schema improvements
 
-### Task 7.2: Fix Email Response Models
-- [ ] Update `EmailMessageList` to use `List[EmailMessage]` instead of `Dict[str, Any]`
-- [ ] Update `EmailThreadList` to use `List[EmailThread]` instead of `Dict[str, Any]`
-- [ ] Update `EmailFolderList` to use `List[EmailFolder]` instead of `Dict[str, Any]`
-- [ ] Update `SendEmailResponse` to use specific response types
-- [ ] Test schema generation and validation
+### Task 7.2: Fix Email Response Models ✅
+- [x] Update `EmailMessageList` to use `List[EmailMessage]` instead of `Dict[str, Any]`
+- [x] Update `EmailThreadList` to use `List[EmailThread]` instead of `Dict[str, Any]`
+- [x] Update `EmailFolderList` to use `List[EmailFolder]` instead of `Dict[str, Any]`
+- [x] Update `SendEmailResponse` to use specific response types
+- [x] Test schema generation and validation
 
 ### Task 7.3: Fix Office Service Response Models
 - [ ] Update calendar event response models to use specific types

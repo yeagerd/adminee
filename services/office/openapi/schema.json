@@ -1,4 +1,4 @@
-2025-08-18 09:07:58 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+2025-08-18 10:56:15 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
 {
   "openapi": "3.1.0",
   "info": {
@@ -2914,14 +2914,12 @@
           "data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/EmailDraftResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Data"
+            ]
           },
           "error": {
             "anyOf": [
@@ -2947,6 +2945,58 @@
         ],
         "title": "EmailDraftResponse",
         "description": "Response model for email draft operations."
+      },
+      "EmailDraftResult": {
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_id",
+          "provider",
+          "created_at",
+          "action"
+        ],
+        "title": "EmailDraftResult",
+        "description": "Result data for email draft operations."
       },
       "EmailDraftUpdateRequest": {
         "properties": {
@@ -3030,6 +3080,81 @@
         "title": "EmailDraftUpdateRequest",
         "description": "Request model for updating email drafts in providers."
       },
+      "EmailFolder": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Unique identifier for the folder/label"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Display name for the folder/label"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider",
+            "description": "Provider this folder belongs to"
+          },
+          "provider_folder_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Folder Id",
+            "description": "Provider-specific folder ID"
+          },
+          "account_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Account Email",
+            "description": "Which account this folder belongs to"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name",
+            "description": "Display name for the account"
+          },
+          "is_system": {
+            "type": "boolean",
+            "title": "Is System",
+            "description": "Whether this is a system folder (inbox, sent, etc.)",
+            "default": false
+          },
+          "message_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Count",
+            "description": "Number of messages in this folder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "name",
+          "provider",
+          "account_email"
+        ],
+        "title": "EmailFolder",
+        "description": "Model for email folders/labels."
+      },
       "EmailFolderList": {
         "properties": {
           "success": {
@@ -3039,8 +3164,10 @@
           "data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "items": {
+                  "$ref": "#/components/schemas/EmailFolder"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -3088,6 +3215,158 @@
         "title": "EmailFolderList",
         "description": "Response model for email folder lists."
       },
+      "EmailMessage": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "body_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Text"
+          },
+          "body_html": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Html"
+          },
+          "from_address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailAddress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_addresses": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            },
+            "type": "array",
+            "title": "To Addresses",
+            "default": []
+          },
+          "cc_addresses": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            },
+            "type": "array",
+            "title": "Cc Addresses",
+            "default": []
+          },
+          "bcc_addresses": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            },
+            "type": "array",
+            "title": "Bcc Addresses",
+            "default": []
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Labels",
+            "default": []
+          },
+          "is_read": {
+            "type": "boolean",
+            "title": "Is Read",
+            "default": false
+          },
+          "has_attachments": {
+            "type": "boolean",
+            "title": "Has Attachments",
+            "default": false
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "provider_message_id": {
+            "type": "string",
+            "title": "Provider Message Id"
+          },
+          "account_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Account Email"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "provider",
+          "provider_message_id",
+          "account_email"
+        ],
+        "title": "EmailMessage"
+      },
       "EmailMessageList": {
         "properties": {
           "success": {
@@ -3097,8 +3376,10 @@
           "data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "items": {
+                  "$ref": "#/components/schemas/EmailMessage"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -3146,6 +3427,107 @@
         "title": "EmailMessageList",
         "description": "Response model for email message lists."
       },
+      "EmailSendResult": {
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "recipient_count": {
+            "type": "integer",
+            "title": "Recipient Count"
+          },
+          "has_attachments": {
+            "type": "boolean",
+            "title": "Has Attachments",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "message_id",
+          "provider",
+          "sent_at",
+          "recipient_count"
+        ],
+        "title": "EmailSendResult",
+        "description": "Result data for email send operations."
+      },
+      "EmailThread": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/EmailMessage"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "participant_count": {
+            "type": "integer",
+            "title": "Participant Count"
+          },
+          "last_message_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Message Date"
+          },
+          "is_read": {
+            "type": "boolean",
+            "title": "Is Read",
+            "default": false
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/Provider"
+            },
+            "type": "array",
+            "title": "Providers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "messages",
+          "participant_count",
+          "last_message_date",
+          "providers"
+        ],
+        "title": "EmailThread"
+      },
       "EmailThreadList": {
         "properties": {
           "success": {
@@ -3155,8 +3537,10 @@
           "data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "items": {
+                  "$ref": "#/components/schemas/EmailThread"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -3322,14 +3706,12 @@
           "data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/EmailSendResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Data"
+            ]
           },
           "error": {
             "anyOf": [

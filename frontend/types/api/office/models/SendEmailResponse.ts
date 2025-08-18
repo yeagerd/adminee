@@ -2,12 +2,13 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { EmailSendResult } from './EmailSendResult';
 /**
  * Response model for sending emails.
  */
 export type SendEmailResponse = {
     success: boolean;
-    data?: (Record<string, any> | null);
+    data?: (EmailSendResult | null);
     error?: (Record<string, any> | null);
     request_id: string;
 };
