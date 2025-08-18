@@ -6,6 +6,13 @@ Tests for the office router service main endpoints
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
+import os
+
+# Mock environment variables before importing the app
+os.environ["ENVIRONMENT"] = "test"
+os.environ["API_FRONTEND_OFFICE_ROUTER_KEY"] = "test-frontend-key"
+os.environ["API_OFFICE_ROUTER_USER_KEY"] = "test-user-key"
+os.environ["API_OFFICE_ROUTER_OFFICE_KEY"] = "test-office-key"
 
 from services.office_router.main import app
 
@@ -26,6 +33,22 @@ def mock_settings():
         yield mock
 
 
+@pytest.fixture
+def mock_router_and_pubsub():
+    """Mock router and pubsub consumer for testing"""
+    with patch("services.office_router.main.router") as mock_router, \
+         patch("services.office_router.main.pubsub_consumer") as mock_pubsub:
+        
+        # Mock router
+        mock_router.get_downstream_services.return_value = {"test": "service"}
+        
+        # Mock pubsub consumer
+        mock_pubsub.get_running_status.return_value = True
+        mock_pubsub.get_subscription_status.return_value = {"test": "subscription"}
+        
+        yield mock_router, mock_pubsub
+
+
 def test_health_check(client):
     """Test health check endpoint"""
     response = client.get("/health")
@@ -40,19 +63,13 @@ def test_service_status_not_ready(client):
     """Test service status when not ready"""
     response = client.get("/status")
     assert response.status_code == 503
-    assert "Service not ready" in response.json()["detail"]
+    data = response.json()
+    assert "Service not ready" in data["message"]
 
 
-@patch("services.office_router.main.router")
-@patch("services.office_router.main.pubsub_consumer")
-def test_service_status_ready(mock_pubsub, mock_router, client):
+def test_service_status_ready(client, mock_router_and_pubsub):
     """Test service status when ready"""
-    # Mock router
-    mock_router.get_downstream_services.return_value = {"test": "service"}
-    
-    # Mock pubsub consumer
-    mock_pubsub.get_running_status.return_value = True
-    mock_pubsub.get_subscription_status.return_value = {"test": "subscription"}
+    mock_router, mock_pubsub = mock_router_and_pubsub
     
     response = client.get("/status")
     assert response.status_code == 200
@@ -67,15 +84,15 @@ def test_route_email_missing_api_key(client):
     assert response.status_code == 422  # Validation error for missing header
 
 
-def test_route_email_invalid_api_key(client):
+def test_route_email_invalid_api_key(client, mock_settings):
     """Test route email with invalid API key"""
     response = client.post(
-        "/route/email", 
+        "/route/email",
         json={"test": "data"},
         headers={"X-API-Key": "invalid-key"}
     )
     assert response.status_code == 401
-    assert "Invalid API key" in response.json()["detail"]
+    assert "Invalid API key" in response.json()["message"]
 
 
 def test_route_calendar_missing_api_key(client):
