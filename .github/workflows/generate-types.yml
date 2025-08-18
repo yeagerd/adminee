@@ -66,17 +66,39 @@ jobs:
       run: |
         echo "Generating TypeScript types from OpenAPI schemas..."
         
-        # Generate types for each service
-        for service in chat meetings office user shipments common email_sync vector_db; do
-          if [ -f "../services/$service/openapi/schema.json" ]; then
-            echo "Generating types for $service service..."
-            npm run generate-types:$service
-          else
-            echo "No schema found for $service service, skipping..."
-          fi
-        done
+        # Use our new type generation script
+        cd ..
+        ./scripts/update-types.sh
         
         echo "Type generation complete!"
+    
+    - name: Validate generated types
+      working-directory: frontend
+      run: |
+        echo "Validating generated types..."
+        
+        # Run type validation
+        cd ..
+        if ! ./scripts/validate-types.sh; then
+          echo "❌ Type validation failed"
+          exit 1
+        fi
+        
+        echo "✅ Type validation passed"
+    
+    - name: Run type integration tests
+      working-directory: frontend
+      run: |
+        echo "Running type integration tests..."
+        
+        # Run integration tests
+        cd ..
+        if ! ./scripts/validate-types.sh --integration; then
+          echo "❌ Type integration tests failed"
+          exit 1
+        fi
+        
+        echo "✅ Type integration tests passed"
     
     - name: Check for type generation changes
       id: check-changes

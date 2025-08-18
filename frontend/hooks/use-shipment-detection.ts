@@ -1,4 +1,4 @@
-import { EmailMessage } from "@/types/api/office"';
+import { EmailMessage } from "@/types/api/office";
 import { useMemo } from 'react';
 
 export interface ShipmentDetectionResult {

@@ -9,14 +9,14 @@
         "lint": "next lint",
         "test": "jest",
         "typecheck": "npx tsc --noEmit",
-        "generate-types": "npm run generate-types:chat && npm run generate-types:meetings && npm run generate-types:office && npm run generate-types:user && npm run generate-types:shipments && npm run generate-types:email-sync && npm run generate-types:vector-db",
-        "generate-types:chat": "openapi --input ../openapi-schemas/chat-openapi.json --output ./types/api/chat",
-        "generate-types:meetings": "openapi --input ../openapi-schemas/meetings-openapi.json --output ./types/api/meetings",
-        "generate-types:office": "openapi --input ../openapi-schemas/office-openapi.json --output ./types/api/office",
-        "generate-types:user": "openapi --input ../openapi-schemas/user-openapi.json --output ./types/api/user",
-        "generate-types:shipments": "openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/api/shipments",
-        "generate-types:email-sync": "openapi --input ../openapi-schemas/email_sync-openapi.json --output ./types/api/email-sync",
-        "generate-types:vector-db": "openapi --input ../openapi-schemas/vector_db-openapi.json --output ./types/api/vector-db"
+        "generate-types": "../scripts/update-types.sh",
+        "generate-types:clean": "../scripts/update-types.sh --clean",
+        "generate-types:force": "../scripts/update-types.sh --force",
+        "validate-types": "../scripts/validate-types.sh",
+        "validate-types:strict": "../scripts/validate-types.sh --strict",
+        "validate-types:integration": "../scripts/validate-types.sh --integration",
+        "prebuild": "npm run generate-types && npm run validate-types",
+        "build:with-types": "npm run prebuild && npm run build"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.1",

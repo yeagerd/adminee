@@ -1,6 +1,6 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { officeApi } from '@/api';
-import type { Contact } from "@/types/api/office"';
+import type { Contact } from "@/types/api/office";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSession } from 'next-auth/react';
 import { RefreshCw } from 'lucide-react';

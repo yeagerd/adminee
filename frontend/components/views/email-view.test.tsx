@@ -1,6 +1,6 @@
 import { officeApi } from '@/api';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { EmailMessage } from "@/types/api/office"';
+import { EmailMessage } from "@/types/api/office";
 import { act, render, screen, waitFor } from '@testing-library/react';
 import EmailView from './email-view';
 

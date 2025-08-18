@@ -1,4 +1,4 @@
-import { EmailMessage } from "@/types/api/office"';
+import { EmailMessage } from "@/types/api/office";
 import { renderHook } from '@testing-library/react';
 import { useShipmentDetection } from './use-shipment-detection';
 

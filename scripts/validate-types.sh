@@ -110,6 +110,12 @@ validate_service_types() {
     # Run TypeScript compilation check
     cd "$PROJECT_ROOT/frontend"
     
+    # Check if TypeScript is available
+    if ! npx tsc --version &> /dev/null; then
+        print_status "error" "TypeScript not available in frontend directory"
+        return 1
+    fi
+    
     local tsconfig_file="tsconfig.json"
     if [[ "$strict" == "true" ]]; then
         # Create a temporary strict tsconfig for validation
