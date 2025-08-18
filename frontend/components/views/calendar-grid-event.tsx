@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarEvent } from '@/types/office-service';
+import type { CalendarEvent } from '@/types/api/office';
 import { DateTime } from 'luxon';
 import { useMemo } from 'react';
 

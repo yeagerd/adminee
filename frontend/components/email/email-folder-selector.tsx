@@ -10,7 +10,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { officeApi } from '@/api';
-import { EmailFolder } from '@/types/office-service';
+// TODO: Replace with proper generated types when available
+export interface EmailFolder {
+    label: string;
+    name: string;
+    provider: 'google' | 'microsoft';
+    provider_folder_id?: string;
+    account_email: string;
+    account_name?: string;
+    is_system: boolean;
+    message_count?: number;
+}
 import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

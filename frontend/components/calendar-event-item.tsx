@@ -26,7 +26,7 @@ import {
 import { useState } from "react"
 
 import { useUserPreferences } from '@/contexts/settings-context'
-import { CalendarEvent } from "@/types/office-service"
+import type { CalendarEvent } from "@/types/api/office"
 import { DateTime } from 'luxon'
 
 interface EventItemProps {

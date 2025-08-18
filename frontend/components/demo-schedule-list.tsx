@@ -2,7 +2,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { demoCalendarEvents } from "@/lib/demo-data"
-import { CalendarEvent } from "@/types/office-service"
+import type { CalendarEvent } from "@/types/api/office"
 import { useState } from "react"
 import { CalendarEventItem } from "./calendar-event-item"
 

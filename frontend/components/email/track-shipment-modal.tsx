@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
-import { EmailMessage } from '@/types/office-service';
+import { EmailMessage } from "@/types/api/office"';
 import DOMPurify from 'dompurify';
 import { CheckCircle, Info, Loader2, Package, PackageCheck, Search, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';

@@ -1,7 +1,7 @@
 "use client";
 
 import { userApi } from '@/api';
-import type { Integration } from '@/api/types/common';
+import type { Integration } from '@/types/api/user';
 import { IntegrationProvider } from '@/types/api/user';
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';

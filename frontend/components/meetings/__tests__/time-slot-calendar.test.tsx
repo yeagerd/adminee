@@ -1,4 +1,4 @@
-import { CalendarEvent } from '@/types/office-service';
+import { CalendarEvent } from "@/types/api/office"';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TimeSlotCalendar } from '../time-slot-calendar';
 

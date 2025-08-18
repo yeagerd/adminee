@@ -128,18 +128,10 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
     };
 }
 
-export interface CreateDraftRequest {
-    type: DraftType;
-    content: string;
-    metadata?: Record<string, unknown>;
-    threadId?: string;
-}
-
-export interface UpdateDraftRequest {
-    content?: string;
-    metadata?: Record<string, unknown>;
-    status?: DraftStatus;
-}
+// TODO: Replace with generated types from @/types/api/chat
+// For now, keeping these as any to avoid breaking existing code
+export type CreateDraftRequest = any;
+export type UpdateDraftRequest = any;
 
 export interface DraftActionResult {
     success: boolean;

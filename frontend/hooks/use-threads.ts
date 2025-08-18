@@ -1,5 +1,5 @@
 import { officeApi } from '@/api';
-import { EmailThread } from '@/types/office-service';
+import { EmailThread } from "@/types/api/office"';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

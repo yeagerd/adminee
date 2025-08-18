@@ -1,5 +1,5 @@
 import { officeApi } from '@/api';
-import { BulkActionType } from '@/api/types/common';
+import { BulkActionType } from "@/types/api/user"';
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailListCard from '@/components/email/email-list-card';
@@ -13,7 +13,7 @@ import { useIntegrations } from '@/contexts/integrations-context';
 import { useDraftState } from '@/hooks/use-draft-state';
 import { listProviderDraftsForThread } from '@/lib/draft-utils';
 import { safeParseDate } from '@/lib/utils';
-import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
+import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from "@/types/api/office"';
 import { Archive, Check, ChevronLeft, Clock, List, ListTodo, PanelLeft, RefreshCw, Settings, Square, Trash2, X } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';

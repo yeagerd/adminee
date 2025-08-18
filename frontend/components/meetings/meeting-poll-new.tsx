@@ -15,7 +15,7 @@ import type {
     PollParticipant
 } from "@/types/api/meetings";
 import type { TypedApiResponse_List_CalendarEvent__ } from "@/types/api/office";
-import { CalendarEvent } from "@/types/office-service";
+import type { CalendarEvent } from "@/types/api/office";
 import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';

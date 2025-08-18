@@ -1,4 +1,8 @@
-import type { EmailFilters } from '@/types/office-service';
+// TODO: Replace with proper generated types when available
+export interface EmailFilters {
+    query?: string;
+    [key: string]: unknown;
+}
 import React from 'react';
 
 interface EmailFiltersProps {

@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { officeApi } from '@/api';
-import type { CalendarEvent } from '@/types/office-service';
+import type { CalendarEvent } from '@/types/api/office';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

@@ -1,4 +1,4 @@
-import { CalendarEvent } from '@/types/office-service';
+import { CalendarEvent } from "@/types/api/office"';
 
 // Demo data for the demos page
 export interface DemoUser {
