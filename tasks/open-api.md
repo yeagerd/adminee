@@ -371,12 +371,12 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Update `SendEmailResponse` to use specific response types
 - [x] Test schema generation and validation
 
-### Task 7.3: Fix Office Service Response Models
-- [ ] Update calendar event response models to use specific types
-- [ ] Update contact response models to use specific types
-- [ ] Update file/drive response models to use specific types
-- [ ] Ensure all response models have proper type definitions
-- [ ] Test API endpoints with updated schemas
+### Task 7.3: Fix Office Service Response Models ✅
+- [x] Update calendar event response models to use specific types
+- [x] Update contact response models to use specific types
+- [x] Update file/drive response models to use specific types
+- [x] Ensure all response models have proper type definitions
+- [x] Test API endpoints with updated schemas
 
 ### Task 7.4: Fix User Service Response Models
 - [ ] Update integration response models to use specific types

@@ -480,12 +480,19 @@ class AvailableSlot(BaseModel):
     duration_minutes: int
 
 
+class TimeRange(BaseModel):
+    """Model for time range with start and end times."""
+    
+    start: str
+    end: str
+
+
 class AvailabilityResponse(BaseModel):
     """Response model for availability checks."""
 
     available_slots: List[AvailableSlot]
     total_slots: int
-    time_range: Dict[str, str]  # start and end times
+    time_range: TimeRange  # ✅ Specific type instead of Dict[str, str]
     providers_used: List[str]
     provider_errors: Optional[Dict[str, str]] = None
     request_metadata: Dict[str, Any]
@@ -501,7 +508,7 @@ class CalendarEventResponse(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     deleted_at: Optional[str] = None
-    event_data: Optional[Dict[str, Any]] = None
+    event_data: Optional[CalendarEvent] = None  # ✅ Specific type instead of Dict[str, Any]
     request_metadata: Dict[str, Any]
 
 
@@ -567,7 +574,7 @@ class ContactList(BaseModel):
     """Response model for contact lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains contacts, metadata, etc.
+    data: Optional[List[Contact]] = None  # ✅ Contains contacts, metadata, etc.
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None

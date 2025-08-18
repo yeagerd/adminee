@@ -2,13 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { Contact } from './Contact';
 import type { Provider } from './Provider';
 /**
  * Response model for contact lists.
  */
 export type ContactList = {
     success: boolean;
-    data?: (Record<string, any> | null);
+    data?: (Array<Contact> | null);
     error?: (Record<string, any> | null);
     cache_hit?: boolean;
     provider_used?: (Provider | null);

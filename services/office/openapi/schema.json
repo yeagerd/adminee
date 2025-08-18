@@ -1,4 +1,4 @@
-2025-08-18 10:56:15 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+2025-08-18 11:01:08 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
 {
   "openapi": "3.1.0",
   "info": {
@@ -2297,11 +2297,7 @@
             "title": "Total Slots"
           },
           "time_range": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object",
-            "title": "Time Range"
+            "$ref": "#/components/schemas/TimeRange"
           },
           "providers_used": {
             "items": {
@@ -2557,14 +2553,12 @@
           "event_data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/CalendarEvent"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Event Data"
+            ]
           },
           "request_metadata": {
             "additionalProperties": true,
@@ -2581,6 +2575,137 @@
         "title": "CalendarEventResponse",
         "description": "Response model for calendar event operations."
       },
+      "Contact": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "given_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Given Name"
+          },
+          "family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Name"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            },
+            "type": "array",
+            "title": "Emails",
+            "default": []
+          },
+          "primary_email": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailAddress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "phones": {
+            "items": {
+              "$ref": "#/components/schemas/ContactPhone"
+            },
+            "type": "array",
+            "title": "Phones",
+            "default": []
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "provider_contact_id": {
+            "type": "string",
+            "title": "Provider Contact Id"
+          },
+          "account_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Account Email"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "provider_contact_id",
+          "account_email"
+        ],
+        "title": "Contact"
+      },
       "ContactList": {
         "properties": {
           "success": {
@@ -2590,8 +2715,10 @@
           "data": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "items": {
+                  "$ref": "#/components/schemas/Contact"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -2638,6 +2765,32 @@
         ],
         "title": "ContactList",
         "description": "Response model for contact lists."
+      },
+      "ContactPhone": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Type of phone number (work, mobile, home)"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "description": "Phone number in E.164 or localized format"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number"
+        ],
+        "title": "ContactPhone"
       },
       "CreateCalendarEventRequest": {
         "properties": {
@@ -3737,6 +3890,25 @@
         ],
         "title": "SendEmailResponse",
         "description": "Response model for sending emails."
+      },
+      "TimeRange": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "TimeRange",
+        "description": "Model for time range with start and end times."
       },
       "TypedApiResponse_AvailabilityResponse_": {
         "properties": {
