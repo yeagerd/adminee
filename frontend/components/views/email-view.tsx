@@ -154,12 +154,12 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
             if (selectedFolder.provider === Provider.MICROSOFT) {
                 // Microsoft: use folder_id for all folders when available
-                folderId = selectedFolder.provider_folder_id;
+                folderId = selectedFolder.provider_folder_id || undefined;
                 labels = undefined;
             } else if (selectedFolder.provider === Provider.GOOGLE) {
                 // Google: use folder_id for system folders, labels for user folders
                 if (isSystemFolder && selectedFolder.provider_folder_id) {
-                    folderId = selectedFolder.provider_folder_id;
+                    folderId = selectedFolder.provider_folder_id || undefined;
                     labels = undefined;
                 } else {
                     labels = [selectedFolder.label];
@@ -179,7 +179,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     messages = messages.filter(msg => {
                         if (selectedFolder.label === 'inbox') {
                             // For inbox: show messages where user is recipient (in "to" field, not "from")
-                            const isInToField = msg.to_addresses.some(addr => addr.email === userEmail);
+                            const isInToField = msg.to_addresses?.some(addr => addr.email === userEmail) || false;
                             const isFromUser = msg.from_address?.email === userEmail;
                             return isInToField && !isFromUser;
                         } else if (selectedFolder.label === 'sent') {
@@ -398,38 +398,31 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         try {
             const response = await officeApi.getThread(threadId, true); // include body
-            if (response.data?.thread) {
-                setFullThread(response.data.thread);
+            if (response.data?.threads && response.data.threads.length > 0) {
+                setFullThread(response.data.threads[0]);
                 // Auto-load provider drafts for this thread
                 try {
                     const draftsResp = await listProviderDraftsForThread(threadId);
-                    const providerDrafts = (draftsResp?.data?.drafts as unknown[]) || [];
-                    if (providerDrafts.length > 0) {
-                        // Take the latest provider draft and reflect into local draft editor for continuity
-                        const latest = providerDrafts[0] as Record<string, unknown> | undefined;
-                        const provider = response.provider_used as 'google' | 'microsoft' | undefined;
+                    // The API returns a single EmailDraftResult, not a list
+                    if (draftsResp?.data?.draft_id) {
+                        const provider = draftsResp.data.provider as 'google' | 'microsoft' | undefined;
                         const session = await getSession();
                         const local = createNewDraft('email', session?.user?.id || '');
-                        const headers = (latest?.message as Record<string, unknown> | undefined)?.payload as Record<string, unknown> | undefined;
-                        const headerArr = (headers?.headers as Array<{ name?: string; value?: string }>) || [];
-                        const subject = headerArr.find((h) => h?.name === 'Subject')?.value || (latest?.subject as string | undefined) || '';
-                        const body = ((latest?.message as Record<string, unknown> | undefined)?.snippet as string | undefined) ||
-                            ((latest?.body as Record<string, unknown> | undefined)?.content as string | undefined) || '';
-                        const latestId = (latest?.id as string | undefined) || '';
+                        // Since we only get metadata, create a basic draft
                         updateDraft({
                             id: local.id,
-                            content: body,
+                            content: '',
                             metadata: {
-                                subject,
+                                subject: '',
                                 recipients: [],
                                 cc: [],
                                 bcc: [],
                                 provider,
-                                providerDraftId: latestId,
+                                providerDraftId: draftsResp.data.draft_id,
                             },
                             threadId,
                         });
-                        setCurrentDraft({ ...local, content: body, metadata: { ...local.metadata, subject, provider, providerDraftId: latestId } });
+                        setCurrentDraft({ ...local, content: '', metadata: { ...local.metadata, provider, providerDraftId: draftsResp.data.draft_id } });
                     }
                 } catch (e) {
                     console.warn('No provider drafts for thread or failed to load:', e);

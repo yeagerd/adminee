@@ -81,8 +81,8 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         try {
             const response = await officeApi.getThread(threadId, true);
 
-            if (response.success && response.data) {
-                setSelectedThread(response.data.thread);
+            if (response.success && response.data?.threads && response.data.threads.length > 0) {
+                setSelectedThread(response.data.threads[0]);
             } else {
                 throw new Error('Failed to fetch thread');
             }
@@ -102,8 +102,8 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         try {
             const response = await officeApi.getMessageThread(messageId, true);
 
-            if (response.success && response.data) {
-                setSelectedThread(response.data.thread);
+            if (response.success && response.data?.threads && response.data.threads.length > 0) {
+                setSelectedThread(response.data.threads[0]);
             } else {
                 throw new Error('Failed to fetch message thread');
             }

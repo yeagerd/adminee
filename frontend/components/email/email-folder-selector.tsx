@@ -45,9 +45,8 @@ export function EmailFolderSelector({ onFolderSelect, selectedFolder }: EmailFol
         try {
             const response = await officeApi.getEmailFolders(activeProviders, true);
             if (response.success && response.data) {
-                // The generated types don't provide the actual folder structure
-                // We need to cast the data to the expected format
-                const foldersData = response.data as any;
+                // The response data contains the folder structure
+                const foldersData = response.data;
                 if (foldersData.folders && Array.isArray(foldersData.folders)) {
                     setFolders(foldersData.folders);
                 } else {

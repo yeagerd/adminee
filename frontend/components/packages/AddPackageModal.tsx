@@ -1,5 +1,5 @@
 import { shipmentsApi } from '@/api';
-import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS } from '@/lib/package-status';
+import { PACKAGE_STATUS_OPTIONS } from '@/lib/package-status';
 import { PackageStatus } from '@/types/api/shipments';
 import { useState } from 'react';
 
