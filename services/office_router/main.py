@@ -5,7 +5,7 @@ Office Router Service - Central routing service for office data distribution
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, Any, AsyncGenerator
 
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage service lifecycle"""
     global router, pubsub_consumer, settings
 
@@ -116,13 +116,13 @@ register_briefly_exception_handlers(app)
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy", "service": "office-router", "version": "1.0.0"}
 
 
 @app.get("/status")
-async def service_status():
+async def service_status() -> dict[str, Any]:
     """Service status endpoint"""
     if not router or not pubsub_consumer:
         raise HTTPException(status_code=503, detail="Service not ready")
@@ -143,7 +143,7 @@ async def service_status():
 async def route_email(
     email_data: dict,
     api_key: str = Depends(verify_api_key)
-):
+) -> dict[str, Any]:
     """Route email data to downstream services"""
     if not router:
         raise HTTPException(status_code=503, detail="Service not ready")
@@ -160,7 +160,7 @@ async def route_email(
 async def route_calendar(
     calendar_data: dict,
     api_key: str = Depends(verify_api_key)
-):
+) -> dict[str, Any]:
     """Route calendar data to downstream services"""
     if not router:
         raise HTTPException(status_code=503, detail="Service not ready")
@@ -177,7 +177,7 @@ async def route_calendar(
 async def route_contact(
     contact_data: dict,
     api_key: str = Depends(verify_api_key)
-):
+) -> dict[str, Any]:
     """Route contact data to downstream services"""
     if not router:
         raise HTTPException(status_code=503, detail="Service not ready")

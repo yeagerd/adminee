@@ -82,17 +82,17 @@ class VespaSearchDemo:
         self.config = config
         self.vespa_endpoint = config["vespa_endpoint"]
         self.user_email = config.get("user_email", "trybriefly@outlook.com")
-        self.user_id = None  # Will be resolved from email
+        self.user_id: Optional[str] = None  # Will be resolved from email
 
         # Initialize search engine for stats
         self.search_engine = SearchEngine(self.vespa_endpoint)
 
         # Search tools will be initialized after user_id is resolved
-        self.vespa_search = None
-        self.user_data_search = None
-        self.semantic_search = None
+        self.vespa_search: Optional[VespaSearchTool] = None
+        self.user_data_search: Optional[UserDataSearchTool] = None
+        self.semantic_search: Optional[SemanticSearchTool] = None
 
-    def _initialize_search_tools(self):
+    def _initialize_search_tools(self) -> None:
         """Initialize search tools after user_id is resolved"""
         if self.user_id:
             self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.user_id)
@@ -107,6 +107,15 @@ class VespaSearchDemo:
                 "name": "Basic Search Functionality",
                 "queries": ["test query", "simple search", "basic functionality"],
                 "expected": "Basic search responses",
+            },
+        ]
+        
+        # Initialize advanced scenarios
+        self.advanced_scenarios = [
+            {
+                "name": "Advanced Search Features",
+                "queries": ["complex query", "advanced search"],
+                "expected": "Advanced search responses",
             },
         ]
 
@@ -148,9 +157,10 @@ class VespaSearchDemo:
     async def initialize(self) -> bool:
         """Initialize the search demo by resolving user ID"""
         print(f"🔍 Resolving email {self.user_email} to user ID...")
-        self.user_id = await self.resolve_email_to_user_id()
+        resolved_user_id = await self.resolve_email_to_user_id()
 
-        if self.user_id:
+        if resolved_user_id:
+            self.user_id = resolved_user_id
             print(f"✅ Resolved user ID: {self.user_id} for email: {self.user_email}")
             # Initialize search tools now that we have the user ID
             self._initialize_search_tools()
@@ -165,16 +175,17 @@ class VespaSearchDemo:
             logger.info("Cleaning up resources...")
 
             # Close search engine sessions - handle all nested instances
-            if hasattr(self.vespa_search, "search_engine"):
+            if self.vespa_search and hasattr(self.vespa_search, "search_engine"):
                 await self.vespa_search.search_engine.close()
 
             # UserDataSearchTool has a VespaSearchTool which has a SearchEngine
-            if hasattr(self.user_data_search, "vespa_search") and hasattr(
-                self.user_data_search.vespa_search, "search_engine"
-            ):
+            if (self.user_data_search and 
+                hasattr(self.user_data_search, "vespa_search") and 
+                self.user_data_search.vespa_search and
+                hasattr(self.user_data_search.vespa_search, "search_engine")):
                 await self.user_data_search.vespa_search.search_engine.close()
 
-            if hasattr(self.semantic_search, "search_engine"):
+            if self.semantic_search and hasattr(self.semantic_search, "search_engine"):
                 await self.semantic_search.search_engine.close()
 
             # Close our stats search engine
@@ -267,9 +278,12 @@ class VespaSearchDemo:
                 start_time = time.time()
 
                 # Test with user data search
-                results = await self.user_data_search.search_all_data(
-                    query, max_results=10
-                )
+                if self.user_data_search:
+                    results = await self.user_data_search.search_all_data(
+                        query, max_results=10
+                    )
+                else:
+                    results = {"status": "error", "error": "User data search not initialized"}
 
                 response_time = (time.time() - start_time) * 1000
 
@@ -330,11 +344,14 @@ class VespaSearchDemo:
                 start_time = time.time()
 
                 # Test with specific ranking profile
-                results = await self.vespa_search.search(
-                    query=query,
-                    max_results=10,
-                    ranking_profile=scenario["ranking_profile"],
-                )
+                if self.vespa_search:
+                    results = await self.vespa_search.search(
+                        query=query,
+                        max_results=10,
+                        ranking_profile=scenario["ranking_profile"],
+                    )
+                else:
+                    results = {"status": "error", "error": "Vespa search not initialized"}
 
                 response_time = (time.time() - start_time) * 1000
 
@@ -499,9 +516,12 @@ class VespaSearchDemo:
             start_time = time.time()
 
             # Use user data search for comprehensive results
-            search_results = await self.user_data_search.search_all_data(
-                query, max_results=20
-            )
+            if self.user_data_search:
+                search_results = await self.user_data_search.search_all_data(
+                    query, max_results=20
+                )
+            else:
+                search_results = {"status": "error", "error": "User data search not initialized"}
 
             response_time = (time.time() - start_time) * 1000
 
@@ -509,9 +529,12 @@ class VespaSearchDemo:
             if search_results.get("status") == "success":
                 # Flatten grouped results into a single list for display
                 all_results = []
-                grouped_results = search_results.get("grouped_results", {})
-                for result_type, results in grouped_results.items():
-                    all_results.extend(results)
+                raw_grouped_results: Any = search_results.get("grouped_results", {})
+                if isinstance(raw_grouped_results, dict):
+                    grouped_results: Dict[str, Any] = raw_grouped_results
+                    for result_type, results in grouped_results.items():
+                        if isinstance(results, list):
+                            all_results.extend(results)
 
                 # Sort by relevance score
                 all_results.sort(

@@ -54,13 +54,13 @@ class OfficeRouter:
             ),
         }
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the router and create HTTP session"""
         if not self.session:
             self.session = aiohttp.ClientSession()
         logger.info("Office Router started")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the router and close HTTP session"""
         if self.session:
             await self.session.close()

@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 
 # Environment validation - check if virtual environment is active
-def validate_environment():
+def validate_environment() -> None:
     """Validate that the virtual environment is active and dependencies are available."""
     try:
         import pydantic
@@ -1060,7 +1060,7 @@ class VespaBackfillDemo:
         try:
             # Initialize email crawler
             email_crawler = EmailCrawler(
-                user_id, provider, max_email_count=self.max_emails_per_user
+                user_id, provider, self.user_email, max_email_count=self.max_emails_per_user
             )
 
             # Set rate limit
