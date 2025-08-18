@@ -83,8 +83,7 @@ class Settings(BaseSettings):
         description="Environment (development, staging, production)",
     )
 
-    # Demo mode configuration
-    DEMO_MODE: bool = Field(default=False, description="Enable demo mode")
+
 
     # Service URLs
     USER_SERVICE_URL: str = Field(

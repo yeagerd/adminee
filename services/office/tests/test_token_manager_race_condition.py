@@ -37,7 +37,6 @@ class MockSettings:
     """Mock settings to avoid database dependencies."""
 
     def __init__(self):
-        self.DEMO_MODE = False
         self.api_office_user_key = "test-api-key"
         self.USER_SERVICE_URL = "http://localhost:8000"
 

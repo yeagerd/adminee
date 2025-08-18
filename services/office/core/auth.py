@@ -179,11 +179,9 @@ def get_current_user(request: Request) -> Dict[str, Any]:
         client_name = get_client_from_api_key(api_key, api_key_mapping)
         permissions = get_permissions_from_api_key(api_key, api_key_mapping)
 
-        # hrm, I don't like this - we shouldn't be putting demo code in our production services.  I suspect the problem is that when we run as a demo, we don't have a JWT?  But we could get one from the nextauth_teset_server, asking the user to log in.  Afterall, we're only going to run backfill O(1) times, and run search many times
-
-        # For demo purposes, we'll create a user context from the API key
+        # Create user context from the API key
         # In production, this would typically decode a JWT or look up user details
-        user_id = client_name or "demo_user"
+        user_id = client_name
 
         return {
             "user_id": user_id,
