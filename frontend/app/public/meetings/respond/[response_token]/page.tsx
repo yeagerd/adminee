@@ -1,11 +1,20 @@
 "use client";
 import { meetingsApi } from '@/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import type {
     MeetingPoll,
     PollParticipant,
     PollResponseCreate,
     TimeSlot
 } from '@/types/api/meetings';
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Check, HelpCircle, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 // Legacy types for backward compatibility - these should be removed once all components are updated
@@ -28,54 +37,26 @@ export default function PollResponsePage() {
         response_token = match ? match[1] : undefined;
     }
     const [poll, setPoll] = useState<Poll | null>(null);
+    const [participants, setParticipants] = useState<Participant[]>([]);
+    const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
     const [responses, setResponses] = useState<PollResponse[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!response_token) return;
         meetingsApi.publicPolls.getPollResponse(response_token)
-            .then(data => {
+            .then((data: any) => {
                 setPoll(data.poll);
-                // Initialize responses for all time slots
-                const initialResponses = data.poll.time_slots.map((slot: TimeSlot) => {
-                    // Check if there's an existing response for this time slot
-                    const existingResponse = data.responses?.find((r: { time_slot_id: string; response: string; comment?: string }) => r.time_slot_id === slot.id);
-
-                    if (existingResponse) {
-                        // Use existing response
-                        return {
-                            time_slot_id: slot.id,
-                            response: existingResponse.response as 'available' | 'unavailable' | 'maybe',
-                            comment: existingResponse.comment || ''
-                        };
-                    } else {
-                        // Default to unavailable
-                        return {
-                            time_slot_id: slot.id,
-                            response: 'unavailable' as const,
-                            comment: ''
-                        };
-                    }
-                });
-                setResponses(initialResponses);
-
-                // Auto-expand comment sections that have content
-                const commentSectionsToExpand = new Set<string>();
-                initialResponses.forEach((response: PollResponse) => {
-                    if (response.comment && response.comment.trim()) {
-                        commentSectionsToExpand.add(response.time_slot_id);
-                    }
-                });
-                setExpandedComments(commentSectionsToExpand);
-
+                setParticipants(data.participants || []);
+                setTimeSlots(data.time_slots || []);
                 setLoading(false);
             })
-            .catch((error) => {
-                console.error('Error fetching poll:', error);
-                setError('Invalid or expired link.');
+            .catch((error: any) => {
+                console.error('Failed to fetch poll:', error);
+                setError('Failed to load poll data');
                 setLoading(false);
             });
     }, [response_token]);
@@ -150,7 +131,7 @@ export default function PollResponsePage() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const res = await meetingsApi.publicPolls.updatePollResponse(response_token, { responses });
+        const res = await meetingsApi.publicPolls.updatePollResponse(response_token!, { responses });
         if (res.ok) {
             setSubmitted(true);
         } else {
