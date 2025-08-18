@@ -175,7 +175,7 @@ class QueryBuilder:
                 "ranking": "similarity",
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
-                "streaming.groupname": escaped_user_id,
+                "streaming.groupname": user_id,
             }
 
             logger.info(f"Built similarity query for user {user_id}")
@@ -198,7 +198,7 @@ class QueryBuilder:
                 "ranking": "trending",
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
-                "streaming.groupname": escaped_user_id,
+                "streaming.groupname": user_id,
                 "ranking.features.query(timeDecay)": time_range,
             }
 
@@ -221,7 +221,7 @@ class QueryBuilder:
                 "yql": f'select * from briefly_document where user_id="{escaped_user_id}"',
                 "hits": 0,  # We only want analytics, not documents
                 "timeout": "10s",
-                "streaming.groupname": escaped_user_id,
+                "streaming.groupname": user_id,
                 "presentation.timing": True,
                 "grouping": {
                     "source_type": {"count": 100},
