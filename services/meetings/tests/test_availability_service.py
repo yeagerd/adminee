@@ -267,9 +267,8 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_business_hours(self):
         """Test applying business hours filtering."""
-        # Create slots for Monday (day 0 in isocalendar)
-        monday_date = datetime.now(timezone.utc)
-        # Adjust to Monday
+        # Create slots for next Monday (within the 90-day advance booking window)
+        monday_date = datetime.now(timezone.utc) + timedelta(days=7)  # Next week
         while monday_date.weekday() != 0:  # Monday is 0
             monday_date += timedelta(days=1)
 
