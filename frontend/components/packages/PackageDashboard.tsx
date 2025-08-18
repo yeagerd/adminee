@@ -598,7 +598,7 @@ export default function PackageDashboard() {
                         tracking_link: selectedPackage.tracking_link || null,
                         updated_at: selectedPackage.updated_at || new Date().toISOString(),
                         events_count: selectedPackage.events?.length || 0,
-                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? { name: label } : label) || [],
+                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? { id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() } : label) || [],
                     }}
                     onShipmentUpdated={(updatedPackage) => {
                         // Update the package in the local state
@@ -619,7 +619,7 @@ export default function PackageDashboard() {
                                         tracking_link: updatedPackage.tracking_link || undefined,
                                         updated_at: updatedPackage.updated_at,
                                         events_count: updatedPackage.events_count,
-                                        labels: updatedPackage.labels || [],
+                                        labels: updatedPackage.labels?.map(label => typeof label === 'string' ? { id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() } : label) || [],
                                     }
                                     : pkg
                             )

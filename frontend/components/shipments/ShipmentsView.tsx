@@ -146,6 +146,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
         // Convert ShipmentItem to PackageOut for the modal
         const packageResponse: PackageOut = {
             id: shipment.id,
+            user_id: 'unknown', // Not available in ShipmentItem, set to placeholder
             tracking_number: shipment.tracking_number,
             carrier: shipment.carrier,
             status: shipment.status as PackageStatus, // Type assertion needed due to interface differences
@@ -158,7 +159,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
             tracking_link: shipment.tracking_link || null,
             updated_at: shipment.updated_at,
             events_count: shipment.events_count || 0,
-                            labels: shipment.labels?.map(label => typeof label === 'string' ? { name: label } : label) || [],
+            labels: shipment.labels || [],
         };
 
         setSelectedShipment(packageResponse);
@@ -202,7 +203,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
                             tracking_link: updatedShipment.tracking_link || undefined,
                             updated_at: updatedShipment.updated_at,
                             events_count: updatedShipment.events_count,
-                            labels: updatedShipment.labels || [],
+                            labels: updatedShipment.labels?.map(label => typeof label === 'string' ? { id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() } : label) || [],
                         }
                     : shipment
             )
