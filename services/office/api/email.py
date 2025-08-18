@@ -260,6 +260,14 @@ async def get_email_messages(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result and not no_cache:
             logger.info("Cache hit for email messages")
+            # Ensure cached data has required request_metadata field
+            if "request_metadata" not in cached_result:
+                cached_result["request_metadata"] = {
+                    "user_id": user_id,
+                    "providers_requested": valid_providers,
+                    "limit": limit,
+                    "include_body": include_body,
+                }
             return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -587,6 +595,13 @@ async def get_email_message(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for message detail")
+            # Ensure cached data has required request_metadata field
+            if "request_metadata" not in cached_result:
+                cached_result["request_metadata"] = {
+                    "user_id": user_id,
+                    "message_id": message_id,
+                    "include_body": include_body,
+                }
             return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )

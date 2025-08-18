@@ -109,8 +109,8 @@ class TestContactsApi:
             assert resp.status_code == 200
             data = resp.json()
             assert data["success"] is True
-            assert isinstance(data["data"].get("contacts"), list)
-            assert data["data"]["total_count"] >= 1
+            assert isinstance(data["data"], list)
+            assert len(data["data"]) >= 1
 
     @pytest.mark.asyncio
     async def test_list_contacts_cache_hit(self, client, auth_headers):
@@ -166,7 +166,7 @@ class TestContactsApi:
             assert resp.status_code == 200
             data = resp.json()
             assert data["success"] is True
-            assert data["data"]["contact"]["id"].startswith("google_")
+            assert data["contact"]["id"].startswith("google_")
 
     @pytest.mark.asyncio
     async def test_update_contact_microsoft(self, client, auth_headers):
@@ -193,7 +193,7 @@ class TestContactsApi:
             assert resp.status_code == 200
             data = resp.json()
             assert data["success"] is True
-            assert data["data"]["contact"]["id"].startswith("outlook_")
+            assert data["contact"]["id"].startswith("outlook_")
 
     @pytest.mark.asyncio
     async def test_update_contact_google_with_slash(self, client, auth_headers):
@@ -221,7 +221,7 @@ class TestContactsApi:
             assert resp.status_code == 200
             data = resp.json()
             assert data["success"] is True
-            assert data["data"]["contact"]["id"].startswith("google_")
+            assert data["contact"]["id"].startswith("google_")
 
     @pytest.mark.asyncio
     async def test_delete_contact_google(self, client, auth_headers):
@@ -247,4 +247,5 @@ class TestContactsApi:
             )
             assert resp.status_code == 200
             data = resp.json()
-            assert data["data"]["deleted"] is True
+            assert data["success"] is True
+            assert data["deleted_contact_id"] == "google_people/xyz"
