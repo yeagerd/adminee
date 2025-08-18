@@ -666,13 +666,17 @@ class VespaSearchTool:
         """Search user data using Vespa"""
         try:
             # Build search query
+            yql_query = self._build_yql_query(query, source_types)
             search_query = {
-                "yql": self._build_yql_query(query, source_types),
+                "yql": yql_query,
                 "hits": max_results,
                 "ranking": ranking_profile,
                 "timeout": "5.0s",
                 "streaming.groupname": self.user_id,  # Add streaming mode support for user isolation
             }
+
+            # Debug logging
+            logger.info(f"Search query: {search_query}")
 
             # Execute search
             results = await self.search_engine.search(search_query)
@@ -700,16 +704,16 @@ class VespaSearchTool:
         self, query: str, source_types: Optional[List[str]] = None
     ) -> str:
         """Build YQL query for Vespa"""
-        # Base query with user isolation
-        yql = f'select * from briefly_document where user_id contains "{self.user_id}"'
+        # Base query - use streaming group for user isolation instead of user_id filter
+        yql = "select * from briefly_document where true"
 
         # Add source type filtering
         if source_types:
             source_types_str = '", "'.join(source_types)
             yql += f' and source_type in ("{source_types_str}")'
 
-        # Add text search
-        yql += f' and (search_text contains "{query}" or title contains "{query}")'
+        # Add text search across all indexed text fields
+        yql += f' and (search_text contains "{query}" or title contains "{query}" or content contains "{query}")'
 
         return yql
 

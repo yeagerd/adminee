@@ -84,13 +84,20 @@ class VespaSearchDemo:
         self.user_email = config.get("user_email", "trybriefly@outlook.com")
         self.user_id = None  # Will be resolved from email
 
-        # Initialize search tools
-        self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.user_email)
-        self.user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_email)
-        self.semantic_search = SemanticSearchTool(self.vespa_endpoint, self.user_email)
-
         # Initialize search engine for stats
         self.search_engine = SearchEngine(self.vespa_endpoint)
+        
+        # Search tools will be initialized after user_id is resolved
+        self.vespa_search = None
+        self.user_data_search = None
+        self.semantic_search = None
+
+    def _initialize_search_tools(self):
+        """Initialize search tools after user_id is resolved"""
+        if self.user_id:
+            self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.user_id)
+            self.user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_id)
+            self.semantic_search = SemanticSearchTool(self.vespa_endpoint, self.user_id)
 
         # Comprehensive search test scenarios
         self.search_scenarios = [
@@ -141,6 +148,8 @@ class VespaSearchDemo:
         
         if self.user_id:
             print(f"✅ Resolved user ID: {self.user_id} for email: {self.user_email}")
+            # Initialize search tools now that we have the user ID
+            self._initialize_search_tools()
             return True
         else:
             print(f"❌ Failed to resolve email {self.user_email} to user ID")
