@@ -2,14 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { EmailThread } from './EmailThread';
+import type { EmailThreadListData } from './EmailThreadListData';
 import type { Provider } from './Provider';
 /**
  * Response model for email thread lists.
  */
 export type EmailThreadList = {
     success: boolean;
-    data?: (Array<EmailThread> | null);
+    data?: (EmailThreadListData | null);
     error?: (Record<string, any> | null);
     cache_hit?: boolean;
     provider_used?: (Provider | null);

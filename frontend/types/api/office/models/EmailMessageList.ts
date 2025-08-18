@@ -2,14 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { EmailMessage } from './EmailMessage';
+import type { EmailMessageListData } from './EmailMessageListData';
 import type { Provider } from './Provider';
 /**
  * Response model for email message lists.
  */
 export type EmailMessageList = {
     success: boolean;
-    data?: (Array<EmailMessage> | null);
+    data?: (EmailMessageListData | null);
     error?: (Record<string, any> | null);
     cache_hit?: boolean;
     provider_used?: (Provider | null);

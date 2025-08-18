@@ -392,12 +392,12 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Ensure all response models have proper type definitions
 - [x] Test API endpoints with updated schemas
 
-### Task 7.6: Update API Endpoints
-- [ ] Update all FastAPI endpoint response_model annotations
-- [ ] Ensure consistent response structure across services
-- [ ] Update OpenAPI documentation generation
-- [ ] Test all endpoints return properly typed responses
-- [ ] Validate schema generation works correctly
+### Task 7.6: Update API Endpoints ✅
+- [x] Update all FastAPI endpoint response_model annotations
+- [x] Ensure consistent response structure across services
+- [x] Update OpenAPI documentation generation
+- [x] Test all endpoints return properly typed responses
+- [x] Validate schema generation works correctly
 
 ### Task 7.7: Regenerate and Validate Types
 - [ ] Regenerate OpenAPI schemas for all services

@@ -78,11 +78,22 @@ class Conversation(BaseModel):
     preview: Optional[str] = Field(None, description="Preview of the conversation")
 
 
+class EmailThreadListData(BaseModel):
+    """Data structure for email thread list responses."""
+    
+    threads: List[EmailThread]
+    total_count: int
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    has_more: bool = False
+    request_metadata: Dict[str, Any]
+
+
 class EmailThreadList(BaseModel):
     """Response model for email thread lists."""
 
     success: bool
-    data: Optional[List[EmailThread]] = None  # ✅ Contains threads, metadata, etc.
+    data: Optional[EmailThreadListData] = None  # ✅ Contains threads and metadata
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -176,11 +187,22 @@ class EmailDraftResponse(BaseModel):
     request_id: str
 
 
+class EmailMessageListData(BaseModel):
+    """Data structure for email message list responses."""
+    
+    messages: List[EmailMessage]
+    total_count: int
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    has_more: bool = False
+    request_metadata: Dict[str, Any]
+
+
 class EmailMessageList(BaseModel):
     """Response model for email message lists."""
 
     success: bool
-    data: Optional[List[EmailMessage]] = None  # ✅ Contains messages, metadata, etc.
+    data: Optional[EmailMessageListData] = None  # ✅ Contains messages and metadata
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -210,11 +232,20 @@ class EmailFolder(BaseModel):
     )
 
 
+class EmailFolderListData(BaseModel):
+    """Data structure for email folder list responses."""
+    
+    folders: List[EmailFolder]
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    request_metadata: Dict[str, Any]
+
+
 class EmailFolderList(BaseModel):
     """Response model for email folder lists."""
 
     success: bool
-    data: Optional[List[EmailFolder]] = None  # ✅ Contains folders, metadata, etc.
+    data: Optional[EmailFolderListData] = None  # ✅ Contains folders and metadata
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None

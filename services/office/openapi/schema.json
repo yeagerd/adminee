@@ -1,4 +1,4 @@
-2025-08-18 11:01:08 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
+2025-08-18 11:09:42 [warning  ] ServiceAPIKeyAuth is deprecated. Use the new functions directly.
 {
   "openapi": "3.1.0",
   "info": {
@@ -3317,16 +3317,12 @@
           "data": {
             "anyOf": [
               {
-                "items": {
-                  "$ref": "#/components/schemas/EmailFolder"
-                },
-                "type": "array"
+                "$ref": "#/components/schemas/EmailFolderListData"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Data"
+            ]
           },
           "error": {
             "anyOf": [
@@ -3367,6 +3363,51 @@
         ],
         "title": "EmailFolderList",
         "description": "Response model for email folder lists."
+      },
+      "EmailFolderListData": {
+        "properties": {
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/EmailFolder"
+            },
+            "type": "array",
+            "title": "Folders"
+          },
+          "providers_used": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Providers Used"
+          },
+          "provider_errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Errors"
+          },
+          "request_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folders",
+          "providers_used",
+          "request_metadata"
+        ],
+        "title": "EmailFolderListData",
+        "description": "Data structure for email folder list responses."
       },
       "EmailMessage": {
         "properties": {
@@ -3529,16 +3570,12 @@
           "data": {
             "anyOf": [
               {
-                "items": {
-                  "$ref": "#/components/schemas/EmailMessage"
-                },
-                "type": "array"
+                "$ref": "#/components/schemas/EmailMessageListData"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Data"
+            ]
           },
           "error": {
             "anyOf": [
@@ -3579,6 +3616,61 @@
         ],
         "title": "EmailMessageList",
         "description": "Response model for email message lists."
+      },
+      "EmailMessageListData": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/EmailMessage"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "providers_used": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Providers Used"
+          },
+          "provider_errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Errors"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          },
+          "request_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages",
+          "total_count",
+          "providers_used",
+          "request_metadata"
+        ],
+        "title": "EmailMessageListData",
+        "description": "Data structure for email message list responses."
       },
       "EmailSendResult": {
         "properties": {
@@ -3690,16 +3782,12 @@
           "data": {
             "anyOf": [
               {
-                "items": {
-                  "$ref": "#/components/schemas/EmailThread"
-                },
-                "type": "array"
+                "$ref": "#/components/schemas/EmailThreadListData"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Data"
+            ]
           },
           "error": {
             "anyOf": [
@@ -3740,6 +3828,61 @@
         ],
         "title": "EmailThreadList",
         "description": "Response model for email thread lists."
+      },
+      "EmailThreadListData": {
+        "properties": {
+          "threads": {
+            "items": {
+              "$ref": "#/components/schemas/EmailThread"
+            },
+            "type": "array",
+            "title": "Threads"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "providers_used": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Providers Used"
+          },
+          "provider_errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Errors"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          },
+          "request_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "threads",
+          "total_count",
+          "providers_used",
+          "request_metadata"
+        ],
+        "title": "EmailThreadListData",
+        "description": "Data structure for email thread list responses."
       },
       "HTTPValidationError": {
         "properties": {
