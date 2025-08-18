@@ -32,7 +32,7 @@ class PubSubConsumer:
         self.message_count = 0
         self.error_count = 0
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the PubSub consumer"""
         try:
             # Set up PubSub emulator environment

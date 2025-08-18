@@ -74,7 +74,7 @@ class OfficeRouter:
         )
 
         routing_tasks = []
-        results = {}
+        results: Dict[str, Any] = {}
 
         # Create routing tasks for each enabled service
         for service_name, service in self.downstream_services.items():
