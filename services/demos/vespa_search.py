@@ -82,6 +82,7 @@ class VespaSearchDemo:
         self.config = config
         self.vespa_endpoint = config["vespa_endpoint"]
         self.user_email = config.get("user_email", "trybriefly@outlook.com")
+        self.user_id = None  # Will be resolved from email
 
         # Initialize search tools
         self.vespa_search = VespaSearchTool(self.vespa_endpoint, self.user_email)
@@ -98,63 +99,52 @@ class VespaSearchDemo:
                 "queries": ["test query", "simple search", "basic functionality"],
                 "expected": "Basic search responses",
             },
-            {
-                "name": "User Isolation Testing",
-                "queries": [
-                    f"user {self.user_email} data",
-                    "personal documents",
-                    "my emails",
-                ],
-                "expected": "User-scoped results",
-            },
-            {
-                "name": "Source Type Filtering",
-                "queries": [
-                    "emails from last week",
-                    "calendar events tomorrow",
-                    "contact information",
-                    "file documents",
-                ],
-                "expected": "Type-specific filtering",
-            },
-            {
-                "name": "Semantic Search",
-                "queries": [
-                    "meeting planning documents",
-                    "project collaboration",
-                    "team communication",
-                ],
-                "expected": "Concept-based results",
-            },
-            {
-                "name": "Performance Benchmarking",
-                "queries": ["quick search test", "performance query", "speed test"],
-                "expected": "Response time metrics",
-            },
         ]
 
-        # Advanced search test scenarios
-        self.advanced_scenarios = [
-            {
-                "name": "Hybrid Search (BM25 + Vector)",
-                "ranking_profile": "hybrid",
-                "queries": [
-                    "important meeting notes",
-                    "urgent project updates",
-                    "critical documents",
-                ],
-            },
-            {
-                "name": "BM25 Ranking",
-                "ranking_profile": "bm25",
-                "queries": ["exact keyword match", "specific terms", "precise search"],
-            },
-            {
-                "name": "Semantic Ranking",
-                "ranking_profile": "semantic",
-                "queries": ["similar concepts", "related ideas", "contextual meaning"],
-            },
-        ]
+    async def resolve_email_to_user_id(self) -> Optional[str]:
+        """Resolve email address to user ID using the same endpoint the frontend uses"""
+        try:
+            import httpx
+
+            user_service_url = "http://localhost:8001"
+
+            async with httpx.AsyncClient() as client:
+                # Use the same endpoint the frontend uses: /v1/internal/users/exists
+                response = await client.get(
+                    f"{user_service_url}/v1/internal/users/exists",
+                    params={"email": self.user_email},
+                    headers={"X-API-Key": "test-FRONTEND_USER_KEY"},
+                    timeout=10.0,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("exists", False):
+                        user_id = data.get("user_id")
+                        print(f"✅ Found user ID: {user_id} for email: {self.user_email}")
+                        return user_id
+                    else:
+                        print(f"❌ No user found for email: {self.user_email}")
+                        return None
+                else:
+                    print(f"❌ Failed to resolve email: HTTP {response.status_code}")
+                    return None
+
+        except Exception as e:
+            print(f"❌ Error resolving email to user ID: {e}")
+            return None
+
+    async def initialize(self) -> bool:
+        """Initialize the search demo by resolving user ID"""
+        print(f"🔍 Resolving email {self.user_email} to user ID...")
+        self.user_id = await self.resolve_email_to_user_id()
+        
+        if self.user_id:
+            print(f"✅ Resolved user ID: {self.user_id} for email: {self.user_email}")
+            return True
+        else:
+            print(f"❌ Failed to resolve email {self.user_email} to user ID")
+            return False
 
     async def cleanup(self) -> None:
         """Clean up resources and close aiohttp sessions"""
@@ -929,10 +919,10 @@ class VespaSearchDemo:
 
             # Get all documents for the user
             all_docs_query = {
-                "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select * from briefly_document where source_type contains \"email\"",
                 "hits": 400,  # Respect Vespa's configured limit
                 "timeout": "10s",
-                "streaming.groupname": self.user_email,
+                "streaming.groupname": self.user_id,  # Use resolved user ID for streaming group
             }
 
             print("🔍 Retrieving all documents from Vespa...")
@@ -1157,10 +1147,10 @@ class VespaSearchDemo:
 
             # Query to get total document count for this user
             user_query = {
-                "yql": f'select * from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select * from briefly_document where source_type contains \"email\"",
                 "hits": 0,  # We only want the count, not the actual documents
                 "timeout": "5s",
-                "streaming.groupname": self.user_email,  # Add streaming mode support for user isolation
+                "streaming.groupname": self.user_id,  # Use resolved user ID for streaming group
             }
 
             start_time = time.time()
@@ -1173,11 +1163,11 @@ class VespaSearchDemo:
 
             # Get breakdown by source type
             source_type_query = {
-                "yql": f'select source_type from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select source_type from briefly_document where source_type contains \"email\"",
                 "hits": 0,
                 "timeout": "5s",
                 "grouping": "source_type",
-                "streaming.groupname": self.user_email,  # Add streaming mode support for user isolation
+                "streaming.groupname": self.user_id,  # Use resolved user ID for streaming group
             }
 
             source_results = await self.search_engine.search(source_type_query)
@@ -1192,11 +1182,11 @@ class VespaSearchDemo:
 
             # Get breakdown by provider
             provider_query = {
-                "yql": f'select provider from briefly_document where user_id contains "{self.user_email}"',
+                "yql": "select provider from briefly_document where source_type contains \"email\"",
                 "hits": 0,
                 "timeout": "5s",
                 "grouping": "provider",
-                "streaming.groupname": self.user_email,  # Add streaming mode support for user isolation
+                "streaming.groupname": self.user_id,  # Use resolved user ID for streaming group
             }
 
             provider_results = await self.search_engine.search(provider_query)
@@ -1521,6 +1511,11 @@ REQUIREMENTS:
 
     try:
         async with VespaSearchDemo(config) as demo:
+            # Initialize the demo by resolving email to user ID
+            if not await demo.initialize():
+                print(f"❌ Failed to initialize search demo for email: {args.email}")
+                return None
+            
             # Show stats for the current user when starting (unless --stats-only)
             if not args.stats_only:
                 print(f"\nCollecting statistics for user: {args.email}")
