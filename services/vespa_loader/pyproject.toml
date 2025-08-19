@@ -1,0 +1,43 @@
+[project]
+name = "briefly-vespa-loader"
+version = "0.1.0"
+description = "Briefly Vespa Loader Service - Consumes email data and indexes into Vespa"
+requires-python = ">=3.12"
+dependencies = [
+    # Web Framework
+    "fastapi>=0.116.1,<1.0.0",
+    "uvicorn[standard]>=0.22.0,<1.0.0",
+    "pydantic==2.11.7",
+    "structlog>=25.4.0,<26.0.0",
+    # HTTP Client
+    "aiohttp>=3.9.1,<4.0.0",
+    # Pub/Sub
+    "google-cloud-pubsub>=2.31.1,<3.0.0",
+    # Embeddings
+    "numpy>=1.24.3,<2.0.0",
+    "sentence-transformers>=2.2.2,<2.3.0",
+    # OpenTelemetry (compatible versions)
+    "opentelemetry-api>=1.9.0,<2.0.0",
+    "opentelemetry-sdk>=1.9.0,<2.0.0",
+    "opentelemetry-instrumentation>=0.40.0,<1.0.0",
+    "opentelemetry-instrumentation-fastapi>=0.40.0,<1.0.0",
+    "opentelemetry-distro>=0.40.0,<1.0.0",
+    "opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0",
+    # GCP
+    "google-cloud-secret-manager",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "respx"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
