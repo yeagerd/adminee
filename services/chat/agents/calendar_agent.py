@@ -128,7 +128,7 @@ class CalendarAgent(FunctionAgent):
         tools = []
 
         # Create a wrapper function that provides the user_id and default timezone
-        def get_calendar_events_with_user_id(
+        async def get_calendar_events_with_user_id(
             start_date: str | None = None,
             end_date: str | None = None,
             time_zone: str | None = None,
@@ -142,8 +142,13 @@ class CalendarAgent(FunctionAgent):
             if not time_zone:
                 time_zone = user_timezone  # Use user's preferred timezone
 
+            # Convert providers string to list if provided
+            providers_list = None
+            if providers:
+                providers_list = [p.strip() for p in providers.split(",")]
+
             logger.info(
-                f"CalendarAgent: Calling get_calendar_events - user_id: {user_id}, start_date: {start_date}, end_date: {end_date}, time_zone: {time_zone}, providers: {providers}"
+                f"CalendarAgent: Calling get_calendar_events - user_id: {user_id}, start_date: {start_date}, end_date: {end_date}, time_zone: {time_zone}, providers: {providers_list}"
             )
 
             result = get_calendar_events(
@@ -151,7 +156,7 @@ class CalendarAgent(FunctionAgent):
                 start_date=start_date,
                 end_date=end_date,
                 time_zone=time_zone,
-                providers=providers,
+                providers=providers_list,
             )
 
             logger.info(
