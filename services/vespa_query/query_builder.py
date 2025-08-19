@@ -124,6 +124,7 @@ class QueryBuilder:
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
                 "streaming.groupname": user_id,  # Add streaming mode support for user isolation
+                "query": query,  # Add query parameter for userInput(@query) in YQL
             }
 
             logger.info(f"Built autocomplete query for user {user_id}")
