@@ -28,55 +28,63 @@ except ImportError:
             pass
 
 
+# Type definitions for testing
+from typing import TYPE_CHECKING
+
+
+# Mock classes for testing when imports are not available
+class MockBackfillRequest:
+    def __init__(self, **kwargs):
+        pass
+
+
+class MockEmailCrawler:
+    def __init__(self, **kwargs):
+        pass
+
+
+class MockPubSubPublisher:
+    def __init__(self, project_id: str, host: str):
+        self.project_id = project_id
+        self.host = host
+
+    async def publish_email(self, data):
+        return f"mock_message_id_{hash(str(data))}"
+
+    async def publish_calendar_event(self, data):
+        return f"mock_message_id_{hash(str(data))}"
+
+    async def publish_contact(self, data):
+        return f"mock_message_id_{hash(str(data))}"
+
+
+class MockVespaClient:
+    def __init__(self, endpoint: str):
+        self.endpoint = endpoint
+
+    async def delete_document(self, doc_id: str):
+        return True
+
+
+# Try to import real classes, fall back to mocks
 try:
     from services.office.api.backfill import BackfillRequest
 except ImportError:
-    # Mock BackfillRequest for testing
-    class BackfillRequest:
-        def __init__(self, **kwargs):
-            pass
-
+    BackfillRequest = MockBackfillRequest
 
 try:
     from services.office.core.email_crawler import EmailCrawler
 except ImportError:
-    # Mock EmailCrawler for testing
-    class EmailCrawler:
-        def __init__(self, **kwargs):
-            pass
-
+    EmailCrawler = MockEmailCrawler
 
 try:
     from services.office.core.pubsub_publisher import PubSubPublisher
 except ImportError:
-    # Mock PubSubPublisher for testing
-    class PubSubPublisher:
-        def __init__(self, project_id: str, host: str):
-            self.project_id = project_id
-            self.host = host
-
-        async def publish_email(self, data):
-            return f"mock_message_id_{hash(str(data))}"
-
-        async def publish_calendar_event(self, data):
-            return f"mock_message_id_{hash(str(data))}"
-
-        async def publish_contact(self, data):
-            return f"mock_message_id_{hash(str(data))}"
-
+    PubSubPublisher = MockPubSubPublisher
 
 try:
     from services.vespa_loader.vespa_client import VespaClient
 except ImportError:
-    # Mock VespaClient for testing
-    class MockVespaClient:
-        def __init__(self, endpoint: str):
-            self.endpoint = endpoint
-
-        async def delete_document(self, doc_id: str):
-            return True
-
-    # Use the mock if import fails
     VespaClient = MockVespaClient
 
 
