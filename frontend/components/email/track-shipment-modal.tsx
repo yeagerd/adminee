@@ -469,7 +469,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 const packageData: PackageCreate = {
                     tracking_number: formData.tracking_number,
                     carrier: formData.carrier,
-                    status: formData.status || null,
+                    status: formData.status || PackageStatus.PENDING,
                     estimated_delivery: formData.expected_delivery || null,
                     recipient_name: formData.recipient_name || null,
                     shipper_name: formData.shipper_name || null,
@@ -477,7 +477,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     order_number: formData.order_number || null,
                     tracking_link: formData.tracking_link || null,
                 };
-                await onTrackShipment(packageData);
+                await onTrackShipment(packageData as PackageFormData);
             }
 
             // Submit data collection if user has consented
@@ -783,7 +783,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.order_number}
-                                            originalValue={originalPackageData?.order_number}
+                                            originalValue={originalPackageData?.order_number || undefined}
                                         />
                                     )}
 
@@ -803,7 +803,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.package_description}
-                                            originalValue={originalPackageData?.package_description}
+                                            originalValue={originalPackageData?.package_description || undefined}
                                         />
                                     )}
 
@@ -822,7 +822,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.recipient_name}
-                                            originalValue={originalPackageData?.recipient_name}
+                                            originalValue={originalPackageData?.recipient_name || undefined}
                                         />
                                     )}
 
