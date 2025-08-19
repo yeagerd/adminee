@@ -26,20 +26,17 @@ class EmbeddingGenerator:
     def _initialize_model(self) -> None:
         """Initialize the embedding model"""
         try:
-            # For now, we'll use a simple placeholder implementation
-            # In production, this would load the actual model
             logger.info(f"Initializing embedding model: {self.model_name}")
-
-            # Placeholder: in real implementation, this would load the model
-            # from sentence_transformers import SentenceTransformer
-            # self.model = SentenceTransformer(self.model_name)
-
+            
+            # Import and load the actual model
+            from sentence_transformers import SentenceTransformer
+            self.model = SentenceTransformer(self.model_name)
+            
             logger.info("Embedding model initialized successfully")
 
         except Exception as e:
             logger.error(f"Failed to initialize embedding model: {e}")
-            # Fall back to placeholder implementation
-            logger.warning("Using placeholder embedding implementation")
+            raise RuntimeError(f"Failed to initialize embedding model: {e}")
 
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for the given text"""
@@ -49,15 +46,11 @@ class EmbeddingGenerator:
 
         try:
             if self.model:
-                # Real model implementation
-                # embedding = self.model.encode(text)
-                # return embedding.tolist()
-                pass
-
-            # Placeholder implementation: generate deterministic "fake" embeddings
-            # In production, this would use the actual model
-            embedding: List[float] = self._generate_placeholder_embedding(text)
-            return embedding
+                # Use the actual model to generate embeddings
+                embedding = self.model.encode(text)
+                return embedding.tolist()
+            else:
+                raise RuntimeError("Model not initialized")
 
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
@@ -71,49 +64,16 @@ class EmbeddingGenerator:
 
         try:
             if self.model:
-                # Real model implementation
-                # embeddings = self.model.encode(texts)
-                # return embeddings.tolist()
-                pass
-
-            # Placeholder implementation
-            embeddings = []
-            for text in texts:
-                embedding = await self.generate_embedding(text)
-                embeddings.append(embedding)
-
-            return embeddings
+                # Use the actual model for batch processing
+                embeddings = self.model.encode(texts)
+                return embeddings.tolist()
+            else:
+                raise RuntimeError("Model not initialized")
 
         except Exception as e:
             logger.error(f"Error generating batch embeddings: {e}")
             # Return zero vectors on error
             return [[0.0] * 384] * len(texts)
-
-    def _generate_placeholder_embedding(self, text: str) -> List[float]:
-        """Generate a placeholder embedding for testing purposes"""
-        # This is a deterministic hash-based approach for testing
-        # In production, this would be replaced with actual model inference
-
-        import hashlib
-
-        # Create a hash of the text
-        text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
-
-        # Convert hash to a list of floats
-        embedding: List[float] = []
-        for i in range(0, len(text_hash), 2):
-            if len(embedding) >= 384:
-                break
-            hex_pair = text_hash[i : i + 2]
-            # Convert hex to float between -1 and 1
-            value = (int(hex_pair, 16) / 255.0) * 2 - 1
-            embedding.append(value)
-
-        # Pad to exactly 384 dimensions
-        while len(embedding) < 384:
-            embedding.append(0.0)
-
-        return embedding[:384]
 
     def get_embedding_dimension(self) -> int:
         """Get the dimension of the embeddings"""
@@ -129,7 +89,7 @@ class EmbeddingGenerator:
             "model_name": self.model_name,
             "is_loaded": self.is_model_loaded(),
             "dimension": self.get_embedding_dimension(),
-            "type": "placeholder" if self.model is None else "real",
+            "type": "real" if self.model is not None else "none",
         }
 
     async def similarity(
