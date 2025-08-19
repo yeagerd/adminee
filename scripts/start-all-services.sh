@@ -135,7 +135,6 @@ check_port 8002 "Chat Service" || exit 1
 check_port 8003 "Office Service" || exit 1
 check_port 8004 "Shipments Service" || exit 1
 check_port 8005 "Meetings Service" || exit 1
-check_port 8006 "Office Router Service" || exit 1
 check_port 9001 "Vespa Loader Service" || exit 1
 check_port 9002 "Vespa Query Service" || exit 1
 
@@ -248,11 +247,9 @@ start_python_service "office-service" "services.office.app.main:app" 8003
 
 # Start Shipments Service
 start_python_service "shipments-service" "services.shipments.main:app" 8004
+
 # Start Meetings Service
 start_python_service "meetings-service" "services.meetings.main:app" 8005
-
-# Start Office Router Service
-# start_python_service "office-router-service" "services.office_router.main:app" 8006
 
 # Start Vespa Loader Service
 start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
@@ -284,7 +281,6 @@ wait_for_service "Office Service" "http://localhost:8003/health" &
 wait_for_service "Gateway" "http://localhost:3001/health" &
 wait_for_service "Shipments Service" "http://localhost:8004/health" &
 wait_for_service "Meetings Service" "http://localhost:8005/health" &
-# wait_for_service "Office Router Service" "http://localhost:8006/health" &
 wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
 wait_for_service "Vespa Query Service" "http://localhost:9002/health" &
 
@@ -310,7 +306,6 @@ echo -e "   Chat Service: ${GREEN}http://localhost:8002${NC}"
 echo -e "   Office Service: ${GREEN}http://localhost:8003${NC}"
 echo -e "   Shipments Service: ${GREEN}http://localhost:8004${NC}"
 echo -e "   Meetings Service: ${GREEN}http://localhost:8005${NC}"
-echo -e "   Office Router Service: ${GREEN}http://localhost:8006${NC}"
 echo -e "   Vespa Loader Service: ${GREEN}http://localhost:9001${NC}"
 echo -e "   Vespa Query Service: ${GREEN}http://localhost:9002${NC}"
 echo ""
