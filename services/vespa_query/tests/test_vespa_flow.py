@@ -69,12 +69,15 @@ try:
     from services.vespa_loader.vespa_client import VespaClient
 except ImportError:
     # Mock VespaClient for testing
-    class VespaClient:
+    class MockVespaClient:
         def __init__(self, endpoint: str):
             self.endpoint = endpoint
 
         async def delete_document(self, doc_id: str):
             return True
+
+    # Use the mock if import fails
+    VespaClient = MockVespaClient
 
 
 from services.vespa_query.search_engine import SearchEngine
