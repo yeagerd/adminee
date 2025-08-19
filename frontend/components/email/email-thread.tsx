@@ -97,8 +97,8 @@ const EmailThread: React.FC<EmailThreadProps> = ({
             if (from) toSet.add(from);
         } else if (mode === 'reply_all') {
             if (from) toSet.add(from);
-            source.to_addresses.forEach(a => { if (a.email && a.email !== userEmail) toSet.add(a.email); });
-            source.cc_addresses.forEach(a => { if (a.email && a.email !== userEmail) ccSet.add(a.email); });
+            source.to_addresses?.forEach(a => { if (a.email && a.email !== userEmail) toSet.add(a.email); });
+            source.cc_addresses?.forEach(a => { if (a.email && a.email !== userEmail) ccSet.add(a.email); });
         }
         // For forward, no default recipients
 
@@ -260,8 +260,8 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                                     parts.push(addr.email);
                                                 }
                                             };
-                                            latest.to_addresses.forEach(a => addAddr(a));
-                                            latest.cc_addresses.forEach(a => addAddr(a));
+                                            latest.to_addresses?.forEach(a => addAddr({ email: a.email || undefined, name: a.name || undefined }));
+                                            latest.cc_addresses?.forEach(a => addAddr({ email: a.email || undefined, name: a.name || undefined }));
                                             const params = new URLSearchParams();
                                             params.set('tool', 'meetings');
                                             params.set('view', 'new');
@@ -297,7 +297,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
 
                 {threadDrafts.map((d) => {
                     const src = thread.messages.find(m => m.provider_message_id === d.metadata.replyToMessageId) || thread.messages[thread.messages.length - 1];
-                    const quotedHeader = `From: ${src.from_address?.name || src.from_address?.email || ''}\nSent: ${new Date(src.date).toLocaleString()}\nTo: ${src.to_addresses.map(a => a.name || a.email).join(', ')}\nSubject: ${src.subject || ''}`;
+                    const quotedHeader = `From: ${src.from_address?.name || src.from_address?.email || ''}\nSent: ${new Date(src.date).toLocaleString()}\nTo: ${src.to_addresses?.map(a => a.name || a.email).join(', ') || 'No recipients'}\nSubject: ${src.subject || ''}`;
                     const quotedBody = src.body_html || src.body_text || '';
                     const quotedIsHtml = !!src.body_html;
                     return (

@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from "@/types";
-import { PackageStatus, PackageCreate, PackageOut, DataCollectionRequest, TrackingEventCreate } from '@/types/api/shipments';
+import { PackageStatus, PackageCreate, PackageOut, PackageUpdate, DataCollectionRequest, TrackingEventCreate } from '@/types/api/shipments';
 import { PACKAGE_STATUS_OPTIONS } from '@/lib/package-status-constants';
 import DOMPurify from 'dompurify';
 import { CheckCircle, Info, Loader2, Package, PackageCheck, Search, Truck } from 'lucide-react';
@@ -451,7 +451,18 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                 // Update package if there are any changes
                 if (Object.keys(packageUpdates).length > 0) {
-                    await shipmentsApi.updatePackage(existingPackage.id, packageUpdates);
+                    const updateData: PackageUpdate = {
+                        status: packageUpdates.status || null,
+                        estimated_delivery: packageUpdates.estimated_delivery || null,
+                        actual_delivery: packageUpdates.actual_delivery || null,
+                        recipient_name: packageUpdates.recipient_name || null,
+                        shipper_name: packageUpdates.shipper_name || null,
+                        package_description: packageUpdates.package_description || null,
+                        order_number: packageUpdates.order_number || null,
+                        tracking_link: packageUpdates.tracking_link || null,
+                        archived_at: null // PackageUpdate requires this field
+                    };
+                    await shipmentsApi.updatePackage(existingPackage.id, updateData);
                 }
             } else {
                 // Create new package
