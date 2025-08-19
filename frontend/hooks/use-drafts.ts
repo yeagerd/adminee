@@ -63,11 +63,11 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
                 status: draft.status as DraftStatus,
                 content: draft.content,
                 metadata: (typeof draft.metadata === 'object' && draft.metadata !== null) ? draft.metadata : {},
-                isAIGenerated: draft.is_ai_generated ?? false,
+                isAIGenerated: false, // UserDraftResponse doesn't have this field
                 createdAt: draft.created_at,
                 updatedAt: draft.updated_at,
                 userId: draft.user_id,
-                threadId: draft.thread_id,
+                threadId: draft.thread_id || undefined,
             }));
 
             setDrafts(mappedDrafts);
@@ -94,11 +94,11 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
                 status: data.status as DraftStatus,
                 content: data.content,
                 metadata: (typeof data.metadata === 'object' && data.metadata !== null) ? data.metadata : {},
-                isAIGenerated: data.is_ai_generated ?? false,
+                isAIGenerated: false, // UserDraftResponse doesn't have this field
                 createdAt: data.created_at,
                 updatedAt: data.updated_at,
                 userId: data.user_id,
-                threadId: data.thread_id,
+                threadId: data.thread_id || undefined,
             };
 
             setDrafts(prev => [newDraft, ...prev]);
@@ -113,7 +113,6 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
             const data = await chatApi.updateDraft(id, {
                 content: updates.content,
                 metadata: updates.metadata as Record<string, unknown> | undefined, // Fix type error
-                status: updates.status,
             });
 
             const updatedDraft: Draft = {
@@ -122,11 +121,11 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
                 status: data.status as DraftStatus,
                 content: data.content,
                 metadata: (typeof data.metadata === 'object' && data.metadata !== null) ? data.metadata : {},
-                isAIGenerated: data.is_ai_generated ?? false,
+                isAIGenerated: false, // UserDraftResponse doesn't have this field
                 createdAt: data.created_at,
                 updatedAt: data.updated_at,
                 userId: data.user_id,
-                threadId: data.thread_id,
+                threadId: data.thread_id || undefined,
             };
 
             setDrafts(prev => prev.map(draft => draft.id === id ? updatedDraft : draft));

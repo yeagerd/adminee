@@ -67,7 +67,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const isExpiredButRefreshableIntegration = useCallback((i: IntegrationResponse): boolean => {
         return (
             (i.status === INTEGRATION_STATUS.EXPIRED ||
-                (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at))
+                (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at || undefined))
             ) &&
             (i.provider === 'google' || i.provider === 'microsoft') &&
             i.has_refresh_token
@@ -80,7 +80,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             .filter(i =>
                 i.status === INTEGRATION_STATUS.ACTIVE &&
                 (i.provider === 'google' || i.provider === 'microsoft') &&
-                !isTokenExpired(i.token_expires_at)
+                !isTokenExpired(i.token_expires_at || undefined)
             )
             .map(i => i.provider);
     }, [integrations, isTokenExpired]);

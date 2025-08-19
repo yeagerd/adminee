@@ -38,7 +38,7 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             lastQueryRef.current = { providers, q: opts?.q, company: opts?.company, limit: opts?.limit };
             const resp = await officeApi.getContacts(providers, opts?.limit ?? 200, opts?.q, opts?.company, opts?.noCache);
             if (resp.success && resp.data) {
-                setContacts((resp.data.contacts || []) as Contact[]);
+                setContacts(resp.data || []);
             } else {
                 setError('Failed to fetch contacts');
             }

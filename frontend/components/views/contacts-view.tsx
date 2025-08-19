@@ -134,9 +134,9 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                   )}
                   <div className="min-w-0">
                     <div className="font-medium truncate">{c.full_name || c.primary_email?.email}</div>
-                    <div className="text-sm text-gray-500 truncate">{c.primary_email?.email || (c.emails[0]?.email)}</div>
-                    {(c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails[0]?.email)) && (
-                      <div className="text-xs text-gray-500 truncate">{c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails[0]?.email)}</div>
+                    <div className="text-sm text-gray-500 truncate">{c.primary_email?.email || (c.emails?.[0]?.email)}</div>
+                    {(c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails?.[0]?.email)) && (
+                      <div className="text-xs text-gray-500 truncate">{c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails?.[0]?.email)}</div>
                     )}
                   </div>
                 </div>

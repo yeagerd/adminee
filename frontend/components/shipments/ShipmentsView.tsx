@@ -78,7 +78,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
                 tracking_link: pkg.tracking_link || undefined,
                 updated_at: pkg.updated_at,
                 events_count: pkg.events_count,
-                labels: pkg.labels || [],
+                labels: pkg.labels?.map(label => label.name) || [],
             }));
 
             setShipments(transformedShipments);
@@ -159,7 +159,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
             tracking_link: shipment.tracking_link || null,
             updated_at: shipment.updated_at,
             events_count: shipment.events_count || 0,
-            labels: shipment.labels || [],
+            labels: shipment.labels?.map(label => ({ id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() })) || [],
         };
 
         setSelectedShipment(packageResponse);
@@ -203,7 +203,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
                             tracking_link: updatedShipment.tracking_link || undefined,
                             updated_at: updatedShipment.updated_at,
                             events_count: updatedShipment.events_count,
-                            labels: updatedShipment.labels?.map(label => typeof label === 'string' ? { id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() } : label) || [],
+                            labels: updatedShipment.labels?.map(label => label.name) || [],
                         }
                     : shipment
             )
