@@ -102,7 +102,20 @@ class MockSearchEngine:
         self.endpoint = endpoint
 
     async def search(self, query):
-        return {"results": [], "total": 0}
+        # Return a structure that matches the real Vespa response
+        # This prevents AttributeError in _wait_for_vespa_indexing and other methods
+        return {
+            "root": {
+                "fields": {
+                    "totalCount": 0
+                },
+                "children": []
+            },
+            "performance": {
+                "query_time_ms": 0.1,
+                "timestamp": "2024-01-01T00:00:00"
+            }
+        }
 
     async def autocomplete(self, query):
         return {"suggestions": [], "total": 0}
@@ -118,6 +131,30 @@ class MockSearchEngine:
 
     async def find_similar(self, query):
         return {"similar": [], "total": 0}
+
+    async def batch_search(self, queries):
+        # Mock batch search implementation that matches the real SearchEngine
+        if not queries:
+            return []
+        
+        results = []
+        for i, query in enumerate(queries):
+            try:
+                # Simulate successful search for each query
+                search_result = await self.search(query)
+                results.append({
+                    "index": i,
+                    "status": "success",
+                    "result": search_result
+                })
+            except Exception as e:
+                results.append({
+                    "index": i,
+                    "status": "error",
+                    "error": str(e)
+                })
+        
+        return results
 
     async def start(self):
         pass
