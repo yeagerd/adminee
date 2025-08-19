@@ -170,3 +170,4 @@ bak/
 
 # Generated OpenAPI schemas only
 services/*/openapi/schema.json
+openapi-schemas/*.json
