@@ -3,7 +3,7 @@
 Embedding generator for semantic search capabilities
 """
 
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import numpy as np
 
@@ -19,8 +19,8 @@ class EmbeddingGenerator:
         self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     ) -> None:
         self.model_name = model_name
-        self.model = None
-        self.tokenizer = None
+        self.model: Optional[Any] = None
+        self.tokenizer: Optional[Any] = None
         self._initialize_model()
 
     def _initialize_model(self) -> None:
