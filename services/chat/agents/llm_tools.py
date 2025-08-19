@@ -1583,6 +1583,10 @@ class ToolRegistry:
     def __init__(self) -> None:
         pass
 
+    def list_tools(self) -> List[str]:
+        """Return a list of available tool names."""
+        return ["get_calendar_events", "get_emails", "get_notes", "get_documents"]
+
     def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
         """Execute a tool by name with the given arguments."""
         try:
