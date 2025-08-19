@@ -6,23 +6,23 @@
 set -e
 
 # Parse command line arguments
-SKIP_FRONTEND=false
+SKIP_FRONTEND=true
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --no-frontend)
-            SKIP_FRONTEND=true
+        --frontend)
+            SKIP_FRONTEND=false
             shift
             ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --no-frontend    Skip starting the frontend (useful for development)"
+            echo "  --frontend       Start the frontend along with backend services"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0               Start all services including frontend"
-            echo "  $0 --no-frontend Start backend services only, run frontend separately"
+            echo "  $0               Start backend services only, run frontend separately"
+            echo "  $0 --frontend    Start all services including frontend"
             exit 0
             ;;
         *)
@@ -39,6 +39,8 @@ cd "$(dirname "$0")/.."
 echo "🚀 Starting all Briefly services..."
 if [ "$SKIP_FRONTEND" = true ]; then
     echo "📱 Frontend will be skipped (backend services only)"
+else
+    echo "📱 Frontend will be started along with backend services"
 fi
 echo "📁 Working directory: $(pwd)"
 echo ""
@@ -133,6 +135,9 @@ check_port 8002 "Chat Service" || exit 1
 check_port 8003 "Office Service" || exit 1
 check_port 8004 "Shipments Service" || exit 1
 check_port 8005 "Meetings Service" || exit 1
+check_port 8006 "Office Router Service" || exit 1
+check_port 9001 "Vespa Loader Service" || exit 1
+check_port 9002 "Vespa Query Service" || exit 1
 
 if [ "$SKIP_FRONTEND" = false ]; then
     check_port 3000 "Frontend" || exit 1
@@ -213,7 +218,7 @@ cleanup() {
     done
     
     # Kill any remaining processes on our ports (only for services we started)
-    local ports_to_kill="3001 8001 8002 8003 8004 8005"
+    local ports_to_kill="3001 8001 8002 8003 8004 8005 9001 9002"
     if [ "$SKIP_FRONTEND" = false ]; then
         ports_to_kill="$ports_to_kill 3000"
     fi
@@ -246,6 +251,15 @@ start_python_service "shipments-service" "services.shipments.main:app" 8004
 # Start Meetings Service
 start_python_service "meetings-service" "services.meetings.main:app" 8005
 
+# Start Office Router Service
+start_python_service "office-router-service" "services.office_router.main:app" 8006
+
+# Start Vespa Loader Service
+start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
+
+# Start Vespa Query Service
+start_python_service "vespa-query-service" "services.vespa_query.main:app" 9002
+
 # Start Gateway
 echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
 ./scripts/gateway-start.sh &
@@ -270,6 +284,9 @@ wait_for_service "Office Service" "http://localhost:8003/health" &
 wait_for_service "Gateway" "http://localhost:3001/health" &
 wait_for_service "Shipments Service" "http://localhost:8004/health" &
 wait_for_service "Meetings Service" "http://localhost:8005/health" &
+wait_for_service "Office Router Service" "http://localhost:8006/health" &
+wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
+wait_for_service "Vespa Query Service" "http://localhost:9002/health" &
 
 if [ "$SKIP_FRONTEND" = false ]; then
     wait_for_service "Frontend" "http://localhost:3000" &
@@ -285,7 +302,7 @@ echo -e "${BLUE}📋 Service Status:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
     echo -e "   Frontend:     ${GREEN}http://localhost:3000${NC}"
 else
-    echo -e "   Frontend:     ${YELLOW}Not started (use --no-frontend flag)${NC}"
+    echo -e "   Frontend:     ${YELLOW}Not started (use --frontend flag)${NC}"
 fi
 echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
 echo -e "   User Service: ${GREEN}http://localhost:8001${NC}"
@@ -293,6 +310,9 @@ echo -e "   Chat Service: ${GREEN}http://localhost:8002${NC}"
 echo -e "   Office Service: ${GREEN}http://localhost:8003${NC}"
 echo -e "   Shipments Service: ${GREEN}http://localhost:8004${NC}"
 echo -e "   Meetings Service: ${GREEN}http://localhost:8005${NC}"
+echo -e "   Office Router Service: ${GREEN}http://localhost:8006${NC}"
+echo -e "   Vespa Loader Service: ${GREEN}http://localhost:9001${NC}"
+echo -e "   Vespa Query Service: ${GREEN}http://localhost:9002${NC}"
 echo ""
 echo -e "${BLUE}🔗 Quick Links:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
