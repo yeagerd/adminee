@@ -128,7 +128,7 @@ class CalendarAgent(FunctionAgent):
         tools = []
 
         # Create a wrapper function that provides the user_id and default timezone
-        async def get_calendar_events_with_user_id(
+        def get_calendar_events_with_user_id(
             start_date: str | None = None,
             end_date: str | None = None,
             time_zone: str | None = None,
