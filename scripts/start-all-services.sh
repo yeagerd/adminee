@@ -248,6 +248,7 @@ start_python_service "office-service" "services.office.app.main:app" 8003
 
 # Start Shipments Service
 start_python_service "shipments-service" "services.shipments.main:app" 8004
+
 # Start Meetings Service
 start_python_service "meetings-service" "services.meetings.main:app" 8005
 

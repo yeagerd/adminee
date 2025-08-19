@@ -12,7 +12,6 @@ from typing import Dict, List, Optional, Union
 from services.common.logging_config import get_logger
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
-from services.office.core.demo_token_manager import DemoTokenManager
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenManager
 from services.office.models import Provider
@@ -49,14 +48,10 @@ class APIClientFactory:
             async with self._token_manager_lock:
                 # Double-check pattern to ensure thread safety
                 if self._shared_token_manager is None:
-                    if get_settings().DEMO_MODE:
-                        logger.info("Demo mode enabled - using DemoTokenManager")
-                        self._shared_token_manager = DemoTokenManager()
-                    else:
-                        logger.info(
-                            "Creating shared TokenManager instance for APIClientFactory"
-                        )
-                        self._shared_token_manager = TokenManager()
+                    logger.info(
+                        "Creating shared TokenManager instance for APIClientFactory"
+                    )
+                    self._shared_token_manager = TokenManager()
 
         return self._shared_token_manager
 

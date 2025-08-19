@@ -1,10 +1,19 @@
 """
-Unit tests for the availability service in the Meetings Service.
+Test suite for the availability service.
 
-Tests the availability calculation logic including:
-- Office service integration
-- Slot filtering and processing
-- Business hours and buffer handling
+Note: This test suite has been made robust against datetime edge cases that can cause
+failures in CI environments. The tests now use a helper method `_get_future_monday()`
+to ensure that test slots are always created for future dates, preventing failures
+when tests run late at night on the same day that the test is trying to create slots for.
+
+This addresses the issue where tests would fail when:
+1. Running on Monday late at night (e.g., 11:30 PM)
+2. Creating slots for 9:00 AM and 6:00 PM on the same Monday
+3. The 6:00 PM slot would have already passed, causing the business hours filter to fail
+4. The test would expect 1 slot but get 0 slots
+
+The fix ensures all test slots are created for future dates, making the tests deterministic
+regardless of when they are run.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -22,6 +31,29 @@ from services.meetings.tests.test_base import BaseMeetingsTest
 
 class TestAvailabilityService(BaseMeetingsTest):
     """Test suite for the availability service."""
+
+    def _get_future_monday(self, days_offset: int = 0) -> datetime:
+        """
+        Get a future Monday date to ensure test slots are always in the future.
+
+        This prevents test failures when running tests late at night on Monday,
+        where slots created for the current Monday would have already passed.
+
+        Args:
+            days_offset: Additional days to add beyond the next Monday (default: 0)
+
+        Returns:
+            A datetime representing a future Monday at midnight UTC
+        """
+        now = datetime.now(timezone.utc)
+        # Find the next Monday
+        days_until_monday = (0 - now.weekday()) % 7
+        if days_until_monday == 0:  # If today is Monday, use next Monday
+            days_until_monday = 7
+
+        # Add the offset to ensure it's far enough in the future
+        monday_date = now + timedelta(days=days_until_monday + days_offset)
+        return monday_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
     def setup_method(self, method):
         """Set up test environment."""
@@ -267,11 +299,8 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_business_hours(self):
         """Test applying business hours filtering."""
-        # Create slots for Monday (day 0 in isocalendar)
-        monday_date = datetime.now(timezone.utc)
-        # Adjust to Monday
-        while monday_date.weekday() != 0:  # Monday is 0
-            monday_date += timedelta(days=1)
+        # Create slots for a future Monday to ensure they're in the future
+        monday_date = self._get_future_monday()
 
         slots = [
             {
@@ -399,9 +428,10 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_apply_booking_settings_weekly_limits(self):
         """Test weekly booking limits."""
-        # Create multiple slots for today (same day) starting from current hour + 1
+        # Create multiple slots for a future day to ensure they're in the future
         now = datetime.now(timezone.utc)
-        base_date = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        future_date = now + timedelta(days=7)  # Use a future date
+        base_date = future_date.replace(hour=9, minute=0, second=0, microsecond=0)
 
         slots = []
         for i in range(60):  # More than the weekly limit
@@ -429,10 +459,8 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_is_within_business_hours_enabled_day(self):
         """Test business hours check for enabled day."""
-        # Monday 10:00 AM - ensure we're testing on a Monday
-        monday = datetime.now(timezone.utc)
-        while monday.weekday() != 0:  # Monday is 0
-            monday += timedelta(days=1)
+        # Monday 10:00 AM - ensure we're testing on a future Monday
+        monday = self._get_future_monday()
 
         start_time = monday.replace(hour=10, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(minutes=30)
@@ -444,10 +472,10 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_is_within_business_hours_disabled_day(self):
         """Test business hours check for disabled day."""
-        # Monday 10:00 AM
-        start_time = datetime.now(timezone.utc).replace(
-            hour=10, minute=0, second=0, microsecond=0
-        )
+        # Monday 10:00 AM - use a future Monday
+        monday = self._get_future_monday()
+
+        start_time = monday.replace(hour=10, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(minutes=30)
 
         business_hours = {
@@ -459,10 +487,10 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_is_within_business_hours_outside_hours(self):
         """Test business hours check for time outside business hours."""
-        # Monday 18:00 (6 PM) - outside 9 AM - 5 PM
-        start_time = datetime.now(timezone.utc).replace(
-            hour=18, minute=0, second=0, microsecond=0
-        )
+        # Monday 18:00 (6 PM) - outside 9 AM - 5 PM - use a future Monday
+        monday = self._get_future_monday()
+
+        start_time = monday.replace(hour=18, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(minutes=30)
 
         business_hours = {"monday": {"enabled": True, "start": "09:00", "end": "17:00"}}
@@ -480,10 +508,8 @@ class TestAvailabilityService(BaseMeetingsTest):
 
     def test_is_within_business_hours_overnight_slot(self):
         """Test business hours check for overnight slots."""
-        # Monday 23:00 to Tuesday 01:00
-        monday = datetime.now(timezone.utc)
-        while monday.weekday() != 0:  # Monday is 0
-            monday += timedelta(days=1)
+        # Monday 23:00 to Tuesday 01:00 - use a future Monday
+        monday = self._get_future_monday()
 
         start_time = monday.replace(hour=23, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=2)  # Goes to 01:00 next day
