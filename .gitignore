@@ -167,3 +167,7 @@ dist/
 
 # Hacks
 bak/
+
+# Generated OpenAPI schemas and TypeScript types
+services/*/openapi/schema.json
+frontend/types/api/

@@ -23,12 +23,18 @@ export interface Package {
     tracking_number: string;
     carrier: string;
     status: PackageStatus;
+    estimated_delivery?: string; // ISO string
+    actual_delivery?: string; // ISO string
     recipient_name?: string;
+    recipient_address?: string; // Not available in PackageOut
     shipper_name?: string;
     package_description?: string;
     order_number?: string;
     tracking_link?: string;
-    estimated_delivery?: string; // ISO string
+    email_message_id?: string; // Not available in PackageOut
+    events_count?: number;
+    labels: string[]; // Array of label names
+    events: TrackingEvent[]; // Array of tracking events
     created_at: string; // ISO string
     updated_at: string; // ISO string
     archived_at?: string; // ISO string

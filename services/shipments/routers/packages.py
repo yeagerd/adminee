@@ -345,6 +345,7 @@ async def list_packages(
                 package_description=pkg.package_description,
                 order_number=pkg.order_number,
                 tracking_link=pkg.tracking_link,
+                created_at=pkg.created_at,
                 updated_at=pkg.updated_at,
                 events_count=events_count,
                 labels=[],
@@ -471,6 +472,7 @@ async def add_package(
         package_description=package_description,
         order_number=order_number,
         tracking_link=tracking_link,
+        created_at=updated_at,  # Use updated_at as created_at for now
         updated_at=updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
@@ -513,6 +515,7 @@ async def get_package(
         package_description=package.package_description,
         order_number=package.order_number,
         tracking_link=package.tracking_link,
+        created_at=package.created_at,
         updated_at=package.updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
@@ -597,6 +600,7 @@ async def update_package(
         package_description=package.package_description,
         order_number=package.order_number,
         tracking_link=package.tracking_link,
+        created_at=package.created_at,
         updated_at=package.updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels

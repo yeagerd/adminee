@@ -1,6 +1,6 @@
 import { shipmentsApi } from '@/api';
-import type { PackageOut } from '@/types/api/shipments';
 import { usePagination } from '@/hooks/use-pagination';
+import type { PackageOut } from '@/types/api/shipments';
 import { PackageStatus } from '@/types/api/shipments';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -157,6 +157,7 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
             package_description: shipment.package_description || null,
             order_number: null, // Not available in ShipmentItem
             tracking_link: shipment.tracking_link || null,
+            created_at: shipment.updated_at, // Use updated_at as created_at for now
             updated_at: shipment.updated_at,
             events_count: shipment.events_count || 0,
             labels: shipment.labels?.map(label => ({ id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() })) || [],
@@ -191,20 +192,20 @@ export default function ShipmentsView({ className = "" }: ShipmentsViewProps) {
         setShipments(prevShipments =>
             prevShipments.map(shipment =>
                 shipment.id === updatedShipment.id
-                                            ? {
-                            ...shipment,
-                            tracking_number: updatedShipment.tracking_number,
-                            carrier: updatedShipment.carrier,
-                            status: updatedShipment.status,
-                            estimated_delivery: updatedShipment.estimated_delivery || undefined,
-                            actual_delivery: updatedShipment.actual_delivery || undefined,
-                            recipient_name: updatedShipment.recipient_name || undefined,
-                            package_description: updatedShipment.package_description || undefined,
-                            tracking_link: updatedShipment.tracking_link || undefined,
-                            updated_at: updatedShipment.updated_at,
-                            events_count: updatedShipment.events_count,
-                            labels: updatedShipment.labels?.map(label => label.name) || [],
-                        }
+                    ? {
+                        ...shipment,
+                        tracking_number: updatedShipment.tracking_number,
+                        carrier: updatedShipment.carrier,
+                        status: updatedShipment.status,
+                        estimated_delivery: updatedShipment.estimated_delivery || undefined,
+                        actual_delivery: updatedShipment.actual_delivery || undefined,
+                        recipient_name: updatedShipment.recipient_name || undefined,
+                        package_description: updatedShipment.package_description || undefined,
+                        tracking_link: updatedShipment.tracking_link || undefined,
+                        updated_at: updatedShipment.updated_at,
+                        events_count: updatedShipment.events_count,
+                        labels: updatedShipment.labels?.map(label => label.name) || [],
+                    }
                     : shipment
             )
         );
