@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Briefly - AI-powered calendar and task management"
 readme = "README.md"
 requires-python = ">=3.12"
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
