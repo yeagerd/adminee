@@ -102,6 +102,30 @@ class MockSearchEngine:
     
     async def search(self, query):
         return {"results": [], "total": 0}
+    
+    async def autocomplete(self, query):
+        return {"suggestions": [], "total": 0}
+    
+    async def get_facets(self, query):
+        return {"facets": {}, "total": 0}
+    
+    async def get_trending(self, query):
+        return {"trending": [], "total": 0}
+    
+    async def get_analytics(self, query):
+        return {"analytics": {}, "total": 0}
+    
+    async def find_similar(self, query):
+        return {"similar": [], "total": 0}
+    
+    async def start(self):
+        pass
+    
+    async def close(self):
+        pass
+    
+    async def test_connection(self):
+        return True
 
 SearchEngine = MockSearchEngine
 
@@ -129,7 +153,7 @@ class TestVespaDataFlow(BaseIntegrationTest):
 
         # Initialize mock clients to prevent real HTTP calls
         self.vespa_client = MockVespaClient(self.config["vespa_endpoint"])
-        self.search_engine = None  # Mock this if needed
+        self.search_engine = MockSearchEngine(self.config["vespa_endpoint"])
         self.pubsub_publisher = MockPubSubPublisher(
             self.config["pubsub_project_id"], self.config["pubsub_emulator_host"]
         )
