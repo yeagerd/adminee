@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<services version="1.0">
+    <container id="default" version="1.0">
+        <search/>
+        <document-api/>
+        <http>
+            <server id="default" port="8080"/>
+        </http>
+    </container>
+    
+    <content id="briefly" version="1.0">
+        <redundancy>1</redundancy>
+        <documents>
+            <document type="briefly_document" mode="streaming"/>
+        </documents>
+        <nodes>
+            <node distribution-key="0" hostalias="node1"/>
+        </nodes>
+        <search>
+            <query-timeout>1.0</query-timeout>
+            <visibility-delay>0.0</visibility-delay>
+        </search>
+    </content>
+    
+    <admin version="2.0">
+        <adminserver hostalias="node1"/>
+    </admin>
+</services>
