@@ -44,6 +44,11 @@ class Settings(BaseSettings):
         ...,  # Required field - no default to prevent production mistakes
         description="Meetings service API key to access this Office service",
     )
+    api_backfill_office_key: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
+        description="Backfill service API key to access this Office service",
+        validation_alias=AliasChoices("API_BACKFILL_OFFICE_KEY"),
+    )
     api_office_user_key: Optional[str] = Field(
         default=None,
         description="Office service API key to call User Management service",
@@ -77,9 +82,6 @@ class Settings(BaseSettings):
         default="development",
         description="Environment (development, staging, production)",
     )
-
-    # Demo mode configuration
-    DEMO_MODE: bool = Field(default=False, description="Enable demo mode")
 
     # Service URLs
     USER_SERVICE_URL: str = Field(
