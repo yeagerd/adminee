@@ -257,7 +257,7 @@ class ResultProcessor:
         fields = doc.get("fields", {})
 
         processed_doc = {
-            "id": fields.get("id"),
+            "id": fields.get("doc_id"),  # Fixed: Vespa uses 'doc_id' not 'id'
             "user_id": fields.get("user_id"),
             "source_type": fields.get("source_type"),
             "provider": fields.get("provider"),
