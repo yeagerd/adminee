@@ -151,10 +151,9 @@ create_topics() {
         else
             # Fallback to REST API if gcloud not available
             log_info "gcloud CLI not available, using REST API for topic: ${topic}"
-            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/topics"
-            local data="{\"name\": \"projects/${PROJECT_ID}/topics/${topic}\"}"
+            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/topics/${topic}"
             
-            if curl -s -X POST -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
+            if curl -s -X PUT -H 'Content-Type: application/json' "${url}" >/dev/null 2>&1; then
                 log_success "Created topic: ${topic}"
             else
                 log_warning "Topic ${topic} may already exist or failed to create"
@@ -189,10 +188,10 @@ create_subscriptions() {
             fi
         else
             # Fallback to REST API
-            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions"
-            local data="{\"name\": \"projects/${PROJECT_ID}/subscriptions/${sub_name}\", \"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
+            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions/${sub_name}"
+            local data="{\"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
             
-            if curl -s -X POST -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
+            if curl -s -X PUT -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
                 log_success "Created subscription: ${sub_name}"
             else
                 log_warning "Subscription ${sub_name} may already exist"
@@ -221,10 +220,10 @@ create_subscriptions() {
             fi
         else
             # Fallback to REST API
-            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions"
-            local data="{\"name\": \"projects/${PROJECT_ID}/subscriptions/${sub_name}\", \"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
+            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions/${sub_name}"
+            local data="{\"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
             
-            if curl -s -X POST -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
+            if curl -s -X PUT -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
                 log_success "Created subscription: ${sub_name}"
             else
                 log_warning "Subscription ${sub_name} may already exist"
