@@ -3,7 +3,7 @@
 Embedding generator for semantic search capabilities
 """
 
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
 import numpy as np
 
@@ -27,11 +27,12 @@ class EmbeddingGenerator:
         """Initialize the embedding model"""
         try:
             logger.info(f"Initializing embedding model: {self.model_name}")
-            
+
             # Import and load the actual model
             from sentence_transformers import SentenceTransformer
+
             self.model = SentenceTransformer(self.model_name)
-            
+
             logger.info("Embedding model initialized successfully")
 
         except Exception as e:
