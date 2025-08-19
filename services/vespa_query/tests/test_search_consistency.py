@@ -288,12 +288,12 @@ class TestSearchConsistency:
         """Test that build_similarity_query uses raw user_id for streaming.groupname."""
         user_id = 'test"user@example.com'  # User ID with special characters
         document_id = "doc123"
-        
+
         query = query_builder.build_similarity_query(document_id, user_id)
-        
+
         # streaming.groupname should use the raw user_id, not escaped
         assert query["streaming.groupname"] == user_id
-        
+
         # YQL should use escaped values for safety
         assert "streaming.groupname" in query
         assert "yql" in query
@@ -306,12 +306,12 @@ class TestSearchConsistency:
     def test_trending_query_streaming_groupname(self, query_builder):
         """Test that build_trending_query uses raw user_id for streaming.groupname."""
         user_id = 'user"with@quotes.com'  # User ID with special characters
-        
+
         query = query_builder.build_trending_query(user_id)
-        
+
         # streaming.groupname should use the raw user_id, not escaped
         assert query["streaming.groupname"] == user_id
-        
+
         # YQL should use escaped values for safety
         assert "streaming.groupname" in query
         assert "yql" in query
@@ -322,12 +322,12 @@ class TestSearchConsistency:
     def test_analytics_query_streaming_groupname(self, query_builder):
         """Test that build_analytics_query uses raw user_id for streaming.groupname."""
         user_id = 'analytics"user@test.com'  # User ID with special characters
-        
+
         query = query_builder.build_analytics_query(user_id)
-        
+
         # streaming.groupname should use the raw user_id, not escaped
         assert query["streaming.groupname"] == user_id
-        
+
         # YQL should use escaped values for safety
         assert "streaming.groupname" in query
         assert "yql" in query
