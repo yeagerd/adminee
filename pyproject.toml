@@ -42,7 +42,6 @@ members = [
     "services/chat",
     "services/user",
     "services/office",
-    "services/office_router",
     "services/meetings",
     "services/shipments",
     "services/vespa_query",

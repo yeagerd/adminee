@@ -252,7 +252,7 @@ start_python_service "shipments-service" "services.shipments.main:app" 8004
 start_python_service "meetings-service" "services.meetings.main:app" 8005
 
 # Start Office Router Service
-start_python_service "office-router-service" "services.office_router.main:app" 8006
+# start_python_service "office-router-service" "services.office_router.main:app" 8006
 
 # Start Vespa Loader Service
 start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
@@ -284,7 +284,7 @@ wait_for_service "Office Service" "http://localhost:8003/health" &
 wait_for_service "Gateway" "http://localhost:3001/health" &
 wait_for_service "Shipments Service" "http://localhost:8004/health" &
 wait_for_service "Meetings Service" "http://localhost:8005/health" &
-wait_for_service "Office Router Service" "http://localhost:8006/health" &
+# wait_for_service "Office Router Service" "http://localhost:8006/health" &
 wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
 wait_for_service "Vespa Query Service" "http://localhost:9002/health" &
 
