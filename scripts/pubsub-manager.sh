@@ -94,13 +94,15 @@ start_emulator() {
         attempts=$((attempts + 1))
         sleep 2
         
-        # Show progress every 10 seconds
+        # Show progress every 10 seconds (every 5 attempts = 10 seconds)
         if [ $((attempts % 5)) -eq 0 ]; then
-            log_info "Still waiting... (${attempts}s elapsed)"
+            local elapsed_seconds=$((attempts * 2))
+            log_info "Still waiting... (${elapsed_seconds}s elapsed)"
         fi
     done
     
-    log_error "Pub/Sub emulator failed to start within ${max_attempts} seconds"
+    local total_timeout_seconds=$((max_attempts * 2))
+    log_error "Pub/Sub emulator failed to start within ${total_timeout_seconds} seconds"
     return 1
 }
 
