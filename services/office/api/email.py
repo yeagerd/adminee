@@ -2676,6 +2676,7 @@ async def get_internal_email_count(
 
         # Query each provider
         total_count = 0
+        provider_responses = {}  # Track responses for each provider
 
         # Default to all providers if not specified
         if not providers:
@@ -2726,6 +2727,21 @@ async def get_internal_email_count(
                     else:
                         continue
 
+                # Store response data for debug info
+                provider_responses[provider] = {
+                    "response_type": str(type(messages)),
+                    "response_keys": (
+                        list(messages.keys())
+                        if isinstance(messages, dict)
+                        else "Not a dict"
+                    ),
+                    "response_length": (
+                        len(messages)
+                        if isinstance(messages, (list, dict))
+                        else "Unknown"
+                    ),
+                }
+
                 # Debug: Log the response structure
                 logger.info(
                     f"Response from {provider} API: {type(messages)} - Keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
@@ -2774,29 +2790,7 @@ async def get_internal_email_count(
             "total_count": total_count,
             "user_id": user_id,
             "providers": valid_providers,
-            "debug_info": {
-                "api_responses": {
-                    provider: {
-                        "response_type": (
-                            str(type(messages))
-                            if "messages" in locals()
-                            else "No response"
-                        ),
-                        "response_keys": (
-                            list(messages.keys())
-                            if isinstance(messages, dict)
-                            else "Not a dict"
-                        ),
-                        "response_length": (
-                            len(messages)
-                            if isinstance(messages, (list, dict))
-                            else "Unknown"
-                        ),
-                    }
-                    for provider in valid_providers
-                    if "messages" in locals()
-                }
-            },
+            "debug_info": {"api_responses": provider_responses},
         }
 
     except Exception as e:
