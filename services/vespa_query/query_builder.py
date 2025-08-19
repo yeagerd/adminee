@@ -76,7 +76,13 @@ class QueryBuilder:
                 # Build base query
                 vespa_query = {
                     "yql": self._build_yql_query(
-                        query, source_types, providers, date_from, date_to, folders
+                        query,
+                        user_id,
+                        source_types,
+                        providers,
+                        date_from,
+                        date_to,
+                        folders,
                     ),
                     "ranking": ranking_profile,
                     "hits": min(max_hits, self.max_max_hits),
@@ -113,7 +119,7 @@ class QueryBuilder:
         """Build an autocomplete query"""
         try:
             vespa_query = {
-                "yql": self._build_autocomplete_yql(query, source_types),
+                "yql": self._build_autocomplete_yql(query, user_id, source_types),
                 "ranking": "bm25",
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
@@ -139,7 +145,7 @@ class QueryBuilder:
         try:
             vespa_query = {
                 "yql": self._build_facets_yql(
-                    source_types, providers, date_from, date_to
+                    user_id, source_types, providers, date_from, date_to
                 ),
                 "hits": 0,  # We only want facets, not documents
                 "timeout": "5s",
@@ -259,6 +265,7 @@ class QueryBuilder:
     def _build_yql_query(
         self,
         query: str,
+        user_id: str,
         source_types: Optional[List[str]] = None,
         providers: Optional[List[str]] = None,
         date_from: Optional[str] = None,
@@ -268,10 +275,12 @@ class QueryBuilder:
         """Build the YQL query string"""
         # Safely escape user inputs to prevent YQL injection
         escaped_query = self._escape_yql_value(query)
+        escaped_user_id = self._escape_yql_value(user_id)
 
         # Build a more specific query that searches in search_text and content fields
+        # Add explicit user_id filtering for consistent user isolation
         yql_parts = [
-            f'select * from briefly_document where (search_text contains "{escaped_query}" or content contains "{escaped_query}")'
+            f'select * from briefly_document where user_id="{escaped_user_id}" and (search_text contains "{escaped_query}" or content contains "{escaped_query}")'
         ]
 
         # Add source type filter
@@ -311,10 +320,15 @@ class QueryBuilder:
         return " ".join(yql_parts)
 
     def _build_autocomplete_yql(
-        self, query: str, source_types: Optional[List[str]] = None
+        self, query: str, user_id: str, source_types: Optional[List[str]] = None
     ) -> str:
         """Build YQL for autocomplete queries"""
-        yql_parts = ["select * from briefly_document where userInput(@query)"]
+        # Safely escape user inputs to prevent YQL injection
+        escaped_user_id = self._escape_yql_value(user_id)
+
+        yql_parts = [
+            f'select * from briefly_document where user_id="{escaped_user_id}" and userInput(@query)'
+        ]
 
         # Add source type filter for autocomplete
         if source_types:
@@ -328,13 +342,19 @@ class QueryBuilder:
 
     def _build_facets_yql(
         self,
+        user_id: str,
         source_types: Optional[List[str]] = None,
         providers: Optional[List[str]] = None,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
     ) -> str:
         """Build YQL for facets queries"""
-        yql_parts = ["select * from briefly_document"]
+        # Safely escape user inputs to prevent YQL injection
+        escaped_user_id = self._escape_yql_value(user_id)
+
+        yql_parts = [
+            f'select * from briefly_document where user_id="{escaped_user_id}"'
+        ]
 
         # Add filters for facets
         filters = []
@@ -365,7 +385,7 @@ class QueryBuilder:
                 filters.append(f'({" and ".join(date_filter_parts)})')
 
         if filters:
-            yql_parts.append("where")
+            yql_parts.append("and")
             yql_parts.append(" and ".join(filters))
 
         return " ".join(yql_parts)
