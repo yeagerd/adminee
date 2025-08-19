@@ -2561,7 +2561,9 @@ async def get_internal_email_messages(
 
                 # Get messages from provider
                 async with client:
-                    if provider == "microsoft" and isinstance(client, MicrosoftAPIClient):
+                    if provider == "microsoft" and isinstance(
+                        client, MicrosoftAPIClient
+                    ):
                         # Microsoft client uses top, filter, search, order_by
                         messages = await client.get_messages(
                             top=limit,
@@ -2712,7 +2714,9 @@ async def get_internal_email_count(
 
                 # Get messages from provider (just count, not content)
                 async with client:
-                    if provider == "microsoft" and isinstance(client, MicrosoftAPIClient):
+                    if provider == "microsoft" and isinstance(
+                        client, MicrosoftAPIClient
+                    ):
                         messages = await client.get_messages(
                             top=100,  # Get up to 100 to get a reasonable count
                         )
