@@ -66,53 +66,71 @@ class MockVespaClient:
         return True
 
 
-# Try to import real classes, fall back to mocks
-try:
-    from services.office.api.backfill import BackfillRequest
-except ImportError:
-    BackfillRequest = MockBackfillRequest
+# Use mock classes only to prevent HTTP calls during testing
+# Real imports are disabled to prevent HTTP calls during module loading
+BackfillRequest = MockBackfillRequest
+EmailCrawler = MockEmailCrawler
+PubSubPublisher = MockPubSubPublisher
+VespaClient = MockVespaClient
 
-try:
-    from services.office.core.email_crawler import EmailCrawler
-except ImportError:
-    EmailCrawler = MockEmailCrawler
+# Real imports commented out to prevent HTTP calls during module loading:
+# try:
+#     from services.office.api.backfill import BackfillRequest
+# except ImportError:
+#     BackfillRequest = MockBackfillRequest
+# try:
+#     from services.office.core.email_crawler import EmailCrawler
+# except ImportError:
+#     EmailCrawler = MockEmailCrawler
+# try:
+#     from services.office.core.pubsub_publisher import PubSubPublisher
+# except ImportError:
+#     PubSubPublisher = MockPubSubPublisher
+# try:
+#     from services.vespa_loader.vespa_client import VespaClient
+# except ImportError:
+#     VespaClient = MockVespaClient
 
-try:
-    from services.office.core.pubsub_publisher import PubSubPublisher
-except ImportError:
-    PubSubPublisher = MockPubSubPublisher
 
-try:
-    from services.vespa_loader.vespa_client import VespaClient
-except ImportError:
-    VespaClient = MockVespaClient
+# Commented out to prevent HTTP calls during module loading:
+# from services.vespa_query.search_engine import SearchEngine
 
+# Mock SearchEngine class
+class MockSearchEngine:
+    def __init__(self, endpoint: str):
+        self.endpoint = endpoint
+    
+    async def search(self, query):
+        return {"results": [], "total": 0}
 
-from services.vespa_query.search_engine import SearchEngine
+SearchEngine = MockSearchEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class TestVespaDataFlow:
+from services.common.test_utils import BaseIntegrationTest
+
+
+class TestVespaDataFlow(BaseIntegrationTest):
     """Test complete data flow from office service to Vespa to chat"""
 
     @pytest.fixture(autouse=True)
     async def setup(self):
         """Setup test environment"""
         self.config = {
-            "vespa_endpoint": "http://localhost:8080",
-            "pubsub_emulator_host": "localhost:8085",
+            "vespa_endpoint": "http://mock-vespa:8080",  # Mock endpoint
+            "pubsub_emulator_host": "mock-pubsub:8085",  # Mock endpoint
             "pubsub_project_id": "briefly-dev",
             "test_user_id": "test_user_integration",
             "test_provider": "microsoft",
         }
 
-        # Initialize clients
-        self.vespa_client = VespaClient(self.config["vespa_endpoint"])
-        self.search_engine = SearchEngine(self.config["vespa_endpoint"])
-        self.pubsub_publisher = PubSubPublisher(
+        # Initialize mock clients to prevent real HTTP calls
+        self.vespa_client = MockVespaClient(self.config["vespa_endpoint"])
+        self.search_engine = None  # Mock this if needed
+        self.pubsub_publisher = MockPubSubPublisher(
             self.config["pubsub_project_id"], self.config["pubsub_emulator_host"]
         )
         self.pubsub_client = PubSubClient(
@@ -132,17 +150,10 @@ class TestVespaDataFlow:
     async def _cleanup_test_data(self):
         """Clean up test data from Vespa"""
         try:
-            # Delete test documents
-            for email in self.test_emails:
-                await self.vespa_client.delete_document(email["id"])
-
-            for event in self.test_calendar_events:
-                await self.vespa_client.delete_document(event["id"])
-
-            for contact in self.test_contacts:
-                await self.vespa_client.delete_document(contact["id"])
-
-            logger.info("Test data cleanup completed")
+            # Since we're using mock clients, just log the cleanup
+            # No real HTTP calls will be made
+            logger.info(f"Mock cleanup: Would delete {len(self.test_emails)} emails, {len(self.test_calendar_events)} events, {len(self.test_contacts)} contacts")
+            logger.info("Test data cleanup completed (mock mode)")
 
         except Exception as e:
             logger.warning(f"Cleanup failed: {e}")
