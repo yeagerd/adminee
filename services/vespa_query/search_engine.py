@@ -203,8 +203,8 @@ class SearchEngine:
             span.set_attribute(
                 "vespa.document.id",
                 (
-                    similarity_query.get("yql", "").split('id!="')[1].split('"')[0]
-                    if 'id!="' in similarity_query.get("yql", "")
+                    similarity_query.get("yql", "").split('doc_id!="')[1].split('"')[0]
+                    if 'doc_id!="' in similarity_query.get("yql", "")
                     else ""
                 ),
             )
