@@ -586,7 +586,7 @@ export default function PackageDashboard() {
                     onClose={() => setSelectedPackage(null)}
                     shipment={{
                         id: selectedPackage.id,
-                        user_id: selectedPackage.user_id || 'unknown',
+                        user_id: 'unknown', // Package interface doesn't have user_id
                         tracking_number: selectedPackage.tracking_number,
                         carrier: selectedPackage.carrier,
                         status: selectedPackage.status,
@@ -599,7 +599,7 @@ export default function PackageDashboard() {
                         tracking_link: selectedPackage.tracking_link || null,
                         updated_at: selectedPackage.updated_at || new Date().toISOString(),
                         events_count: selectedPackage.events?.length || 0,
-                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label.name) || [],
+                        labels: selectedPackage.labels?.map(label => ({ id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() })) || [],
                     }}
                     onShipmentUpdated={(updatedPackage) => {
                         // Update the package in the local state
@@ -620,7 +620,7 @@ export default function PackageDashboard() {
                                         tracking_link: updatedPackage.tracking_link || undefined,
                                         updated_at: updatedPackage.updated_at,
                                         events_count: updatedPackage.events_count,
-                                        labels: updatedPackage.labels?.map(label => typeof label === 'string' ? label : label.name) || [],
+                                        labels: updatedPackage.labels?.map(label => ({ id: label, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() })) || [],
                                     }
                                     : pkg
                             )
