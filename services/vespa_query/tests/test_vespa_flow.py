@@ -95,37 +95,39 @@ VespaClient = MockVespaClient
 # Commented out to prevent HTTP calls during module loading:
 # from services.vespa_query.search_engine import SearchEngine
 
+
 # Mock SearchEngine class
 class MockSearchEngine:
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
-    
+
     async def search(self, query):
         return {"results": [], "total": 0}
-    
+
     async def autocomplete(self, query):
         return {"suggestions": [], "total": 0}
-    
+
     async def get_facets(self, query):
         return {"facets": {}, "total": 0}
-    
+
     async def get_trending(self, query):
         return {"trending": [], "total": 0}
-    
+
     async def get_analytics(self, query):
         return {"analytics": {}, "total": 0}
-    
+
     async def find_similar(self, query):
         return {"similar": [], "total": 0}
-    
+
     async def start(self):
         pass
-    
+
     async def close(self):
         pass
-    
+
     async def test_connection(self):
         return True
+
 
 SearchEngine = MockSearchEngine
 
@@ -176,7 +178,9 @@ class TestVespaDataFlow(BaseIntegrationTest):
         try:
             # Since we're using mock clients, just log the cleanup
             # No real HTTP calls will be made
-            logger.info(f"Mock cleanup: Would delete {len(self.test_emails)} emails, {len(self.test_calendar_events)} events, {len(self.test_contacts)} contacts")
+            logger.info(
+                f"Mock cleanup: Would delete {len(self.test_emails)} emails, {len(self.test_calendar_events)} events, {len(self.test_contacts)} contacts"
+            )
             logger.info("Test data cleanup completed (mock mode)")
 
         except Exception as e:
