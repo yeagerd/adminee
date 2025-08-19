@@ -171,7 +171,7 @@ class QueryBuilder:
             escaped_document_id = self._escape_yql_value(document_id)
 
             vespa_query = {
-                "yql": f'select * from briefly_document where user_id="{escaped_user_id}" and id!="{escaped_document_id}"',
+                "yql": f'select * from briefly_document where user_id="{escaped_user_id}" and doc_id!="{escaped_document_id}"',
                 "ranking": "similarity",
                 "hits": min(max_hits, 20),
                 "timeout": "5s",
