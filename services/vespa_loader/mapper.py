@@ -27,7 +27,6 @@ class DocumentMapper:
                 "folder": "folder",
                 "created_at": "created_at",
                 "updated_at": "updated_at",
-                "content_chunks": "content_chunks",
                 "quoted_content": "quoted_content",
                 "thread_summary": "thread_summary",
                 "search_text": "search_text",
@@ -90,8 +89,7 @@ class DocumentMapper:
                 "created_at": None,
                 "updated_at": None,
                 "metadata": {},
-                # Add new email-specific fields
-                "content_chunks": [],
+                # Add email-specific fields that exist in Vespa schema
                 "quoted_content": "",
                 "thread_summary": {},
             }

@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Briefly - AI-powered calendar and task management"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "google-cloud-core>=2.4.3",
+    "google-cloud-pubsub>=2.31.1",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -37,8 +42,11 @@ members = [
     "services/chat",
     "services/user",
     "services/office",
+    "services/office_router",
     "services/meetings",
     "services/shipments",
+    "services/vespa_query",
+    "services/vespa_loader",
     # Add other services as needed
 ]
 
