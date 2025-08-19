@@ -82,7 +82,7 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -162,7 +162,7 @@ def test_get_calendar_events_malformed(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -214,7 +214,7 @@ def test_get_calendar_events_timeout(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -247,7 +247,7 @@ def test_get_calendar_events_http_error(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -280,7 +280,7 @@ def test_get_calendar_events_unexpected(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -313,7 +313,7 @@ def test_get_emails_success(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -357,7 +357,7 @@ def test_get_emails_malformed(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -390,7 +390,7 @@ def test_get_emails_timeout(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -423,7 +423,7 @@ def test_get_emails_http_error(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -456,7 +456,7 @@ def test_get_emails_unexpected(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -489,7 +489,7 @@ def test_get_notes_success(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -533,7 +533,7 @@ def test_get_documents_success(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -683,7 +683,7 @@ def test_tool_registry(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -697,7 +697,14 @@ def test_tool_registry(mock_requests, monkeypatch):
                 {
                     "success": True,
                     "data": {
-                        "events": [{"id": "1", "title": "Meeting"}],
+                        "events": [
+                            {
+                                "id": "1",
+                                "title": "Meeting",
+                                "start_time": "2025-06-20T10:00:00Z",
+                                "end_time": "2025-06-20T11:00:00Z",
+                            }
+                        ],
                         "total_count": 1,
                         "providers_used": ["google"],
                         "provider_errors": None,
@@ -741,7 +748,7 @@ def test_tool_registry_tooloutput_success(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -755,7 +762,14 @@ def test_tool_registry_tooloutput_success(mock_requests, monkeypatch):
                 {
                     "success": True,
                     "data": {
-                        "events": [{"id": "1", "title": "Meeting"}],
+                        "events": [
+                            {
+                                "id": "1",
+                                "title": "Meeting",
+                                "start_time": "2025-06-20T10:00:00Z",
+                                "end_time": "2025-06-20T11:00:00Z",
+                            }
+                        ],
                         "total_count": 1,
                         "providers_used": ["google"],
                         "provider_errors": None,
@@ -804,7 +818,7 @@ def test_tool_registry_tooloutput_for_get_tools(mock_requests, monkeypatch):
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -818,7 +832,14 @@ def test_tool_registry_tooloutput_for_get_tools(mock_requests, monkeypatch):
                 {
                     "success": True,
                     "data": {
-                        "events": [{"id": "1", "title": "Meeting"}],
+                        "events": [
+                            {
+                                "id": "1",
+                                "title": "Meeting",
+                                "start_time": "2025-06-20T10:00:00Z",
+                                "end_time": "2025-06-20T11:00:00Z",
+                            }
+                        ],
                         "total_count": 1,
                         "providers_used": ["google"],
                         "provider_errors": None,
@@ -858,7 +879,7 @@ def test_tool_registry_execute_tool_returns_tooloutput(mock_requests, monkeypatc
                             "provider": "google",
                             "status": "active",
                             "external_user_id": "user123",
-                            "scopes": ["calendar"],
+                            "scopes": ["calendar", "email", "notes", "documents"],
                         }
                     ],
                     "total": 1,
@@ -872,7 +893,14 @@ def test_tool_registry_execute_tool_returns_tooloutput(mock_requests, monkeypatc
                 {
                     "success": True,
                     "data": {
-                        "events": [{"id": "1", "title": "Meeting"}],
+                        "events": [
+                            {
+                                "id": "1",
+                                "title": "Meeting",
+                                "start_time": "2025-06-20T10:00:00Z",
+                                "end_time": "2025-06-20T11:00:00Z",
+                            }
+                        ],
                         "total_count": 1,
                         "providers_used": ["google"],
                         "provider_errors": None,
