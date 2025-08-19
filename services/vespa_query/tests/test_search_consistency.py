@@ -163,7 +163,7 @@ class TestSearchConsistency:
         assert total_count == 2
 
         # Verify each result has required fields
-        for i, child in enumerate(children):
+        for child in children:
             fields = child.get("fields", {})
             assert "user_id" in fields
             assert "doc_id" in fields
@@ -172,10 +172,11 @@ class TestSearchConsistency:
             # Verify user_id consistency
             assert fields["user_id"] == "trybriefly@outlook.com"
 
-            # Verify doc_id format
+            # Verify doc_id format and value
             doc_id = fields["doc_id"]
             assert doc_id.startswith("ms_")
-            assert doc_id in [f"ms_{i}"]
+            # Check that doc_id is one of the expected values from mock data
+            assert doc_id in ["ms_0", "ms_1"], f"Unexpected doc_id: {doc_id}"
 
     def test_field_type_validation(self, mock_vespa_response):
         """Test that field types are correct and consistent."""
