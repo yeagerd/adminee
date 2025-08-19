@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from services.common.logging_config import get_logger
+from services.office.core.settings import get_settings
 
 logger = get_logger(__name__)
 
@@ -97,7 +98,7 @@ class EmailCrawler:
                     f"{office_service_url}/internal/messages/count",
                     params=params,
                     headers={
-                        "X-API-Key": "test-BACKFILL-OFFICE-KEY",  # Use backfill API key
+                        "X-API-Key": get_settings().api_backfill_office_key,
                     },
                     timeout=10.0,
                 )
@@ -235,7 +236,7 @@ class EmailCrawler:
                     f"{office_service_url}/internal/messages",
                     params=params,
                     headers={
-                        "X-API-Key": "test-BACKFILL-OFFICE-KEY",  # Use backfill API key
+                        "X-API-Key": get_settings().api_backfill_office_key,
                     },
                     timeout=30.0,
                 )
