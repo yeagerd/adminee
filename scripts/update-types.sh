@@ -151,6 +151,8 @@ update_all_types() {
         fi
     done
     
+    print_status "info" "Discovered ${#services[@]} services with OpenAPI schemas"
+    
     for service_name in "${services[@]}"; do
         if update_service_types "$service_name" "$force"; then
             results+=("✅ $service_name")
@@ -174,7 +176,11 @@ update_all_types() {
     
     echo
     echo "Total: $total services"
-    echo "Success rate: $successful/$total ($(($successful * 100 / $total))%)"
+    if [[ $total -gt 0 ]]; then
+        echo "Success rate: $successful/$total ($(($successful * 100 / $total))%)"
+    else
+        echo "Success rate: 0/0 (0%)"
+    fi
     
     if [[ $successful -eq $total ]]; then
         print_status "success" "All types updated successfully!"
