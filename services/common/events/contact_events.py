@@ -55,8 +55,9 @@ class ContactUpdateEvent(BaseEvent):
     update_type: str = Field(..., description="Type of update (create, update, delete)")
     change_reason: Optional[str] = Field(None, description="Reason for the change")
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
+    def model_post_init(self, __context: Any) -> None:
+        """Set default source service if not provided."""
+        super().model_post_init(__context)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"
 
@@ -78,7 +79,8 @@ class ContactBatchEvent(BaseEvent):
         default=0, description="Number of contacts processed so far"
     )
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
+    def model_post_init(self, __context: Any) -> None:
+        """Set default source service if not provided."""
+        super().model_post_init(__context)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"
