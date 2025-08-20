@@ -128,8 +128,9 @@ if (!fs.existsSync(envPath)) {
     logWithContext('error', '   Please create a .env file with:');
     logWithContext('error', '   NEXTAUTH_SECRET=your-secret-here');
     logWithContext('error', '   USER_SERVICE_URL=http://localhost:8001');
-    logWithContext('error', '   CHAT_SERVICE_URL=http://localhost:8002');
-    logWithContext('error', '   OFFICE_SERVICE_URL=http://localhost:8003');
+logWithContext('error', '   CHAT_SERVICE_URL=http://localhost:8002');
+logWithContext('error', '   OFFICE_SERVICE_URL=http://localhost:8003');
+logWithContext('error', '   VESPA_QUERY_URL=http://localhost:8006');
     logWithContext('error', '   FRONTEND_URL=http://localhost:3000');
     process.exit(1);
 }
@@ -145,6 +146,7 @@ dotenv.config({ path: envPath });
         'FRONTEND_URL',
         'MEETINGS_SERVICE_URL',
         'SHIPMENTS_SERVICE_URL',
+        'VESPA_QUERY_URL',
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_OFFICE_KEY',
@@ -446,6 +448,7 @@ const serviceRoutes = {
     '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/bookings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
+    '/api/v1/search': process.env.VESPA_QUERY_URL || 'http://127.0.0.1:8006',
 };
 
 // Create proxy middleware factory
@@ -503,6 +506,10 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
                 // Meetings service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_MEETINGS_KEY || '');
                 logger.debug(`Setting API key for meetings service: ${process.env.API_FRONTEND_MEETINGS_KEY ? 'present' : 'missing'}`);
+            } else if (targetUrl.includes('8006')) {
+                // Vespa query service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_VESPA_QUERY_KEY || '');
+                logger.debug(`Setting API key for vespa query service: ${process.env.API_FRONTEND_VESPA_QUERY_KEY ? 'present' : 'missing'}`);
             } else {
                 logger.warn(`No API key assigned for target URL: ${targetUrl}`);
             }

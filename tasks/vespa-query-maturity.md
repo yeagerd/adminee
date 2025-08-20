@@ -49,9 +49,9 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 - [x] Implement consistent error handling across all endpoints
 
 ### 9. Missing Service Integration
-- [ ] Add integration with Express Gateway
-- [ ] Configure service URL for gateway integration
-- [ ] Implement proper service discovery setup
+- [x] Add integration with Express Gateway
+- [x] Configure service URL for gateway integration
+- [x] Implement proper service discovery setup
 
 ### 10. Test Dependencies
 - [ ] Add `httpx` for HTTP client testing
