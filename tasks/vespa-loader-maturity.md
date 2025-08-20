@@ -16,9 +16,9 @@ The vespa_loader service is a stateless document processing service that ingests
 - [x] Ensure all dependencies use consistent versioning
 
 ### Service Registration Completeness (Medium Priority)
-- [ ] Add entry to `scripts/check-db-status.sh` indicating "no database required"
-- [ ] Add entry to `scripts/run-migrations.sh` indicating "no migrations required"
-- [ ] Verify service is properly configured in `scripts/start-all-services.sh` (already done)
+- [x] Add entry to `scripts/check-db-status.sh` indicating "no database required"
+- [x] Add entry to `scripts/run-migrations.sh` indicating "no migrations required"
+- [x] Verify service is properly configured in `scripts/start-all-services.sh` (already done)
 
 ### API Key Authentication (Medium Priority)
 - [ ] Add API key configuration to `services/vespa_loader/settings.py`
