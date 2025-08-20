@@ -55,10 +55,50 @@ jobs:
           source .venv/bin/activate
           ./scripts/generate-openapi-schemas.sh
 
+      - name: Verify OpenAPI schemas
+        run: |
+          echo "🔍 Verifying OpenAPI schemas were generated..."
+          expected_services="chat meetings office shipments email_sync vespa_query"
+          for service in $expected_services; do
+            if [[ -f "services/$service/openapi/schema.json" ]]; then
+              echo "  ✅ $service: schema.json exists"
+            else
+              echo "  ❌ $service: schema.json missing"
+              exit 1
+            fi
+          done
+          echo "✅ All expected OpenAPI schemas were generated successfully!"
+
+      - name: Clean existing types
+        run: |
+          cd frontend
+          rm -rf types/api
+          echo "🧹 Cleaned existing type directories"
+
       - name: Generate TypeScript types
         run: |
           cd frontend
           npm run generate-types
+
+      - name: Verify TypeScript types
+        run: |
+          cd frontend
+          echo "🔍 Verifying TypeScript types were generated..."
+          expected_services="chat meetings office shipments email_sync vespa_query"
+          for service in $expected_services; do
+            if [[ -d "types/api/$service" ]] && [[ -f "types/api/$service/index.ts" ]]; then
+              echo "  ✅ $service: types directory and index.ts exist"
+            else
+              echo "  ❌ $service: types directory or index.ts missing"
+              exit 1
+            fi
+          done
+          echo "✅ All expected TypeScript types were generated successfully!"
+
+      - name: Build Application
+        run: |
+          cd frontend
+          npm run build
 
       - name: Check for uncommitted changes
         run: |
@@ -86,6 +126,18 @@ jobs:
           find services/*/openapi -name "schema.json" 2>/dev/null | wc -l | xargs echo "  - Total schemas:"
           echo "TypeScript types:"
           find frontend/types/api -type d 2>/dev/null | wc -l | xargs echo "  - Total service type directories:"
+          echo ""
+          echo "📋 Detailed schema status:"
+          for service in services/*/; do
+            if [[ -d "$service" ]]; then
+              service_name=$(basename "$service")
+              if [[ -f "$service/openapi/schema.json" ]]; then
+                echo "  ✅ $service_name: schema.json exists"
+              else
+                echo "  ❌ $service_name: schema.json missing"
+              fi
+            fi
+          done
           echo ""
           echo "✅ Generated files check completed successfully!"
 
