@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ingest_endpoint: str = Field(
         default="http://localhost:9001/ingest",
         validation_alias="VESPA_LOADER_INGEST_ENDPOINT",
-        description="HTTP endpoint for document ingestion (used as fallback for external calls)"
+        description="HTTP endpoint for document ingestion (used as fallback for external calls)",
     )
 
     # API Keys for inter-service authentication

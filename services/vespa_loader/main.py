@@ -47,21 +47,20 @@ pubsub_consumer: Optional[Any] = None
 
 
 async def ingest_document_service(
-    document_data: Dict[str, Any], 
-    run_background_tasks: bool = True
+    document_data: Dict[str, Any], run_background_tasks: bool = True
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
-    
+
     This function can be called directly by other parts of the service
     or through the HTTP API endpoints.
-    
+
     Args:
         document_data: The document data to ingest
         run_background_tasks: Whether to run background post-processing tasks
-        
+
     Returns:
         Dict containing the ingestion result
-        
+
     Raises:
         ServiceError: If the service is not properly initialized
         ValidationError: If document data is invalid
@@ -138,21 +137,20 @@ async def ingest_document_service(
 
 
 async def ingest_batch_documents_service(
-    documents: list[Dict[str, Any]], 
-    run_background_tasks: bool = True
+    documents: list[Dict[str, Any]], run_background_tasks: bool = True
 ) -> Dict[str, Any]:
     """Shared service function to ingest multiple documents in batch
-    
+
     This function can be called directly by other parts of the service
     or through the HTTP API endpoints.
-    
+
     Args:
         documents: List of document data to ingest
         run_background_tasks: Whether to run background post-processing tasks
-        
+
     Returns:
         Dict containing the batch ingestion results
-        
+
     Raises:
         ServiceError: If the service is not properly initialized
     """
@@ -490,15 +488,17 @@ async def ingest_document(
     """Ingest a document into Vespa"""
     try:
         # Call the shared service function
-        result = await ingest_document_service(document_data, run_background_tasks=False)
-        
+        result = await ingest_document_service(
+            document_data, run_background_tasks=False
+        )
+
         # Add background task for post-processing
         background_tasks.add_task(
             _post_process_document,
             document_id=document_data["id"],
             user_id=document_data["user_id"],
         )
-        
+
         return result
 
     except Exception as e:
@@ -519,8 +519,10 @@ async def ingest_batch_documents(
     """Ingest multiple documents in batch"""
     try:
         # Call the shared service function
-        result = await ingest_batch_documents_service(documents, run_background_tasks=False)
-        
+        result = await ingest_batch_documents_service(
+            documents, run_background_tasks=False
+        )
+
         # Add background task for batch post-processing
         if result.get("successful", 0) > 0:
             background_tasks.add_task(
@@ -528,7 +530,7 @@ async def ingest_batch_documents(
                 successful_docs=result["successful"],
                 failed_docs=result["failed"],
             )
-        
+
         return result
 
     except Exception as e:
