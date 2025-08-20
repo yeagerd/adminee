@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # Service configuration
     service_name: str = "vespa-query"
-    service_port: int = Field(default=9002, env="VESPA_QUERY_PORT")
+    service_port: int = Field(default=8006, env="VESPA_QUERY_PORT")
     service_host: str = Field(default="0.0.0.0", env="VESPA_QUERY_HOST")
 
     # Logging
