@@ -29,9 +29,9 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 - [x] Ensure service is properly registered in all relevant startup scripts
 
 ### 5. API Key Authentication Missing
-- [ ] Implement `verify_api_key` dependency as shown in the new service guide
-- [ ] Add API key configuration in settings
-- [ ] Apply API key validation to all endpoints that require inter-service communication
+- [x] Implement `verify_api_key` dependency as shown in the new service guide
+- [x] Add API key configuration in settings
+- [x] Apply API key validation to all endpoints that require inter-service communication
 
 ### 6. Port Assignment Conflict
 - [ ] Change service port from 9002 to 8006 (or next available port in 8000s range)

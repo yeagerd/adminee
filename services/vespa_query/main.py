@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.common.http_errors import register_briefly_exception_handlers
@@ -31,6 +31,16 @@ tracer = get_tracer(__name__)
 search_engine: Optional[Any] = None
 query_builder: Optional[Any] = None
 result_processor: Optional[Any] = None
+
+
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
+    """Verify API key for inter-service communication"""
+    from services.vespa_query.settings import Settings
+    settings = Settings()
+    
+    if x_api_key != settings.api_frontend_vespa_query_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
 
 
 @asynccontextmanager
@@ -138,6 +148,7 @@ async def search(
     date_to: Optional[str] = Query(None, description="End date for filtering"),
     folders: Optional[List[str]] = Query(None, description="Filter by folders"),
     include_facets: bool = Query(True, description="Include facets in results"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Execute a search query"""
     if not query_builder:
@@ -190,6 +201,7 @@ async def autocomplete(
     query: str = Query(..., description="Autocomplete query"),
     user_id: str = Query(..., description="User ID"),
     max_suggestions: int = Query(5, description="Maximum number of suggestions"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get autocomplete suggestions"""
     if not query_builder:
@@ -231,6 +243,7 @@ async def find_similar(
     ),
     user_id: str = Query(..., description="User ID"),
     max_hits: int = Query(10, description="Maximum number of similar documents"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Find similar documents"""
     if not query_builder:
@@ -274,6 +287,7 @@ async def get_facets(
     providers: Optional[List[str]] = Query(None, description="Filter by providers"),
     date_from: Optional[str] = Query(None, description="Start date for filtering"),
     date_to: Optional[str] = Query(None, description="End date for filtering"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get facet information"""
     if not query_builder:
@@ -317,6 +331,7 @@ async def get_trending(
     user_id: str = Query(..., description="User ID"),
     time_range: str = Query("7d", description="Time range for trending"),
     max_hits: int = Query(10, description="Maximum number of trending documents"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get trending documents"""
     if not query_builder:
@@ -355,6 +370,7 @@ async def get_trending(
 async def get_analytics(
     user_id: str = Query(..., description="User ID"),
     time_range: str = Query("30d", description="Time range for analytics"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get analytics data"""
     if not query_builder:
@@ -390,4 +406,4 @@ async def get_analytics(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=9002)
+    uvicorn.run(app, host="0.0.0.0", port=8006)
