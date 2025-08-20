@@ -12,6 +12,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.common.http_errors import (
+    ErrorCode,
     NotFoundError,
     ServiceError,
     ValidationError,
@@ -136,7 +137,7 @@ async def health_check() -> Dict[str, Any]:
 
     settings = Settings()
 
-    health_status = {
+    health_status: Dict[str, Any] = {
         "status": "healthy",
         "service": "vespa-query",
         "timestamp": datetime.utcnow().isoformat(),
@@ -197,7 +198,9 @@ async def search(
 ) -> Dict[str, Any]:
     """Execute a search query"""
     if not query_builder:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_INITIALIZED")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build search query
@@ -217,7 +220,7 @@ async def search(
         # Execute search
         if not search_engine:
             raise ServiceError(
-                "Search engine not initialized", code="SEARCH_ENGINE_NOT_INITIALIZED"
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
             )
 
         vespa_results = await search_engine.search(search_query)
@@ -226,7 +229,7 @@ async def search(
         if not result_processor:
             raise ServiceError(
                 "Result processor not initialized",
-                code="RESULT_PROCESSOR_NOT_INITIALIZED",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_search_results(
@@ -242,7 +245,7 @@ async def search(
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise ServiceError(
-            f"Search operation failed: {str(e)}", code="SEARCH_OPERATION_FAILED"
+            f"Search operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
         )
 
 
@@ -255,7 +258,9 @@ async def autocomplete(
 ) -> Dict[str, Any]:
     """Get autocomplete suggestions"""
     if not query_builder:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_INITIALIZED")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build autocomplete query
@@ -266,7 +271,7 @@ async def autocomplete(
         # Execute autocomplete
         if not search_engine:
             raise ServiceError(
-                "Search engine not initialized", code="SEARCH_ENGINE_NOT_INITIALIZED"
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
             )
 
         vespa_results = await search_engine.autocomplete(autocomplete_query)
@@ -275,7 +280,7 @@ async def autocomplete(
         if not result_processor:
             raise ServiceError(
                 "Result processor not initialized",
-                code="RESULT_PROCESSOR_NOT_INITIALIZED",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_autocomplete_results(
@@ -288,7 +293,7 @@ async def autocomplete(
         logger.error(f"Autocomplete error: {e}")
         raise ServiceError(
             f"Autocomplete operation failed: {str(e)}",
-            code="AUTOCOMPLETE_OPERATION_FAILED",
+            code=ErrorCode.SERVICE_ERROR,
         )
 
 
@@ -303,7 +308,9 @@ async def find_similar(
 ) -> Dict[str, Any]:
     """Find similar documents"""
     if not query_builder:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_INITIALIZED")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build similarity query
@@ -314,7 +321,7 @@ async def find_similar(
         # Execute similarity search
         if not search_engine:
             raise ServiceError(
-                "Search engine not initialized", code="SEARCH_ENGINE_NOT_INITIALIZED"
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
             )
 
         vespa_results = await search_engine.find_similar(similarity_query)
@@ -323,7 +330,7 @@ async def find_similar(
         if not result_processor:
             raise ServiceError(
                 "Result processor not initialized",
-                code="RESULT_PROCESSOR_NOT_INITIALIZED",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_similarity_results(
@@ -335,7 +342,7 @@ async def find_similar(
     except Exception as e:
         logger.error(f"Similarity search error: {e}")
         raise ServiceError(
-            f"Similarity search failed: {str(e)}", code="SIMILARITY_SEARCH_FAILED"
+            f"Similarity search failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
         )
 
 
@@ -352,7 +359,9 @@ async def get_facets(
 ) -> Dict[str, Any]:
     """Get facet information"""
     if not query_builder:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_INITIALIZED")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build facets query
@@ -367,7 +376,7 @@ async def get_facets(
         # Execute facets query
         if not search_engine:
             raise ServiceError(
-                "Search engine not initialized", code="SEARCH_ENGINE_NOT_INITIALIZED"
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
             )
 
         vespa_results = await search_engine.get_facets(facets_query)
@@ -376,7 +385,7 @@ async def get_facets(
         if not result_processor:
             raise ServiceError(
                 "Result processor not initialized",
-                code="RESULT_PROCESSOR_NOT_INITIALIZED",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_facets_results(
@@ -388,7 +397,7 @@ async def get_facets(
     except Exception as e:
         logger.error(f"Facets error: {e}")
         raise ServiceError(
-            f"Facets operation failed: {str(e)}", code="FACETS_OPERATION_FAILED"
+            f"Facets operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
         )
 
 
@@ -401,7 +410,9 @@ async def get_trending(
 ) -> Dict[str, Any]:
     """Get trending documents"""
     if not query_builder:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_INITIALIZED")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build trending query
@@ -412,7 +423,7 @@ async def get_trending(
         # Execute trending query
         if not search_engine:
             raise ServiceError(
-                "Search engine not initialized", code="SEARCH_ENGINE_NOT_INITIALIZED"
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
             )
 
         vespa_results = await search_engine.get_trending(trending_query)
@@ -421,7 +432,7 @@ async def get_trending(
         if not result_processor:
             raise ServiceError(
                 "Result processor not initialized",
-                code="RESULT_PROCESSOR_NOT_INITIALIZED",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_trending_results(
@@ -433,7 +444,7 @@ async def get_trending(
     except Exception as e:
         logger.error(f"Trending error: {e}")
         raise ServiceError(
-            f"Trending operation failed: {str(e)}", code="TRENDING_OPERATION_FAILED"
+            f"Trending operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
         )
 
 
@@ -445,7 +456,9 @@ async def get_analytics(
 ) -> Dict[str, Any]:
     """Get analytics data"""
     if not query_builder:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_INITIALIZED")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build analytics query
@@ -456,7 +469,7 @@ async def get_analytics(
         # Execute analytics query
         if not search_engine:
             raise ServiceError(
-                "Search engine not initialized", code="SEARCH_ENGINE_NOT_INITIALIZED"
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
             )
 
         vespa_results = await search_engine.get_analytics(analytics_query)
@@ -465,7 +478,7 @@ async def get_analytics(
         if not result_processor:
             raise ServiceError(
                 "Result processor not initialized",
-                code="RESULT_PROCESSOR_NOT_INITIALIZED",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_analytics_results(
@@ -477,7 +490,7 @@ async def get_analytics(
     except Exception as e:
         logger.error(f"Analytics error: {e}")
         raise ServiceError(
-            f"Analytics operation failed: {str(e)}", code="ANALYTICS_OPERATION_FAILED"
+            f"Analytics operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
         )
 
 

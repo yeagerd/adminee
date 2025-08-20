@@ -7,7 +7,7 @@ import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from services.common.http_errors import (
     AuthError,
+    ErrorCode,
     NotFoundError,
     RateLimitError,
     ServiceError,
@@ -51,7 +52,7 @@ class RateLimiter:
     def __init__(self, max_requests: int = 100, window_seconds: int = 60):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
-        self.requests = defaultdict(list)
+        self.requests: Dict[str, List[float]] = defaultdict(list)
 
     def is_allowed(self, key: str) -> bool:
         """Check if request is allowed based on rate limit"""
@@ -94,12 +95,15 @@ async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str
     settings = Settings()
 
     if x_api_key != settings.api_frontend_vespa_loader_key:
-        raise AuthError("Invalid API key", code="INVALID_API_KEY")
+        raise AuthError("Invalid API key", code=ErrorCode.AUTH_FAILED)
     return x_api_key
 
 
 async def check_rate_limit(api_key: str = Depends(verify_api_key)) -> str:
     """Check rate limit for API requests"""
+    if rate_limiter is None:
+        return api_key  # No rate limiting if not initialized
+
     if not rate_limiter.is_allowed(api_key):
         remaining_time = rate_limiter.window_seconds
         raise RateLimitError(
@@ -223,7 +227,7 @@ register_briefly_exception_handlers(app)
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
     """Enhanced health check endpoint with external service dependency verification"""
-    health_status = {
+    health_status: Dict[str, Any] = {
         "status": "healthy",
         "service": "vespa-loader",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -303,7 +307,9 @@ async def ingest_document(
     if not all(
         [vespa_client, content_normalizer, embedding_generator, document_mapper]
     ):
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Validate document data
@@ -317,7 +323,7 @@ async def ingest_document(
         # Map document to Vespa format
         if not document_mapper:
             raise ServiceError(
-                "Document mapper not initialized", code="COMPONENT_NOT_READY"
+                "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
             )
         vespa_document = document_mapper.map_to_vespa(document_data)
 
@@ -341,7 +347,7 @@ async def ingest_document(
         # Index document in Vespa
         if not vespa_client:
             raise ServiceError(
-                "Vespa client not initialized", code="COMPONENT_NOT_READY"
+                "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
             )
         result = await vespa_client.index_document(vespa_document)
 
@@ -362,7 +368,7 @@ async def ingest_document(
         logger.error(f"Error ingesting document: {e}")
         raise ServiceError(
             "Document ingestion failed",
-            code="INGESTION_ERROR",
+            code=ErrorCode.SERVICE_ERROR,
             details={"error": str(e)},
         )
 
@@ -377,7 +383,9 @@ async def ingest_batch_documents(
     if not all(
         [vespa_client, content_normalizer, embedding_generator, document_mapper]
     ):
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         results = []
@@ -388,7 +396,7 @@ async def ingest_batch_documents(
                 # Map document to Vespa format
                 if not document_mapper:
                     raise ServiceError(
-                        "Document mapper not initialized", code="COMPONENT_NOT_READY"
+                        "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
                     )
                 vespa_document = document_mapper.map_to_vespa(doc)
 
@@ -414,7 +422,7 @@ async def ingest_batch_documents(
                 # Index document in Vespa
                 if not vespa_client:
                     raise ServiceError(
-                        "Vespa client not initialized", code="COMPONENT_NOT_READY"
+                        "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
                     )
                 result = await vespa_client.index_document(vespa_document)
 
@@ -449,7 +457,7 @@ async def ingest_batch_documents(
         logger.error(f"Error in batch ingestion: {e}")
         raise ServiceError(
             "Batch ingestion failed",
-            code="BATCH_INGESTION_ERROR",
+            code=ErrorCode.SERVICE_ERROR,
             details={"error": str(e)},
         )
 
@@ -544,7 +552,9 @@ async def process_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
 async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
     """Delete a document from Vespa"""
     if not vespa_client:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         result = await vespa_client.delete_document(document_id, user_id)
@@ -553,7 +563,9 @@ async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error deleting document: {e}")
         raise ServiceError(
-            "Document deletion failed", code="DELETION_ERROR", details={"error": str(e)}
+            "Document deletion failed",
+            code=ErrorCode.SERVICE_ERROR,
+            details={"error": str(e)},
         )
 
 
@@ -561,7 +573,9 @@ async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
 async def get_document(user_id: str, document_id: str) -> Dict[str, Any]:
     """Get a document from Vespa"""
     if not vespa_client:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         document = await vespa_client.get_document(document_id, user_id)
@@ -576,7 +590,7 @@ async def get_document(user_id: str, document_id: str) -> Dict[str, Any]:
         logger.error(f"Error getting document: {e}")
         raise ServiceError(
             "Document retrieval failed",
-            code="RETRIEVAL_ERROR",
+            code=ErrorCode.SERVICE_ERROR,
             details={"error": str(e)},
         )
 
@@ -587,7 +601,9 @@ async def search_documents(
 ) -> Dict[str, Any]:
     """Search documents for a user"""
     if not vespa_client:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         results = await vespa_client.search_documents(query, user_id, limit)
@@ -601,7 +617,9 @@ async def search_documents(
     except Exception as e:
         logger.error(f"Error searching documents: {e}")
         raise ServiceError(
-            "Document search failed", code="SEARCH_ERROR", details={"error": str(e)}
+            "Document search failed",
+            code=ErrorCode.SERVICE_ERROR,
+            details={"error": str(e)},
         )
 
 
@@ -609,7 +627,9 @@ async def search_documents(
 async def get_user_stats(user_id: str) -> Dict[str, Any]:
     """Get statistics for a user"""
     if not vespa_client:
-        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         document_count = await vespa_client.get_document_count(user_id)
@@ -622,7 +642,9 @@ async def get_user_stats(user_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting user stats: {e}")
         raise ServiceError(
-            "User stats retrieval failed", code="STATS_ERROR", details={"error": str(e)}
+            "User stats retrieval failed",
+            code=ErrorCode.SERVICE_ERROR,
+            details={"error": str(e)},
         )
 
 

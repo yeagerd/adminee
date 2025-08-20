@@ -2,7 +2,7 @@
 name = "briefly-vespa-loader"
 version = "0.1.0"
 description = "Briefly Vespa Loader Service - Consumes email data and indexes into Vespa"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     # Web Framework
     "fastapi>=0.116.1,<1.0.0",
@@ -16,7 +16,7 @@ dependencies = [
     # Embeddings
     "numpy>=1.26.0,<2.0.0",
     "huggingface-hub>=0.20.0,<1.0.0",
-    "sentence-transformers>=2.5.0,<2.0.0",
+    "sentence-transformers>=2.5.0,<3.0.0",
     # OpenTelemetry (compatible versions)
     "opentelemetry-api>=1.9.0,<2.0.0",
     "opentelemetry-sdk>=1.9.0,<2.0.0",
