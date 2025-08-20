@@ -162,6 +162,9 @@ update_all_types() {
     print_status "info" "Starting type update for all services..."
     echo "=================================================================="
     
+    # Services to exclude from frontend type generation (same as generate-openapi-schemas.sh)
+    local EXCLUDED_SERVICES="common vector_db email_sync demos vespa_loader briefly.egg-info __pycache__"
+    
     # Get list of services that have OpenAPI schemas
     local services=()
     echo "DEBUG: Looking for services in: $PROJECT_ROOT/services/*/"
@@ -174,8 +177,14 @@ update_all_types() {
             local service_name=$(basename "$service_dir")
             echo "DEBUG: Found service directory: $service_dir (service: $service_name)"
             
+            # Check if service should be excluded from frontend type generation
+            if [[ " $EXCLUDED_SERVICES " =~ " $service_name " ]]; then
+                echo "DEBUG: Excluding service from frontend types: $service_name"
+                continue
+            fi
+            
             if [[ -f "$service_dir/openapi/schema.json" ]]; then
-                echo "DEBUG: Service $service_name has OpenAPI schema"
+                echo "DEBUG: Service $service_name has OpenAPI schema and will generate frontend types"
                 services+=("$service_name")
             else
                 echo "DEBUG: Service $service_name missing OpenAPI schema: $service_dir/openapi/schema.json"
