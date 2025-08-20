@@ -30,6 +30,7 @@ from services.common.logging_config import (
     setup_service_logging,
 )
 from services.common.telemetry import get_tracer, setup_telemetry
+from services.vespa_loader.pubsub_consumer import VespaDocumentType
 
 # Setup telemetry
 setup_telemetry("vespa-loader", "1.0.0")
@@ -47,7 +48,7 @@ pubsub_consumer: Optional[Any] = None
 
 
 async def ingest_document_service(
-    document_data: Dict[str, Any], run_background_tasks: bool = True
+    document_data: Union[VespaDocumentType, Dict[str, Any]], run_background_tasks: bool = True
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
 
@@ -74,19 +75,30 @@ async def ingest_document_service(
 
     try:
         # Validate document data
-        if not document_data.get("id") or not document_data.get("user_id"):
-            raise ValidationError(
-                "Document ID and user_id are required",
-                field="document_data",
-                value=document_data,
-            )
+        if isinstance(document_data, VespaDocumentType):
+            if not document_data.id or not document_data.user_id:
+                raise ValidationError(
+                    "Document ID and user_id are required",
+                    field="document_data",
+                    value=document_data,
+                )
+            # Convert to dict for processing
+            document_dict = document_data.to_dict()
+        else:
+            if not document_data.get("id") or not document_data.get("user_id"):
+                raise ValidationError(
+                    "Document ID and user_id are required",
+                    field="document_data",
+                    value=document_data,
+                )
+            document_dict = document_data
 
         # Map document to Vespa format
         if not document_mapper:
             raise ServiceError(
                 "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
             )
-        vespa_document = document_mapper.map_to_vespa(document_data)
+        vespa_document = document_mapper.map_to_vespa(document_dict)
 
         # Normalize content
         if vespa_document.get("content") and content_normalizer:
@@ -120,7 +132,7 @@ async def ingest_document_service(
 
         return {
             "status": "success",
-            "document_id": document_data["id"],
+            "document_id": document_dict["id"],
             "vespa_result": result,
         }
 

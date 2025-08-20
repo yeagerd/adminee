@@ -103,21 +103,21 @@ class TestPubSubConsumer:
         first_call = mock_consumer._ingest_document.call_args_list[0]
         first_email_data = first_call[0][0]  # First argument of first call
         
-        assert first_email_data["id"] == "email-1"
-        assert first_email_data["user_id"] == "test-user-123"  # Should be added from event
-        assert first_email_data["subject"] == "Test Email 1"
-        assert first_email_data["from"] == "sender1@test.com"
-        assert first_email_data["to"] == ["recipient1@test.com"]
+        assert first_email_data.id == "email-1"
+        assert first_email_data.user_id == "test-user-123"  # Should be added from event
+        assert first_email_data.subject == "Test Email 1"
+        assert first_email_data.from_address == "sender1@test.com"
+        assert first_email_data.to_addresses == ["recipient1@test.com"]
 
         # Verify the second email was processed with correct data
         second_call = mock_consumer._ingest_document.call_args_list[1]
         second_email_data = second_call[0][0]  # First argument of second call
         
-        assert second_email_data["id"] == "email-2"
-        assert second_email_data["user_id"] == "test-user-123"  # Should be added from event
-        assert second_email_data["subject"] == "Test Email 2"
-        assert second_email_data["from"] == "sender2@test.com"
-        assert second_email_data["to"] == ["recipient2@test.com"]
+        assert second_email_data.id == "email-2"
+        assert second_email_data.user_id == "test-user-123"  # Should be added from event
+        assert second_email_data.subject == "Test Email 2"
+        assert second_email_data.from_address == "sender2@test.com"
+        assert second_email_data.to_addresses == ["recipient2@test.com"]
 
     async def test_process_email_message_adds_user_id_when_missing(self, mock_consumer, sample_email_backfill_event):
         """Test that user_id is properly used from the event level"""
@@ -132,7 +132,7 @@ class TestPubSubConsumer:
         first_call = mock_consumer._ingest_document.call_args_list[0]
         first_email_data = first_call[0][0]
         
-        assert first_email_data["user_id"] == "test-user-123"
+        assert first_email_data.user_id == "test-user-123"
 
     async def test_process_email_message_handles_missing_emails_array(self, mock_consumer):
         """Test that invalid events without emails array are rejected"""
