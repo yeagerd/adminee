@@ -69,6 +69,17 @@ jobs:
           cd frontend
           npm run generate-types
 
+      - name: Copy .example.env to frontend/.env
+        run: cp .example.env frontend/.env
+
+      - name: Set NEXTAUTH_SECRET for CI build
+        working-directory: ./frontend
+        run: echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> .env
+
+      - name: Set NEXTAUTH_URL for CI build
+        working-directory: ./frontend
+        run: echo "NEXTAUTH_URL=https://github.com" >> .env
+
       - name: Build Application
         run: |
           cd frontend
