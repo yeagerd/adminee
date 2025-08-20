@@ -44,9 +44,9 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 - [x] Add health check interval and timeout configuration to settings
 
 ### 8. Error Handling
-- [ ] Replace basic `HTTPException` usage with standardized error classes from `services.common.http_errors`
-- [ ] Add proper error details and correlation IDs
-- [ ] Implement consistent error handling across all endpoints
+- [x] Replace basic `HTTPException` usage with standardized error classes from `services.common.http_errors`
+- [x] Add proper error details and correlation IDs
+- [x] Implement consistent error handling across all endpoints
 
 ### 9. Missing Service Integration
 - [ ] Add integration with Express Gateway
