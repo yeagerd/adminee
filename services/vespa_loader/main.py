@@ -11,7 +11,13 @@ import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from services.common.http_errors import register_briefly_exception_handlers
+from services.common.http_errors import (
+    register_briefly_exception_handlers,
+    ValidationError,
+    NotFoundError,
+    ServiceError,
+    AuthError
+)
 from services.common.logging_config import (
     create_request_logging_middleware,
     get_logger,
@@ -44,7 +50,7 @@ async def verify_api_key(
     settings = Settings()
     
     if x_api_key != settings.api_frontend_vespa_loader_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        raise AuthError("Invalid API key", code="INVALID_API_KEY")
     return x_api_key
 
 
@@ -228,20 +234,20 @@ async def ingest_document(
     if not all(
         [vespa_client, content_normalizer, embedding_generator, document_mapper]
     ):
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
 
     try:
         # Validate document data
         if not document_data.get("id") or not document_data.get("user_id"):
-            raise HTTPException(
-                status_code=400, detail="Document ID and user_id are required"
+            raise ValidationError(
+                "Document ID and user_id are required",
+                field="document_data",
+                value=document_data
             )
 
         # Map document to Vespa format
         if not document_mapper:
-            raise HTTPException(
-                status_code=500, detail="Document mapper not initialized"
-            )
+            raise ServiceError("Document mapper not initialized", code="COMPONENT_NOT_READY")
         vespa_document = document_mapper.map_to_vespa(document_data)
 
         # Normalize content
@@ -263,7 +269,7 @@ async def ingest_document(
 
         # Index document in Vespa
         if not vespa_client:
-            raise HTTPException(status_code=500, detail="Vespa client not initialized")
+            raise ServiceError("Vespa client not initialized", code="COMPONENT_NOT_READY")
         result = await vespa_client.index_document(vespa_document)
 
         # Add background task for post-processing if needed
@@ -281,7 +287,7 @@ async def ingest_document(
 
     except Exception as e:
         logger.error(f"Error ingesting document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError("Document ingestion failed", code="INGESTION_ERROR", details={"error": str(e)})
 
 
 @app.post("/ingest/batch")
@@ -294,7 +300,7 @@ async def ingest_batch_documents(
     if not all(
         [vespa_client, content_normalizer, embedding_generator, document_mapper]
     ):
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
 
     try:
         results = []
@@ -304,9 +310,7 @@ async def ingest_batch_documents(
             try:
                 # Map document to Vespa format
                 if not document_mapper:
-                    raise HTTPException(
-                        status_code=500, detail="Document mapper not initialized"
-                    )
+                    raise ServiceError("Document mapper not initialized", code="COMPONENT_NOT_READY")
                 vespa_document = document_mapper.map_to_vespa(doc)
 
                 # Normalize content
@@ -330,9 +334,7 @@ async def ingest_batch_documents(
 
                 # Index document in Vespa
                 if not vespa_client:
-                    raise HTTPException(
-                        status_code=500, detail="Vespa client not initialized"
-                    )
+                    raise ServiceError("Vespa client not initialized", code="COMPONENT_NOT_READY")
                 result = await vespa_client.index_document(vespa_document)
 
                 results.append(
@@ -364,7 +366,7 @@ async def ingest_batch_documents(
 
     except Exception as e:
         logger.error(f"Error in batch ingestion: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError("Batch ingestion failed", code="BATCH_INGESTION_ERROR", details={"error": str(e)})
 
 
 def _flatten_office_router_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -457,7 +459,7 @@ async def process_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
 async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
     """Delete a document from Vespa"""
     if not vespa_client:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
 
     try:
         result = await vespa_client.delete_document(document_id, user_id)
@@ -465,27 +467,27 @@ async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Error deleting document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError("Document deletion failed", code="DELETION_ERROR", details={"error": str(e)})
 
 
 @app.get("/document/{user_id}/{document_id}")
 async def get_document(user_id: str, document_id: str) -> Dict[str, Any]:
     """Get a document from Vespa"""
     if not vespa_client:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
 
     try:
         document = await vespa_client.get_document(document_id, user_id)
         if document is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise NotFoundError("Document", document_id)
 
         return {"status": "success", "document": document}
 
-    except HTTPException:
+    except (NotFoundError, ServiceError):
         raise
     except Exception as e:
         logger.error(f"Error getting document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError("Document retrieval failed", code="RETRIEVAL_ERROR", details={"error": str(e)})
 
 
 @app.get("/search/{user_id}")
@@ -494,7 +496,7 @@ async def search_documents(
 ) -> Dict[str, Any]:
     """Search documents for a user"""
     if not vespa_client:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
 
     try:
         results = await vespa_client.search_documents(query, user_id, limit)
@@ -507,14 +509,14 @@ async def search_documents(
 
     except Exception as e:
         logger.error(f"Error searching documents: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError("Document search failed", code="SEARCH_ERROR", details={"error": str(e)})
 
 
 @app.get("/stats/{user_id}")
 async def get_user_stats(user_id: str) -> Dict[str, Any]:
     """Get statistics for a user"""
     if not vespa_client:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError("Service not initialized", code="SERVICE_NOT_READY")
 
     try:
         document_count = await vespa_client.get_document_count(user_id)
@@ -526,7 +528,7 @@ async def get_user_stats(user_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Error getting user stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError("User stats retrieval failed", code="STATS_ERROR", details={"error": str(e)})
 
 
 async def _post_process_document(document_id: str, user_id: str) -> None:
