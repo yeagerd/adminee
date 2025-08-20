@@ -351,8 +351,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error(f"Vespa connection test failed: {e}")
         raise
 
-    # Start Pub/Sub consumer if enabled
-    if settings.enable_pubsub_consumer:
+    # Start Pub/Sub consumer if not disabled
+    if not settings.disable_pubsub_consumer:
         try:
             pubsub_consumer = PubSubConsumer(settings)
             success = await pubsub_consumer.start()
@@ -776,7 +776,7 @@ async def debug_pubsub_status() -> Dict[str, Any]:
             "settings": {
                 "project_id": pubsub_consumer.settings.pubsub_project_id,
                 "emulator_host": pubsub_consumer.settings.pubsub_emulator_host,
-                "enable_consumer": pubsub_consumer.settings.enable_pubsub_consumer,
+                "disable_consumer": pubsub_consumer.settings.disable_pubsub_consumer,
             },
         }
     except Exception as e:

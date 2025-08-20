@@ -91,8 +91,8 @@ class Settings(BaseSettings):
     pubsub_emulator_host: str = Field(
         default="localhost:8085", validation_alias="PUBSUB_EMULATOR_HOST"
     )
-    enable_pubsub_consumer: bool = Field(
-        default=True, validation_alias="ENABLE_PUBSUB_CONSUMER"
+    disable_pubsub_consumer: bool = Field(
+        default=False, validation_alias="DISABLE_PUBSUB_CONSUMER"
     )
 
     # Health check configuration

@@ -94,32 +94,61 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
             logger.error("User service URL or API key not configured")
             return None
 
+        # Log the full request details
+        request_url = f"{user_service_url}/v1/internal/users/exists"
+        request_params = {"email": email}
+        request_headers = {"X-API-Key": api_key}
+        
+        logger.info(f"Email resolution - Making request to: {request_url}")
+        logger.info(f"Email resolution - Request params: {request_params}")
+        logger.info(f"Email resolution - Request headers: X-API-Key: {api_key[:10]}...")
+
         # Call user service to resolve email to user ID
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{user_service_url}/v1/internal/users/exists",
-                params={"email": email},
-                headers={"X-API-Key": api_key},
+                request_url,
+                params=request_params,
+                headers=request_headers,
                 timeout=10.0,
             )
 
+            # Log response details
+            logger.info(f"Email resolution - Response status: {response.status_code}")
+            logger.info(f"Email resolution - Response headers: {dict(response.headers)}")
+            
             if response.status_code == 200:
-                data = response.json()
-                if data.get("exists"):
-                    user_id = data.get("user_id")
-                    logger.info(f"Resolved email {email} to user ID {user_id}")
-                    return user_id
-                else:
-                    logger.warning(f"Email {email} not found in user service")
+                try:
+                    data = response.json()
+                    logger.info(f"Email resolution - Response data: {data}")
+                    
+                    if data.get("exists"):
+                        user_id = data.get("user_id")
+                        logger.info(f"Resolved email {email} to user ID {user_id}")
+                        return user_id
+                    else:
+                        logger.warning(f"Email {email} not found in user service")
+                        return None
+                except Exception as json_error:
+                    logger.error(f"Email resolution - Failed to parse JSON response: {json_error}")
+                    logger.error(f"Email resolution - Raw response text: {response.text}")
                     return None
             else:
                 logger.error(
                     f"Failed to resolve email {email}: {response.status_code} - {response.text}"
                 )
+                logger.error(f"Email resolution - Full response: {response}")
                 return None
 
+    except httpx.TimeoutException as e:
+        logger.error(f"Email resolution - Timeout error for {email}: {e}")
+        return None
+    except httpx.RequestError as e:
+        logger.error(f"Email resolution - Request error for {email}: {e}")
+        return None
     except Exception as e:
         logger.error(f"Error resolving email {email} to user ID: {e}")
+        logger.error(f"Email resolution - Exception type: {type(e).__name__}")
+        logger.error(f"Email resolution - Exception details: {str(e)}")
         return None
 
 
@@ -293,9 +322,12 @@ async def run_backfill_job(
         job.status = BackfillStatusEnum.RUNNING  # Use enum value
 
         # Resolve email to internal user ID for API calls
+        logger.info(f"Backfill job {job_id} - Starting email resolution for: {user_id}")
         internal_user_id = await _resolve_email_to_user_id(user_id)
         if not internal_user_id:
+            logger.error(f"Backfill job {job_id} - Failed to resolve email {user_id} to internal user ID")
             raise Exception(f"Failed to resolve email {user_id} to internal user ID")
+        logger.info(f"Backfill job {job_id} - Successfully resolved email {user_id} to internal user ID: {internal_user_id}")
 
         # Initialize email crawler and pubsub client
         email_crawler = EmailCrawler(
