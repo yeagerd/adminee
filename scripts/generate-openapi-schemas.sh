@@ -35,8 +35,42 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Service configuration
-SERVICES="chat meetings office shipments vespa_query"
-SERVICE_PATHS="services/chat services/meetings services/office services/shipments services/vespa_query"
+# Services to exclude from OpenAPI generation (no meaningful schemas or not FastAPI apps)
+EXCLUDED_SERVICES="common vector_db email_sync demos vespa_loader briefly.egg-info __pycache__"
+
+# Auto-discover services
+discover_services() {
+    local services=()
+    local paths=()
+    
+    for service_dir in services/*/; do
+        if [[ -d "$service_dir" ]]; then
+            local service_name=$(basename "$service_dir")
+            
+            # Check if service should be excluded
+            if [[ " $EXCLUDED_SERVICES " =~ " $service_name " ]]; then
+                echo "DEBUG: Excluding service: $service_name"
+                continue
+            fi
+            
+            # Check if service has a main.py file
+            if [[ -f "$service_dir/main.py" ]] || [[ -f "$service_dir/app/main.py" ]]; then
+                services+=("$service_name")
+                paths+=("services/$service_name")
+                echo "DEBUG: Including service: $service_name"
+            else
+                echo "DEBUG: Skipping service (no main.py): $service_name"
+            fi
+        fi
+    done
+    
+    # Export arrays for use in the script
+    SERVICES="${services[*]}"
+    SERVICE_PATHS="${paths[*]}"
+    
+    echo "DEBUG: Discovered services: $SERVICES"
+    echo "DEBUG: Service paths: $SERVICE_PATHS"
+}
 
 # Function to print colored output
 print_status() {
@@ -99,15 +133,33 @@ find_app_name() {
         return 1
     fi
     
-    # Look for common FastAPI app variable names and extract just the variable name
+    # Look for common FastAPI app variable patterns
+    # Pattern 1: Direct FastAPI instantiation
     local app_line=$(grep -E "^(app|fastapi_app|api)\s*=\s*FastAPI\(" "$main_file" | head -1)
     if [[ -n "$app_line" ]]; then
-        # Extract the variable name (everything before the first space)
         local app_name=$(echo "$app_line" | awk '{print $1}')
         echo "$app_name"
-    else
-        return 1
+        return 0
     fi
+    
+    # Pattern 2: App proxy or other patterns (like user service)
+    app_line=$(grep -E "^(app|fastapi_app|api)\s*=\s*" "$main_file" | head -1)
+    if [[ -n "$app_line" ]]; then
+        local app_name=$(echo "$app_line" | awk '{print $1}')
+        echo "$app_name"
+        return 0
+    fi
+    
+    # Pattern 3: Look for uvicorn or ASGI app references
+    app_line=$(grep -E "uvicorn\.run\(" "$main_file" | grep -o '"[^"]*:app"' | sed 's/".*://; s/"//')
+    if [[ -n "$app_line" ]]; then
+        echo "$app_line"
+        return 0
+    fi
+    
+    # Default fallback
+    echo "app"
+    return 0
 }
 
 # Function to generate schema for a service
@@ -193,6 +245,11 @@ generate_all_schemas() {
     print_status "info" "Starting OpenAPI schema generation for all services..."
     echo "=================================================================="
     
+    # Discover services if not already done
+    if [[ -z "$SERVICES" ]]; then
+        discover_services
+    fi
+    
     # Convert strings to arrays
     local services_array=($SERVICES)
     local paths_array=($SERVICE_PATHS)
@@ -270,6 +327,9 @@ show_usage() {
 main() {
     local verbose=false
     local specific_service=""
+    
+    # Discover available services
+    discover_services
     
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
