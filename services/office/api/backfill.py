@@ -387,6 +387,12 @@ async def run_backfill_job(
                         folder=request.folders[0] if request.folders else None,
                         total_emails=total_emails,
                         processed_count=processed_count,
+                        metadata=EventMetadata(  # type: ignore[call-arg]
+                            source_service="office-service",
+                            source_version="1.0.0",
+                            user_id=internal_user_id,
+                            correlation_id=job_id,
+                        ),
                     )
 
                     # Add correlation ID for tracking
