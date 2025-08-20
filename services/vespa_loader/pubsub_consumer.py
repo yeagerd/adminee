@@ -16,11 +16,44 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from services.common.logging_config import get_logger
 from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
+from services.common.events.email_events import EmailBackfillEvent, EmailData
+
+# PubSub types
+try:
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+    from google.cloud.pubsub_v1.types import ReceivedMessage  # type: ignore[attr-defined]
+    PUBSUB_AVAILABLE = True
+except ImportError:
+    PUBSUB_AVAILABLE = False
+    ReceivedMessage = Any  # type: ignore
 
 logger = get_logger(__name__)
 
 # Import the shared ingest service function
 from services.vespa_loader.main import ingest_document_service
+
+# Typed message structure
+class TypedMessage:
+    """A properly typed message container"""
+    
+    def __init__(self, message: Any, data: Union[EmailBackfillEvent, Dict[str, Any]]):
+        self.message = message
+        self.data = data
+        self.timestamp = time.time()
+    
+    @property
+    def message_id(self) -> str:
+        return self.message.message_id
+    
+    @property
+    def user_id(self) -> str:
+        if isinstance(self.data, EmailBackfillEvent):
+            return self.data.user_id
+        return self.data.get("user_id", "unknown")
+    
+    def is_email_backfill_event(self) -> bool:
+        """Check if this message contains an EmailBackfillEvent"""
+        return isinstance(self.data, EmailBackfillEvent)
 
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
@@ -271,15 +304,24 @@ class PubSubConsumer:
                 logger.debug(f"Message data length: {len(message.data)} bytes")
 
                 # Parse message data
-                data = json.loads(message.data.decode("utf-8"))
+                raw_data = json.loads(message.data.decode("utf-8"))
+                
+                # Parse as typed EmailBackfillEvent for email-backfill topic
+                if topic_name == "email-backfill":
+                    typed_data = EmailBackfillEvent(**raw_data)
+                    logger.debug(
+                        f"Parsed as EmailBackfillEvent: message_id={message.message_id}, user_id={typed_data.user_id}, emails={len(typed_data.emails)}"
+                    )
+                else:
+                    typed_data = raw_data
+                
                 logger.debug(
-                    f"Parsed message data: message_id={message.message_id}, user_id={data.get('user_id', 'unknown')}"
+                    f"Parsed message data: message_id={message.message_id}, user_id={typed_data.user_id if hasattr(typed_data, 'user_id') else raw_data.get('user_id', 'unknown')}"
                 )
 
-                # Add to batch
-                self.message_batches[topic_name].append(
-                    {"message": message, "data": data, "timestamp": time.time()}
-                )
+                # Create typed message and add to batch
+                typed_message = TypedMessage(message, typed_data)
+                self.message_batches[topic_name].append(typed_message)
                 logger.debug(
                     f"Added message to batch for {topic_name}. Batch size: {len(self.message_batches[topic_name])}"
                 )
@@ -357,7 +399,7 @@ class PubSubConsumer:
 
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
         logger.info(
-            f"Message IDs: {[item['message'].message_id for item in batch]}"
+            f"Message IDs: {[item.message_id for item in batch]}"
         )
 
         # Process messages in parallel
@@ -372,15 +414,15 @@ class PubSubConsumer:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Acknowledge or nack messages based on results
-        for i, (item, result) in enumerate(zip(batch, results)):
+        for i, (typed_message, result) in enumerate(zip(batch, results)):
             if isinstance(result, Exception):
                 logger.error(
                     f"Failed to process message {i} from {topic_name}: {result}"
                 )
-                item["message"].nack()
+                typed_message.message.nack()
                 self.error_count += 1
             else:
-                item["message"].ack()
+                typed_message.message.ack()
                 self.processed_count += 1
 
         logger.info(
@@ -388,19 +430,26 @@ class PubSubConsumer:
         )
 
     async def _process_single_message(
-        self, topic_name: str, item: Dict[str, Any], config: Dict[str, Any]
+        self, topic_name: str, typed_message: TypedMessage, config: Dict[str, Any]
     ) -> Any:
-        """Process a single message"""
+        """Process a single message with proper typing"""
         try:
             # Call the appropriate processor
             processor = config["processor"]
-            message_id = item["message"].message_id
-            user_id = item["data"].get("user_id", "unknown")
+            message_id = typed_message.message_id
+            user_id = typed_message.user_id
 
             logger.info(
                 f"Calling processor for message from {topic_name}: {message_id} for user {user_id}"
             )
-            result = await processor(item["data"])
+            
+            # Log additional info for typed events
+            if typed_message.is_email_backfill_event():
+                logger.info(
+                    f"Processing typed EmailBackfillEvent with {len(typed_message.data.emails)} emails for user {user_id}"
+                )
+            
+            result = await processor(typed_message.data)
             logger.info(
                 f"Successfully processed message from {topic_name}: {message_id}"
             )
@@ -410,34 +459,51 @@ class PubSubConsumer:
             logger.error(f"Error processing message from {topic_name}: {e}")
             raise
 
-    async def _process_email_message(self, data: Dict[str, Any]) -> None:
-        """Process an email message for Vespa indexing"""
+    async def _process_email_message(self, data: EmailBackfillEvent) -> None:
+        """Process an email message for Vespa indexing using typed EmailBackfillEvent"""
         
-        # This is an EmailBackfillEvent - process each email in the batch
-        if "emails" in data and isinstance(data["emails"], list):
-            logger.info(f"Processing email batch event with {len(data['emails'])} emails")
-            logger.info(f"Batch event data keys: {list(data.keys())}")
-            
-            for i, email in enumerate(data["emails"]):
-                try:
-                    logger.info(f"Processing email {i+1}/{len(data['emails'])} from batch")
-                    logger.info(f"Email data keys: {list(email.keys())}")
-                    logger.info(f"Email ID: {email.get('id')}")
-                    logger.info(f"Email user_id: {email.get('user_id')}")
-                    
-                    # Add the user_id from the event to the email data if it's missing
-                    if not email.get('user_id') and data.get('user_id'):
-                        email['user_id'] = data['user_id']
-                        logger.info(f"Added user_id {data['user_id']} to email {i+1}")
-                    
-                    await self._ingest_document(email)
-                except Exception as e:
-                    logger.error(f"Failed to process email {i+1} from batch: {e}")
-                    # Continue processing other emails in the batch
-                    continue
-        else:
-            logger.error(f"Invalid email event format - missing 'emails' array: {data}")
-            raise ValueError("Email event must contain 'emails' array")
+        logger.info(f"Processing EmailBackfillEvent with {len(data.emails)} emails for user {data.user_id}")
+        
+        for i, email in enumerate(data.emails):
+            try:
+                logger.info(f"Processing email {i+1}/{len(data.emails)} from batch")
+                logger.info(f"Email ID: {email.id}")
+                logger.info(f"Email subject: {email.subject}")
+                
+                # Create a properly typed email data object for ingestion
+                email_data = {
+                    "id": email.id,
+                    "user_id": data.user_id,  # Use the user_id from the event
+                    "type": "email",
+                    "provider": email.provider,
+                    "subject": email.subject or "",
+                    "body": email.body or "",
+                    "from": email.from_address or "",
+                    "to": email.to_addresses or [],
+                    "thread_id": email.thread_id or "",
+                    "folder": "",  # Not available in current model
+                    "created_at": email.received_date,
+                    "updated_at": email.sent_date,
+                    "metadata": {
+                        "is_read": email.is_read,
+                        "is_starred": email.is_starred,
+                        "has_attachments": email.has_attachments,
+                        "labels": email.labels,
+                        "size_bytes": email.size_bytes,
+                        "mime_type": email.mime_type,
+                        "headers": email.headers or {}
+                    },
+                    "content_chunks": [],
+                    "quoted_content": "",
+                    "thread_summary": {},
+                    "search_text": ""
+                }
+                
+                await self._ingest_document(email_data)
+            except Exception as e:
+                logger.error(f"Failed to process email {i+1} from batch: {e}")
+                # Continue processing other emails in the batch
+                continue
 
     async def _process_calendar_message(self, data: Dict[str, Any]) -> None:
         """Process a calendar message for Vespa indexing"""
@@ -476,10 +542,9 @@ class PubSubConsumer:
             # Determine the source type from the data
             source_type = data.get("type", "email")  # Default to email
 
-            # Process email data using the email processor if it's an email
+            # Process email data - now properly structured from EmailBackfillEvent
             if source_type == "email":
-                # The data comes from the office service with specific field names
-                # Map them to the expected vespa document structure
+                # The data is now properly structured from our typed EmailBackfillEvent processing
                 document_data = {
                     "id": data.get("id"),
                     "user_id": data.get("user_id"),
@@ -487,8 +552,8 @@ class PubSubConsumer:
                     "provider": data.get("provider"),
                     "subject": data.get("subject", ""),
                     "body": data.get("body", ""),
-                    "from": data.get("from_address", data.get("from", "")),  # Handle both field names
-                    "to": data.get("to_addresses", data.get("to", [])),      # Handle both field names
+                    "from": data.get("from", ""),
+                    "to": data.get("to", []),
                     "thread_id": data.get("thread_id", ""),
                     "folder": data.get("folder", ""),
                     "created_at": data.get("created_at"),

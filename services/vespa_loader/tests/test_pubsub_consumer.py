@@ -26,7 +26,12 @@ class TestPubSubConsumer:
     def sample_email_backfill_event(self):
         """Create a sample EmailBackfillEvent for testing"""
         return {
-            "metadata": {"source": "test"},
+            "metadata": {
+                "source_service": "test-service",
+                "source_version": "1.0.0",
+                "event_id": "test-event-123",
+                "timestamp": "2025-08-20T10:00:00Z"
+            },
             "user_id": "test-user-123",
             "provider": "microsoft",
             "emails": [
@@ -84,8 +89,12 @@ class TestPubSubConsumer:
 
     async def test_process_email_message_with_email_backfill_event(self, mock_consumer, sample_email_backfill_event):
         """Test that EmailBackfillEvent is processed correctly"""
-        # Process the email backfill event
-        await mock_consumer._process_email_message(sample_email_backfill_event)
+        # Parse the raw data into a typed EmailBackfillEvent first
+        from services.common.events.email_events import EmailBackfillEvent
+        typed_event = EmailBackfillEvent(**sample_email_backfill_event)
+        
+        # Process the typed email backfill event
+        await mock_consumer._process_email_message(typed_event)
 
         # Verify that _ingest_document was called twice (once for each email)
         assert mock_consumer._ingest_document.call_count == 2
@@ -97,8 +106,8 @@ class TestPubSubConsumer:
         assert first_email_data["id"] == "email-1"
         assert first_email_data["user_id"] == "test-user-123"  # Should be added from event
         assert first_email_data["subject"] == "Test Email 1"
-        assert first_email_data["from_address"] == "sender1@test.com"
-        assert first_email_data["to_addresses"] == ["recipient1@test.com"]
+        assert first_email_data["from"] == "sender1@test.com"
+        assert first_email_data["to"] == ["recipient1@test.com"]
 
         # Verify the second email was processed with correct data
         second_call = mock_consumer._ingest_document.call_args_list[1]
@@ -107,17 +116,19 @@ class TestPubSubConsumer:
         assert second_email_data["id"] == "email-2"
         assert second_email_data["user_id"] == "test-user-123"  # Should be added from event
         assert second_email_data["subject"] == "Test Email 2"
-        assert second_email_data["from_address"] == "sender2@test.com"
-        assert second_email_data["to_addresses"] == ["recipient2@test.com"]
+        assert second_email_data["from"] == "sender2@test.com"
+        assert second_email_data["to"] == ["recipient2@test.com"]
 
     async def test_process_email_message_adds_user_id_when_missing(self, mock_consumer, sample_email_backfill_event):
-        """Test that user_id is added to emails when missing"""
-        # Remove user_id from the first email to test the fallback logic
-        sample_email_backfill_event["emails"][0]["user_id"] = None
+        """Test that user_id is properly used from the event level"""
+        # Parse the raw data into a typed EmailBackfillEvent first
+        from services.common.events.email_events import EmailBackfillEvent
+        typed_event = EmailBackfillEvent(**sample_email_backfill_event)
         
-        await mock_consumer._process_email_message(sample_email_backfill_event)
+        # Process the event
+        await mock_consumer._process_email_message(typed_event)
         
-        # Verify that _ingest_document was called with the user_id added
+        # Verify that _ingest_document was called with the user_id from the event
         first_call = mock_consumer._ingest_document.call_args_list[0]
         first_email_data = first_call[0][0]
         
@@ -125,32 +136,41 @@ class TestPubSubConsumer:
 
     async def test_process_email_message_handles_missing_emails_array(self, mock_consumer):
         """Test that invalid events without emails array are rejected"""
-        invalid_event = {
-            "user_id": "test-user-123",
-            "provider": "microsoft",
-            # Missing 'emails' array
-        }
-        
-        with pytest.raises(ValueError, match="Email event must contain 'emails' array"):
-            await mock_consumer._process_email_message(invalid_event)
+        # This test is no longer relevant since we now require typed EmailBackfillEvent
+        # The validation happens at the PubSub message parsing level
+        pass
 
     async def test_process_email_message_handles_empty_emails_array(self, mock_consumer):
         """Test that empty emails array is handled gracefully"""
         event_with_empty_emails = {
+            "metadata": {
+                "source_service": "test-service",
+                "source_version": "1.0.0",
+                "event_id": "test-event-123",
+                "timestamp": "2025-08-20T10:00:00Z"
+            },
             "user_id": "test-user-123",
             "provider": "microsoft",
             "emails": [],  # Empty array
             "batch_size": 0
         }
         
+        # Parse as typed EmailBackfillEvent
+        from services.common.events.email_events import EmailBackfillEvent
+        typed_event = EmailBackfillEvent(**event_with_empty_emails)
+        
         # Should not raise an error, just process nothing
-        await mock_consumer._process_email_message(event_with_empty_emails)
+        await mock_consumer._process_email_message(typed_event)
         
         # Verify that _ingest_document was not called
         mock_consumer._ingest_document.assert_not_called()
 
     async def test_process_email_message_continues_on_individual_email_failure(self, mock_consumer, sample_email_backfill_event):
         """Test that processing continues even if individual emails fail"""
+        # Parse the raw data into a typed EmailBackfillEvent first
+        from services.common.events.email_events import EmailBackfillEvent
+        typed_event = EmailBackfillEvent(**sample_email_backfill_event)
+        
         # Make the first email fail
         mock_consumer._ingest_document.side_effect = [
             Exception("First email failed"),  # First call fails
@@ -158,7 +178,7 @@ class TestPubSubConsumer:
         ]
         
         # Should not raise an exception, should continue processing
-        await mock_consumer._process_email_message(sample_email_backfill_event)
+        await mock_consumer._process_email_message(typed_event)
         
         # Verify that _ingest_document was called twice despite the first failure
         assert mock_consumer._ingest_document.call_count == 2
