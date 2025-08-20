@@ -30,7 +30,7 @@ from services.common.logging_config import (
     setup_service_logging,
 )
 from services.common.telemetry import get_tracer, setup_telemetry
-from services.vespa_loader.pubsub_consumer import VespaDocumentType
+from services.vespa_loader.types import VespaDocumentType
 
 # Setup telemetry
 setup_telemetry("vespa-loader", "1.0.0")
