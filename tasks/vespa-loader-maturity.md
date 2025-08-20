@@ -27,15 +27,15 @@ The vespa_loader service is a stateless document processing service that ingests
 - [x] Update ingest endpoints in `services/vespa_loader/main.py` to require API key authentication
 
 ### Configuration Management (Minor)
-- [ ] Add missing environment variables for inter-service communication to `.example.env`
-- [ ] Ensure all configuration in `services/vespa_loader/settings.py` follows centralized settings pattern
-- [ ] Add service URL configuration to `services/vespa_loader/settings.py` for inter-service calls
+- [x] Add missing environment variables for inter-service communication to `.example.env`
+- [x] Ensure all configuration in `services/vespa_loader/settings.py` follows centralized settings pattern
+- [x] Add service URL configuration to `services/vespa_loader/settings.py` for inter-service calls
 
 ### Health Check Enhancement (Minor)
-- [ ] Enhance `/health` endpoint in `services/vespa_loader/main.py` to check Vespa connectivity
-- [ ] Add Pub/Sub consumer status to health checks in `services/vespa_loader/main.py`
-- [ ] Implement comprehensive health status reporting in `services/vespa_loader/main.py`
-- [ ] Add external service dependency verification in `services/vespa_loader/main.py`
+- [x] Enhance `/health` endpoint in `services/vespa_loader/main.py` to check Vespa connectivity
+- [x] Add Pub/Sub consumer status to health checks in `services/vespa_loader/main.py`
+- [x] Implement comprehensive health status reporting in `services/vespa_loader/main.py`
+- [x] Add external service dependency verification in `services/vespa_loader/main.py`
 
 ### Error Handling Consistency (Minor)
 - [ ] Ensure all endpoints in `services/vespa_loader/main.py` use standard error classes consistently

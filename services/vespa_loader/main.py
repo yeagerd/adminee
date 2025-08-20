@@ -148,9 +148,68 @@ register_briefly_exception_handlers(app)
 
 
 @app.get("/health")
-async def health_check() -> Dict[str, str]:
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "vespa-loader"}
+async def health_check() -> Dict[str, Any]:
+    """Enhanced health check endpoint with external service dependency verification"""
+    health_status = {
+        "status": "healthy",
+        "service": "vespa-loader",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "components": {}
+    }
+    
+    # Check Vespa connectivity
+    try:
+        if vespa_client:
+            vespa_ok = await vespa_client.test_connection()
+            health_status["components"]["vespa"] = {
+                "status": "healthy" if vespa_ok else "unhealthy",
+                "endpoint": vespa_client.endpoint
+            }
+        else:
+            health_status["components"]["vespa"] = {"status": "not_initialized"}
+    except Exception as e:
+        health_status["components"]["vespa"] = {
+            "status": "error",
+            "error": str(e)
+        }
+        health_status["status"] = "degraded"
+    
+    # Check Pub/Sub consumer status
+    if pubsub_consumer:
+        try:
+            stats = pubsub_consumer.get_stats()
+            health_status["components"]["pubsub_consumer"] = {
+                "status": "healthy",
+                "stats": stats
+            }
+        except Exception as e:
+            health_status["components"]["pubsub_consumer"] = {
+                "status": "error",
+                "error": str(e)
+            }
+            health_status["status"] = "degraded"
+    else:
+        health_status["components"]["pubsub_consumer"] = {"status": "not_initialized"}
+    
+    # Check core components
+    core_components = {
+        "content_normalizer": content_normalizer,
+        "embedding_generator": embedding_generator,
+        "document_mapper": document_mapper
+    }
+    
+    for name, component in core_components.items():
+        health_status["components"][name] = {
+            "status": "healthy" if component else "not_initialized"
+        }
+    
+    # Determine overall status
+    if any(comp.get("status") == "error" for comp in health_status["components"].values()):
+        health_status["status"] = "unhealthy"
+    elif any(comp.get("status") == "degraded" for comp in health_status["components"].values()):
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 
 @app.get("/")
