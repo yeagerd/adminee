@@ -15,8 +15,7 @@
         "validate-types": "../scripts/validate-types.sh",
         "validate-types:strict": "../scripts/validate-types.sh --strict",
         "validate-types:integration": "../scripts/validate-types.sh --integration",
-        "prebuild": "npm run generate-types && npm run validate-types",
-        "build:with-types": "npm run prebuild && npm run build"
+        "build:with-types": "npm run generate-types && npm run validate-types && npm run build"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.1",
