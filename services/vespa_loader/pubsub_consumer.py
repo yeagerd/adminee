@@ -75,6 +75,10 @@ class PubSubConsumer:
         self.message_batches: Dict[str, List[Any]] = {
             topic: [] for topic in self.topics
         }
+        # Store original message objects for conditional ack/nack
+        self.message_objects: Dict[str, List[Any]] = {
+            topic: [] for topic in self.topics
+        }
         self.batch_timers: Dict[str, Optional[asyncio.Task[Any]]] = {}
         self.batch_timeout = 5.0  # seconds
 
@@ -237,6 +241,8 @@ class PubSubConsumer:
 
                 # Add message to batch
                 self.message_batches[topic_name].append(data)
+                # Store original message object
+                self.message_objects[topic_name].append(message)
 
                 # Process batch if it's full or if timer expires
                 if len(self.message_batches[topic_name]) >= config["batch_size"]:
@@ -245,15 +251,15 @@ class PubSubConsumer:
                     # Start or reset batch timer
                     self._start_batch_timer(topic_name, config)
 
-                # Acknowledge the message
-                if hasattr(message, "ack"):
-                    message.ack()
+                # Message acknowledgment is deferred until after batch processing
+                # to allow for conditional ack/nack based on processing results
 
             except Exception as e:
                 logger.error(f"Error in message callback for topic {topic_name}: {e}")
-                # Nack the message to retry
+                # Nack the message to retry if there's an error in the callback
                 if hasattr(message, "nack"):
                     message.nack()
+                # Don't add to batch if callback processing fails
 
         return callback
 
@@ -411,7 +417,11 @@ class PubSubConsumer:
             return
 
         batch = self.message_batches[topic_name]
+        message_objects = self.message_objects[topic_name]
+        
+        # Clear the batches
         self.message_batches[topic_name] = []
+        self.message_objects[topic_name] = []
 
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
         logger.info(f"Message IDs: {[item.get('id', 'unknown') for item in batch]}")
@@ -428,21 +438,31 @@ class PubSubConsumer:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Acknowledge or nack messages based on results
-        for i, (item, result) in enumerate(zip(batch, results)):
-            if isinstance(result, Exception):
-                logger.error(
-                    f"Failed to process message {i} from {topic_name}: {result}"
-                )
-                # The original code had message.nack(), but message is not directly available here.
-                # Assuming the intent was to handle the error and potentially nack the original message
-                # if it were passed in the item.
-                # For now, we'll just increment error_count and log the error.
+        for i, (item, result, message_obj) in enumerate(zip(batch, results, message_objects)):
+            try:
+                if isinstance(result, Exception):
+                    logger.error(
+                        f"Failed to process message {i} from {topic_name}: {result}"
+                    )
+                    # Nack the message to retry
+                    if hasattr(message_obj, "nack"):
+                        message_obj.nack()
+                        logger.info(f"Nacked message {i} from {topic_name} for retry")
+                    else:
+                        logger.warning(f"Message object does not support nack for {topic_name}")
+                    self.error_count += 1
+                else:
+                    # Acknowledge successful processing
+                    if hasattr(message_obj, "ack"):
+                        message_obj.ack()
+                        logger.info(f"Acknowledged message {i} from {topic_name}")
+                    else:
+                        logger.warning(f"Message object does not support ack for {topic_name}")
+                    self.processed_count += 1
+            except Exception as e:
+                logger.error(f"Error handling message acknowledgment for {topic_name}: {e}")
+                # If we can't ack/nack, increment error count
                 self.error_count += 1
-            else:
-                # The original code had message.ack(), but message is not directly available here.
-                # Assuming the intent was to acknowledge the original message if it were passed.
-                # For now, we'll just increment processed_count and log success.
-                self.processed_count += 1
 
         logger.info(
             f"Completed processing batch from {topic_name}: {len(batch)} messages"
