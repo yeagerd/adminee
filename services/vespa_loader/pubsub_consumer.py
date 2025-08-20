@@ -273,7 +273,9 @@ class PubSubConsumer:
                     # Store the task to prevent premature garbage collection
                     if topic_name in self.batch_tasks and self.batch_tasks[topic_name] is not None:
                         # Cancel any existing batch task
-                        self.batch_tasks[topic_name].cancel()
+                        existing_task = self.batch_tasks[topic_name]
+                        if existing_task is not None:
+                            existing_task.cancel()
                     
                     self.batch_tasks[topic_name] = asyncio.create_task(
                         self._process_batch(topic_name, config)
@@ -312,7 +314,9 @@ class PubSubConsumer:
                 # Store the task to prevent premature garbage collection
                 if topic_name in self.batch_tasks and self.batch_tasks[topic_name] is not None:
                     # Cancel any existing batch task
-                    self.batch_tasks[topic_name].cancel()
+                    existing_task = self.batch_tasks[topic_name]
+                    if existing_task is not None:
+                        existing_task.cancel()
                 
                 self.batch_tasks[topic_name] = asyncio.create_task(
                     self._process_batch(topic_name, config)
