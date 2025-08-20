@@ -13,17 +13,17 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from services.common.events import (
+    CalendarBatchEvent,
+    CalendarUpdateEvent,
+    ContactBatchEvent,
+    ContactUpdateEvent,
+    EmailBackfillEvent,
+    EmailBatchEvent,
+    EmailUpdateEvent,
+)
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubConsumer as CommonPubSubConsumer
-from services.common.events import (
-    EmailBackfillEvent,
-    EmailUpdateEvent,
-    EmailBatchEvent,
-    CalendarUpdateEvent,
-    CalendarBatchEvent,
-    ContactUpdateEvent,
-    ContactBatchEvent,
-)
 from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
 
@@ -35,14 +35,14 @@ class PubSubConsumer:
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        
+
         # Initialize common pubsub consumer
         self.pubsub_consumer: Optional[CommonPubSubConsumer] = CommonPubSubConsumer(
             project_id=settings.pubsub_project_id,
             emulator_host=settings.pubsub_emulator_host,
-            service_name="vespa-loader-service"
+            service_name="vespa-loader-service",
         )
-        
+
         self.subscriptions: Dict[str, Any] = {}
         self.running = False
         self.processed_count = 0
@@ -200,14 +200,14 @@ class PubSubConsumer:
 
         try:
             subscription_name = config["subscription_name"]
-            
+
             # Use the common pubsub client to subscribe
             subscription = self.pubsub_consumer.subscribe(
                 topic_name=topic_name,
                 subscription_name=subscription_name,
                 callback=self._create_message_callback(topic_name, config),
                 max_messages=config["batch_size"],
-                max_bytes=1024 * 1024  # 1MB
+                max_bytes=1024 * 1024,  # 1MB
             )
 
             self.subscriptions[topic_name] = subscription
@@ -229,7 +229,7 @@ class PubSubConsumer:
             """Callback function for processing messages"""
             try:
                 # Extract message data
-                if hasattr(message, 'data'):
+                if hasattr(message, "data"):
                     data = json.loads(message.data.decode("utf-8"))
                 else:
                     data = message
@@ -245,13 +245,13 @@ class PubSubConsumer:
                     self._start_batch_timer(topic_name, config)
 
                 # Acknowledge the message
-                if hasattr(message, 'ack'):
+                if hasattr(message, "ack"):
                     message.ack()
 
             except Exception as e:
                 logger.error(f"Error in message callback for topic {topic_name}: {e}")
                 # Nack the message to retry
-                if hasattr(message, 'nack'):
+                if hasattr(message, "nack"):
                     message.nack()
 
         return callback
@@ -259,17 +259,20 @@ class PubSubConsumer:
     def _start_batch_timer(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Start or reset the batch timer for a topic"""
         # Cancel existing timer if it exists
-        if topic_name in self.batch_timers and self.batch_timers[topic_name] is not None:
+        if (
+            topic_name in self.batch_timers
+            and self.batch_timers[topic_name] is not None
+        ):
             existing_timer = self.batch_timers[topic_name]
             if existing_timer is not None:
                 existing_timer.cancel()
-        
+
         # Create new timer
         async def timer_callback() -> None:
             await asyncio.sleep(self.batch_timeout)
             if topic_name in self.message_batches and self.message_batches[topic_name]:
                 asyncio.create_task(self._process_batch(topic_name, config))
-        
+
         self.batch_timers[topic_name] = asyncio.create_task(timer_callback())
 
     async def _process_email_backfill_event(self, event: EmailBackfillEvent) -> None:
@@ -282,7 +285,7 @@ class PubSubConsumer:
                 "provider": event.provider,
                 "batch_size": event.batch_size,
                 "sync_type": event.sync_type,
-            }
+            },
         )
 
         # Process each email in the batch
@@ -299,7 +302,11 @@ class PubSubConsumer:
                     "cc": email_data.cc_addresses,
                     "bcc": email_data.bcc_addresses,
                     "received_date": email_data.received_date.isoformat(),
-                    "sent_date": email_data.sent_date.isoformat() if email_data.sent_date else None,
+                    "sent_date": (
+                        email_data.sent_date.isoformat()
+                        if email_data.sent_date
+                        else None
+                    ),
                     "labels": email_data.labels,
                     "is_read": email_data.is_read,
                     "is_starred": email_data.is_starred,
@@ -318,7 +325,7 @@ class PubSubConsumer:
                         "email_id": email_data.id,
                         "user_id": event.user_id,
                         "error": str(e),
-                    }
+                    },
                 )
                 self.error_count += 1
 
@@ -333,7 +340,7 @@ class PubSubConsumer:
                 "user_id": event.user_id,
                 "calendar_event_id": event.event.id,
                 "update_type": event.update_type,
-            }
+            },
         )
 
         # Convert CalendarEventData to the format expected by the ingest endpoint
@@ -368,7 +375,7 @@ class PubSubConsumer:
                 "user_id": event.user_id,
                 "contact_id": event.contact.id,
                 "update_type": event.update_type,
-            }
+            },
         )
 
         # Convert ContactData to the format expected by the ingest endpoint
@@ -382,7 +389,11 @@ class PubSubConsumer:
             "phone_numbers": event.contact.phone_numbers,
             "addresses": event.contact.addresses,
             "organizations": event.contact.organizations,
-            "birthdays": [b.isoformat() for b in event.contact.birthdays] if event.contact.birthdays else [],
+            "birthdays": (
+                [b.isoformat() for b in event.contact.birthdays]
+                if event.contact.birthdays
+                else []
+            ),
             "notes": event.contact.notes,
             "provider": event.contact.provider,
             "provider_contact_id": event.contact.provider_contact_id,
@@ -402,9 +413,7 @@ class PubSubConsumer:
         self.message_batches[topic_name] = []
 
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
-        logger.info(
-            f"Message IDs: {[item.get('id', 'unknown') for item in batch]}"
-        )
+        logger.info(f"Message IDs: {[item.get('id', 'unknown') for item in batch]}")
 
         # Process messages in parallel
         tasks = []
@@ -451,7 +460,7 @@ class PubSubConsumer:
             logger.info(
                 f"Calling processor for message from {topic_name}: {message_id} for user {user_id}"
             )
-            result = await processor(item) # Pass the item directly to the processor
+            result = await processor(item)  # Pass the item directly to the processor
             logger.info(
                 f"Successfully processed message from {topic_name}: {message_id}"
             )

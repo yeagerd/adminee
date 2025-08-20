@@ -6,39 +6,36 @@ type safety and consistency across services.
 """
 
 from .base_events import BaseEvent, EventMetadata
-from .email_events import (
-    EmailData,
-    EmailBackfillEvent,
-    EmailUpdateEvent,
-    EmailBatchEvent,
-)
 from .calendar_events import (
+    CalendarBatchEvent,
     CalendarEventData,
     CalendarUpdateEvent,
-    CalendarBatchEvent,
 )
 from .contact_events import (
+    ContactBatchEvent,
     ContactData,
     ContactUpdateEvent,
-    ContactBatchEvent,
+)
+from .email_events import (
+    EmailBackfillEvent,
+    EmailBatchEvent,
+    EmailData,
+    EmailUpdateEvent,
 )
 
 __all__ = [
     # Base events
     "BaseEvent",
     "EventMetadata",
-    
     # Email data and events
     "EmailData",
     "EmailBackfillEvent",
-    "EmailUpdateEvent", 
+    "EmailUpdateEvent",
     "EmailBatchEvent",
-    
     # Calendar data and events
     "CalendarEventData",
     "CalendarUpdateEvent",
     "CalendarBatchEvent",
-    
     # Contact data and events
     "ContactData",
     "ContactUpdateEvent",

@@ -3,13 +3,14 @@ Test file for the events module to verify the structure works correctly.
 """
 
 from datetime import datetime, timezone
+
 from services.common.events import (
+    CalendarEventData,
+    CalendarUpdateEvent,
+    ContactData,
+    ContactUpdateEvent,
     EmailBackfillEvent,
     EmailData,
-    CalendarUpdateEvent,
-    CalendarEventData,
-    ContactUpdateEvent,
-    ContactData,
     EventMetadata,
 )
 
@@ -35,7 +36,7 @@ def test_email_backfill_event_creation():
         provider="gmail",
         provider_message_id="gmail_123",
     )
-    
+
     # Create backfill event
     event = EmailBackfillEvent(
         user_id="user_789",
@@ -47,9 +48,9 @@ def test_email_backfill_event_creation():
             source_service="office-service",
             source_version="1.0.0",
             correlation_id="backfill_job_123",
-        )
+        ),
     )
-    
+
     assert event.user_id == "user_789"
     assert event.provider == "gmail"
     assert len(event.emails) == 1
@@ -76,7 +77,7 @@ def test_calendar_update_event_creation():
         provider_event_id="google_123",
         calendar_id="calendar_456",
     )
-    
+
     event = CalendarUpdateEvent(
         user_id="user_789",
         event=calendar_data,
@@ -84,9 +85,9 @@ def test_calendar_update_event_creation():
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
-        )
+        ),
     )
-    
+
     assert event.user_id == "user_789"
     assert event.event.title == "Test Meeting"
     assert event.update_type == "create"
@@ -109,7 +110,7 @@ def test_contact_update_event_creation():
         provider="google",
         provider_contact_id="google_123",
     )
-    
+
     event = ContactUpdateEvent(
         user_id="user_789",
         contact=contact_data,
@@ -117,9 +118,9 @@ def test_contact_update_event_creation():
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
-        )
+        ),
     )
-    
+
     assert event.user_id == "user_789"
     assert event.contact.display_name == "John Doe"
     assert event.update_type == "create"
@@ -136,15 +137,15 @@ def test_event_metadata_tracing():
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
-        )
+        ),
     )
-    
+
     # Add tracing context
     event.add_trace_context("trace_123", "span_456", "parent_789")
     event.add_request_context("request_123", "user_456")
     event.add_correlation_id("correlation_123")
     event.add_tags(environment="test", priority="high")
-    
+
     assert event.metadata.trace_id == "trace_123"
     assert event.metadata.span_id == "span_456"
     assert event.metadata.parent_span_id == "parent_789"

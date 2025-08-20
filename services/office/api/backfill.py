@@ -8,9 +8,9 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from services.common.events import EmailBackfillEvent, EmailData, EventMetadata
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
-from services.common.events import EmailBackfillEvent, EmailData, EventMetadata
 from services.office.core.auth import verify_backfill_api_key
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.settings import get_settings
@@ -302,28 +302,39 @@ async def run_backfill_job(
                 for email in email_batch:
                     try:
                         email_data = EmailData(
-                            id=email.get('id', ''),
-                            thread_id=email.get('threadId', ''),
-                            subject=email.get('subject', ''),
-                            body=email.get('body', ''),
-                            from_address=email.get('from', ''),
-                            to_addresses=email.get('to', []),
-                            cc_addresses=email.get('cc', []),
-                            bcc_addresses=email.get('bcc', []),
-                            received_date=datetime.fromisoformat(email.get('receivedDate', datetime.now().isoformat())),
-                            sent_date=datetime.fromisoformat(email.get('sentDate', datetime.now().isoformat())) if email.get('sentDate') else None,
-                            labels=email.get('labels', []),
-                            is_read=email.get('isRead', False),
-                            is_starred=email.get('isStarred', False),
-                            has_attachments=email.get('hasAttachments', False),
+                            id=email.get("id", ""),
+                            thread_id=email.get("threadId", ""),
+                            subject=email.get("subject", ""),
+                            body=email.get("body", ""),
+                            from_address=email.get("from", ""),
+                            to_addresses=email.get("to", []),
+                            cc_addresses=email.get("cc", []),
+                            bcc_addresses=email.get("bcc", []),
+                            received_date=datetime.fromisoformat(
+                                email.get("receivedDate", datetime.now().isoformat())
+                            ),
+                            sent_date=(
+                                datetime.fromisoformat(
+                                    email.get("sentDate", datetime.now().isoformat())
+                                )
+                                if email.get("sentDate")
+                                else None
+                            ),
+                            labels=email.get("labels", []),
+                            is_read=email.get("isRead", False),
+                            is_starred=email.get("isStarred", False),
+                            has_attachments=email.get("hasAttachments", False),
                             provider=request.provider,
-                            provider_message_id=email.get('id', ''),
-                            size_bytes=email.get('sizeBytes'),
-                            mime_type=email.get('mimeType'),
+                            provider_message_id=email.get("id", ""),
+                            size_bytes=email.get("sizeBytes"),
+                            mime_type=email.get("mimeType"),
                         )
                         email_data_objects.append(email_data)
                     except Exception as e:
-                        logger.error(f"Failed to convert email data: {e}", extra={"email_id": email.get('id')})
+                        logger.error(
+                            f"Failed to convert email data: {e}",
+                            extra={"email_id": email.get("id")},
+                        )
                         job.failed_emails += 1
                         continue
 
@@ -341,21 +352,25 @@ async def run_backfill_job(
                         total_emails=total_emails,
                         processed_count=processed_count,
                     )
-                    
+
                     # Add correlation ID for tracking
                     backfill_event.add_correlation_id(job_id)
-                    
+
                     # Publish the batch event
                     message_id = pubsub_client.publish_email_backfill(backfill_event)
                     processed_count += len(email_data_objects)
                     job.processed_emails = processed_count
-                    
+
                     # Update progress
                     if request.max_emails:
-                        job.progress = min(100.0, (processed_count / request.max_emails) * 100)
+                        job.progress = min(
+                            100.0, (processed_count / request.max_emails) * 100
+                        )
                     else:
-                        job.progress = min(100.0, (processed_count / total_emails) * 100)
-                    
+                        job.progress = min(
+                            100.0, (processed_count / total_emails) * 100
+                        )
+
                     logger.info(
                         f"Published email batch to PubSub",
                         extra={
@@ -364,11 +379,13 @@ async def run_backfill_job(
                             "message_id": message_id,
                             "processed_count": processed_count,
                             "progress": job.progress,
-                        }
+                        },
                     )
 
             except Exception as e:
-                logger.error(f"Failed to publish email batch: {e}", extra={"job_id": job_id})
+                logger.error(
+                    f"Failed to publish email batch: {e}", extra={"job_id": job_id}
+                )
                 job.failed_emails += len(email_batch)
 
             # Check if job was cancelled or paused
