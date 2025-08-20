@@ -273,7 +273,7 @@ class PubSubConsumer:
                 # Parse message data
                 data = json.loads(message.data.decode("utf-8"))
                 logger.debug(
-                    f"Parsed message data: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}"
+                    f"Parsed message data: message_id={message.message_id}, user_id={data.get('user_id', 'unknown')}"
                 )
 
                 # Add to batch
@@ -357,7 +357,7 @@ class PubSubConsumer:
 
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
         logger.info(
-            f"Message IDs: {[item['data'].get('id', 'unknown') for item in batch]}"
+            f"Message IDs: {[item['message'].message_id for item in batch]}"
         )
 
         # Process messages in parallel
@@ -394,7 +394,7 @@ class PubSubConsumer:
         try:
             # Call the appropriate processor
             processor = config["processor"]
-            message_id = item["data"].get("id", "unknown")
+            message_id = item["message"].message_id
             user_id = item["data"].get("user_id", "unknown")
 
             logger.info(
@@ -412,15 +412,32 @@ class PubSubConsumer:
 
     async def _process_email_message(self, data: Dict[str, Any]) -> None:
         """Process an email message for Vespa indexing"""
-        message_id = data.get("id", "unknown")
-        user_id = data.get("user_id", "unknown")
-
-        logger.info(f"Processing email message: {message_id} for user {user_id}")
-        logger.info(f"Email subject: {data.get('subject', 'no subject')}")
-        logger.info(f"Email provider: {data.get('provider', 'unknown')}")
-
-        # Ingest the document
-        await self._ingest_document(data)
+        
+        # This is an EmailBackfillEvent - process each email in the batch
+        if "emails" in data and isinstance(data["emails"], list):
+            logger.info(f"Processing email batch event with {len(data['emails'])} emails")
+            logger.info(f"Batch event data keys: {list(data.keys())}")
+            
+            for i, email in enumerate(data["emails"]):
+                try:
+                    logger.info(f"Processing email {i+1}/{len(data['emails'])} from batch")
+                    logger.info(f"Email data keys: {list(email.keys())}")
+                    logger.info(f"Email ID: {email.get('id')}")
+                    logger.info(f"Email user_id: {email.get('user_id')}")
+                    
+                    # Add the user_id from the event to the email data if it's missing
+                    if not email.get('user_id') and data.get('user_id'):
+                        email['user_id'] = data['user_id']
+                        logger.info(f"Added user_id {data['user_id']} to email {i+1}")
+                    
+                    await self._ingest_document(email)
+                except Exception as e:
+                    logger.error(f"Failed to process email {i+1} from batch: {e}")
+                    # Continue processing other emails in the batch
+                    continue
+        else:
+            logger.error(f"Invalid email event format - missing 'emails' array: {data}")
+            raise ValueError("Email event must contain 'emails' array")
 
     async def _process_calendar_message(self, data: Dict[str, Any]) -> None:
         """Process a calendar message for Vespa indexing"""
@@ -461,26 +478,27 @@ class PubSubConsumer:
 
             # Process email data using the email processor if it's an email
             if source_type == "email":
-                processed_data = self.email_processor.process_email(data)
+                # The data comes from the office service with specific field names
+                # Map them to the expected vespa document structure
                 document_data = {
-                    "id": processed_data.get("id"),
-                    "user_id": processed_data.get("user_id"),
+                    "id": data.get("id"),
+                    "user_id": data.get("user_id"),
                     "type": source_type,
-                    "provider": processed_data.get("provider"),
-                    "subject": processed_data.get("subject", ""),
-                    "body": processed_data.get("body", ""),
-                    "from": processed_data.get("from", ""),
-                    "to": processed_data.get("to", []),
-                    "thread_id": processed_data.get("thread_id", ""),
-                    "folder": processed_data.get("folder", ""),
-                    "created_at": processed_data.get("created_at"),
-                    "updated_at": processed_data.get("updated_at"),
-                    "metadata": processed_data.get("metadata", {}),
-                    # Add processed content fields
-                    "content_chunks": processed_data.get("content_chunks", []),
-                    "quoted_content": processed_data.get("quoted_content", ""),
-                    "thread_summary": processed_data.get("thread_summary", {}),
-                    "search_text": processed_data.get("search_text", ""),
+                    "provider": data.get("provider"),
+                    "subject": data.get("subject", ""),
+                    "body": data.get("body", ""),
+                    "from": data.get("from_address", data.get("from", "")),  # Handle both field names
+                    "to": data.get("to_addresses", data.get("to", [])),      # Handle both field names
+                    "thread_id": data.get("thread_id", ""),
+                    "folder": data.get("folder", ""),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                    "metadata": data.get("metadata", {}),
+                    # Add processed content fields if available
+                    "content_chunks": data.get("content_chunks", []),
+                    "quoted_content": data.get("quoted_content", ""),
+                    "thread_summary": data.get("thread_summary", {}),
+                    "search_text": data.get("search_text", ""),
                 }
             else:
                 # For non-email documents, use basic mapping
@@ -501,6 +519,9 @@ class PubSubConsumer:
                 }
 
             logger.info(f"Document data prepared: {document_data}")
+            logger.info(f"Document ID: {document_data.get('id')}")
+            logger.info(f"Document user_id: {document_data.get('user_id')}")
+            logger.info(f"Document type: {document_data.get('type')}")
 
             # Call the ingest service directly
             logger.info(f"Calling ingest service for document {message_id}")
