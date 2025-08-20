@@ -34,6 +34,15 @@ Previously, you had to manage three separate scripts:
 
 # Stop everything
 ./scripts/vespa.sh --stop
+
+# Clear all data (useful for testing)
+./scripts/vespa.sh --clear-data
+
+# Restart all services
+./scripts/vespa.sh --restart
+
+# Clean up containers
+./scripts/vespa.sh --cleanup
 ```
 
 ## Overview
@@ -78,6 +87,24 @@ python services/demos/vespa_backfill.py
 **Usage**:
 ```bash
 python services/demos/vespa_search.py
+```
+
+### 3. Vespa Query Demo (`vespa_query.py`)
+**Purpose**: Direct query testing with detailed output
+**Features**:
+- Direct Vespa query execution
+- Detailed result dumping with `--dump` flag
+- User-specific data filtering
+- Query performance analysis
+- Raw Vespa response inspection
+
+**Usage**:
+```bash
+# Basic query test
+python services/demos/vespa_query.py trybriefly@outlook.com
+
+# Detailed output with dump flag
+python services/demos/vespa_query.py trybriefly@outlook.com --dump
 ```
 
 **Note**: This demo can be run multiple times to test different search scenarios and measure performance.
@@ -368,7 +395,42 @@ python -m uvicorn main:app --host 0.0.0.0 --port 9002 --reload
 
 ## Running Demos
 
-### Workflow
+### Complete Testing Workflow
+
+**Before running demos, ensure all services are properly configured and running:**
+
+1. **Start and configure services**:
+   ```bash
+   # Make sure pubsub and vespa are running and configured
+   ./scripts/local-pubsub.sh --status
+   ./scripts/vespa.sh --status
+   
+   # Start services if needed
+   ./scripts/local-pubsub.sh
+   ./scripts/vespa.sh --start
+   ```
+
+2. **Start development logs in background**:
+   ```bash
+   ./scripts/start-dev-logs.sh &
+   ```
+
+3. **Clear existing data**:
+   ```bash
+   ./scripts/vespa.sh --clear-data
+   ```
+
+4. **Run data ingestion demo**:
+   ```bash
+   python services/demos/vespa_backfill.py trybriefly@outlook.com
+   ```
+
+5. **Test search functionality**:
+   ```bash
+   python services/demos/vespa_query.py trybriefly@outlook.com --dump
+   ```
+
+### Alternative Demo Workflow
 1. **First time setup**: Run `vespa_backfill.py` once to populate Vespa with data
 2. **Search testing**: Run `vespa_search.py` multiple times to test different scenarios
 3. **Conversational testing**: Run `vespa_synthetic.py` to test chat-like interactions
