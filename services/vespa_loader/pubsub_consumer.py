@@ -149,7 +149,9 @@ class PubSubConsumer:
             try:
                 if batch_task and not batch_task.done():
                     batch_task.cancel()
-                    logger.info(f"Cancelled batch processing task for topic: {topic_name}")
+                    logger.info(
+                        f"Cancelled batch processing task for topic: {topic_name}"
+                    )
             except Exception as e:
                 logger.error(
                     f"Error cancelling batch processing task for topic {topic_name}: {e}"
@@ -271,12 +273,15 @@ class PubSubConsumer:
                 # Process batch if it's full or if timer expires
                 if len(self.message_batches[topic_name]) >= config["batch_size"]:
                     # Store the task to prevent premature garbage collection
-                    if topic_name in self.batch_tasks and self.batch_tasks[topic_name] is not None:
+                    if (
+                        topic_name in self.batch_tasks
+                        and self.batch_tasks[topic_name] is not None
+                    ):
                         # Cancel any existing batch task
                         existing_task = self.batch_tasks[topic_name]
                         if existing_task is not None:
                             existing_task.cancel()
-                    
+
                     self.batch_tasks[topic_name] = asyncio.create_task(
                         self._process_batch(topic_name, config)
                     )
@@ -312,12 +317,15 @@ class PubSubConsumer:
             await asyncio.sleep(self.batch_timeout)
             if topic_name in self.message_batches and self.message_batches[topic_name]:
                 # Store the task to prevent premature garbage collection
-                if topic_name in self.batch_tasks and self.batch_tasks[topic_name] is not None:
+                if (
+                    topic_name in self.batch_tasks
+                    and self.batch_tasks[topic_name] is not None
+                ):
                     # Cancel any existing batch task
                     existing_task = self.batch_tasks[topic_name]
                     if existing_task is not None:
                         existing_task.cancel()
-                
+
                 self.batch_tasks[topic_name] = asyncio.create_task(
                     self._process_batch(topic_name, config)
                 )
@@ -517,7 +525,7 @@ class PubSubConsumer:
         logger.info(
             f"Completed processing batch from {topic_name}: {len(batch)} messages"
         )
-        
+
         # Clear the batch task reference since processing is complete
         if topic_name in self.batch_tasks:
             self.batch_tasks[topic_name] = None
