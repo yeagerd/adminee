@@ -118,6 +118,7 @@ Use centralized logging from `services/common/logging_config.py`:
 ```python
 from services.common.logging_config import (
     setup_service_logging,
+    setup_service_logging,
     create_request_logging_middleware,
     log_service_startup,
     log_service_shutdown
@@ -364,10 +365,16 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install uv first
+RUN pip install uv
+
+# Copy dependency files first for better layer caching
 COPY services/your_service/pyproject.toml .
 
-RUN pip install uv && uv pip install -e . --no-deps
+# Install dependencies (without --no-deps to ensure all dependencies are installed)
+RUN uv pip install -e .
 
+# Copy source code after dependencies are installed
 COPY services/your_service/ .
 
 CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8006"]
