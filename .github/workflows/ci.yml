@@ -58,7 +58,7 @@ jobs:
       - name: Verify OpenAPI schemas
         run: |
           echo "🔍 Verifying OpenAPI schemas were generated..."
-          expected_services="chat meetings office shipments email_sync vespa_query"
+          expected_services="chat meetings office shipments vespa_query"
           for service in $expected_services; do
             if [[ -f "services/$service/openapi/schema.json" ]]; then
               echo "  ✅ $service: schema.json exists"
@@ -84,7 +84,7 @@ jobs:
         run: |
           cd frontend
           echo "🔍 Verifying TypeScript types were generated..."
-          expected_services="chat meetings office shipments email_sync vespa_query"
+          expected_services="chat meetings office shipments vespa_query"
           for service in $expected_services; do
             if [[ -d "types/api/$service" ]] && [[ -f "types/api/$service/index.ts" ]]; then
               echo "  ✅ $service: types directory and index.ts exist"

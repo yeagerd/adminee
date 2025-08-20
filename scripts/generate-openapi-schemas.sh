@@ -35,8 +35,8 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Service configuration
-SERVICES="chat meetings office shipments email_sync vespa_query"
-SERVICE_PATHS="services/chat services/meetings services/office services/shipments services/email_sync services/vespa_query"
+SERVICES="chat meetings office shipments vespa_query"
+SERVICE_PATHS="services/chat services/meetings services/office services/shipments services/vespa_query"
 
 # Function to print colored output
 print_status() {
