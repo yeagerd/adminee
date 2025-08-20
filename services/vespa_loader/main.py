@@ -46,6 +46,187 @@ document_mapper: Optional[Any] = None
 pubsub_consumer: Optional[Any] = None
 
 
+async def ingest_document_service(
+    document_data: Dict[str, Any], 
+    run_background_tasks: bool = True
+) -> Dict[str, Any]:
+    """Shared service function to ingest a document into Vespa
+    
+    This function can be called directly by other parts of the service
+    or through the HTTP API endpoints.
+    
+    Args:
+        document_data: The document data to ingest
+        run_background_tasks: Whether to run background post-processing tasks
+        
+    Returns:
+        Dict containing the ingestion result
+        
+    Raises:
+        ServiceError: If the service is not properly initialized
+        ValidationError: If document data is invalid
+    """
+    if not all(
+        [vespa_client, content_normalizer, embedding_generator, document_mapper]
+    ):
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
+
+    try:
+        # Validate document data
+        if not document_data.get("id") or not document_data.get("user_id"):
+            raise ValidationError(
+                "Document ID and user_id are required",
+                field="document_data",
+                value=document_data,
+            )
+
+        # Map document to Vespa format
+        if not document_mapper:
+            raise ServiceError(
+                "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
+            )
+        vespa_document = document_mapper.map_to_vespa(document_data)
+
+        # Normalize content
+        if vespa_document.get("content") and content_normalizer:
+            vespa_document["content"] = content_normalizer.normalize(
+                vespa_document["content"]
+            )
+
+        # Generate embeddings if content exists
+        if vespa_document.get("content") and embedding_generator:
+            try:
+                embedding = await embedding_generator.generate_embedding(
+                    vespa_document["content"]
+                )
+                vespa_document["embedding"] = embedding
+            except Exception as e:
+                logger.warning(f"Failed to generate embedding: {e}")
+                # Continue without embedding
+
+        # Index document in Vespa
+        if not vespa_client:
+            raise ServiceError(
+                "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
+            )
+        result = await vespa_client.index_document(vespa_document)
+
+        # Run background task for post-processing if requested
+        if run_background_tasks:
+            # Note: We can't use BackgroundTasks here since this is a service function
+            # The HTTP endpoints will handle background tasks when calling this function
+            pass
+
+        return {
+            "status": "success",
+            "document_id": document_data["id"],
+            "vespa_result": result,
+        }
+
+    except Exception as e:
+        logger.error(f"Error ingesting document: {e}")
+        raise ServiceError(
+            "Document ingestion failed",
+            code=ErrorCode.SERVICE_ERROR,
+            details={"error": str(e)},
+        )
+
+
+async def ingest_batch_documents_service(
+    documents: list[Dict[str, Any]], 
+    run_background_tasks: bool = True
+) -> Dict[str, Any]:
+    """Shared service function to ingest multiple documents in batch
+    
+    This function can be called directly by other parts of the service
+    or through the HTTP API endpoints.
+    
+    Args:
+        documents: List of document data to ingest
+        run_background_tasks: Whether to run background post-processing tasks
+        
+    Returns:
+        Dict containing the batch ingestion results
+        
+    Raises:
+        ServiceError: If the service is not properly initialized
+    """
+    if not all(
+        [vespa_client, content_normalizer, embedding_generator, document_mapper]
+    ):
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
+
+    try:
+        results = []
+        errors = []
+
+        for doc in documents:
+            try:
+                # Map document to Vespa format
+                if not document_mapper:
+                    raise ServiceError(
+                        "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
+                    )
+                vespa_document = document_mapper.map_to_vespa(doc)
+
+                # Normalize content
+                if vespa_document.get("content") and content_normalizer:
+                    vespa_document["content"] = content_normalizer.normalize(
+                        vespa_document["content"]
+                    )
+
+                # Generate embeddings if content exists
+                if vespa_document.get("content") and embedding_generator:
+                    try:
+                        embedding = await embedding_generator.generate_embedding(
+                            vespa_document["content"]
+                        )
+                        vespa_document["embedding"] = embedding
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to generate embedding for document {doc.get('id')}: {e}"
+                        )
+                        # Continue without embedding
+
+                # Index document in Vespa
+                if not vespa_client:
+                    raise ServiceError(
+                        "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
+                    )
+                result = await vespa_client.index_document(vespa_document)
+
+                results.append(
+                    {"id": doc.get("id"), "status": "success", "result": result}
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"Error processing document {doc.get('id', 'unknown')}: {e}"
+                )
+                errors.append({"id": doc.get("id"), "status": "error", "error": str(e)})
+
+        return {
+            "status": "completed",
+            "total_documents": len(documents),
+            "successful": len(results),
+            "failed": len(errors),
+            "results": results,
+            "errors": errors,
+        }
+
+    except Exception as e:
+        logger.error(f"Error in batch ingestion: {e}")
+        raise ServiceError(
+            "Batch ingestion failed",
+            code=ErrorCode.SERVICE_ERROR,
+            details={"error": str(e)},
+        )
+
+
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
 
@@ -304,65 +485,18 @@ async def ingest_document(
     api_key: str = Depends(check_rate_limit),
 ) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
-    if not all(
-        [vespa_client, content_normalizer, embedding_generator, document_mapper]
-    ):
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
     try:
-        # Validate document data
-        if not document_data.get("id") or not document_data.get("user_id"):
-            raise ValidationError(
-                "Document ID and user_id are required",
-                field="document_data",
-                value=document_data,
-            )
-
-        # Map document to Vespa format
-        if not document_mapper:
-            raise ServiceError(
-                "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
-            )
-        vespa_document = document_mapper.map_to_vespa(document_data)
-
-        # Normalize content
-        if vespa_document.get("content") and content_normalizer:
-            vespa_document["content"] = content_normalizer.normalize(
-                vespa_document["content"]
-            )
-
-        # Generate embeddings if content exists
-        if vespa_document.get("content") and embedding_generator:
-            try:
-                embedding = await embedding_generator.generate_embedding(
-                    vespa_document["content"]
-                )
-                vespa_document["embedding"] = embedding
-            except Exception as e:
-                logger.warning(f"Failed to generate embedding: {e}")
-                # Continue without embedding
-
-        # Index document in Vespa
-        if not vespa_client:
-            raise ServiceError(
-                "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
-            )
-        result = await vespa_client.index_document(vespa_document)
-
-        # Add background task for post-processing if needed
+        # Call the shared service function
+        result = await ingest_document_service(document_data, run_background_tasks=False)
+        
+        # Add background task for post-processing
         background_tasks.add_task(
             _post_process_document,
             document_id=document_data["id"],
             user_id=document_data["user_id"],
         )
-
-        return {
-            "status": "success",
-            "document_id": document_data["id"],
-            "vespa_result": result,
-        }
+        
+        return result
 
     except Exception as e:
         logger.error(f"Error ingesting document: {e}")
@@ -380,78 +514,19 @@ async def ingest_batch_documents(
     api_key: str = Depends(check_rate_limit),
 ) -> Dict[str, Any]:
     """Ingest multiple documents in batch"""
-    if not all(
-        [vespa_client, content_normalizer, embedding_generator, document_mapper]
-    ):
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
     try:
-        results = []
-        errors = []
-
-        for doc in documents:
-            try:
-                # Map document to Vespa format
-                if not document_mapper:
-                    raise ServiceError(
-                        "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
-                    )
-                vespa_document = document_mapper.map_to_vespa(doc)
-
-                # Normalize content
-                if vespa_document.get("content") and content_normalizer:
-                    vespa_document["content"] = content_normalizer.normalize(
-                        vespa_document["content"]
-                    )
-
-                # Generate embeddings if content exists
-                if vespa_document.get("content") and embedding_generator:
-                    try:
-                        embedding = await embedding_generator.generate_embedding(
-                            vespa_document["content"]
-                        )
-                        vespa_document["embedding"] = embedding
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to generate embedding for document {doc.get('id')}: {e}"
-                        )
-                        # Continue without embedding
-
-                # Index document in Vespa
-                if not vespa_client:
-                    raise ServiceError(
-                        "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
-                    )
-                result = await vespa_client.index_document(vespa_document)
-
-                results.append(
-                    {"id": doc.get("id"), "status": "success", "result": result}
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Error processing document {doc.get('id', 'unknown')}: {e}"
-                )
-                errors.append({"id": doc.get("id"), "status": "error", "error": str(e)})
-
+        # Call the shared service function
+        result = await ingest_batch_documents_service(documents, run_background_tasks=False)
+        
         # Add background task for batch post-processing
-        if results:
+        if result.get("successful", 0) > 0:
             background_tasks.add_task(
                 _post_process_batch,
-                successful_docs=len(results),
-                failed_docs=len(errors),
+                successful_docs=result["successful"],
+                failed_docs=result["failed"],
             )
-
-        return {
-            "status": "completed",
-            "total_documents": len(documents),
-            "successful": len(results),
-            "failed": len(errors),
-            "results": results,
-            "errors": errors,
-        }
+        
+        return result
 
     except Exception as e:
         logger.error(f"Error in batch ingestion: {e}")

@@ -19,6 +19,16 @@ from services.vespa_loader.settings import Settings
 
 logger = get_logger(__name__)
 
+# Import the shared ingest service function
+try:
+    from services.vespa_loader.main import ingest_document_service
+    INGEST_SERVICE_AVAILABLE = True
+except ImportError:
+    INGEST_SERVICE_AVAILABLE = False
+    logger.warning(
+        "Ingest service not available - will fall back to HTTP calls"
+    )
+
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
     from google.cloud.pubsub_v1.types import (
@@ -439,11 +449,13 @@ class PubSubConsumer:
         # Call the ingest endpoint to index the document
         await self._call_ingest_endpoint(data)
 
-    async def _call_ingest_endpoint(self, data: Dict[str, Any]) -> None:
-        """Call the Vespa loader ingest endpoint"""
+    async def _call_ingest_endpoint(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Call the Vespa loader ingest endpoint
+        
+        Returns:
+            Dict containing the ingestion result
+        """
         try:
-            import httpx
-
             message_id = data.get("id")
             user_id = data.get("user_id")
 
@@ -496,11 +508,24 @@ class PubSubConsumer:
                 }
 
             logger.info(f"Document data prepared: {document_data}")
-            logger.info(
-                f"Making HTTP POST to ingest endpoint for document {message_id}"
-            )
-
-            # Call the ingest endpoint
+            
+            # Try to use the shared service function first (direct call)
+            if INGEST_SERVICE_AVAILABLE:
+                try:
+                    logger.info(f"Calling ingest service directly for document {message_id}")
+                    result = await ingest_document_service(document_data, run_background_tasks=False)
+                    logger.info(f"Successfully indexed document {message_id}: {result}")
+                    return result
+                except Exception as service_error:
+                    logger.warning(
+                        f"Direct service call failed for document {message_id}, falling back to HTTP: {service_error}"
+                    )
+                    # Fall back to HTTP call if direct service call fails
+            
+            # Fallback to HTTP call if service function is not available or fails
+            logger.info(f"Making HTTP POST to ingest endpoint for document {message_id}")
+            
+            import httpx
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     self.settings.ingest_endpoint, json=document_data, timeout=30.0
