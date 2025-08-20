@@ -37,6 +37,15 @@ python services/demos/vespa_search.py {email} --dump
 
 # Stop everything
 ./scripts/vespa.sh --stop
+
+# Clear all data (useful for testing)
+./scripts/vespa.sh --clear-data
+
+# Restart all services
+./scripts/vespa.sh --restart
+
+# Clean up containers
+./scripts/vespa.sh --cleanup
 ```
 
 **Note**: Replace `{email}` with actual email address and `{env_file}` with path to environment file containing API keys.
@@ -74,6 +83,24 @@ python services/demos/vespa_backfill.py
 **Usage**:
 ```bash
 python services/demos/vespa_search.py
+```
+
+### 3. Vespa Query Demo (`vespa_query.py`)
+**Purpose**: Direct query testing with detailed output
+**Features**:
+- Direct Vespa query execution
+- Detailed result dumping with `--dump` flag
+- User-specific data filtering
+- Query performance analysis
+- Raw Vespa response inspection
+
+**Usage**:
+```bash
+# Basic query test
+python services/demos/vespa_query.py trybriefly@outlook.com
+
+# Detailed output with dump flag
+python services/demos/vespa_query.py trybriefly@outlook.com --dump
 ```
 
 **Note**: This demo can be run multiple times to test different search scenarios and measure performance.
@@ -324,20 +351,6 @@ The `vespa.sh` script manages all Vespa services in one place:
 
 **Note**: The Pub/Sub emulator is managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
 
-### Option 2: Legacy Python Script (Deprecated)
-
-⚠️ **DEPRECATED**: The `vespa_be.py` script is deprecated in favor of `./scripts/vespa.sh`:
-
-```bash
-# DEPRECATED - Use ./scripts/vespa.sh --start instead
-python services/demos/vespa_be.py
-
-# DEPRECATED - Use ./scripts/vespa.sh --status instead
-python services/demos/vespa_be.py --status
-
-# DEPRECATED - Use ./scripts/vespa.sh --stop instead
-python services/demos/vespa_be.py --stop
-```
 
 ### Option 3: Start Services Individually
 

@@ -4,13 +4,20 @@ Vespa Query Service - Query interface for hybrid search capabilities
 """
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from services.common.http_errors import register_briefly_exception_handlers
+from services.common.http_errors import (
+    ErrorCode,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+    register_briefly_exception_handlers,
+)
 from services.common.logging_config import (
     create_request_logging_middleware,
     get_logger,
@@ -33,15 +40,26 @@ query_builder: Optional[Any] = None
 result_processor: Optional[Any] = None
 
 
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
+    """Verify API key for inter-service communication"""
+    from services.vespa_query.settings import get_settings
+
+    settings = get_settings()
+
+    if x_api_key != settings.api_frontend_vespa_query_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage service lifecycle"""
     global search_engine, query_builder, result_processor
 
     # Initialize settings
-    from services.vespa_query.settings import Settings
+    from services.vespa_query.settings import get_settings
 
-    settings = Settings()
+    settings = get_settings()
 
     # Set up centralized logging
     setup_service_logging(
@@ -106,16 +124,54 @@ app.add_middleware(
 )
 
 # Add request logging middleware
-app.add_middleware(create_request_logging_middleware())
+app.middleware("http")(create_request_logging_middleware())
 
 # Register exception handlers
 register_briefly_exception_handlers(app)
 
 
 @app.get("/health")
-async def health_check() -> Dict[str, str]:
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "vespa-query"}
+async def health_check() -> Dict[str, Any]:
+    """Enhanced health check endpoint with external service dependency verification"""
+    from services.vespa_query.settings import get_settings
+
+    settings = get_settings()
+
+    health_status: Dict[str, Any] = {
+        "status": "healthy",
+        "service": "vespa-query",
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {},
+    }
+
+    # Check Vespa connectivity
+    try:
+        if search_engine:
+            vespa_ok = await search_engine.test_connection()
+            health_status["checks"]["vespa"] = "healthy" if vespa_ok else "unhealthy"
+        else:
+            health_status["checks"]["vespa"] = "unhealthy - service not initialized"
+    except Exception as e:
+        health_status["checks"]["vespa"] = f"unhealthy - {str(e)}"
+
+    # Check service components
+    health_status["checks"]["query_builder"] = (
+        "healthy" if query_builder else "unhealthy - not initialized"
+    )
+    health_status["checks"]["result_processor"] = (
+        "healthy" if result_processor else "unhealthy - not initialized"
+    )
+
+    # Determine overall status
+    overall_status = "healthy"
+    for check_name, check_status in health_status["checks"].items():
+        if "unhealthy" in check_status:
+            overall_status = "degraded"
+            break
+
+    health_status["status"] = overall_status
+
+    return health_status
 
 
 @app.get("/")
@@ -138,10 +194,13 @@ async def search(
     date_to: Optional[str] = Query(None, description="End date for filtering"),
     folders: Optional[List[str]] = Query(None, description="Filter by folders"),
     include_facets: bool = Query(True, description="Include facets in results"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Execute a search query"""
     if not query_builder:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build search query
@@ -160,14 +219,17 @@ async def search(
 
         # Execute search
         if not search_engine:
-            raise HTTPException(status_code=500, detail="Search engine not initialized")
+            raise ServiceError(
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
+            )
 
         vespa_results = await search_engine.search(search_query)
 
         # Process results
         if not result_processor:
-            raise HTTPException(
-                status_code=500, detail="Result processor not initialized"
+            raise ServiceError(
+                "Result processor not initialized",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_search_results(
@@ -182,7 +244,9 @@ async def search(
 
     except Exception as e:
         logger.error(f"Search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError(
+            f"Search operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
+        )
 
 
 @app.post("/autocomplete")
@@ -190,10 +254,13 @@ async def autocomplete(
     query: str = Query(..., description="Autocomplete query"),
     user_id: str = Query(..., description="User ID"),
     max_suggestions: int = Query(5, description="Maximum number of suggestions"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get autocomplete suggestions"""
     if not query_builder:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build autocomplete query
@@ -203,14 +270,17 @@ async def autocomplete(
 
         # Execute autocomplete
         if not search_engine:
-            raise HTTPException(status_code=500, detail="Search engine not initialized")
+            raise ServiceError(
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
+            )
 
         vespa_results = await search_engine.autocomplete(autocomplete_query)
 
         # Process results
         if not result_processor:
-            raise HTTPException(
-                status_code=500, detail="Result processor not initialized"
+            raise ServiceError(
+                "Result processor not initialized",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_autocomplete_results(
@@ -221,7 +291,10 @@ async def autocomplete(
 
     except Exception as e:
         logger.error(f"Autocomplete error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError(
+            f"Autocomplete operation failed: {str(e)}",
+            code=ErrorCode.SERVICE_ERROR,
+        )
 
 
 @app.post("/similar")
@@ -231,10 +304,13 @@ async def find_similar(
     ),
     user_id: str = Query(..., description="User ID"),
     max_hits: int = Query(10, description="Maximum number of similar documents"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Find similar documents"""
     if not query_builder:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build similarity query
@@ -244,14 +320,17 @@ async def find_similar(
 
         # Execute similarity search
         if not search_engine:
-            raise HTTPException(status_code=500, detail="Search engine not initialized")
+            raise ServiceError(
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
+            )
 
         vespa_results = await search_engine.find_similar(similarity_query)
 
         # Process results
         if not result_processor:
-            raise HTTPException(
-                status_code=500, detail="Result processor not initialized"
+            raise ServiceError(
+                "Result processor not initialized",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_similarity_results(
@@ -262,7 +341,9 @@ async def find_similar(
 
     except Exception as e:
         logger.error(f"Similarity search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError(
+            f"Similarity search failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
+        )
 
 
 @app.post("/facets")
@@ -274,10 +355,13 @@ async def get_facets(
     providers: Optional[List[str]] = Query(None, description="Filter by providers"),
     date_from: Optional[str] = Query(None, description="Start date for filtering"),
     date_to: Optional[str] = Query(None, description="End date for filtering"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get facet information"""
     if not query_builder:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build facets query
@@ -291,14 +375,17 @@ async def get_facets(
 
         # Execute facets query
         if not search_engine:
-            raise HTTPException(status_code=500, detail="Search engine not initialized")
+            raise ServiceError(
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
+            )
 
         vespa_results = await search_engine.get_facets(facets_query)
 
         # Process results
         if not result_processor:
-            raise HTTPException(
-                status_code=500, detail="Result processor not initialized"
+            raise ServiceError(
+                "Result processor not initialized",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_facets_results(
@@ -309,7 +396,9 @@ async def get_facets(
 
     except Exception as e:
         logger.error(f"Facets error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError(
+            f"Facets operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
+        )
 
 
 @app.post("/trending")
@@ -317,10 +406,13 @@ async def get_trending(
     user_id: str = Query(..., description="User ID"),
     time_range: str = Query("7d", description="Time range for trending"),
     max_hits: int = Query(10, description="Maximum number of trending documents"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get trending documents"""
     if not query_builder:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build trending query
@@ -330,14 +422,17 @@ async def get_trending(
 
         # Execute trending query
         if not search_engine:
-            raise HTTPException(status_code=500, detail="Search engine not initialized")
+            raise ServiceError(
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
+            )
 
         vespa_results = await search_engine.get_trending(trending_query)
 
         # Process results
         if not result_processor:
-            raise HTTPException(
-                status_code=500, detail="Result processor not initialized"
+            raise ServiceError(
+                "Result processor not initialized",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_trending_results(
@@ -348,17 +443,22 @@ async def get_trending(
 
     except Exception as e:
         logger.error(f"Trending error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError(
+            f"Trending operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
+        )
 
 
 @app.post("/analytics")
 async def get_analytics(
     user_id: str = Query(..., description="User ID"),
     time_range: str = Query("30d", description="Time range for analytics"),
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, Any]:
     """Get analytics data"""
     if not query_builder:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+        raise ServiceError(
+            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
+        )
 
     try:
         # Build analytics query
@@ -368,14 +468,17 @@ async def get_analytics(
 
         # Execute analytics query
         if not search_engine:
-            raise HTTPException(status_code=500, detail="Search engine not initialized")
+            raise ServiceError(
+                "Search engine not initialized", code=ErrorCode.SERVICE_ERROR
+            )
 
         vespa_results = await search_engine.get_analytics(analytics_query)
 
         # Process results
         if not result_processor:
-            raise HTTPException(
-                status_code=500, detail="Result processor not initialized"
+            raise ServiceError(
+                "Result processor not initialized",
+                code=ErrorCode.SERVICE_ERROR,
             )
 
         processed_results = result_processor.process_analytics_results(
@@ -386,8 +489,10 @@ async def get_analytics(
 
     except Exception as e:
         logger.error(f"Analytics error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ServiceError(
+            f"Analytics operation failed: {str(e)}", code=ErrorCode.SERVICE_ERROR
+        )
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=9002)
+    uvicorn.run(app, host="0.0.0.0", port=8006)
