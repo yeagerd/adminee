@@ -173,15 +173,23 @@ update_all_types() {
     
     print_status "info" "Discovered ${#services[@]} services with OpenAPI schemas"
     
+    # Debug: Show initial values
+    echo "DEBUG: Initial values - successful=$successful, total=$total"
+    
     for service_name in "${services[@]}"; do
+        echo "Processing service: $service_name"
+        
         if update_service_types "$service_name" "$force"; then
             results+=("✅ $service_name")
-            ((successful++))
+            successful=$((successful + 1))
+            echo "✅ Successfully processed $service_name (successful=$successful)"
         else
             results+=("❌ $service_name")
+            echo "❌ Failed to process $service_name"
         fi
         
-        ((total++))
+        total=$((total + 1))
+        echo "DEBUG: Completed service $service_name - total=$total, successful=$successful"
         echo
     done
     
