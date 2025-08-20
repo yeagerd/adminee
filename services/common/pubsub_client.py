@@ -45,7 +45,9 @@ class PubSubClient:
             # If no emulator host is specified and no emulator is configured,
             # set up the default emulator host to avoid Google credentials issues
             os.environ["PUBSUB_EMULATOR_HOST"] = "localhost:8085"
-            logger.info("No Pub/Sub emulator host specified, using default: localhost:8085")
+            logger.info(
+                "No Pub/Sub emulator host specified, using default: localhost:8085"
+            )
 
         # Initialize publisher client
         try:
@@ -71,7 +73,7 @@ class PubSubClient:
         if not self.publisher:
             logger.warning("Pub/Sub publisher not available, message not published")
             return "disabled"
-            
+
         with tracer.start_as_current_span(f"pubsub.publish.{topic_name}") as span:
             try:
                 topic_path = self.publisher.topic_path(self.project_id, topic_name)
@@ -318,7 +320,9 @@ class PubSubConsumer:
             # If no emulator host is specified and no emulator is configured,
             # set up the default emulator host to avoid Google credentials issues
             os.environ["PUBSUB_EMULATOR_HOST"] = "localhost:8085"
-            logger.info("No Pub/Sub emulator host specified, using default: localhost:8085")
+            logger.info(
+                "No Pub/Sub emulator host specified, using default: localhost:8085"
+            )
 
         # Initialize subscriber client
         try:
@@ -350,7 +354,7 @@ class PubSubConsumer:
         if not self.subscriber:
             logger.warning("Pub/Sub subscriber not available, subscription skipped")
             return None
-            
+
         with tracer.start_as_current_span(
             f"pubsub.subscribe.{subscription_name}"
         ) as span:

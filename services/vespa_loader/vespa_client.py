@@ -339,6 +339,7 @@ class VespaClient:
                 if not datetime_str:
                     # Return current timestamp as fallback
                     from datetime import datetime, timezone
+
                     return int(datetime.now(timezone.utc).timestamp())
 
                 # Parse the ISO datetime string
