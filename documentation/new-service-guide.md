@@ -43,6 +43,7 @@ opentelemetry-api = "^1.20.0"
 opentelemetry-sdk = "^1.20.0"
 opentelemetry-instrumentation = "^0.42b0"
 google-cloud-secret-manager = "^2.16.0"
+# Note: Use services.common.settings instead of pydantic-settings
 ```
 
 ### Dependency Management with UV
@@ -171,6 +172,8 @@ redis_url = get_redis_url()
 
 ## 4. Configuration Management
 
+**Important**: This project provides centralized configuration management through `services.common.settings`. Use this instead of importing `pydantic-settings` directly.
+
 ### Environment Variables
 
 Add to `.example.env`:
@@ -193,7 +196,7 @@ API_YOUR_SERVICE_OFFICE_KEY=$TODO
 Create `settings.py` following the pattern from existing services:
 
 ```python
-from pydantic_settings import BaseSettings
+from services.common.settings import BaseSettings, Field, SettingsConfigDict
 from services.common.config_secrets import get_secret
 
 class Settings(BaseSettings):
@@ -215,6 +218,10 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_format: str = "json"
+    
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
+    )
 ```
 
 ## 5. Database Setup
