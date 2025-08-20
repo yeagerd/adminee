@@ -22,24 +22,12 @@ class DemoSettings(BaseSettings):
     )
 
     # Service URLs
-    office_service_url: str = Field(
-        default="http://localhost:8003", description="Office service URL for demos"
-    )
-    user_service_url: str = Field(
-        default="http://localhost:8001", description="User service URL for demos"
-    )
-    chat_service_url: str = Field(
-        default="http://localhost:8002", description="Chat service URL for demos"
-    )
-    vespa_endpoint: str = Field(
-        default="http://localhost:8080", description="Vespa endpoint for demos"
-    )
-    vespa_loader_url: str = Field(
-        default="http://localhost:9001", description="Vespa loader service URL"
-    )
-    vespa_query_url: str = Field(
-        default="http://localhost:9002", description="Vespa query service URL"
-    )
+    office_service_url: str = Field(..., description="Office service URL for demos")
+    user_service_url: str = Field(..., description="User service URL for demos")
+    chat_service_url: str = Field(..., description="Chat service URL for demos")
+    vespa_endpoint: str = Field(..., description="Vespa endpoint for demos")
+    vespa_loader_url: str = Field(..., description="Vespa loader service URL")
+    vespa_query_url: str = Field(..., description="Vespa query service URL")
 
     # Pub/Sub configuration
     pubsub_project_id: str = Field(
@@ -51,20 +39,21 @@ class DemoSettings(BaseSettings):
 
     # API Keys
     api_frontend_office_key: str = Field(
-        default="test-FRONTEND_OFFICE_KEY",
+        ...,
         description="Frontend API key for office service access",
     )
     api_frontend_user_key: str = Field(
-        default="test-FRONTEND_USER_KEY",
+        ...,
         description="Frontend API key for user service access",
     )
     api_frontend_chat_key: str = Field(
-        default="test-FRONTEND_CHAT_KEY",
+        ...,
         description="Frontend API key for chat service access",
     )
     api_backfill_office_key: str = Field(
-        default="test-BACKFILL-OFFICE-KEY",
+        ...,
         description="Backfill API key for internal service communication",
+        validation_alias="API_BACKFILL_OFFICE_KEY",
     )
 
     # Demo configuration
