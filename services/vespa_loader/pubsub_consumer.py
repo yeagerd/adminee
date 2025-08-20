@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from services.common.events import (
+    BaseEvent,
     CalendarBatchEvent,
     CalendarUpdateEvent,
     ContactBatchEvent,
@@ -21,7 +22,6 @@ from services.common.events import (
     EmailBackfillEvent,
     EmailBatchEvent,
     EmailUpdateEvent,
-    BaseEvent,
 )
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubConsumer as CommonPubSubConsumer
@@ -418,7 +418,7 @@ class PubSubConsumer:
 
         batch = self.message_batches[topic_name]
         message_objects = self.message_objects[topic_name]
-        
+
         # Clear the batches
         self.message_batches[topic_name] = []
         self.message_objects[topic_name] = []
@@ -438,7 +438,9 @@ class PubSubConsumer:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Acknowledge or nack messages based on results
-        for i, (item, result, message_obj) in enumerate(zip(batch, results, message_objects)):
+        for i, (item, result, message_obj) in enumerate(
+            zip(batch, results, message_objects)
+        ):
             try:
                 if isinstance(result, Exception):
                     logger.error(
@@ -449,7 +451,9 @@ class PubSubConsumer:
                         message_obj.nack()
                         logger.info(f"Nacked message {i} from {topic_name} for retry")
                     else:
-                        logger.warning(f"Message object does not support nack for {topic_name}")
+                        logger.warning(
+                            f"Message object does not support nack for {topic_name}"
+                        )
                     self.error_count += 1
                 else:
                     # Acknowledge successful processing
@@ -457,10 +461,14 @@ class PubSubConsumer:
                         message_obj.ack()
                         logger.info(f"Acknowledged message {i} from {topic_name}")
                     else:
-                        logger.warning(f"Message object does not support ack for {topic_name}")
+                        logger.warning(
+                            f"Message object does not support ack for {topic_name}"
+                        )
                     self.processed_count += 1
             except Exception as e:
-                logger.error(f"Error handling message acknowledgment for {topic_name}: {e}")
+                logger.error(
+                    f"Error handling message acknowledgment for {topic_name}: {e}"
+                )
                 # If we can't ack/nack, increment error count
                 self.error_count += 1
 
@@ -481,13 +489,15 @@ class PubSubConsumer:
             logger.info(
                 f"Calling processor for message from {topic_name}: {message_id} for user {user_id}"
             )
-            
+
             # Deserialize the raw message data into the appropriate event type
             event_object = await self._deserialize_message(item, topic_name)
             if event_object is None:
-                logger.error(f"Failed to deserialize message from {topic_name}: {message_id}")
+                logger.error(
+                    f"Failed to deserialize message from {topic_name}: {message_id}"
+                )
                 raise ValueError(f"Invalid message format for topic {topic_name}")
-            
+
             # Call the processor with the properly typed event object
             result = await processor(event_object)
             logger.info(
@@ -499,69 +509,81 @@ class PubSubConsumer:
             logger.error(f"Error processing message from {topic_name}: {e}")
             raise
 
-    async def _deserialize_message(self, raw_data: Dict[str, Any], topic_name: str) -> Optional[BaseEvent]:
+    async def _deserialize_message(
+        self, raw_data: Dict[str, Any], topic_name: str
+    ) -> Optional[BaseEvent]:
         """
         Deserialize raw message data into the appropriate typed event object.
-        
+
         Args:
             raw_data: Raw message data from Pub/Sub
             topic_name: Name of the topic for determining event type
-            
+
         Returns:
             Properly typed event object or None if deserialization fails
         """
         try:
             # The raw_data should already contain the event structure
             # We just need to validate and create the appropriate event object
-            
+
             # Determine event type based on topic name and data structure
             if "email" in topic_name.lower():
                 if "backfill" in topic_name.lower():
                     # Validate required fields for EmailBackfillEvent
                     required_fields = ["user_id", "provider", "emails", "batch_size"]
                     if not all(field in raw_data for field in required_fields):
-                        logger.error(f"Missing required fields for EmailBackfillEvent: {required_fields}")
+                        logger.error(
+                            f"Missing required fields for EmailBackfillEvent: {required_fields}"
+                        )
                         return None
-                    
+
                     # Create the event object
                     return EmailBackfillEvent(**raw_data)
                 else:
                     # Validate required fields for EmailUpdateEvent
                     required_fields = ["user_id", "email", "update_type"]
                     if not all(field in raw_data for field in required_fields):
-                        logger.error(f"Missing required fields for EmailUpdateEvent: {required_fields}")
+                        logger.error(
+                            f"Missing required fields for EmailUpdateEvent: {required_fields}"
+                        )
                         return None
-                    
+
                     return EmailUpdateEvent(**raw_data)
-                    
+
             elif "calendar" in topic_name.lower():
                 # Validate required fields for CalendarUpdateEvent
                 required_fields = ["user_id", "event", "update_type"]
                 if not all(field in raw_data for field in required_fields):
-                    logger.error(f"Missing required fields for CalendarUpdateEvent: {required_fields}")
+                    logger.error(
+                        f"Missing required fields for CalendarUpdateEvent: {required_fields}"
+                    )
                     return None
-                
+
                 return CalendarUpdateEvent(**raw_data)
-                
+
             elif "contact" in topic_name.lower():
                 # Validate required fields for ContactUpdateEvent
                 required_fields = ["user_id", "contact", "update_type"]
                 if not all(field in raw_data for field in required_fields):
-                    logger.error(f"Missing required fields for ContactUpdateEvent: {required_fields}")
+                    logger.error(
+                        f"Missing required fields for ContactUpdateEvent: {required_fields}"
+                    )
                     return None
-                
+
                 return ContactUpdateEvent(**raw_data)
             else:
-                logger.warning(f"Unknown topic type: {topic_name}, cannot deserialize message")
+                logger.warning(
+                    f"Unknown topic type: {topic_name}, cannot deserialize message"
+                )
                 return None
-                
+
         except Exception as e:
             logger.error(
                 f"Failed to deserialize message for topic {topic_name}: {e}",
                 extra={
                     "raw_data_keys": list(raw_data.keys()) if raw_data else [],
-                    "topic_name": topic_name
-                }
+                    "topic_name": topic_name,
+                },
             )
             return None
 

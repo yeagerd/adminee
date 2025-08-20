@@ -24,29 +24,35 @@ from services.office.models.backfill import (
 logger = get_logger(__name__)
 
 
-def _parse_email_date(date_value: Optional[str], fallback_to_now: bool = True) -> datetime:
+def _parse_email_date(
+    date_value: Optional[str], fallback_to_now: bool = True
+) -> datetime:
     """
     Safely parse email date values with proper error handling.
-    
+
     Args:
         date_value: The date string to parse, can be None or empty
         fallback_to_now: Whether to fall back to current time if parsing fails
-        
+
     Returns:
         Parsed datetime object (timezone-aware) or current time if parsing fails
     """
     if not date_value:
-        return datetime.now(timezone.utc) if fallback_to_now else datetime.now(timezone.utc)
-    
+        return (
+            datetime.now(timezone.utc)
+            if fallback_to_now
+            else datetime.now(timezone.utc)
+        )
+
     try:
         # Try to parse the ISO format date
         parsed_date = datetime.fromisoformat(date_value)
-        
+
         # Ensure the datetime is timezone-aware
         if parsed_date.tzinfo is None:
             # If no timezone info, assume UTC
             parsed_date = parsed_date.replace(tzinfo=timezone.utc)
-        
+
         return parsed_date
     except (ValueError, TypeError) as e:
         logger.warning(f"Failed to parse date '{date_value}': {e}")
@@ -335,24 +341,30 @@ async def run_backfill_job(
                 for email in email_batch:
                     try:
                         email_data = EmailData(
-                            id=email.get('id', ''),
-                            thread_id=email.get('threadId', ''),
-                            subject=email.get('subject', ''),
-                            body=email.get('body', ''),
-                            from_address=email.get('from', ''),
-                            to_addresses=email.get('to', []),
-                            cc_addresses=email.get('cc', []),
-                            bcc_addresses=email.get('bcc', []),
-                            received_date=_parse_email_date(email.get('receivedDate')),
-                            sent_date=_parse_email_date(email.get('sentDate'), fallback_to_now=False) if email.get('sentDate') else None,
-                            labels=email.get('labels', []),
-                            is_read=email.get('isRead', False),
-                            is_starred=email.get('isStarred', False),
-                            has_attachments=email.get('hasAttachments', False),
+                            id=email.get("id", ""),
+                            thread_id=email.get("threadId", ""),
+                            subject=email.get("subject", ""),
+                            body=email.get("body", ""),
+                            from_address=email.get("from", ""),
+                            to_addresses=email.get("to", []),
+                            cc_addresses=email.get("cc", []),
+                            bcc_addresses=email.get("bcc", []),
+                            received_date=_parse_email_date(email.get("receivedDate")),
+                            sent_date=(
+                                _parse_email_date(
+                                    email.get("sentDate"), fallback_to_now=False
+                                )
+                                if email.get("sentDate")
+                                else None
+                            ),
+                            labels=email.get("labels", []),
+                            is_read=email.get("isRead", False),
+                            is_starred=email.get("isStarred", False),
+                            has_attachments=email.get("hasAttachments", False),
                             provider=request.provider,
-                            provider_message_id=email.get('id', ''),
-                            size_bytes=email.get('sizeBytes'),
-                            mime_type=email.get('mimeType'),
+                            provider_message_id=email.get("id", ""),
+                            size_bytes=email.get("sizeBytes"),
+                            mime_type=email.get("mimeType"),
                         )
                         email_data_objects.append(email_data)
                     except Exception as e:
