@@ -21,10 +21,10 @@ The vespa_loader service is a stateless document processing service that ingests
 - [x] Verify service is properly configured in `scripts/start-all-services.sh` (already done)
 
 ### API Key Authentication (Medium Priority)
-- [ ] Add API key configuration to `services/vespa_loader/settings.py`
-- [ ] Implement API key verification in `services/vespa_loader/main.py` for protected endpoints
-- [ ] Add API key environment variables to `.example.env`
-- [ ] Update ingest endpoints in `services/vespa_loader/main.py` to require API key authentication
+- [x] Add API key configuration to `services/vespa_loader/settings.py`
+- [x] Implement API key verification in `services/vespa_loader/main.py` for protected endpoints
+- [x] Add API key environment variables to `.example.env`
+- [x] Update ingest endpoints in `services/vespa_loader/main.py` to require API key authentication
 
 ### Configuration Management (Minor)
 - [ ] Add missing environment variables for inter-service communication to `.example.env`

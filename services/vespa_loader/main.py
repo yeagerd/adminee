@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, Optional, Union
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.common.http_errors import register_briefly_exception_handlers
@@ -34,6 +34,18 @@ content_normalizer: Optional[Any] = None
 embedding_generator: Optional[Any] = None
 document_mapper: Optional[Any] = None
 pubsub_consumer: Optional[Any] = None
+
+
+async def verify_api_key(
+    x_api_key: str = Header(..., alias="X-API-Key")
+) -> str:
+    """Verify API key for inter-service authentication"""
+    from services.vespa_loader.settings import Settings
+    settings = Settings()
+    
+    if x_api_key != settings.api_frontend_vespa_loader_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
 
 
 @asynccontextmanager
@@ -149,7 +161,9 @@ async def root() -> Dict[str, str]:
 
 @app.post("/ingest")
 async def ingest_document(
-    document_data: Dict[str, Any], background_tasks: BackgroundTasks
+    document_data: Dict[str, Any], 
+    background_tasks: BackgroundTasks,
+    api_key: str = Depends(verify_api_key)
 ) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
     if not all(
@@ -213,7 +227,9 @@ async def ingest_document(
 
 @app.post("/ingest/batch")
 async def ingest_batch_documents(
-    documents: list[Dict[str, Any]], background_tasks: BackgroundTasks
+    documents: list[Dict[str, Any]], 
+    background_tasks: BackgroundTasks,
+    api_key: str = Depends(verify_api_key)
 ) -> Dict[str, Any]:
     """Ingest multiple documents in batch"""
     if not all(
@@ -498,7 +514,9 @@ async def debug_pubsub_status() -> Dict[str, Any]:
 
 
 @app.post("/debug/pubsub/trigger")
-async def debug_trigger_pubsub_processing() -> Dict[str, Any]:
+async def debug_trigger_pubsub_processing(
+    api_key: str = Depends(verify_api_key)
+) -> Dict[str, Any]:
     """Debug endpoint to manually trigger Pub/Sub message processing"""
     if not pubsub_consumer:
         return {"status": "error", "message": "Pub/Sub consumer not initialized"}
