@@ -501,8 +501,14 @@ async def ingest_document(
 
         return result
 
+    except ValidationError:
+        # Re-raise ValidationError to preserve specific error details
+        raise
+    except ServiceError:
+        # Re-raise ServiceError to preserve specific error details
+        raise
     except Exception as e:
-        logger.error(f"Error ingesting document: {e}")
+        logger.error(f"Unexpected error ingesting document: {e}")
         raise ServiceError(
             "Document ingestion failed",
             code=ErrorCode.SERVICE_ERROR,
@@ -533,8 +539,14 @@ async def ingest_batch_documents(
 
         return result
 
+    except ValidationError:
+        # Re-raise ValidationError to preserve specific error details
+        raise
+    except ServiceError:
+        # Re-raise ServiceError to preserve specific error details
+        raise
     except Exception as e:
-        logger.error(f"Error in batch ingestion: {e}")
+        logger.error(f"Unexpected error in batch ingestion: {e}")
         raise ServiceError(
             "Batch ingestion failed",
             code=ErrorCode.SERVICE_ERROR,
