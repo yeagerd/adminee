@@ -371,11 +371,14 @@ RUN pip install uv
 # Copy dependency files first for better layer caching
 COPY services/your_service/pyproject.toml .
 
-# Install dependencies (without --no-deps to ensure all dependencies are installed)
-RUN uv pip install -e .
+# Install only the dependencies (not the service itself yet)
+RUN uv pip install --only-deps .
 
-# Copy source code after dependencies are installed
+# Copy source code
 COPY services/your_service/ .
+
+# Now install the service in editable mode (source code is available)
+RUN uv pip install -e .
 
 CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8006"]
 ```
