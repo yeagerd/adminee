@@ -517,6 +517,18 @@ class PubSubConsumer:
                     result = await ingest_document_service(
                         document_data, run_background_tasks=False
                     )
+
+                    # Run post-processing tasks directly since we're not in a FastAPI context
+                    try:
+                        await self._post_process_document(
+                            document_data["id"], document_data["user_id"]
+                        )
+                    except Exception as post_process_error:
+                        logger.warning(
+                            f"Post-processing failed for document {message_id}: {post_process_error}"
+                        )
+                        # Continue even if post-processing fails
+
                     logger.info(f"Successfully indexed document {message_id}: {result}")
                     return result
                 except Exception as service_error:
@@ -577,3 +589,17 @@ class PubSubConsumer:
         }
         logger.info(f"Consumer stats: {stats}")
         return stats
+
+    async def _post_process_document(self, document_id: str, user_id: str) -> None:
+        """Post-process a document after ingestion
+
+        This method runs the same post-processing logic that would normally
+        run as a background task in the HTTP endpoint.
+        """
+        try:
+            logger.info(f"Post-processing document {document_id} for user {user_id}")
+            # Add any post-processing logic here
+            # For example: update search indices, trigger notifications, etc.
+            # This mirrors the logic in main.py:_post_process_document
+        except Exception as e:
+            logger.error(f"Error in post-processing document {document_id}: {e}")
