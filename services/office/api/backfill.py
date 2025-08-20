@@ -38,11 +38,10 @@ def _parse_email_date(
         Parsed datetime object (timezone-aware) or current time if parsing fails
     """
     if not date_value:
-        return (
-            datetime.now(timezone.utc)
-            if fallback_to_now
-            else datetime.now(timezone.utc)
-        )
+        if fallback_to_now:
+            return datetime.now(timezone.utc)
+        else:
+            raise ValueError("Date value is required but not provided")
 
     try:
         # Try to parse the ISO format date
@@ -58,8 +57,8 @@ def _parse_email_date(
         logger.warning(f"Failed to parse date '{date_value}': {e}")
         if fallback_to_now:
             return datetime.now(timezone.utc)
-        # Always return a valid datetime for required fields
-        return datetime.now(timezone.utc)
+        else:
+            raise ValueError(f"Failed to parse date '{date_value}': {e}")
 
 
 internal_router = APIRouter(prefix="/internal/backfill", tags=["internal-backfill"])
