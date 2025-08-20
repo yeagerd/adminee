@@ -2947,7 +2947,19 @@ async def get_internal_email_messages(
         if count_only:
             return EmailMessageList(
                 success=True,
-                data={"messages": [], "total_count": total_count},
+                data=EmailMessageListData(
+                    messages=[],
+                    total_count=total_count,
+                    providers_used=valid_providers,
+                    provider_errors=None,
+                    has_more=False,
+                    request_metadata={
+                        "user_id": user_id,
+                        "providers_requested": valid_providers,
+                        "limit": limit,
+                        "include_body": include_body,
+                    },
+                ),
                 cache_hit=False,
                 request_id=request_id,
             )
@@ -2967,7 +2979,19 @@ async def get_internal_email_messages(
 
         return EmailMessageList(
             success=True,
-            data={"messages": all_messages, "total_count": total_count},
+            data=EmailMessageListData(
+                messages=all_messages,
+                total_count=total_count,
+                providers_used=valid_providers,
+                provider_errors=None,
+                has_more=False,
+                request_metadata={
+                    "user_id": user_id,
+                    "providers_requested": valid_providers,
+                    "limit": limit,
+                    "include_body": include_body,
+                },
+            ),
             cache_hit=False,
             request_id=request_id,
         )
