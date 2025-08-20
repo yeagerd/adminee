@@ -11,9 +11,9 @@ The vespa_loader service is a stateless document processing service that ingests
 ## Areas for Improvement
 
 ### Dependency Management (Medium Priority)
-- [ ] Convert `services/vespa_loader/pyproject.toml` from setuptools to UV/poetry format
-- [ ] Update dependency management to match other services
-- [ ] Ensure all dependencies use consistent versioning
+- [x] Convert `services/vespa_loader/pyproject.toml` from setuptools to UV/poetry format
+- [x] Update dependency management to match other services
+- [x] Ensure all dependencies use consistent versioning
 
 ### Service Registration Completeness (Medium Priority)
 - [ ] Add entry to `scripts/check-db-status.sh` indicating "no database required"
