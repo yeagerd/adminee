@@ -7,7 +7,7 @@ name = "briefly"
 version = "0.1.0"
 description = "Briefly - AI-powered calendar and task management"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "google-cloud-core>=2.4.3",
     "google-cloud-pubsub>=2.31.1",
