@@ -1,0 +1,415 @@
+#!/usr/bin/env python3
+"""
+Shared PubSub utilities for Briefly services with integrated logging and distributed tracing.
+"""
+
+import json
+import os
+from datetime import datetime
+from typing import Any, Callable, Dict, Optional, Union
+
+from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+
+from services.common.logging_config import get_logger
+from services.common.telemetry import get_tracer
+from services.common.events import (
+    BaseEvent,
+    EmailBackfillEvent,
+    EmailUpdateEvent,
+    EmailBatchEvent,
+    CalendarUpdateEvent,
+    CalendarBatchEvent,
+    ContactUpdateEvent,
+    ContactBatchEvent,
+)
+
+logger = get_logger(__name__)
+tracer = get_tracer(__name__)
+
+
+class PubSubClient:
+    """Shared PubSub client for publishing messages with integrated logging and tracing."""
+
+    def __init__(
+        self, 
+        project_id: Optional[str] = None, 
+        emulator_host: Optional[str] = None,
+        service_name: str = "unknown-service"
+    ):
+        self.project_id = project_id or os.getenv("PUBSUB_PROJECT_ID", "briefly-dev")
+        self.service_name = service_name
+
+        # Set up emulator if specified
+        if emulator_host:
+            os.environ["PUBSUB_EMULATOR_HOST"] = emulator_host
+
+        # Initialize publisher client
+        self.publisher = pubsub_v1.PublisherClient()
+        
+        logger.info(
+            "PubSub client initialized",
+            extra={
+                "project_id": self.project_id,
+                "emulator_host": emulator_host,
+                "service_name": self.service_name
+            }
+        )
+
+    def publish_message(self, topic_name: str, data: Union[Dict[str, Any], BaseEvent], **kwargs: Any) -> str:
+        """Publish a message to a PubSub topic with tracing and logging."""
+        with tracer.start_as_current_span(f"pubsub.publish.{topic_name}") as span:
+            try:
+                topic_path = self.publisher.topic_path(self.project_id, topic_name)
+                
+                # Handle both dict and BaseEvent types
+                if isinstance(data, BaseEvent):
+                    # Add tracing context to the event
+                    if span.is_recording():
+                        data.add_trace_context(
+                            trace_id=span.get_span_context().trace_id,
+                            span_id=span.get_span_context().span_id
+                        )
+                    
+                    # Convert event to dict
+                    message_data = data.model_dump_json().encode("utf-8")
+                    event_type = data.__class__.__name__
+                else:
+                    # Handle legacy dict format
+                    if "timestamp" not in data:
+                        data["timestamp"] = datetime.utcnow().isoformat()
+                    message_data = json.dumps(data, default=str).encode("utf-8")
+                    event_type = "dict"
+
+                # Add span attributes for tracing
+                span.set_attribute("pubsub.topic", topic_name)
+                span.set_attribute("pubsub.project_id", self.project_id)
+                span.set_attribute("pubsub.event_type", event_type)
+                span.set_attribute("pubsub.message_size_bytes", len(message_data))
+
+                # Publish message
+                future = self.publisher.publish(topic_path, data=message_data, **kwargs)
+                message_id = future.result()
+
+                # Log success with structured data
+                logger.info(
+                    "Message published successfully",
+                    extra={
+                        "message_id": message_id,
+                        "topic_name": topic_name,
+                        "event_type": event_type,
+                        "message_size_bytes": len(message_data),
+                        "trace_id": span.get_span_context().trace_id if span.is_recording() else None,
+                        "span_id": span.get_span_context().span_id if span.is_recording() else None,
+                    }
+                )
+
+                return message_id
+
+            except Exception as e:
+                # Log error with context
+                logger.error(
+                    "Failed to publish message",
+                    extra={
+                        "topic_name": topic_name,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "trace_id": span.get_span_context().trace_id if span.is_recording() else None,
+                        "span_id": span.get_span_context().span_id if span.is_recording() else None,
+                    }
+                )
+                span.record_exception(e)
+                raise
+
+    def publish_email_backfill(self, event: EmailBackfillEvent, topic_name: str = "email-backfill") -> str:
+        """Publish email backfill event with type safety."""
+        logger.info(
+            "Publishing email backfill event",
+            extra={
+                "user_id": event.user_id,
+                "provider": event.provider,
+                "batch_size": event.batch_size,
+                "sync_type": event.sync_type,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_email_update(self, event: EmailUpdateEvent, topic_name: str = "email-updates") -> str:
+        """Publish email update event with type safety."""
+        logger.info(
+            "Publishing email update event",
+            extra={
+                "user_id": event.user_id,
+                "email_id": event.email.id,
+                "update_type": event.update_type,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_email_batch(self, event: EmailBatchEvent, topic_name: str = "email-batch") -> str:
+        """Publish email batch event with type safety."""
+        logger.info(
+            "Publishing email batch event",
+            extra={
+                "user_id": event.user_id,
+                "provider": event.provider,
+                "batch_size": len(event.emails),
+                "operation": event.operation,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_calendar_update(self, event: CalendarUpdateEvent, topic_name: str = "calendar-updates") -> str:
+        """Publish calendar update event with type safety."""
+        logger.info(
+            "Publishing calendar update event",
+            extra={
+                "user_id": event.user_id,
+                "event_id": event.event.id,
+                "update_type": event.update_type,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_calendar_batch(self, event: CalendarBatchEvent, topic_name: str = "calendar-batch") -> str:
+        """Publish calendar batch event with type safety."""
+        logger.info(
+            "Publishing calendar batch event",
+            extra={
+                "user_id": event.user_id,
+                "provider": event.provider,
+                "batch_size": len(event.events),
+                "operation": event.operation,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_contact_update(self, event: ContactUpdateEvent, topic_name: str = "contact-updates") -> str:
+        """Publish contact update event with type safety."""
+        logger.info(
+            "Publishing contact update event",
+            extra={
+                "user_id": event.user_id,
+                "contact_id": event.contact.id,
+                "update_type": event.update_type,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_contact_batch(self, event: ContactBatchEvent, topic_name: str = "contact-batch") -> str:
+        """Publish contact batch event with type safety."""
+        logger.info(
+            "Publishing contact batch event",
+            extra={
+                "user_id": event.user_id,
+                "provider": event.provider,
+                "batch_size": len(event.contacts),
+                "operation": event.operation,
+                "topic_name": topic_name,
+            }
+        )
+        return self.publish_message(topic_name, event)
+
+    # Legacy methods for backward compatibility
+    def publish_email_data(
+        self, email_data: Dict[str, Any], topic_name: str = "email-backfill"
+    ) -> str:
+        """Publish email data to the specified topic (legacy method)."""
+        logger.warning(
+            "Using legacy publish_email_data method. Consider using typed event methods instead.",
+            extra={"topic_name": topic_name}
+        )
+        return self.publish_message(topic_name, email_data)
+
+    def publish_calendar_data(
+        self, calendar_data: Dict[str, Any], topic_name: str = "calendar-updates"
+    ) -> str:
+        """Publish calendar data to the specified topic (legacy method)."""
+        logger.warning(
+            "Using legacy publish_calendar_data method. Consider using typed event methods instead.",
+            extra={"topic_name": topic_name}
+        )
+        return self.publish_message(topic_name, calendar_data)
+
+    def publish_contact_data(
+        self, contact_data: Dict[str, Any], topic_name: str = "contact-updates"
+    ) -> str:
+        """Publish contact data to the specified topic (legacy method)."""
+        logger.warning(
+            "Using legacy publish_contact_data method. Consider using typed event methods instead.",
+            extra={"topic_name": topic_name}
+        )
+        return self.publish_message(topic_name, contact_data)
+
+    def close(self) -> None:
+        """Close the publisher client."""
+        if self.publisher:
+            self.publisher.close()
+            logger.info("PubSub publisher client closed")
+
+
+class PubSubConsumer:
+    """Shared PubSub consumer for subscribing to topics with integrated logging and tracing."""
+
+    def __init__(
+        self, 
+        project_id: Optional[str] = None, 
+        emulator_host: Optional[str] = None,
+        service_name: str = "unknown-service"
+    ):
+        self.project_id = project_id or os.getenv("PUBSUB_PROJECT_ID", "briefly-dev")
+        self.service_name = service_name
+
+        # Set up emulator if specified
+        if emulator_host:
+            os.environ["PUBSUB_EMULATOR_HOST"] = emulator_host
+
+        # Initialize subscriber client
+        self.subscriber = pubsub_v1.SubscriberClient()
+        self.subscriptions: Dict[str, Any] = {}
+        
+        logger.info(
+            "PubSub consumer initialized",
+            extra={
+                "project_id": self.project_id,
+                "emulator_host": emulator_host,
+                "service_name": self.service_name
+            }
+        )
+
+    def subscribe(
+        self, topic_name: str, subscription_name: str, callback: Callable[..., Any], **kwargs: Any
+    ) -> Any:
+        """Subscribe to a topic with the specified callback and tracing."""
+        with tracer.start_as_current_span(f"pubsub.subscribe.{subscription_name}") as span:
+            try:
+                subscription_path = self.subscriber.subscription_path(
+                    self.project_id, subscription_name
+                )
+
+                # Add span attributes
+                span.set_attribute("pubsub.topic", topic_name)
+                span.set_attribute("pubsub.subscription", subscription_name)
+                span.set_attribute("pubsub.project_id", self.project_id)
+
+                # Create subscription
+                subscription = self.subscriber.subscribe(
+                    subscription_path,
+                    callback=callback,
+                    flow_control=pubsub_v1.types.FlowControl(
+                        max_messages=kwargs.get("max_messages", 100),
+                        max_bytes=kwargs.get("max_bytes", 1024 * 1024),  # 1MB
+                        allow_exceeded_limits=False,
+                    ),
+                )
+
+                self.subscriptions[subscription_name] = subscription
+                
+                logger.info(
+                    "Successfully subscribed to topic",
+                    extra={
+                        "topic_name": topic_name,
+                        "subscription_name": subscription_name,
+                        "subscription_path": subscription_path,
+                        "trace_id": span.get_span_context().trace_id if span.is_recording() else None,
+                        "span_id": span.get_span_context().span_id if span.is_recording() else None,
+                    }
+                )
+                
+                return subscription
+
+            except Exception as e:
+                logger.error(
+                    "Failed to subscribe to topic",
+                    extra={
+                        "topic_name": topic_name,
+                        "subscription_name": subscription_name,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "trace_id": span.get_span_context().trace_id if span.is_recording() else None,
+                        "span_id": span.get_span_context().span_id if span.is_recording() else None,
+                    }
+                )
+                span.record_exception(e)
+                raise
+
+    def unsubscribe(self, subscription_name: str) -> None:
+        """Unsubscribe from a topic with logging."""
+        if subscription_name in self.subscriptions:
+            try:
+                self.subscriptions[subscription_name].cancel()
+                del self.subscriptions[subscription_name]
+                logger.info(
+                    "Successfully unsubscribed from subscription",
+                    extra={"subscription_name": subscription_name}
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to unsubscribe from subscription",
+                    extra={
+                        "subscription_name": subscription_name,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    }
+                )
+
+    def close(self) -> None:
+        """Close all subscriptions and the subscriber client."""
+        for subscription_name in list(self.subscriptions.keys()):
+            self.unsubscribe(subscription_name)
+
+        if self.subscriber:
+            self.subscriber.close()
+            logger.info("PubSub subscriber client closed")
+
+
+def create_test_message(data_type: str, **kwargs: Any) -> Dict[str, Any]:
+    """Create a test message for testing purposes (legacy function)."""
+    logger.warning(
+        "Using legacy create_test_message function. Consider using typed event models instead.",
+        extra={"data_type": data_type}
+    )
+    
+    base_message = {
+        "id": kwargs.get("id", f"test-{data_type}-{datetime.utcnow().timestamp()}"),
+        "user_id": kwargs.get("user_id", "test-user"),
+        "provider": kwargs.get("provider", "test"),
+        "type": data_type,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    if data_type == "email":
+        base_message.update(
+            {
+                "subject": kwargs.get("subject", "Test Email Subject"),
+                "body": kwargs.get("body", "This is a test email body"),
+                "from": kwargs.get("from", "test@example.com"),
+                "to": kwargs.get("to", ["recipient@example.com"]),
+                "thread_id": kwargs.get("thread_id", "test-thread-123"),
+            }
+        )
+    elif data_type == "calendar":
+        base_message.update(
+            {
+                "subject": kwargs.get("subject", "Test Calendar Event"),
+                "start_time": kwargs.get("start_time", datetime.utcnow().isoformat()),
+                "end_time": kwargs.get("end_time", datetime.utcnow().isoformat()),
+                "attendees": kwargs.get("attendees", ["attendee@example.com"]),
+            }
+        )
+    elif data_type == "contact":
+        base_message.update(
+            {
+                "display_name": kwargs.get("display_name", "Test Contact"),
+                "email_addresses": kwargs.get(
+                    "email_addresses", ["contact@example.com"]
+                ),
+            }
+        )
+
+    return base_message
