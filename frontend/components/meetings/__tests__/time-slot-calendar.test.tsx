@@ -317,7 +317,8 @@ describe('TimeSlotCalendar Business Day Integration', () => {
         expect(screen.getByText(/showing \d+ days total \(business days only\)/i)).toBeInTheDocument();
 
         // Verify that the range calculation worked correctly by checking displayed dates
-        const dateHeaders = screen.getAllByText(/Aug \d+/);
+        // Use dynamic date matching instead of hardcoded month expectations
+        const dateHeaders = screen.getAllByText(/\w{3} \w{3} \d+/);
         expect(dateHeaders.length).toBeGreaterThan(0);
 
         // The component should be functional and responsive
