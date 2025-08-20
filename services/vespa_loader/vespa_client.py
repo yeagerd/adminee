@@ -330,10 +330,16 @@ class VespaClient:
         """Prepare a document for Vespa indexing"""
 
         # Helper function to convert ISO datetime to Unix timestamp
-        def parse_datetime_to_timestamp(datetime_str: str) -> int:
+        def parse_datetime_to_timestamp(datetime_str: Optional[str]) -> int:
             """Convert ISO datetime string to Unix timestamp (seconds since epoch)"""
             try:
                 from datetime import datetime
+
+                # Handle None or empty string
+                if not datetime_str:
+                    # Return current timestamp as fallback
+                    from datetime import datetime, timezone
+                    return int(datetime.now(timezone.utc).timestamp())
 
                 # Parse the ISO datetime string
                 dt = datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))

@@ -267,6 +267,9 @@ class DocumentMapper:
                     )
                     # Set to current time if invalid
                     vespa_doc[field] = datetime.now().isoformat()
+            elif vespa_doc.get(field) is None:
+                # Set to current time if field is None
+                vespa_doc[field] = datetime.now().isoformat()
 
         # Ensure lists are actually lists
         list_fields = ["recipients", "attendees", "labels", "categories"]
