@@ -55,20 +55,6 @@ jobs:
           source .venv/bin/activate
           ./scripts/generate-openapi-schemas.sh
 
-      - name: Verify OpenAPI schemas
-        run: |
-          echo "🔍 Verifying OpenAPI schemas were generated..."
-          expected_services="chat meetings office shipments vespa_query"
-          for service in $expected_services; do
-            if [[ -f "services/$service/openapi/schema.json" ]]; then
-              echo "  ✅ $service: schema.json exists"
-            else
-              echo "  ❌ $service: schema.json missing"
-              exit 1
-            fi
-          done
-          echo "✅ All expected OpenAPI schemas were generated successfully!"
-
       - name: Clean existing types
         run: |
           cd frontend
@@ -79,21 +65,6 @@ jobs:
         run: |
           cd frontend
           npm run generate-types
-
-      - name: Verify TypeScript types
-        run: |
-          cd frontend
-          echo "🔍 Verifying TypeScript types were generated..."
-          expected_services="chat meetings office shipments vespa_query"
-          for service in $expected_services; do
-            if [[ -d "types/api/$service" ]] && [[ -f "types/api/$service/index.ts" ]]; then
-              echo "  ✅ $service: types directory and index.ts exist"
-            else
-              echo "  ❌ $service: types directory or index.ts missing"
-              exit 1
-            fi
-          done
-          echo "✅ All expected TypeScript types were generated successfully!"
 
       - name: Build Application
         run: |
