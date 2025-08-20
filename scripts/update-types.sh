@@ -4,6 +4,7 @@
 # This script is used by developers to manually regenerate types during development
 
 set -e  # Exit on any error
+set -u  # Exit on undefined variables
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,7 +14,26 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Project root directory - use git to find the repo root
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)")"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$script_dir/.." && pwd)"
+
+# Verify we have a valid project root
+if [[ ! -d "$PROJECT_ROOT/services" ]] || [[ ! -d "$PROJECT_ROOT/frontend" ]]; then
+    echo "ERROR: Could not find valid project root. PROJECT_ROOT=$PROJECT_ROOT" >&2
+    echo "ERROR: Current directory: $(pwd)" >&2
+    echo "ERROR: Script location: ${BASH_SOURCE[0]}" >&2
+    exit 1
+fi
+
+# Debug output (only in verbose mode)
+if [[ "${verbose:-false}" == "true" ]]; then
+    echo "DEBUG: BASH_SOURCE[0] = ${BASH_SOURCE[0]}"
+    echo "DEBUG: dirname = $(dirname "${BASH_SOURCE[0]}")"
+    echo "DEBUG: PROJECT_ROOT = $PROJECT_ROOT"
+    echo "DEBUG: PWD = $(pwd)"
+    echo "DEBUG: services dir exists = $([[ -d "$PROJECT_ROOT/services" ]] && echo 'yes' || echo 'no')"
+    echo "DEBUG: frontend dir exists = $([[ -d "$PROJECT_ROOT/frontend" ]] && echo 'yes' || echo 'no')"
+fi
 
 # Function to print colored output
 print_status() {
