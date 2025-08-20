@@ -617,48 +617,95 @@ class PubSubConsumer:
             # Determine event type based on topic name and data structure
             if "email" in topic_name.lower():
                 if "backfill" in topic_name.lower():
-                    # Validate required fields for EmailBackfillEvent
-                    required_fields = ["user_id", "provider", "emails", "batch_size"]
+                    # Validate required fields for EmailBackfillEvent (including BaseEvent metadata)
+                    required_fields = ["user_id", "provider", "emails", "batch_size", "metadata"]
                     if not all(field in raw_data for field in required_fields):
                         logger.error(
                             f"Missing required fields for EmailBackfillEvent: {required_fields}"
                         )
                         return None
 
-                    # Create the event object
-                    return EmailBackfillEvent(**raw_data)
+                    # Create the event object with proper error handling
+                    try:
+                        return EmailBackfillEvent(**raw_data)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to create EmailBackfillEvent: {e}",
+                            extra={
+                                "raw_data_keys": list(raw_data.keys()) if raw_data else [],
+                                "topic_name": topic_name,
+                                "error_type": type(e).__name__,
+                            },
+                        )
+                        return None
                 else:
-                    # Validate required fields for EmailUpdateEvent
-                    required_fields = ["user_id", "email", "update_type"]
+                    # Validate required fields for EmailUpdateEvent (including BaseEvent metadata)
+                    required_fields = ["user_id", "email", "update_type", "metadata"]
                     if not all(field in raw_data for field in required_fields):
                         logger.error(
                             f"Missing required fields for EmailUpdateEvent: {required_fields}"
                         )
                         return None
 
-                    return EmailUpdateEvent(**raw_data)
+                    # Create the event object with proper error handling
+                    try:
+                        return EmailUpdateEvent(**raw_data)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to create EmailUpdateEvent: {e}",
+                            extra={
+                                "raw_data_keys": list(raw_data.keys()) if raw_data else [],
+                                "topic_name": topic_name,
+                                "error_type": type(e).__name__,
+                            },
+                        )
+                        return None
 
             elif "calendar" in topic_name.lower():
-                # Validate required fields for CalendarUpdateEvent
-                required_fields = ["user_id", "event", "update_type"]
+                # Validate required fields for CalendarUpdateEvent (including BaseEvent metadata)
+                required_fields = ["user_id", "event", "update_type", "metadata"]
                 if not all(field in raw_data for field in required_fields):
                     logger.error(
                         f"Missing required fields for CalendarUpdateEvent: {required_fields}"
                     )
                     return None
 
-                return CalendarUpdateEvent(**raw_data)
+                # Create the event object with proper error handling
+                try:
+                    return CalendarUpdateEvent(**raw_data)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create CalendarUpdateEvent: {e}",
+                        extra={
+                            "raw_data_keys": list(raw_data.keys()) if raw_data else [],
+                            "topic_name": topic_name,
+                            "error_type": type(e).__name__,
+                        },
+                    )
+                    return None
 
             elif "contact" in topic_name.lower():
-                # Validate required fields for ContactUpdateEvent
-                required_fields = ["user_id", "contact", "update_type"]
+                # Validate required fields for ContactUpdateEvent (including BaseEvent metadata)
+                required_fields = ["user_id", "contact", "update_type", "metadata"]
                 if not all(field in raw_data for field in required_fields):
                     logger.error(
                         f"Missing required fields for ContactUpdateEvent: {required_fields}"
                     )
                     return None
 
-                return ContactUpdateEvent(**raw_data)
+                # Create the event object with proper error handling
+                try:
+                    return ContactUpdateEvent(**raw_data)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create ContactUpdateEvent: {e}",
+                        extra={
+                            "raw_data_keys": list(raw_data.keys()) if raw_data else [],
+                            "topic_name": topic_name,
+                            "error_type": type(e).__name__,
+                        },
+                    )
+                    return None
             else:
                 logger.warning(
                     f"Unknown topic type: {topic_name}, cannot deserialize message"
