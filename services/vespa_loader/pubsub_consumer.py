@@ -13,38 +13,36 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from services.common.events import (
-    BaseEvent,
-    CalendarBatchEvent,
-    CalendarUpdateEvent,
-    ContactBatchEvent,
-    ContactUpdateEvent,
-    EmailBackfillEvent,
-    EmailBatchEvent,
-    EmailUpdateEvent,
-)
 from services.common.logging_config import get_logger
-from services.common.pubsub_client import PubSubConsumer as CommonPubSubConsumer
 from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
 
 logger = get_logger(__name__)
 
+# Import the shared ingest service function
+from services.vespa_loader.main import ingest_document_service
+
+try:
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+    from google.cloud.pubsub_v1.types import (
+        ReceivedMessage,  # type: ignore[attr-defined]
+    )
+
+    PUBSUB_AVAILABLE = True
+except ImportError:
+    PUBSUB_AVAILABLE = False
+    logger.warning(
+        "Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub"
+    )
+
 
 class PubSubConsumer:
-    """Consumes messages from Pub/Sub topics for Vespa indexing using common pubsub_client"""
+    """Consumes messages from Pub/Sub topics for Vespa indexing"""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-
-        # Initialize common pubsub consumer
-        self.pubsub_consumer: Optional[CommonPubSubConsumer] = CommonPubSubConsumer(
-            project_id=settings.pubsub_project_id,
-            emulator_host=settings.pubsub_emulator_host,
-            service_name="vespa-loader-service",
-        )
-
-        self.subscriptions: Dict[str, Any] = {}
+        self.subscriber: Optional[Any] = None
+        self.subscriptions: Dict[str, Dict[str, Any]] = {}
         self.running = False
         self.processed_count = 0
         self.error_count = 0
@@ -56,32 +54,26 @@ class PubSubConsumer:
         self.topics = {
             "email-backfill": {
                 "subscription_name": "vespa-loader-email-backfill",
-                "processor": self._process_email_backfill_event,
+                "processor": self._process_email_message,
                 "batch_size": 50,
             },
             "calendar-updates": {
                 "subscription_name": "vespa-loader-calendar-updates",
-                "processor": self._process_calendar_update_event,
+                "processor": self._process_calendar_message,
                 "batch_size": 20,
             },
             "contact-updates": {
                 "subscription_name": "vespa-loader-contact-updates",
-                "processor": self._process_contact_update_event,
+                "processor": self._process_contact_message,
                 "batch_size": 100,
             },
         }
 
         # Batch processing
-        self.message_batches: Dict[str, List[Any]] = {
-            topic: [] for topic in self.topics
-        }
-        # Store original message objects for conditional ack/nack
-        self.message_objects: Dict[str, List[Any]] = {
+        self.message_batches: Dict[str, List[Dict[str, Any]]] = {
             topic: [] for topic in self.topics
         }
         self.batch_timers: Dict[str, Optional[asyncio.Task[Any]]] = {}
-        # Store batch processing tasks to prevent premature garbage collection
-        self.batch_tasks: Dict[str, Optional[asyncio.Task[Any]]] = {}
         self.batch_timeout = 5.0  # seconds
 
         # Event loop reference for cross-thread communication
@@ -89,8 +81,8 @@ class PubSubConsumer:
 
     async def start(self) -> bool:
         """Start the Pub/Sub consumer"""
-        if not self.pubsub_consumer:
-            logger.error("Pub/Sub consumer not initialized - cannot start consumer")
+        if not PUBSUB_AVAILABLE:
+            logger.error("Pub/Sub not available - cannot start consumer")
             return False
 
         try:
@@ -108,6 +100,9 @@ class PubSubConsumer:
                 logger.info(
                     f"Using Pub/Sub emulator at {self.settings.pubsub_emulator_host}"
                 )
+
+            self.subscriber = pubsub_v1.SubscriberClient()
+            logger.info("Pub/Sub subscriber client initialized")
 
             # Store event loop reference for cross-thread communication
             self.loop = asyncio.get_running_loop()
@@ -133,30 +128,6 @@ class PubSubConsumer:
         logger.info("Stopping Pub/Sub consumer...")
         self.running = False
 
-        # Cancel all batch timers
-        for topic_name, timer_task in self.batch_timers.items():
-            try:
-                if timer_task and not timer_task.done():
-                    timer_task.cancel()
-                    logger.info(f"Cancelled batch timer for topic: {topic_name}")
-            except Exception as e:
-                logger.error(
-                    f"Error cancelling batch timer for topic {topic_name}: {e}"
-                )
-
-        # Cancel all batch processing tasks
-        for topic_name, batch_task in self.batch_tasks.items():
-            try:
-                if batch_task and not batch_task.done():
-                    batch_task.cancel()
-                    logger.info(
-                        f"Cancelled batch processing task for topic: {topic_name}"
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Error cancelling batch processing task for topic {topic_name}: {e}"
-                )
-
         # Cancel all subscriptions
         for topic_name, subscription in self.subscriptions.items():
             try:
@@ -169,31 +140,30 @@ class PubSubConsumer:
                 )
 
         # Close subscriber client
-        if self.pubsub_consumer:
-            self.pubsub_consumer.close()
-            self.pubsub_consumer = None
+        if self.subscriber:
+            self.subscriber.close()
+            self.subscriber = None
 
         logger.info("Pub/Sub consumer stopped")
 
     async def _ensure_subscriptions(self) -> None:
         """Ensure all required subscriptions exist"""
-        if not self.pubsub_consumer:
-            logger.error("PubSubConsumer not initialized")
+        if not self.subscriber:
+            logger.error("Subscriber not initialized")
             return
 
         logger.info("Ensuring subscriptions exist...")
         for topic_name, config in self.topics.items():
             try:
-                subscription_name = config["subscription_name"]
-                topic_path = (
-                    f"projects/{self.settings.pubsub_project_id}/topics/{topic_name}"
+                subscription_path = self.subscriber.subscription_path(
+                    self.settings.pubsub_project_id, config["subscription_name"]
                 )
-                subscription_path = f"projects/{self.settings.pubsub_project_id}/subscriptions/{subscription_name}"
 
+                # Check if subscription exists and create if it doesn't
                 logger.info(f"Subscription path for {topic_name}: {subscription_path}")
-                logger.info(f"Subscription name: {subscription_name}")
+                logger.info(f"Subscription name: {config['subscription_name']}")
 
-                # Try to create the subscription using the common pubsub client
+                # Try to create the subscription using REST API
                 await self._create_subscription_if_not_exists(topic_name, config)
 
             except Exception as e:
@@ -202,297 +172,179 @@ class PubSubConsumer:
     async def _create_subscription_if_not_exists(
         self, topic_name: str, config: Dict[str, Any]
     ) -> None:
-        """Create a subscription if it doesn't exist"""
+        """Create a subscription if it doesn't exist using Python Pub/Sub client"""
         try:
+            import asyncio
+
             subscription_name = config["subscription_name"]
             topic_path = (
                 f"projects/{self.settings.pubsub_project_id}/topics/{topic_name}"
             )
             subscription_path = f"projects/{self.settings.pubsub_project_id}/subscriptions/{subscription_name}"
 
-            # For now, we'll assume subscriptions exist or are created externally
-            # In a production environment, you'd want to check and create them here
-            logger.info(
-                f"Subscription {subscription_name} configured for topic {topic_name}"
-            )
+            # Check if subscription already exists by trying to get it
+            try:
+                # Use the subscriber client to check if subscription exists
+                if self.subscriber:
+                    subscription = self.subscriber.get_subscription(
+                        request={"subscription": subscription_path}
+                    )
+                    if subscription:
+                        logger.info(
+                            f"Subscription {subscription_name} already exists for topic {topic_name}"
+                        )
+                        return
+            except Exception:
+                # Subscription doesn't exist, create it
+                pass
+
+            # Create the subscription using the subscriber client
+            try:
+                # The subscriber client can create subscriptions
+                if self.subscriber:
+                    subscription = self.subscriber.create_subscription(
+                        request={"name": subscription_path, "topic": topic_path}
+                    )
+                    logger.info(
+                        f"Successfully created subscription {subscription_name} for topic {topic_name}"
+                    )
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create subscription {subscription_name} using subscriber client: {e}"
+                )
 
         except Exception as e:
             logger.warning(
-                f"Could not verify subscription {config['subscription_name']} for topic {topic_name}: {e}"
+                f"Could not create subscription {config['subscription_name']} for topic {topic_name}: {e}"
             )
+            # Don't fail startup if subscription creation fails
 
     async def _start_topic_consumer(
         self, topic_name: str, config: Dict[str, Any]
     ) -> None:
-        """Start consuming from a specific topic using the common pubsub client"""
-        if not self.pubsub_consumer:
-            logger.error("PubSubConsumer not initialized")
+        """Start consuming from a specific topic using async callbacks"""
+        if not self.subscriber:
+            logger.error("Subscriber not initialized")
             return
 
         try:
-            subscription_name = config["subscription_name"]
+            subscription_path = self.subscriber.subscription_path(
+                self.settings.pubsub_project_id, config["subscription_name"]
+            )
 
-            # Use the common pubsub client to subscribe
-            subscription = self.pubsub_consumer.subscribe(
-                topic_name=topic_name,
-                subscription_name=subscription_name,
+            logger.info(f"Starting consumer for topic: {topic_name}")
+            logger.info(f"Subscription path: {subscription_path}")
+            logger.info(f"Batch size: {config['batch_size']}")
+
+            # Use the subscribe method with callbacks instead of polling
+            subscription = self.subscriber.subscribe(
+                subscription_path,
                 callback=self._create_message_callback(topic_name, config),
-                max_messages=config["batch_size"],
-                max_bytes=1024 * 1024,  # 1MB
+                flow_control=pubsub_v1.types.FlowControl(
+                    max_messages=config["batch_size"], max_bytes=1024 * 1024  # 1MB
+                ),
             )
 
-            self.subscriptions[topic_name] = subscription
-            logger.info(
-                f"Started consuming from topic {topic_name} with subscription {subscription_name}"
-            )
+            self.subscriptions[topic_name] = {
+                "subscription": subscription,
+                "active": True,
+                "path": subscription_path,
+            }
+
+            logger.info(f"Started async subscription for topic: {topic_name}")
 
         except Exception as e:
-            logger.error(f"Failed to start consumer for topic {topic_name}: {e}")
-            raise
+            logger.error(f"Error starting topic consumer for {topic_name}: {e}")
+            self.subscriptions[topic_name] = {"active": False}
 
     def _create_message_callback(
         self, topic_name: str, config: Dict[str, Any]
     ) -> Callable[[Any], None]:
-        """Create a callback function for processing messages from a topic"""
-        processor = config["processor"]
+        """Create a callback function for processing messages from a specific topic"""
 
-        def callback(message: Any) -> None:
-            """Callback function for processing messages"""
+        def message_callback(message: Any) -> None:
             try:
-                # Extract message data first to validate it
-                if hasattr(message, "data"):
-                    data = json.loads(message.data.decode("utf-8"))
-                else:
-                    data = message
+                logger.debug(
+                    f"Received message from {topic_name}: {message.message_id}"
+                )
+                logger.debug(f"Message data length: {len(message.data)} bytes")
 
-                # Only add message to batch after successful parsing
-                # Use call_soon_threadsafe to schedule tasks from callback thread
-                if self.loop and not self.loop.is_closed():
-                    # Schedule the message addition and batch processing on the main event loop
-                    self.loop.call_soon_threadsafe(
-                        self._schedule_message_processing,
-                        topic_name,
-                        config,
-                        data,
-                        message,
-                    )
+                # Parse message data
+                data = json.loads(message.data.decode("utf-8"))
+                logger.debug(
+                    f"Parsed message data: {data.get('id', 'unknown')} for user {data.get('user_id', 'unknown')}"
+                )
+
+                # Add to batch
+                self.message_batches[topic_name].append(
+                    {"message": message, "data": data, "timestamp": time.time()}
+                )
+                logger.debug(
+                    f"Added message to batch for {topic_name}. Batch size: {len(self.message_batches[topic_name])}"
+                )
+
+                # Process batch if it's full
+                if len(self.message_batches[topic_name]) >= config["batch_size"]:
+                    logger.info(f"Batch full for {topic_name}, processing immediately")
+                    # Schedule async processing
+                    if self.loop:
+                        asyncio.run_coroutine_threadsafe(
+                            self._process_batch(topic_name, config), self.loop
+                        )
                 else:
-                    logger.error(f"Event loop not available for topic {topic_name}")
-                    # Nack the message if we can't process it
-                    if hasattr(message, "nack"):
-                        message.nack()
+                    # Only start timer if one doesn't already exist
+                    timer = self.batch_timers.get(topic_name)
+                    if (
+                        topic_name not in self.batch_timers
+                        or not timer
+                        or (timer is not None and timer.done())
+                    ):
+                        logger.debug(
+                            f"Starting timer for partial batch in {topic_name}"
+                        )
+                        # Start timer for partial batch
+                        if self.loop:
+                            asyncio.run_coroutine_threadsafe(
+                                self._schedule_batch_processing(topic_name, config),
+                                self.loop,
+                            )
 
             except Exception as e:
-                logger.error(f"Error in message callback for topic {topic_name}: {e}")
-                # Increment error count for callback failures
-                self.error_count += 1
-                # Nack the message to retry if there's an error in the callback
-                if hasattr(message, "nack"):
-                    message.nack()
-                # Don't add to batch if callback processing fails
-
-        return callback
-
-    def _schedule_message_processing(
-        self, topic_name: str, config: Dict[str, Any], data: Any, message: Any
-    ) -> None:
-        """Schedule message processing on the main event loop"""
-        try:
-            # Add message to batch
-            self.message_batches[topic_name].append(data)
-            # Store original message object
-            self.message_objects[topic_name].append(message)
-
-            # Process batch if it's full or if timer expires
-            if len(self.message_batches[topic_name]) >= config["batch_size"]:
-                # Store the task to prevent premature garbage collection
-                if (
-                    topic_name in self.batch_tasks
-                    and self.batch_tasks[topic_name] is not None
-                ):
-                    # Cancel any existing batch task
-                    existing_task = self.batch_tasks[topic_name]
-                    if existing_task is not None:
-                        existing_task.cancel()
-
-                self.batch_tasks[topic_name] = asyncio.create_task(
-                    self._process_batch(topic_name, config)
-                )
-            else:
-                # Start or reset batch timer
-                self._start_batch_timer(topic_name, config)
-
-            # Message acknowledgment is deferred until after batch processing
-            # to allow for conditional ack/nack based on processing results
-
-        except Exception as e:
-            logger.error(
-                f"Error scheduling message processing for topic {topic_name}: {e}"
-            )
-            # Increment error count for scheduling failures
-            self.error_count += 1
-            # Nack the message if we can't schedule processing
-            if hasattr(message, "nack"):
+                logger.error(f"Error handling message from {topic_name}: {e}")
                 message.nack()
+                self.error_count += 1
 
-    def _start_batch_timer(self, topic_name: str, config: Dict[str, Any]) -> None:
-        """Start or reset the batch timer for a topic"""
-        # Cancel existing timer if it exists
-        if (
-            topic_name in self.batch_timers
-            and self.batch_timers[topic_name] is not None
-        ):
-            existing_timer = self.batch_timers[topic_name]
-            if existing_timer is not None:
-                existing_timer.cancel()
+        return message_callback
+
+    async def _schedule_batch_processing(
+        self, topic_name: str, config: Dict[str, Any]
+    ) -> None:
+        """Schedule batch processing for a topic"""
+        # Only create timer if one doesn't exist or is done
+        if topic_name in self.batch_timers and self.batch_timers[topic_name]:
+            timer = self.batch_timers[topic_name]
+            if timer is not None and not timer.done():
+                logger.info(f"Timer already exists for {topic_name}, skipping")
+                return
 
         # Create new timer
-        async def timer_callback() -> None:
-            await asyncio.sleep(self.batch_timeout)
-            if topic_name in self.message_batches and self.message_batches[topic_name]:
-                # Store the task to prevent premature garbage collection
-                if (
-                    topic_name in self.batch_tasks
-                    and self.batch_tasks[topic_name] is not None
-                ):
-                    # Cancel any existing batch task
-                    existing_task = self.batch_tasks[topic_name]
-                    if existing_task is not None:
-                        existing_task.cancel()
-
-                self.batch_tasks[topic_name] = asyncio.create_task(
-                    self._process_batch(topic_name, config)
-                )
-
-        self.batch_timers[topic_name] = asyncio.create_task(timer_callback())
-
-    async def _process_email_backfill_event(self, event: EmailBackfillEvent) -> None:
-        """Process an email backfill event for Vespa indexing"""
-        logger.info(
-            "Processing email backfill event",
-            extra={
-                "event_id": event.metadata.event_id,
-                "user_id": event.user_id,
-                "provider": event.provider,
-                "batch_size": event.batch_size,
-                "sync_type": event.sync_type,
-            },
+        logger.info(f"Creating timer for {topic_name} with {self.batch_timeout}s delay")
+        self.batch_timers[topic_name] = asyncio.create_task(
+            self._delayed_batch_processing(topic_name, config)
         )
 
-        # Process each email in the batch
-        for email_data in event.emails:
-            try:
-                # Convert EmailData to the format expected by the email processor
-                email_dict = {
-                    "id": email_data.id,
-                    "user_id": event.user_id,
-                    "subject": email_data.subject,
-                    "body": email_data.body,
-                    "from": email_data.from_address,
-                    "to": email_data.to_addresses,
-                    "cc": email_data.cc_addresses,
-                    "bcc": email_data.bcc_addresses,
-                    "received_date": email_data.received_date.isoformat(),
-                    "sent_date": (
-                        email_data.sent_date.isoformat()
-                        if email_data.sent_date
-                        else None
-                    ),
-                    "labels": email_data.labels,
-                    "is_read": email_data.is_read,
-                    "is_starred": email_data.is_starred,
-                    "has_attachments": email_data.has_attachments,
-                    "provider": email_data.provider,
-                    "provider_message_id": email_data.provider_message_id,
-                }
+    async def _delayed_batch_processing(
+        self, topic_name: str, config: Dict[str, Any]
+    ) -> None:
+        """Process batch after timeout delay"""
+        logger.info(f"Timer expired for {topic_name}, processing batch")
+        await asyncio.sleep(self.batch_timeout)
 
-                # Process the email for Vespa indexing
-                await self._call_ingest_endpoint(email_dict)
-
-            except Exception as e:
-                logger.error(
-                    f"Failed to process email {email_data.id}",
-                    extra={
-                        "email_id": email_data.id,
-                        "user_id": event.user_id,
-                        "error": str(e),
-                    },
-                )
-                self.error_count += 1
-
-        self.processed_count += len(event.emails)
-
-    async def _process_calendar_update_event(self, event: CalendarUpdateEvent) -> None:
-        """Process a calendar update event for Vespa indexing"""
-        logger.info(
-            "Processing calendar update event",
-            extra={
-                "event_id": event.metadata.event_id,
-                "user_id": event.user_id,
-                "calendar_event_id": event.event.id,
-                "update_type": event.update_type,
-            },
-        )
-
-        # Convert CalendarEventData to the format expected by the ingest endpoint
-        calendar_dict = {
-            "id": event.event.id,
-            "user_id": event.user_id,
-            "title": event.event.title,
-            "description": event.event.description,
-            "start_time": event.event.start_time.isoformat(),
-            "end_time": event.event.end_time.isoformat(),
-            "all_day": event.event.all_day,
-            "location": event.event.location,
-            "organizer": event.event.organizer,
-            "attendees": event.event.attendees,
-            "status": event.event.status,
-            "visibility": event.event.visibility,
-            "provider": event.event.provider,
-            "provider_event_id": event.event.provider_event_id,
-            "calendar_id": event.event.calendar_id,
-        }
-
-        # Call the ingest endpoint to index the document
-        await self._call_ingest_endpoint(calendar_dict)
-        self.processed_count += 1
-
-    async def _process_contact_update_event(self, event: ContactUpdateEvent) -> None:
-        """Process a contact update event for Vespa indexing"""
-        logger.info(
-            "Processing contact update event",
-            extra={
-                "event_id": event.metadata.event_id,
-                "user_id": event.user_id,
-                "contact_id": event.contact.id,
-                "update_type": event.update_type,
-            },
-        )
-
-        # Convert ContactData to the format expected by the ingest endpoint
-        contact_dict = {
-            "id": event.contact.id,
-            "user_id": event.user_id,
-            "display_name": event.contact.display_name,
-            "given_name": event.contact.given_name,
-            "family_name": event.contact.family_name,
-            "email_addresses": event.contact.email_addresses,
-            "phone_numbers": event.contact.phone_numbers,
-            "addresses": event.contact.addresses,
-            "organizations": event.contact.organizations,
-            "birthdays": (
-                [b.isoformat() for b in event.contact.birthdays]
-                if event.contact.birthdays
-                else []
-            ),
-            "notes": event.contact.notes,
-            "provider": event.contact.provider,
-            "provider_contact_id": event.contact.provider_contact_id,
-        }
-
-        # Call the ingest endpoint to index the document
-        await self._call_ingest_endpoint(contact_dict)
-        self.processed_count += 1
+        if self.message_batches[topic_name]:
+            await self._process_batch(topic_name, config)
+        else:
+            logger.info(f"No messages in batch for {topic_name} after timer")
 
     async def _process_batch(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Process a batch of messages"""
@@ -501,14 +353,12 @@ class PubSubConsumer:
             return
 
         batch = self.message_batches[topic_name]
-        message_objects = self.message_objects[topic_name]
-
-        # Clear the batches
         self.message_batches[topic_name] = []
-        self.message_objects[topic_name] = []
 
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
-        logger.info(f"Message IDs: {[item.get('id', 'unknown') for item in batch]}")
+        logger.info(
+            f"Message IDs: {[item['data'].get('id', 'unknown') for item in batch]}"
+        )
 
         # Process messages in parallel
         tasks = []
@@ -522,47 +372,20 @@ class PubSubConsumer:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Acknowledge or nack messages based on results
-        for i, (item, result, message_obj) in enumerate(
-            zip(batch, results, message_objects)
-        ):
-            try:
-                if isinstance(result, Exception):
-                    logger.error(
-                        f"Failed to process message {i} from {topic_name}: {result}"
-                    )
-                    # Nack the message to retry
-                    if hasattr(message_obj, "nack"):
-                        message_obj.nack()
-                        logger.info(f"Nacked message {i} from {topic_name} for retry")
-                    else:
-                        logger.warning(
-                            f"Message object does not support nack for {topic_name}"
-                        )
-                    self.error_count += 1
-                else:
-                    # Acknowledge successful processing
-                    if hasattr(message_obj, "ack"):
-                        message_obj.ack()
-                        logger.info(f"Acknowledged message {i} from {topic_name}")
-                    else:
-                        logger.warning(
-                            f"Message object does not support ack for {topic_name}"
-                        )
-                    self.processed_count += 1
-            except Exception as e:
+        for i, (item, result) in enumerate(zip(batch, results)):
+            if isinstance(result, Exception):
                 logger.error(
-                    f"Error handling message acknowledgment for {topic_name}: {e}"
+                    f"Failed to process message {i} from {topic_name}: {result}"
                 )
-                # If we can't ack/nack, increment error count
+                item["message"].nack()
                 self.error_count += 1
+            else:
+                item["message"].ack()
+                self.processed_count += 1
 
         logger.info(
             f"Completed processing batch from {topic_name}: {len(batch)} messages"
         )
-
-        # Clear the batch task reference since processing is complete
-        if topic_name in self.batch_tasks:
-            self.batch_tasks[topic_name] = None
 
     async def _process_single_message(
         self, topic_name: str, item: Dict[str, Any], config: Dict[str, Any]
@@ -571,32 +394,13 @@ class PubSubConsumer:
         try:
             # Call the appropriate processor
             processor = config["processor"]
-            message_id = item.get("id", "unknown")
-            user_id = item.get("user_id", "unknown")
+            message_id = item["data"].get("id", "unknown")
+            user_id = item["data"].get("user_id", "unknown")
 
             logger.info(
                 f"Calling processor for message from {topic_name}: {message_id} for user {user_id}"
             )
-
-            # Deserialize the raw message data into the appropriate event type
-            event_object = await self._deserialize_message(item, topic_name)
-            if event_object is None:
-                # This might be raw email data that needs direct processing
-                if "email" in topic_name.lower() and "backfill" in topic_name.lower():
-                    logger.info(
-                        f"Processing raw email data directly from {topic_name}: {message_id}"
-                    )
-                    # Call the ingest endpoint directly with the raw data
-                    await self._call_ingest_endpoint(item)
-                    return {"status": "processed_raw_data", "message_id": message_id}
-                else:
-                    logger.error(
-                        f"Failed to deserialize message from {topic_name}: {message_id}"
-                    )
-                    raise ValueError(f"Invalid message format for topic {topic_name}")
-
-            # Call the processor with the properly typed event object
-            result = await processor(event_object)
+            result = await processor(item["data"])
             logger.info(
                 f"Successfully processed message from {topic_name}: {message_id}"
             )
@@ -606,186 +410,45 @@ class PubSubConsumer:
             logger.error(f"Error processing message from {topic_name}: {e}")
             raise
 
-    async def _deserialize_message(
-        self, raw_data: Dict[str, Any], topic_name: str
-    ) -> Optional[BaseEvent]:
-        """
-        Deserialize raw message data into the appropriate typed event object.
+    async def _process_email_message(self, data: Dict[str, Any]) -> None:
+        """Process an email message for Vespa indexing"""
+        message_id = data.get("id", "unknown")
+        user_id = data.get("user_id", "unknown")
 
-        Args:
-            raw_data: Raw message data from Pub/Sub
-            topic_name: Name of the topic for determining event type
+        logger.info(f"Processing email message: {message_id} for user {user_id}")
+        logger.info(f"Email subject: {data.get('subject', 'no subject')}")
+        logger.info(f"Email provider: {data.get('provider', 'unknown')}")
+
+        # Ingest the document
+        await self._ingest_document(data)
+
+    async def _process_calendar_message(self, data: Dict[str, Any]) -> None:
+        """Process a calendar message for Vespa indexing"""
+        message_id = data.get("id", "unknown")
+        user_id = data.get("user_id", "unknown")
+
+        logger.info(f"Processing calendar message: {message_id} for user {user_id}")
+
+        # Ingest the document
+        await self._ingest_document(data)
+
+    async def _process_contact_message(self, data: Dict[str, Any]) -> None:
+        """Process a contact message for Vespa indexing"""
+        message_id = data.get("id", "unknown")
+        user_id = data.get("user_id", "unknown")
+
+        logger.info(f"Processing contact message: {message_id} for user {user_id}")
+
+        # Ingest the document
+        await self._ingest_document(data)
+
+    async def _ingest_document(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Ingest a document into Vespa
 
         Returns:
-            Properly typed event object or None if deserialization fails
+            Dict containing the ingestion result
         """
         try:
-            # The raw_data should already contain the event structure
-            # We just need to validate and create the appropriate event object
-
-            # Determine event type based on topic name and data structure
-            if "email" in topic_name.lower():
-                if "backfill" in topic_name.lower():
-                    # Check if this is a structured EmailBackfillEvent or a simple email data
-                    if all(
-                        field in raw_data
-                        for field in [
-                            "user_id",
-                            "provider",
-                            "emails",
-                            "batch_size",
-                            "metadata",
-                        ]
-                    ):
-                        # This is a structured EmailBackfillEvent
-                        try:
-                            return EmailBackfillEvent(**raw_data)
-                        except Exception as e:
-                            logger.error(
-                                f"Failed to create EmailBackfillEvent: {e}",
-                                extra={
-                                    "raw_data_keys": (
-                                        list(raw_data.keys()) if raw_data else []
-                                    ),
-                                    "topic_name": topic_name,
-                                    "error_type": type(e).__name__,
-                                },
-                            )
-                            return None
-                    else:
-                        # This appears to be raw email data, wrap it in a simple event
-                        logger.info(
-                            f"Treating message as raw email data for direct processing",
-                            extra={
-                                "raw_data_keys": (
-                                    list(raw_data.keys()) if raw_data else []
-                                ),
-                                "topic_name": topic_name,
-                            },
-                        )
-                        # Return None to skip structured event processing and handle as raw data
-                        return None
-                else:
-                    # Validate required fields for EmailUpdateEvent (excluding metadata for backward compatibility)
-                    required_fields = ["user_id", "email", "update_type"]
-                    missing_fields = [
-                        field for field in required_fields if field not in raw_data
-                    ]
-                    if missing_fields:
-                        logger.error(
-                            f"Missing required fields for EmailUpdateEvent: {missing_fields}"
-                        )
-                        return None
-
-                    # Add default metadata if not present for backward compatibility
-                    if "metadata" not in raw_data:
-                        raw_data["metadata"] = {
-                            "source_service": "legacy-service",
-                            "source_version": "1.0.0",
-                        }
-
-                    # Create the event object with proper error handling
-                    try:
-                        return EmailUpdateEvent(**raw_data)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to create EmailUpdateEvent: {e}",
-                            extra={
-                                "raw_data_keys": (
-                                    list(raw_data.keys()) if raw_data else []
-                                ),
-                                "topic_name": topic_name,
-                                "error_type": type(e).__name__,
-                            },
-                        )
-                        return None
-
-            elif "calendar" in topic_name.lower():
-                # Validate required fields for CalendarUpdateEvent (excluding metadata for backward compatibility)
-                required_fields = ["user_id", "event", "update_type"]
-                missing_fields = [
-                    field for field in required_fields if field not in raw_data
-                ]
-                if missing_fields:
-                    logger.error(
-                        f"Missing required fields for CalendarUpdateEvent: {missing_fields}"
-                    )
-                    return None
-
-                # Add default metadata if not present for backward compatibility
-                if "metadata" not in raw_data:
-                    raw_data["metadata"] = {
-                        "source_service": "legacy-service",
-                        "source_version": "1.0.0",
-                    }
-
-                # Create the event object with proper error handling
-                try:
-                    return CalendarUpdateEvent(**raw_data)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to create CalendarUpdateEvent: {e}",
-                        extra={
-                            "raw_data_keys": list(raw_data.keys()) if raw_data else [],
-                            "topic_name": topic_name,
-                            "error_type": type(e).__name__,
-                        },
-                    )
-                    return None
-
-            elif "contact" in topic_name.lower():
-                # Validate required fields for ContactUpdateEvent (excluding metadata for backward compatibility)
-                required_fields = ["user_id", "contact", "update_type"]
-                missing_fields = [
-                    field for field in required_fields if field not in raw_data
-                ]
-                if missing_fields:
-                    logger.error(
-                        f"Missing required fields for ContactUpdateEvent: {missing_fields}"
-                    )
-                    return None
-
-                # Add default metadata if not present for backward compatibility
-                if "metadata" not in raw_data:
-                    raw_data["metadata"] = {
-                        "source_service": "legacy-service",
-                        "source_version": "1.0.0",
-                    }
-
-                # Create the event object with proper error handling
-                try:
-                    return ContactUpdateEvent(**raw_data)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to create ContactUpdateEvent: {e}",
-                        extra={
-                            "raw_data_keys": list(raw_data.keys()) if raw_data else [],
-                            "topic_name": topic_name,
-                            "error_type": type(e).__name__,
-                        },
-                    )
-                    return None
-            else:
-                logger.warning(
-                    f"Unknown topic type: {topic_name}, cannot deserialize message"
-                )
-                return None
-
-        except Exception as e:
-            logger.error(
-                f"Failed to deserialize message for topic {topic_name}: {e}",
-                extra={
-                    "raw_data_keys": list(raw_data.keys()) if raw_data else [],
-                    "topic_name": topic_name,
-                },
-            )
-            return None
-
-    async def _call_ingest_endpoint(self, data: Dict[str, Any]) -> None:
-        """Call the Vespa loader ingest endpoint"""
-        try:
-            import httpx
-
             message_id = data.get("id")
             user_id = data.get("user_id")
 
@@ -838,42 +501,29 @@ class PubSubConsumer:
                 }
 
             logger.info(f"Document data prepared: {document_data}")
-            logger.info(
-                f"Making HTTP POST to ingest endpoint for document {message_id}"
+
+            # Call the ingest service directly
+            logger.info(f"Calling ingest service for document {message_id}")
+            result = await ingest_document_service(
+                document_data, run_background_tasks=False
             )
 
-            # Call the ingest endpoint with API key for internal service authentication
-            headers = {
-                "X-API-Key": self.settings.api_frontend_vespa_loader_key,
-                "Content-Type": "application/json",
-            }
-
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.settings.ingest_endpoint,
-                    json=document_data,
-                    headers=headers,
-                    timeout=30.0,
+            # Run post-processing tasks directly since we're not in a FastAPI context
+            try:
+                await self._post_process_document(
+                    document_data["id"], document_data["user_id"]
                 )
-
-                logger.info(
-                    f"Received response for document {message_id}: {response.status_code}"
+            except Exception as post_process_error:
+                logger.warning(
+                    f"Post-processing failed for document {message_id}: {post_process_error}"
                 )
+                # Continue even if post-processing fails
 
-                if response.status_code == 200:
-                    result = response.json()
-                    logger.info(f"Successfully indexed document {message_id}: {result}")
-                    return result
-                else:
-                    logger.error(
-                        f"Failed to index document {message_id}: {response.status_code} - {response.text}"
-                    )
-                    raise Exception(f"HTTP {response.status_code}: {response.text}")
+            logger.info(f"Successfully indexed document {message_id}: {result}")
+            return result
 
         except Exception as e:
-            logger.error(
-                f"Error calling ingest endpoint for document {data.get('id')}: {e}"
-            )
+            logger.error(f"Error ingesting document {data.get('id')}: {e}")
             raise
 
     def get_stats(self) -> Dict[str, Any]:
@@ -888,11 +538,25 @@ class PubSubConsumer:
             "subscriptions": list(self.subscriptions.keys()),
             "subscription_details": {
                 topic: {
-                    "active": hasattr(sub, "running") and sub.running(),
-                    "type": type(sub).__name__,
+                    "active": sub.get("active", False),
+                    "path": sub.get("path", "unknown"),
                 }
                 for topic, sub in self.subscriptions.items()
             },
         }
         logger.info(f"Consumer stats: {stats}")
         return stats
+
+    async def _post_process_document(self, document_id: str, user_id: str) -> None:
+        """Post-process a document after ingestion
+
+        This method runs the same post-processing logic that would normally
+        run as a background task in the HTTP endpoint.
+        """
+        try:
+            logger.info(f"Post-processing document {document_id} for user {user_id}")
+            # Add any post-processing logic here
+            # For example: update search indices, trigger notifications, etc.
+            # This mirrors the logic in main.py:_post_process_document
+        except Exception as e:
+            logger.error(f"Error in post-processing document {document_id}: {e}")

@@ -380,13 +380,11 @@ class TestUserIDValidation:
                 mock_background_tasks = BackgroundTasks()
                 asyncio.run(ingest_document(invalid_document, mock_background_tasks))
 
-        # Check that it's a ServiceError with the validation message in details
-        from services.common.http_errors import ServiceError
+        # Check that it's a ValidationError with the validation message in details
+        from services.common.http_errors import ValidationError
 
-        assert isinstance(exc_info.value, ServiceError)
-        assert "Document ID and user_id are required" in str(
-            exc_info.value.details.get("error", "")
-        )
+        assert isinstance(exc_info.value, ValidationError)
+        assert "Document ID and user_id are required" in str(exc_info.value)
 
     def test_ingest_document_rejects_missing_user_id_nested(self):
         """Test that ingest_document rejects documents without user_id in nested format."""
@@ -421,13 +419,11 @@ class TestUserIDValidation:
                 mock_background_tasks = BackgroundTasks()
                 asyncio.run(ingest_document(invalid_document, mock_background_tasks))
 
-        # Check that it's a ServiceError with the validation message in details
-        from services.common.http_errors import ServiceError
+        # Check that it's a ValidationError with the validation message in details
+        from services.common.http_errors import ValidationError
 
-        assert isinstance(exc_info.value, ServiceError)
-        assert "Document ID and user_id are required" in str(
-            exc_info.value.details.get("error", "")
-        )
+        assert isinstance(exc_info.value, ValidationError)
+        assert "Document ID and user_id are required" in str(exc_info.value)
 
     def test_ingest_batch_rejects_documents_without_user_id(self):
         """Test that batch ingest rejects any document without user_id."""
