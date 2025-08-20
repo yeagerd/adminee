@@ -22,18 +22,12 @@ class DemoSettings(BaseSettings):
     )
 
     # Service URLs
-    office_service_url: str = Field(..., description="Office service URL for demos"
-    )
-    user_service_url: str = Field(..., description="User service URL for demos"
-    )
-    chat_service_url: str = Field(..., description="Chat service URL for demos"
-    )
-    vespa_endpoint: str = Field(..., description="Vespa endpoint for demos"
-    )
-    vespa_loader_url: str = Field(..., description="Vespa loader service URL"
-    )
-    vespa_query_url: str = Field(..., description="Vespa query service URL"
-    )
+    office_service_url: str = Field(..., description="Office service URL for demos")
+    user_service_url: str = Field(..., description="User service URL for demos")
+    chat_service_url: str = Field(..., description="Chat service URL for demos")
+    vespa_endpoint: str = Field(..., description="Vespa endpoint for demos")
+    vespa_loader_url: str = Field(..., description="Vespa loader service URL")
+    vespa_query_url: str = Field(..., description="Vespa query service URL")
 
     # Pub/Sub configuration
     pubsub_project_id: str = Field(
