@@ -124,7 +124,7 @@ app.add_middleware(
 )
 
 # Add request logging middleware
-app.add_middleware(create_request_logging_middleware())
+app.middleware("http")(create_request_logging_middleware())
 
 # Register exception handlers
 register_briefly_exception_handlers(app)
