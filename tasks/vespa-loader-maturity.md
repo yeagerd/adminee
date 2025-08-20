@@ -39,13 +39,13 @@ The vespa_loader service is a stateless document processing service that ingests
 
 ### Error Handling Consistency (Minor)
 - [x] Ensure all endpoints in `services/vespa_loader/main.py` use standard error classes consistently
-- [ ] Implement rate limiting for API endpoints in `services/vespa_loader/main.py`
+- [x] Implement rate limiting for API endpoints in `services/vespa_loader/main.py`
 - [x] Add proper error logging and monitoring in `services/vespa_loader/main.py`
 
 ### Environment Configuration (Minor)
-- [ ] Add API key environment variables to `.example.env`
-- [ ] Add service URL configuration to `.example.env`
-- [ ] Document all required environment variables in `.example.env`
+- [x] Add API key environment variables to `.example.env`
+- [x] Add service URL configuration to `.example.env`
+- [x] Document all required environment variables in `.example.env`
 
 ## Implementation Notes
 

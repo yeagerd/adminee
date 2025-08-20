@@ -60,6 +60,8 @@ class Settings(BaseSettings):
 
     # Rate limiting
     max_documents_per_second: int = Field(default=100, env="MAX_DOCUMENTS_PER_SECOND")
+    api_rate_limit_max_requests: int = Field(default=100, env="API_RATE_LIMIT_MAX_REQUESTS")
+    api_rate_limit_window_seconds: int = Field(default=60, env="API_RATE_LIMIT_WINDOW_SECONDS")
 
     # Pub/Sub configuration
     pubsub_project_id: str = Field(default="briefly-dev", env="PUBSUB_PROJECT_ID")

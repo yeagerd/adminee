@@ -6,6 +6,8 @@ Vespa Loader Service - Consumes email data and indexes into Vespa
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, Optional, Union
+from collections import defaultdict
+import time
 
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends
@@ -16,7 +18,8 @@ from services.common.http_errors import (
     ValidationError,
     NotFoundError,
     ServiceError,
-    AuthError
+    AuthError,
+    RateLimitError
 )
 from services.common.logging_config import (
     create_request_logging_middleware,
@@ -42,6 +45,44 @@ document_mapper: Optional[Any] = None
 pubsub_consumer: Optional[Any] = None
 
 
+class RateLimiter:
+    """Simple in-memory rate limiter for API endpoints"""
+    
+    def __init__(self, max_requests: int = 100, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests = defaultdict(list)
+    
+    def is_allowed(self, key: str) -> bool:
+        """Check if request is allowed based on rate limit"""
+        now = time.time()
+        window_start = now - self.window_seconds
+        
+        # Clean old requests outside the window
+        self.requests[key] = [req_time for req_time in self.requests[key] if req_time > window_start]
+        
+        # Check if under limit
+        if len(self.requests[key]) < self.max_requests:
+            self.requests[key].append(now)
+            return True
+        
+        return False
+    
+    def get_remaining(self, key: str) -> int:
+        """Get remaining requests allowed in current window"""
+        now = time.time()
+        window_start = now - self.window_seconds
+        
+        # Clean old requests outside the window
+        self.requests[key] = [req_time for req_time in self.requests[key] if req_time > window_start]
+        
+        return max(0, self.max_requests - len(self.requests[key]))
+
+
+# Initialize rate limiter (will be configured in lifespan)
+rate_limiter: Optional[RateLimiter] = None
+
+
 async def verify_api_key(
     x_api_key: str = Header(..., alias="X-API-Key")
 ) -> str:
@@ -52,6 +93,24 @@ async def verify_api_key(
     if x_api_key != settings.api_frontend_vespa_loader_key:
         raise AuthError("Invalid API key", code="INVALID_API_KEY")
     return x_api_key
+
+
+async def check_rate_limit(
+    api_key: str = Depends(verify_api_key)
+) -> str:
+    """Check rate limit for API requests"""
+    if not rate_limiter.is_allowed(api_key):
+        remaining_time = rate_limiter.window_seconds
+        raise RateLimitError(
+            "API rate limit exceeded",
+            retry_after=remaining_time,
+            details={
+                "limit": rate_limiter.max_requests,
+                "window_seconds": rate_limiter.window_seconds,
+                "retry_after": remaining_time
+            }
+        )
+    return api_key
 
 
 @asynccontextmanager
@@ -89,6 +148,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     content_normalizer = ContentNormalizer()
     embedding_generator = EmbeddingGenerator(settings.embedding_model)
     document_mapper = DocumentMapper()
+    
+    # Initialize rate limiter with settings
+    global rate_limiter
+    rate_limiter = RateLimiter(
+        max_requests=settings.api_rate_limit_max_requests,
+        window_seconds=settings.api_rate_limit_window_seconds
+    )
 
     # Test Vespa connectivity
     try:
@@ -228,7 +294,7 @@ async def root() -> Dict[str, str]:
 async def ingest_document(
     document_data: Dict[str, Any], 
     background_tasks: BackgroundTasks,
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(check_rate_limit)
 ) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
     if not all(
@@ -294,7 +360,7 @@ async def ingest_document(
 async def ingest_batch_documents(
     documents: list[Dict[str, Any]], 
     background_tasks: BackgroundTasks,
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(check_rate_limit)
 ) -> Dict[str, Any]:
     """Ingest multiple documents in batch"""
     if not all(
@@ -576,7 +642,7 @@ async def debug_pubsub_status() -> Dict[str, Any]:
 
 @app.post("/debug/pubsub/trigger")
 async def debug_trigger_pubsub_processing(
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(check_rate_limit)
 ) -> Dict[str, Any]:
     """Debug endpoint to manually trigger Pub/Sub message processing"""
     if not pubsub_consumer:
