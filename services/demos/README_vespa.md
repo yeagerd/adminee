@@ -257,7 +257,7 @@ VESPA_APPLICATION=briefly
 
 # Vespa Services Configuration
 VESPA_LOADER_PORT=9001
-VESPA_QUERY_PORT=9002
+VESPA_QUERY_PORT=8006
 
 # Pub/Sub Configuration
 PUBSUB_PROJECT_ID=briefly-dev
@@ -285,7 +285,7 @@ DEMO_PROVIDERS=microsoft,google
   },
   "services": {
     "vespa_loader": "http://localhost:9001",
-    "vespa_query": "http://localhost:9002"
+    "vespa_query": "http://localhost:8006"
   },
   "demo": {
     "users": ["demo_user_1", "demo_user_2"],
@@ -308,7 +308,7 @@ The new `./scripts/vespa.sh` script consolidates all Vespa management functional
 **What it manages:**
 - ✅ **Vespa Container**: Docker container running Vespa engine
 - ✅ **Briefly Application**: Deploys your Vespa configuration from `vespa/` directory
-- ✅ **Python Services**: Vespa Loader Service (port 9001) and Query Service (port 9002)
+- ✅ **Python Services**: Vespa Loader Service (port 9001) and Query Service (port 8006)
 
 **Key benefits:**
 - 🚀 **Single command**: One script to manage everything
@@ -376,7 +376,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 9001 --reload
 #### Start Vespa Query Service
 ```bash
 cd services/vespa_query
-python -m uvicorn main:app --host 0.0.0.0 --port 9002 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8006 --reload
 ```
 
 ## Running Demos
