@@ -259,47 +259,79 @@ class PubSubConsumer:
         def callback(message: Any) -> None:
             """Callback function for processing messages"""
             try:
-                # Extract message data
+                # Extract message data first to validate it
                 if hasattr(message, "data"):
                     data = json.loads(message.data.decode("utf-8"))
                 else:
                     data = message
 
-                # Add message to batch
-                self.message_batches[topic_name].append(data)
-                # Store original message object
-                self.message_objects[topic_name].append(message)
-
-                # Process batch if it's full or if timer expires
-                if len(self.message_batches[topic_name]) >= config["batch_size"]:
-                    # Store the task to prevent premature garbage collection
-                    if (
-                        topic_name in self.batch_tasks
-                        and self.batch_tasks[topic_name] is not None
-                    ):
-                        # Cancel any existing batch task
-                        existing_task = self.batch_tasks[topic_name]
-                        if existing_task is not None:
-                            existing_task.cancel()
-
-                    self.batch_tasks[topic_name] = asyncio.create_task(
-                        self._process_batch(topic_name, config)
+                # Only add message to batch after successful parsing
+                # Use call_soon_threadsafe to schedule tasks from callback thread
+                if self.loop and not self.loop.is_closed():
+                    # Schedule the message addition and batch processing on the main event loop
+                    self.loop.call_soon_threadsafe(
+                        self._schedule_message_processing,
+                        topic_name,
+                        config,
+                        data,
+                        message,
                     )
                 else:
-                    # Start or reset batch timer
-                    self._start_batch_timer(topic_name, config)
-
-                # Message acknowledgment is deferred until after batch processing
-                # to allow for conditional ack/nack based on processing results
+                    logger.error(f"Event loop not available for topic {topic_name}")
+                    # Nack the message if we can't process it
+                    if hasattr(message, "nack"):
+                        message.nack()
 
             except Exception as e:
                 logger.error(f"Error in message callback for topic {topic_name}: {e}")
+                # Increment error count for callback failures
+                self.error_count += 1
                 # Nack the message to retry if there's an error in the callback
                 if hasattr(message, "nack"):
                     message.nack()
                 # Don't add to batch if callback processing fails
 
         return callback
+
+    def _schedule_message_processing(
+        self, topic_name: str, config: Dict[str, Any], data: Any, message: Any
+    ) -> None:
+        """Schedule message processing on the main event loop"""
+        try:
+            # Add message to batch
+            self.message_batches[topic_name].append(data)
+            # Store original message object
+            self.message_objects[topic_name].append(message)
+
+            # Process batch if it's full or if timer expires
+            if len(self.message_batches[topic_name]) >= config["batch_size"]:
+                # Store the task to prevent premature garbage collection
+                if (
+                    topic_name in self.batch_tasks
+                    and self.batch_tasks[topic_name] is not None
+                ):
+                    # Cancel any existing batch task
+                    existing_task = self.batch_tasks[topic_name]
+                    if existing_task is not None:
+                        existing_task.cancel()
+
+                self.batch_tasks[topic_name] = asyncio.create_task(
+                    self._process_batch(topic_name, config)
+                )
+            else:
+                # Start or reset batch timer
+                self._start_batch_timer(topic_name, config)
+
+            # Message acknowledgment is deferred until after batch processing
+            # to allow for conditional ack/nack based on processing results
+
+        except Exception as e:
+            logger.error(f"Error scheduling message processing for topic {topic_name}: {e}")
+            # Increment error count for scheduling failures
+            self.error_count += 1
+            # Nack the message if we can't schedule processing
+            if hasattr(message, "nack"):
+                message.nack()
 
     def _start_batch_timer(self, topic_name: str, config: Dict[str, Any]) -> None:
         """Start or reset the batch timer for a topic"""
