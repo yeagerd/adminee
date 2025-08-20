@@ -31,24 +31,44 @@ services/your-service/
 Add to your service's `pyproject.toml`:
 
 ```toml
-[tool.poetry.dependencies]
-python = "^3.12"
-fastapi = "^0.104.0"
-uvicorn = "^0.24.0"
-sqlmodel = "^0.0.8"
-sqlalchemy = "^2.0.0"
-psycopg2-binary = "^2.9.0"
-structlog = "^23.0.0"
-opentelemetry-api = "^1.20.0"
-opentelemetry-sdk = "^1.20.0"
-opentelemetry-instrumentation = "^0.42b0"
-google-cloud-secret-manager = "^2.16.0"
-# Note: Use services.common.settings instead of pydantic-settings
-```
+[project]
+name = "briefly-your-service"
+version = "0.1.0"
+description = "Briefly Your Service - Description of what your service does"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.104.0,<1.0.0",
+    "uvicorn[standard]>=0.24.0,<1.0.0",
+    "sqlmodel>=0.0.8,<1.0.0",
+    "sqlalchemy>=2.0.0,<3.0.0",
+    "psycopg2-binary>=2.9.0,<3.0.0",
+    "structlog>=23.0.0,<24.0.0",
+    "opentelemetry-api>=1.20.0,<2.0.0",
+    "opentelemetry-sdk>=1.20.0,<2.0.0",
+    "opentelemetry-instrumentation>=0.42b0,<1.0.0",
+    "google-cloud-secret-manager>=2.16.0,<3.0.0",
+    # Note: Use services.common.settings instead of pydantic-settings
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0,<8.0.0",
+    "pytest-asyncio>=0.21.0,<1.0.0",
+    "httpx>=0.25.0,<1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+
 
 ### Dependency Management with UV
 
-This project uses [UV](https://github.com/astral-sh/uv) for Python package management. UV provides 10-100x faster dependency resolution and better caching.
+This project uses [UV](https://github.com/astral-sh/uv) for Python package management. UV provides 10-100x faster dependency resolution and better caching than traditional tools like pip or poetry.
 
 **Install dependencies:**
 ```bash
@@ -59,7 +79,7 @@ uv sync --all-packages --all-extras --active
 uv pip install -e services/your-service
 
 # Install with development dependencies
-uv pip install -e ".[dev]"
+uv pip install -e ".[test]"
 ```
 
 **Add new dependencies:**
@@ -345,13 +365,12 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY services/your_service/pyproject.toml .
-COPY services/your_service/poetry.lock .
 
-RUN pip install poetry && poetry install --no-dev
+RUN pip install uv && uv pip install -e . --no-deps
 
 COPY services/your_service/ .
 
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8006"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8006"]
 ```
 
 ## 8. Testing
@@ -396,10 +415,12 @@ python -m pytest --durations=10 -q -n auto
 Add to your service's `pyproject.toml`:
 
 ```toml
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-pytest-asyncio = "^0.21.0"
-httpx = "^0.25.0"
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0,<8.0.0",
+    "pytest-asyncio>=0.21.0,<1.0.0",
+    "httpx>=0.25.0,<1.0.0",
+]
 ```
 
 ## 9. API Key Authentication
