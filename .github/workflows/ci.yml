@@ -50,6 +50,9 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      - name: Copy .env file for schema generation
+        run: cp .example.env .env
+
       - name: Generate OpenAPI schemas
         run: |
           source .venv/bin/activate
