@@ -65,9 +65,10 @@ class PubSubClient:
                 if isinstance(data, BaseEvent):
                     # Add tracing context to the event
                     if span.is_recording():
+                        span_context = span.get_span_context()
                         data.add_trace_context(
-                            trace_id=span.get_span_context().trace_id,
-                            span_id=span.get_span_context().span_id
+                            trace_id=f"{span_context.trace_id:032x}",
+                            span_id=f"{span_context.span_id:016x}"
                         )
                     
                     # Convert event to dict
@@ -82,7 +83,7 @@ class PubSubClient:
 
                 # Add span attributes for tracing
                 span.set_attribute("pubsub.topic", topic_name)
-                span.set_attribute("pubsub.project_id", self.project_id)
+                span.set_attribute("pubsub.project_id", str(self.project_id))
                 span.set_attribute("pubsub.event_type", event_type)
                 span.set_attribute("pubsub.message_size_bytes", len(message_data))
 
@@ -295,7 +296,7 @@ class PubSubConsumer:
                 # Add span attributes
                 span.set_attribute("pubsub.topic", topic_name)
                 span.set_attribute("pubsub.subscription", subscription_name)
-                span.set_attribute("pubsub.project_id", self.project_id)
+                span.set_attribute("pubsub.project_id", str(self.project_id))
 
                 # Create subscription
                 subscription = self.subscriber.subscribe(

@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
-from services.common.events import EmailBackfillEvent, EmailData
+from services.common.events import EmailBackfillEvent, EmailData, EventMetadata
 from services.office.core.auth import verify_backfill_api_key
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.settings import get_settings
@@ -318,6 +318,8 @@ async def run_backfill_job(
                             has_attachments=email.get('hasAttachments', False),
                             provider=request.provider,
                             provider_message_id=email.get('id', ''),
+                            size_bytes=email.get('sizeBytes'),
+                            mime_type=email.get('mimeType'),
                         )
                         email_data_objects.append(email_data)
                     except Exception as e:
@@ -338,12 +340,10 @@ async def run_backfill_job(
                         folder=request.folders[0] if request.folders else None,
                         total_emails=total_emails,
                         processed_count=processed_count,
-                        metadata=EmailBackfillEvent.__fields__['metadata'].type_(
-                            source_service="office-service",
-                            source_version="1.0.0",
-                            correlation_id=job_id,
-                        )
                     )
+                    
+                    # Add correlation ID for tracking
+                    backfill_event.add_correlation_id(job_id)
                     
                     # Publish the batch event
                     message_id = pubsub_client.publish_email_backfill(backfill_event)

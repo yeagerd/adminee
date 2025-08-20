@@ -37,7 +37,7 @@ class PubSubConsumer:
         self.settings = settings
         
         # Initialize common pubsub consumer
-        self.pubsub_consumer = CommonPubSubConsumer(
+        self.pubsub_consumer: Optional[CommonPubSubConsumer] = CommonPubSubConsumer(
             project_id=settings.pubsub_project_id,
             emulator_host=settings.pubsub_emulator_host,
             service_name="vespa-loader-service"
@@ -82,8 +82,8 @@ class PubSubConsumer:
 
     async def start(self) -> bool:
         """Start the Pub/Sub consumer"""
-        if not self.pubsub_consumer.is_available():
-            logger.error("Pub/Sub not available - cannot start consumer")
+        if not self.pubsub_consumer:
+            logger.error("Pub/Sub consumer not initialized - cannot start consumer")
             return False
 
         try:
@@ -255,6 +255,22 @@ class PubSubConsumer:
                     message.nack()
 
         return callback
+
+    def _start_batch_timer(self, topic_name: str, config: Dict[str, Any]) -> None:
+        """Start or reset the batch timer for a topic"""
+        # Cancel existing timer if it exists
+        if topic_name in self.batch_timers and self.batch_timers[topic_name] is not None:
+            existing_timer = self.batch_timers[topic_name]
+            if existing_timer is not None:
+                existing_timer.cancel()
+        
+        # Create new timer
+        async def timer_callback() -> None:
+            await asyncio.sleep(self.batch_timeout)
+            if topic_name in self.message_batches and self.message_batches[topic_name]:
+                asyncio.create_task(self._process_batch(topic_name, config))
+        
+        self.batch_timers[topic_name] = asyncio.create_task(timer_callback())
 
     async def _process_email_backfill_event(self, event: EmailBackfillEvent) -> None:
         """Process an email backfill event for Vespa indexing"""

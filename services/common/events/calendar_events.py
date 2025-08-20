@@ -44,7 +44,7 @@ class CalendarUpdateEvent(BaseEvent):
     update_type: str = Field(..., description="Type of update (create, update, delete)")
     change_reason: Optional[str] = Field(None, description="Reason for the change")
     
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"
@@ -64,7 +64,7 @@ class CalendarBatchEvent(BaseEvent):
     start_date: Optional[datetime] = Field(None, description="Start date for batch range")
     end_date: Optional[datetime] = Field(None, description="End date for batch range")
     
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"

@@ -41,7 +41,7 @@ class ContactUpdateEvent(BaseEvent):
     update_type: str = Field(..., description="Type of update (create, update, delete)")
     change_reason: Optional[str] = Field(None, description="Reason for the change")
     
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"
@@ -60,7 +60,7 @@ class ContactBatchEvent(BaseEvent):
     total_contacts: Optional[int] = Field(None, description="Total contacts to process")
     processed_count: int = Field(default=0, description="Number of contacts processed so far")
     
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"
