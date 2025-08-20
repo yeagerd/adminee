@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ExternalUserInfo } from './ExternalUserInfo';
 import type { IntegrationProvider } from './IntegrationProvider';
 import type { IntegrationStatus } from './IntegrationStatus';
 /**
@@ -31,7 +32,7 @@ export type OAuthCallbackResponse = {
     /**
      * User info from external provider
      */
-    external_user_info?: (Record<string, any> | null);
+    external_user_info?: (ExternalUserInfo | null);
     /**
      * Error message if failed
      */

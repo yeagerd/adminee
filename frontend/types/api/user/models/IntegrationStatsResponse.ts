@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { IntegrationErrorSummary } from './IntegrationErrorSummary';
+import type { SyncStats } from './SyncStats';
 /**
  * Response model for integration statistics.
  */
@@ -33,10 +35,10 @@ export type IntegrationStatsResponse = {
     /**
      * Recent integration errors
      */
-    recent_errors?: Array<Record<string, any>>;
+    recent_errors?: Array<IntegrationErrorSummary>;
     /**
      * Synchronization statistics
      */
-    sync_stats?: Record<string, any>;
+    sync_stats?: SyncStats;
 };
 
