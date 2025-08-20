@@ -341,20 +341,6 @@ The `vespa.sh` script manages all Vespa services in one place:
 
 **Note**: The Pub/Sub emulator is managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
 
-### Option 2: Legacy Python Script (Deprecated)
-
-⚠️ **DEPRECATED**: The `vespa_be.py` script is deprecated in favor of `./scripts/vespa.sh`:
-
-```bash
-# DEPRECATED - Use ./scripts/vespa.sh --start instead
-python services/demos/vespa_be.py
-
-# DEPRECATED - Use ./scripts/vespa.sh --status instead
-python services/demos/vespa_be.py --status
-
-# DEPRECATED - Use ./scripts/vespa.sh --stop instead
-python services/demos/vespa_be.py --stop
-```
 
 ### Option 3: Start Services Individually
 
