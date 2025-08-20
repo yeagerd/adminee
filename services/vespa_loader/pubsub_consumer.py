@@ -326,7 +326,9 @@ class PubSubConsumer:
             # to allow for conditional ack/nack based on processing results
 
         except Exception as e:
-            logger.error(f"Error scheduling message processing for topic {topic_name}: {e}")
+            logger.error(
+                f"Error scheduling message processing for topic {topic_name}: {e}"
+            )
             # Increment error count for scheduling failures
             self.error_count += 1
             # Nack the message if we can't schedule processing
