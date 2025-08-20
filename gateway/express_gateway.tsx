@@ -128,9 +128,9 @@ if (!fs.existsSync(envPath)) {
     logWithContext('error', '   Please create a .env file with:');
     logWithContext('error', '   NEXTAUTH_SECRET=your-secret-here');
     logWithContext('error', '   USER_SERVICE_URL=http://localhost:8001');
-logWithContext('error', '   CHAT_SERVICE_URL=http://localhost:8002');
-logWithContext('error', '   OFFICE_SERVICE_URL=http://localhost:8003');
-logWithContext('error', '   VESPA_QUERY_URL=http://localhost:8006');
+    logWithContext('error', '   CHAT_SERVICE_URL=http://localhost:8002');
+    logWithContext('error', '   OFFICE_SERVICE_URL=http://localhost:8003');
+    logWithContext('error', '   VESPA_QUERY_URL=http://localhost:8006');
     logWithContext('error', '   FRONTEND_URL=http://localhost:3000');
     process.exit(1);
 }
