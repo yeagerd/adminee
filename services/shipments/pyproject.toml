@@ -2,7 +2,7 @@
 name = "briefly-shipments"
 version = "0.1.0"
 description = "Briefly Package Shipments Tracking Service"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     # Web Framework
     "fastapi>=0.116.1,<1.0.0",
@@ -36,7 +36,6 @@ dependencies = [
     "google-cloud-secret-manager",
     # Pagination
     "itsdangerous>=2.1.0",
-    "pytest-asyncio>=1.0.0",
     "pyjwt>=2.10.1",
 ]
 

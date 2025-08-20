@@ -255,7 +255,7 @@ start_python_service "meetings-service" "services.meetings.main:app" 8005
 start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
 
 # Start Vespa Query Service
-start_python_service "vespa-query-service" "services.vespa_query.main:app" 9002
+start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
 
 # Start Gateway
 echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
