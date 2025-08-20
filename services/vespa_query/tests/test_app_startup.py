@@ -6,10 +6,11 @@ which would catch issues like middleware signature problems, import errors, or
 configuration issues.
 """
 
+from unittest.mock import patch
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 from services.common.test_utils import BaseIntegrationTest
 
@@ -101,7 +102,9 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
                 self.user_service_url = "http://localhost:8001"
 
         # Patch the get_settings function to return our mock
-        with patch('services.vespa_query.settings.get_settings', return_value=MockSettings()):
+        with patch(
+            "services.vespa_query.settings.get_settings", return_value=MockSettings()
+        ):
             try:
                 # Test that the health endpoint function can be called without errors
                 # We'll test the function directly instead of using TestClient to avoid HTTP call detection
@@ -234,7 +237,9 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
                 self.user_service_url = "http://localhost:8001"
 
         # Mock the get_settings function
-        with patch('services.vespa_query.settings.get_settings', return_value=MockSettings()):
+        with patch(
+            "services.vespa_query.settings.get_settings", return_value=MockSettings()
+        ):
             # Mock the service components
             class MockSearchEngine:
                 async def test_connection(self):
