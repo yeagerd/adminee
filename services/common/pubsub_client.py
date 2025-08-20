@@ -5,7 +5,7 @@ Shared PubSub utilities for Briefly services with integrated logging and tracing
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Optional, Union
 
 from google.cloud import pubsub_v1  # type: ignore[attr-defined]
@@ -79,7 +79,7 @@ class PubSubClient:
                 else:
                     # Handle legacy dict format
                     if "timestamp" not in data:
-                        data["timestamp"] = datetime.utcnow().isoformat()
+                        data["timestamp"] = datetime.now(timezone.utc).isoformat()
                     message_data = json.dumps(data, default=str).encode("utf-8")
                     event_type = "dict"
 

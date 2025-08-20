@@ -2,7 +2,7 @@
 Base event models for PubSub messages with distributed tracing support.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
@@ -16,7 +16,7 @@ class EventMetadata(BaseModel):
         default_factory=lambda: str(uuid4()), description="Unique event ID"
     )
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow, description="Event timestamp"
+        default_factory=lambda: datetime.now(timezone.utc), description="Event timestamp"
     )
     source_service: str = Field(..., description="Service that published the event")
     source_version: str = Field(
