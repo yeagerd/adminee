@@ -7,13 +7,12 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy poetry files
-COPY services/vespa_query/pyproject.toml services/vespa_query/poetry.lock* ./
+# Copy pyproject.toml
+COPY services/vespa_query/pyproject.toml ./
 
-# Install poetry and dependencies
-RUN pip install poetry && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-dev
+# Install uv and dependencies
+RUN pip install uv && \
+    uv pip install -e . --no-deps
 
 # Copy service code
 COPY services/vespa_query/ .
@@ -22,4 +21,4 @@ COPY services/vespa_query/ .
 EXPOSE 8006
 
 # Run the service
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8006"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8006"]

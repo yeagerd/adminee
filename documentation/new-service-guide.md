@@ -415,10 +415,12 @@ python -m pytest --durations=10 -q -n auto
 Add to your service's `pyproject.toml`:
 
 ```toml
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-pytest-asyncio = "^0.21.0"
-httpx = "^0.25.0"
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0,<8.0.0",
+    "pytest-asyncio>=0.21.0,<1.0.0",
+    "httpx>=0.25.0,<1.0.0",
+]
 ```
 
 ## 9. API Key Authentication
