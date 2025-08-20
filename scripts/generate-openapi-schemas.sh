@@ -16,8 +16,8 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Service configuration
-SERVICES="chat meetings office shipments email_sync vector_db"
-SERVICE_PATHS="services/chat services/meetings services/office services/shipments services/email_sync services/vector_db"
+SERVICES="chat meetings office shipments email_sync vespa_query"
+SERVICE_PATHS="services/chat services/meetings services/office services/shipments services/email_sync services/vespa_query"
 
 # Function to print colored output
 print_status() {
@@ -126,7 +126,7 @@ generate_schema() {
     fi
     
     # Run Python from project root to ensure proper module resolution
-    if temp_output=$(cd "$PROJECT_ROOT" && python -c "
+    if temp_output=$(cd "$PROJECT_ROOT" && .venv/bin/python -c "
 import sys
 import json
 
