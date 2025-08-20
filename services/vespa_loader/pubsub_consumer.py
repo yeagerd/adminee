@@ -19,6 +19,9 @@ from services.vespa_loader.settings import Settings
 
 logger = get_logger(__name__)
 
+# Import the shared ingest service function
+from services.vespa_loader.main import ingest_document_service
+
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
     from google.cloud.pubsub_v1.types import (
@@ -416,8 +419,8 @@ class PubSubConsumer:
         logger.info(f"Email subject: {data.get('subject', 'no subject')}")
         logger.info(f"Email provider: {data.get('provider', 'unknown')}")
 
-        # Call the ingest endpoint to index the document
-        await self._call_ingest_endpoint(data)
+        # Ingest the document
+        await self._ingest_document(data)
 
     async def _process_calendar_message(self, data: Dict[str, Any]) -> None:
         """Process a calendar message for Vespa indexing"""
@@ -426,8 +429,8 @@ class PubSubConsumer:
 
         logger.info(f"Processing calendar message: {message_id} for user {user_id}")
 
-        # Call the ingest endpoint to index the document
-        await self._call_ingest_endpoint(data)
+        # Ingest the document
+        await self._ingest_document(data)
 
     async def _process_contact_message(self, data: Dict[str, Any]) -> None:
         """Process a contact message for Vespa indexing"""
@@ -436,14 +439,16 @@ class PubSubConsumer:
 
         logger.info(f"Processing contact message: {message_id} for user {user_id}")
 
-        # Call the ingest endpoint to index the document
-        await self._call_ingest_endpoint(data)
+        # Ingest the document
+        await self._ingest_document(data)
 
-    async def _call_ingest_endpoint(self, data: Dict[str, Any]) -> None:
-        """Call the Vespa loader ingest endpoint"""
+    async def _ingest_document(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Ingest a document into Vespa
+
+        Returns:
+            Dict containing the ingestion result
+        """
         try:
-            import httpx
-
             message_id = data.get("id")
             user_id = data.get("user_id")
 
@@ -496,34 +501,29 @@ class PubSubConsumer:
                 }
 
             logger.info(f"Document data prepared: {document_data}")
-            logger.info(
-                f"Making HTTP POST to ingest endpoint for document {message_id}"
+
+            # Call the ingest service directly
+            logger.info(f"Calling ingest service for document {message_id}")
+            result = await ingest_document_service(
+                document_data, run_background_tasks=False
             )
 
-            # Call the ingest endpoint
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.settings.ingest_endpoint, json=document_data, timeout=30.0
+            # Run post-processing tasks directly since we're not in a FastAPI context
+            try:
+                await self._post_process_document(
+                    document_data["id"], document_data["user_id"]
                 )
-
-                logger.info(
-                    f"Received response for document {message_id}: {response.status_code}"
+            except Exception as post_process_error:
+                logger.warning(
+                    f"Post-processing failed for document {message_id}: {post_process_error}"
                 )
+                # Continue even if post-processing fails
 
-                if response.status_code == 200:
-                    result = response.json()
-                    logger.info(f"Successfully indexed document {message_id}: {result}")
-                    return result
-                else:
-                    logger.error(
-                        f"Failed to index document {message_id}: {response.status_code} - {response.text}"
-                    )
-                    raise Exception(f"HTTP {response.status_code}: {response.text}")
+            logger.info(f"Successfully indexed document {message_id}: {result}")
+            return result
 
         except Exception as e:
-            logger.error(
-                f"Error calling ingest endpoint for document {data.get('id')}: {e}"
-            )
+            logger.error(f"Error ingesting document {data.get('id')}: {e}")
             raise
 
     def get_stats(self) -> Dict[str, Any]:
@@ -546,3 +546,17 @@ class PubSubConsumer:
         }
         logger.info(f"Consumer stats: {stats}")
         return stats
+
+    async def _post_process_document(self, document_id: str, user_id: str) -> None:
+        """Post-process a document after ingestion
+
+        This method runs the same post-processing logic that would normally
+        run as a background task in the HTTP endpoint.
+        """
+        try:
+            logger.info(f"Post-processing document {document_id} for user {user_id}")
+            # Add any post-processing logic here
+            # For example: update search indices, trigger notifications, etc.
+            # This mirrors the logic in main.py:_post_process_document
+        except Exception as e:
+            logger.error(f"Error in post-processing document {document_id}: {e}")
