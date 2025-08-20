@@ -133,11 +133,7 @@ find_app_name() {
         return 1
     fi
 
-    # Special case for user service - use schema generator
-    if [[ "$service_path" == "services/user" ]]; then
-        echo "schema_app"
-        return 0
-    fi
+
 
     # Look for common FastAPI app variable patterns
     # Pattern 1: Direct FastAPI instantiation
@@ -198,9 +194,7 @@ generate_schema() {
     
     # Determine the correct import path
     local import_path="services.$service_name.main"
-    if [[ "$service_path" == "services/user" ]]; then
-        import_path="services.user.schema_generator"
-    elif [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
+    if [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
         import_path="services.$service_name.app.main"
     fi
     
