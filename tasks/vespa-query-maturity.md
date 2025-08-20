@@ -34,14 +34,14 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 - [x] Apply API key validation to all endpoints that require inter-service communication
 
 ### 6. Port Assignment Conflict
-- [ ] Change service port from 9002 to 8006 (or next available port in 8000s range)
-- [ ] Update all references to the port in configuration files
-- [ ] Ensure no port conflicts with other services
+- [x] Change service port from 9002 to 8006 (or next available port in 8000s range)
+- [x] Update all references to the port in configuration files
+- [x] Ensure no port conflicts with other services
 
 ### 7. Health Check Improvements
-- [ ] Add Vespa connectivity check to health endpoint (external service dependency)
-- [ ] Implement proper health check configuration with timeout settings
-- [ ] Add health check interval and timeout configuration to settings
+- [x] Add Vespa connectivity check to health endpoint (external service dependency)
+- [x] Implement proper health check configuration with timeout settings
+- [x] Add health check interval and timeout configuration to settings
 
 ### 8. Error Handling
 - [ ] Replace basic `HTTPException` usage with standardized error classes from `services.common.http_errors`

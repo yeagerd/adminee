@@ -4,6 +4,7 @@ Vespa Query Service - Query interface for hybrid search capabilities
 """
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import uvicorn
@@ -123,9 +124,42 @@ register_briefly_exception_handlers(app)
 
 
 @app.get("/health")
-async def health_check() -> Dict[str, str]:
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "vespa-query"}
+async def health_check() -> Dict[str, Any]:
+    """Enhanced health check endpoint with external service dependency verification"""
+    from services.vespa_query.settings import Settings
+    settings = Settings()
+    
+    health_status = {
+        "status": "healthy",
+        "service": "vespa-query",
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
+    }
+    
+    # Check Vespa connectivity
+    try:
+        if search_engine:
+            vespa_ok = await search_engine.test_connection()
+            health_status["checks"]["vespa"] = "healthy" if vespa_ok else "unhealthy"
+        else:
+            health_status["checks"]["vespa"] = "unhealthy - service not initialized"
+    except Exception as e:
+        health_status["checks"]["vespa"] = f"unhealthy - {str(e)}"
+    
+    # Check service components
+    health_status["checks"]["query_builder"] = "healthy" if query_builder else "unhealthy - not initialized"
+    health_status["checks"]["result_processor"] = "healthy" if result_processor else "unhealthy - not initialized"
+    
+    # Determine overall status
+    overall_status = "healthy"
+    for check_name, check_status in health_status["checks"].items():
+        if "unhealthy" in check_status:
+            overall_status = "degraded"
+            break
+    
+    health_status["status"] = overall_status
+    
+    return health_status
 
 
 @app.get("/")
