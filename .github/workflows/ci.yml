@@ -324,6 +324,10 @@ jobs:
       working-directory: ./frontend
       run: echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> .env
 
+    - name: Set NEXTAUTH_URL for CI build
+      working-directory: ./frontend
+      run: echo "NEXTAUTH_URL=https://github.com" >> .env
+
     - name: Build application
       working-directory: ./frontend
       run: npm run build
@@ -349,6 +353,10 @@ jobs:
     - name: Set NEXTAUTH_SECRET for Docker build
       run: |
         echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> frontend/.env
+
+    - name: Set NEXTAUTH_URL for Docker build
+      run: |
+        echo "NEXTAUTH_URL=https://github.com" >> frontend/.env
 
     - name: Test Docker Compose build
       env:
