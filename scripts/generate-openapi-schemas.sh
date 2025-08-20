@@ -5,6 +5,25 @@
 
 set -e  # Exit on any error
 
+# Function to handle script exit and provide debugging info
+cleanup_and_debug() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        echo "ERROR: Script failed with exit code $exit_code" >&2
+        echo "ERROR: Last command that failed: $BASH_COMMAND" >&2
+        echo "ERROR: Current working directory: $(pwd)" >&2
+        echo "ERROR: Environment variables:" >&2
+        echo "  - PROJECT_ROOT: ${PROJECT_ROOT:-'not set'}" >&2
+        echo "  - PWD: $(pwd)" >&2
+        echo "  - Python: $(which python 2>/dev/null || echo 'not found')" >&2
+        echo "  - Git root: $(git rev-parse --show-toplevel 2>/dev/null || echo 'not found')" >&2
+    fi
+    exit $exit_code
+}
+
+# Set trap to run cleanup function on exit
+trap cleanup_and_debug EXIT
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -126,16 +145,30 @@ generate_schema() {
     fi
     
     # Run Python from project root to ensure proper module resolution
+    echo "DEBUG: Running Python from $PROJECT_ROOT"
+    echo "DEBUG: Import path: $import_path"
+    echo "DEBUG: App name: $app_name"
+    echo "DEBUG: Python executable: $(which python)"
+    echo "DEBUG: Virtual env Python: $PROJECT_ROOT/.venv/bin/python"
+    
     if temp_output=$(cd "$PROJECT_ROOT" && .venv/bin/python -c "
 import sys
 import json
+import traceback
+import os
 
 try:
+    print(f'DEBUG: Python path: {sys.path}', file=sys.stderr)
+    print(f'DEBUG: Current working directory: {os.getcwd()}', file=sys.stderr)
     from $import_path import $app_name
+    print(f'DEBUG: Successfully imported $app_name', file=sys.stderr)
     schema = $app_name.openapi()
     print(json.dumps(schema, indent=2))
 except Exception as e:
-    print(f'Error: {e}', file=sys.stderr)
+    print(f'ERROR: Failed to generate schema for $service_name', file=sys.stderr)
+    print(f'ERROR: Exception: {e}', file=sys.stderr)
+    print(f'ERROR: Traceback:', file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     sys.exit(1)
 " 2>&1); then
         # Save schema to file
@@ -165,11 +198,15 @@ generate_all_schemas() {
         local service_name="${services_array[$i]}"
         local service_path="${paths_array[$i]}"
         
+        echo "Processing service $((i+1))/${#services_array[@]}: $service_name"
+        
         if generate_schema "$service_name" "$service_path"; then
             results+=("✅ $service_name")
             ((successful++))
+            echo "✅ Successfully processed $service_name"
         else
             results+=("❌ $service_name")
+            echo "❌ Failed to process $service_name - check error messages above"
         fi
         
         ((total++))
