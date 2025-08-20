@@ -42,9 +42,9 @@ result_processor: Optional[Any] = None
 
 async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
     """Verify API key for inter-service communication"""
-    from services.vespa_query.settings import Settings
+    from services.vespa_query.settings import get_settings
 
-    settings = Settings()
+    settings = get_settings()
 
     if x_api_key != settings.api_frontend_vespa_query_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -57,9 +57,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global search_engine, query_builder, result_processor
 
     # Initialize settings
-    from services.vespa_query.settings import Settings
+    from services.vespa_query.settings import get_settings
 
-    settings = Settings()
+    settings = get_settings()
 
     # Set up centralized logging
     setup_service_logging(
@@ -133,9 +133,9 @@ register_briefly_exception_handlers(app)
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
     """Enhanced health check endpoint with external service dependency verification"""
-    from services.vespa_query.settings import Settings
+    from services.vespa_query.settings import get_settings
 
-    settings = Settings()
+    settings = get_settings()
 
     health_status: Dict[str, Any] = {
         "status": "healthy",

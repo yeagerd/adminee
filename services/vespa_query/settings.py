@@ -93,3 +93,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
+
+
+# Global settings instance
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get the global settings instance, creating it if necessary."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings

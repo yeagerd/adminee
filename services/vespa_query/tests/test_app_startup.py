@@ -9,6 +9,7 @@ configuration issues.
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 from services.common.test_utils import BaseIntegrationTest
 
@@ -85,8 +86,6 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
         import services.vespa_query.main as main_module
         from services.vespa_query.main import app
 
-        original_settings = getattr(main_module, "Settings", None)
-
         # Create a mock settings class that doesn't try to load from environment
         class MockSettings:
             def __init__(self):
@@ -101,46 +100,41 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
                 self.office_service_url = "http://localhost:8002"
                 self.user_service_url = "http://localhost:8001"
 
-        # Replace the Settings class temporarily
-        main_module.Settings = MockSettings
-
-        try:
-            # Test that the health endpoint function can be called without errors
-            # We'll test the function directly instead of using TestClient to avoid HTTP call detection
-            from services.vespa_query.main import health_check
-
-            # Mock the global variables
-            original_search_engine = main_module.search_engine
-            original_query_builder = main_module.query_builder
-            original_result_processor = main_module.result_processor
-
-            main_module.search_engine = None
-            main_module.query_builder = None
-            main_module.result_processor = None
-
+        # Patch the get_settings function to return our mock
+        with patch('services.vespa_query.settings.get_settings', return_value=MockSettings()):
             try:
-                # Test health endpoint function directly
-                import asyncio
+                # Test that the health endpoint function can be called without errors
+                # We'll test the function directly instead of using TestClient to avoid HTTP call detection
+                from services.vespa_query.main import health_check
 
-                response = asyncio.run(health_check())
+                # Mock the global variables
+                original_search_engine = main_module.search_engine
+                original_query_builder = main_module.query_builder
+                original_result_processor = main_module.result_processor
 
-                # Check response structure
-                assert "status" in response
-                assert "service" in response
-                assert response["service"] == "vespa-query"
+                main_module.search_engine = None
+                main_module.query_builder = None
+                main_module.result_processor = None
 
+                try:
+                    # Test health endpoint function directly
+                    import asyncio
+
+                    response = asyncio.run(health_check())
+
+                    # Check response structure
+                    assert "status" in response
+                    assert "service" in response
+                    assert response["service"] == "vespa-query"
+
+                finally:
+                    # Restore global variables
+                    main_module.search_engine = original_search_engine
+                    main_module.query_builder = original_query_builder
+                    main_module.result_processor = original_result_processor
             finally:
-                # Restore global variables
-                main_module.search_engine = original_search_engine
-                main_module.query_builder = original_query_builder
-                main_module.result_processor = original_result_processor
-
-        finally:
-            # Restore original Settings
-            if original_settings:
-                main_module.Settings = original_settings
-            else:
-                delattr(main_module, "Settings")
+                # Clean up - no need to restore Settings since we used context manager
+                pass
 
     def test_app_lifespan_management(self):
         """Test that the app has proper lifespan management."""
@@ -226,23 +220,21 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
         original_search_engine = getattr(main_module, "SearchEngine", None)
         original_query_builder = getattr(main_module, "QueryBuilder", None)
         original_result_processor = getattr(main_module, "ResultProcessor", None)
-        original_settings = getattr(main_module, "Settings", None)
 
-        try:
-            # Mock the settings import
-            class MockSettings:
-                def __init__(self):
-                    self.api_frontend_vespa_query_key = "test-key"
-                    self.api_vespa_query_office_key = "test-office-key"
-                    self.api_vespa_query_user_key = "test-user-key"
-                    self.vespa_endpoint = "http://localhost:8080"
-                    self.log_level = "INFO"
-                    self.log_format = "json"
-                    self.office_service_url = "http://localhost:8002"
-                    self.user_service_url = "http://localhost:8001"
+        # Create mock settings
+        class MockSettings:
+            def __init__(self):
+                self.api_frontend_vespa_query_key = "test-key"
+                self.api_vespa_query_office_key = "test-office-key"
+                self.api_vespa_query_user_key = "test-user-key"
+                self.vespa_endpoint = "http://localhost:8080"
+                self.log_level = "INFO"
+                self.log_format = "json"
+                self.office_service_url = "http://localhost:8002"
+                self.user_service_url = "http://localhost:8001"
 
-            main_module.Settings = MockSettings
-
+        # Mock the get_settings function
+        with patch('services.vespa_query.settings.get_settings', return_value=MockSettings()):
             # Mock the service components
             class MockSearchEngine:
                 async def test_connection(self):
@@ -271,13 +263,10 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
             assert callable(lifespan_func)
             assert lifespan_func is not None
 
-        finally:
-            # Restore original imports
-            if original_search_engine:
-                main_module.SearchEngine = original_search_engine
-            if original_query_builder:
-                main_module.QueryBuilder = original_query_builder
-            if original_result_processor:
-                main_module.ResultProcessor = original_result_processor
-            if original_settings:
-                main_module.Settings = original_settings
+        # Restore original imports
+        if original_search_engine:
+            main_module.SearchEngine = original_search_engine
+        if original_query_builder:
+            main_module.QueryBuilder = original_query_builder
+        if original_result_processor:
+            main_module.ResultProcessor = original_result_processor
