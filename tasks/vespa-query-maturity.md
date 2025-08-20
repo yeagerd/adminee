@@ -54,9 +54,9 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 - [x] Implement proper service discovery setup
 
 ### 10. Test Dependencies
-- [ ] Add `httpx` for HTTP client testing
-- [ ] Ensure test structure follows project patterns
-- [ ] Add comprehensive test coverage for all endpoints
+- [x] Add `httpx` for HTTP client testing
+- [x] Ensure test structure follows project patterns
+- [x] Add comprehensive test coverage for all endpoints
 
 ## Notes
 
