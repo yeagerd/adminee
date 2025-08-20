@@ -119,19 +119,16 @@ generate_schema() {
     local output_file="$PROJECT_ROOT/$service_path/openapi/schema.json"
     local temp_output
     
-    # Determine the correct working directory and import path
-    local working_dir="$PROJECT_ROOT/$service_path"
-    local import_path="main"
+    # Determine the correct import path
+    local import_path="services.$service_name.main"
     if [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
-        working_dir="$PROJECT_ROOT/$service_path/app"
-        import_path="main"
+        import_path="services.$service_name.app.main"
     fi
     
-    if temp_output=$(cd "$working_dir" && python -c "
+    # Run Python from project root to ensure proper module resolution
+    if temp_output=$(cd "$PROJECT_ROOT" && python -c "
 import sys
 import json
-from pathlib import Path
-sys.path.insert(0, str(Path('.').resolve()))
 
 try:
     from $import_path import $app_name
