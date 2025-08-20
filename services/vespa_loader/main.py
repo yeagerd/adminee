@@ -3,23 +3,23 @@
 Vespa Loader Service - Consumes email data and indexes into Vespa
 """
 
+import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, Optional, Union
-from collections import defaultdict
-import time
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.common.http_errors import (
-    register_briefly_exception_handlers,
-    ValidationError,
-    NotFoundError,
-    ServiceError,
     AuthError,
-    RateLimitError
+    NotFoundError,
+    RateLimitError,
+    ServiceError,
+    ValidationError,
+    register_briefly_exception_handlers,
 )
 from services.common.logging_config import (
     create_request_logging_middleware,
@@ -47,35 +47,39 @@ pubsub_consumer: Optional[Any] = None
 
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
-    
+
     def __init__(self, max_requests: int = 100, window_seconds: int = 60):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.requests = defaultdict(list)
-    
+
     def is_allowed(self, key: str) -> bool:
         """Check if request is allowed based on rate limit"""
         now = time.time()
         window_start = now - self.window_seconds
-        
+
         # Clean old requests outside the window
-        self.requests[key] = [req_time for req_time in self.requests[key] if req_time > window_start]
-        
+        self.requests[key] = [
+            req_time for req_time in self.requests[key] if req_time > window_start
+        ]
+
         # Check if under limit
         if len(self.requests[key]) < self.max_requests:
             self.requests[key].append(now)
             return True
-        
+
         return False
-    
+
     def get_remaining(self, key: str) -> int:
         """Get remaining requests allowed in current window"""
         now = time.time()
         window_start = now - self.window_seconds
-        
+
         # Clean old requests outside the window
-        self.requests[key] = [req_time for req_time in self.requests[key] if req_time > window_start]
-        
+        self.requests[key] = [
+            req_time for req_time in self.requests[key] if req_time > window_start
+        ]
+
         return max(0, self.max_requests - len(self.requests[key]))
 
 
@@ -83,21 +87,18 @@ class RateLimiter:
 rate_limiter: Optional[RateLimiter] = None
 
 
-async def verify_api_key(
-    x_api_key: str = Header(..., alias="X-API-Key")
-) -> str:
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
     """Verify API key for inter-service authentication"""
     from services.vespa_loader.settings import Settings
+
     settings = Settings()
-    
+
     if x_api_key != settings.api_frontend_vespa_loader_key:
         raise AuthError("Invalid API key", code="INVALID_API_KEY")
     return x_api_key
 
 
-async def check_rate_limit(
-    api_key: str = Depends(verify_api_key)
-) -> str:
+async def check_rate_limit(api_key: str = Depends(verify_api_key)) -> str:
     """Check rate limit for API requests"""
     if not rate_limiter.is_allowed(api_key):
         remaining_time = rate_limiter.window_seconds
@@ -107,8 +108,8 @@ async def check_rate_limit(
             details={
                 "limit": rate_limiter.max_requests,
                 "window_seconds": rate_limiter.window_seconds,
-                "retry_after": remaining_time
-            }
+                "retry_after": remaining_time,
+            },
         )
     return api_key
 
@@ -148,12 +149,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     content_normalizer = ContentNormalizer()
     embedding_generator = EmbeddingGenerator(settings.embedding_model)
     document_mapper = DocumentMapper()
-    
+
     # Initialize rate limiter with settings
     global rate_limiter
     rate_limiter = RateLimiter(
         max_requests=settings.api_rate_limit_max_requests,
-        window_seconds=settings.api_rate_limit_window_seconds
+        window_seconds=settings.api_rate_limit_window_seconds,
     )
 
     # Test Vespa connectivity
@@ -226,61 +227,63 @@ async def health_check() -> Dict[str, Any]:
         "status": "healthy",
         "service": "vespa-loader",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "components": {}
+        "components": {},
     }
-    
+
     # Check Vespa connectivity
     try:
         if vespa_client:
             vespa_ok = await vespa_client.test_connection()
             health_status["components"]["vespa"] = {
                 "status": "healthy" if vespa_ok else "unhealthy",
-                "endpoint": vespa_client.endpoint
+                "endpoint": vespa_client.endpoint,
             }
         else:
             health_status["components"]["vespa"] = {"status": "not_initialized"}
     except Exception as e:
-        health_status["components"]["vespa"] = {
-            "status": "error",
-            "error": str(e)
-        }
+        health_status["components"]["vespa"] = {"status": "error", "error": str(e)}
         health_status["status"] = "degraded"
-    
+
     # Check Pub/Sub consumer status
     if pubsub_consumer:
         try:
             stats = pubsub_consumer.get_stats()
             health_status["components"]["pubsub_consumer"] = {
                 "status": "healthy",
-                "stats": stats
+                "stats": stats,
             }
         except Exception as e:
             health_status["components"]["pubsub_consumer"] = {
                 "status": "error",
-                "error": str(e)
+                "error": str(e),
             }
             health_status["status"] = "degraded"
     else:
         health_status["components"]["pubsub_consumer"] = {"status": "not_initialized"}
-    
+
     # Check core components
     core_components = {
         "content_normalizer": content_normalizer,
         "embedding_generator": embedding_generator,
-        "document_mapper": document_mapper
+        "document_mapper": document_mapper,
     }
-    
+
     for name, component in core_components.items():
         health_status["components"][name] = {
             "status": "healthy" if component else "not_initialized"
         }
-    
+
     # Determine overall status
-    if any(comp.get("status") == "error" for comp in health_status["components"].values()):
+    if any(
+        comp.get("status") == "error" for comp in health_status["components"].values()
+    ):
         health_status["status"] = "unhealthy"
-    elif any(comp.get("status") == "degraded" for comp in health_status["components"].values()):
+    elif any(
+        comp.get("status") == "degraded"
+        for comp in health_status["components"].values()
+    ):
         health_status["status"] = "degraded"
-    
+
     return health_status
 
 
@@ -292,9 +295,9 @@ async def root() -> Dict[str, str]:
 
 @app.post("/ingest")
 async def ingest_document(
-    document_data: Dict[str, Any], 
+    document_data: Dict[str, Any],
     background_tasks: BackgroundTasks,
-    api_key: str = Depends(check_rate_limit)
+    api_key: str = Depends(check_rate_limit),
 ) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
     if not all(
@@ -308,12 +311,14 @@ async def ingest_document(
             raise ValidationError(
                 "Document ID and user_id are required",
                 field="document_data",
-                value=document_data
+                value=document_data,
             )
 
         # Map document to Vespa format
         if not document_mapper:
-            raise ServiceError("Document mapper not initialized", code="COMPONENT_NOT_READY")
+            raise ServiceError(
+                "Document mapper not initialized", code="COMPONENT_NOT_READY"
+            )
         vespa_document = document_mapper.map_to_vespa(document_data)
 
         # Normalize content
@@ -335,7 +340,9 @@ async def ingest_document(
 
         # Index document in Vespa
         if not vespa_client:
-            raise ServiceError("Vespa client not initialized", code="COMPONENT_NOT_READY")
+            raise ServiceError(
+                "Vespa client not initialized", code="COMPONENT_NOT_READY"
+            )
         result = await vespa_client.index_document(vespa_document)
 
         # Add background task for post-processing if needed
@@ -353,14 +360,18 @@ async def ingest_document(
 
     except Exception as e:
         logger.error(f"Error ingesting document: {e}")
-        raise ServiceError("Document ingestion failed", code="INGESTION_ERROR", details={"error": str(e)})
+        raise ServiceError(
+            "Document ingestion failed",
+            code="INGESTION_ERROR",
+            details={"error": str(e)},
+        )
 
 
 @app.post("/ingest/batch")
 async def ingest_batch_documents(
-    documents: list[Dict[str, Any]], 
+    documents: list[Dict[str, Any]],
     background_tasks: BackgroundTasks,
-    api_key: str = Depends(check_rate_limit)
+    api_key: str = Depends(check_rate_limit),
 ) -> Dict[str, Any]:
     """Ingest multiple documents in batch"""
     if not all(
@@ -376,7 +387,9 @@ async def ingest_batch_documents(
             try:
                 # Map document to Vespa format
                 if not document_mapper:
-                    raise ServiceError("Document mapper not initialized", code="COMPONENT_NOT_READY")
+                    raise ServiceError(
+                        "Document mapper not initialized", code="COMPONENT_NOT_READY"
+                    )
                 vespa_document = document_mapper.map_to_vespa(doc)
 
                 # Normalize content
@@ -400,7 +413,9 @@ async def ingest_batch_documents(
 
                 # Index document in Vespa
                 if not vespa_client:
-                    raise ServiceError("Vespa client not initialized", code="COMPONENT_NOT_READY")
+                    raise ServiceError(
+                        "Vespa client not initialized", code="COMPONENT_NOT_READY"
+                    )
                 result = await vespa_client.index_document(vespa_document)
 
                 results.append(
@@ -432,7 +447,11 @@ async def ingest_batch_documents(
 
     except Exception as e:
         logger.error(f"Error in batch ingestion: {e}")
-        raise ServiceError("Batch ingestion failed", code="BATCH_INGESTION_ERROR", details={"error": str(e)})
+        raise ServiceError(
+            "Batch ingestion failed",
+            code="BATCH_INGESTION_ERROR",
+            details={"error": str(e)},
+        )
 
 
 def _flatten_office_router_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -533,7 +552,9 @@ async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Error deleting document: {e}")
-        raise ServiceError("Document deletion failed", code="DELETION_ERROR", details={"error": str(e)})
+        raise ServiceError(
+            "Document deletion failed", code="DELETION_ERROR", details={"error": str(e)}
+        )
 
 
 @app.get("/document/{user_id}/{document_id}")
@@ -553,7 +574,11 @@ async def get_document(user_id: str, document_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Error getting document: {e}")
-        raise ServiceError("Document retrieval failed", code="RETRIEVAL_ERROR", details={"error": str(e)})
+        raise ServiceError(
+            "Document retrieval failed",
+            code="RETRIEVAL_ERROR",
+            details={"error": str(e)},
+        )
 
 
 @app.get("/search/{user_id}")
@@ -575,7 +600,9 @@ async def search_documents(
 
     except Exception as e:
         logger.error(f"Error searching documents: {e}")
-        raise ServiceError("Document search failed", code="SEARCH_ERROR", details={"error": str(e)})
+        raise ServiceError(
+            "Document search failed", code="SEARCH_ERROR", details={"error": str(e)}
+        )
 
 
 @app.get("/stats/{user_id}")
@@ -594,7 +621,9 @@ async def get_user_stats(user_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Error getting user stats: {e}")
-        raise ServiceError("User stats retrieval failed", code="STATS_ERROR", details={"error": str(e)})
+        raise ServiceError(
+            "User stats retrieval failed", code="STATS_ERROR", details={"error": str(e)}
+        )
 
 
 async def _post_process_document(document_id: str, user_id: str) -> None:
@@ -642,7 +671,7 @@ async def debug_pubsub_status() -> Dict[str, Any]:
 
 @app.post("/debug/pubsub/trigger")
 async def debug_trigger_pubsub_processing(
-    api_key: str = Depends(check_rate_limit)
+    api_key: str = Depends(check_rate_limit),
 ) -> Dict[str, Any]:
     """Debug endpoint to manually trigger Pub/Sub message processing"""
     if not pubsub_consumer:

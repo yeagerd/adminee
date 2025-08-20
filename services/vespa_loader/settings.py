@@ -17,15 +17,23 @@ class Settings(BaseSettings):
         default="http://localhost:9001/ingest",
         validation_alias="VESPA_LOADER_INGEST_ENDPOINT",
     )
-    
+
     # API Keys for inter-service authentication
-    api_frontend_vespa_loader_key: str = Field(default="", env="API_FRONTEND_VESPA_LOADER_KEY")
+    api_frontend_vespa_loader_key: str = Field(
+        default="", env="API_FRONTEND_VESPA_LOADER_KEY"
+    )
     api_vespa_loader_user_key: str = Field(default="", env="API_VESPA_LOADER_USER_KEY")
-    api_vespa_loader_office_key: str = Field(default="", env="API_VESPA_LOADER_OFFICE_KEY")
-    
+    api_vespa_loader_office_key: str = Field(
+        default="", env="API_VESPA_LOADER_OFFICE_KEY"
+    )
+
     # Service URLs for inter-service communication
-    user_service_url: str = Field(default="http://localhost:8001", env="USER_SERVICE_URL")
-    office_service_url: str = Field(default="http://localhost:8003", env="OFFICE_SERVICE_URL")
+    user_service_url: str = Field(
+        default="http://localhost:8001", env="USER_SERVICE_URL"
+    )
+    office_service_url: str = Field(
+        default="http://localhost:8003", env="OFFICE_SERVICE_URL"
+    )
 
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
@@ -60,8 +68,12 @@ class Settings(BaseSettings):
 
     # Rate limiting
     max_documents_per_second: int = Field(default=100, env="MAX_DOCUMENTS_PER_SECOND")
-    api_rate_limit_max_requests: int = Field(default=100, env="API_RATE_LIMIT_MAX_REQUESTS")
-    api_rate_limit_window_seconds: int = Field(default=60, env="API_RATE_LIMIT_WINDOW_SECONDS")
+    api_rate_limit_max_requests: int = Field(
+        default=100, env="API_RATE_LIMIT_MAX_REQUESTS"
+    )
+    api_rate_limit_window_seconds: int = Field(
+        default=60, env="API_RATE_LIMIT_WINDOW_SECONDS"
+    )
 
     # Pub/Sub configuration
     pubsub_project_id: str = Field(default="briefly-dev", env="PUBSUB_PROJECT_ID")
