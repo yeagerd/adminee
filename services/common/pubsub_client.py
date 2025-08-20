@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Shared PubSub utilities for Briefly services with integrated logging and tracing.
 """
