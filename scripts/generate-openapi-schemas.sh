@@ -122,7 +122,7 @@ create_openapi_dir() {
 # Function to find FastAPI app variable name
 find_app_name() {
     local service_path=$1
-    
+
     # Determine the correct main.py path
     local main_file=""
     if [[ -f "$PROJECT_ROOT/$service_path/main.py" ]]; then
@@ -132,7 +132,13 @@ find_app_name() {
     else
         return 1
     fi
-    
+
+    # Special case for user service - use schema generator
+    if [[ "$service_path" == "services/user" ]]; then
+        echo "schema_app"
+        return 0
+    fi
+
     # Look for common FastAPI app variable patterns
     # Pattern 1: Direct FastAPI instantiation
     local app_line=$(grep -E "^(app|fastapi_app|api)\s*=\s*FastAPI\(" "$main_file" | head -1)
@@ -141,7 +147,7 @@ find_app_name() {
         echo "$app_name"
         return 0
     fi
-    
+
     # Pattern 2: App proxy or other patterns (like user service)
     app_line=$(grep -E "^(app|fastapi_app|api)\s*=\s*" "$main_file" | head -1)
     if [[ -n "$app_line" ]]; then
@@ -149,14 +155,14 @@ find_app_name() {
         echo "$app_name"
         return 0
     fi
-    
+
     # Pattern 3: Look for uvicorn or ASGI app references
     app_line=$(grep -E "uvicorn\.run\(" "$main_file" | grep -o '"[^"]*:app"' | sed 's/".*://; s/"//')
     if [[ -n "$app_line" ]]; then
         echo "$app_line"
         return 0
     fi
-    
+
     # Default fallback
     echo "app"
     return 0
@@ -192,7 +198,9 @@ generate_schema() {
     
     # Determine the correct import path
     local import_path="services.$service_name.main"
-    if [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
+    if [[ "$service_path" == "services/user" ]]; then
+        import_path="services.user.schema_generator"
+    elif [[ -f "$PROJECT_ROOT/$service_path/app/main.py" ]]; then
         import_path="services.$service_name.app.main"
     fi
     
