@@ -42,9 +42,19 @@ class PubSubClient:
         # Set up emulator if specified
         if emulator_host:
             os.environ["PUBSUB_EMULATOR_HOST"] = emulator_host
+        elif "PUBSUB_EMULATOR_HOST" not in os.environ:
+            # If no emulator host is specified and no emulator is configured,
+            # set up the default emulator host to avoid Google credentials issues
+            os.environ["PUBSUB_EMULATOR_HOST"] = "localhost:8085"
+            logger.info("No Pub/Sub emulator host specified, using default: localhost:8085")
 
         # Initialize publisher client
-        self.publisher = pubsub_v1.PublisherClient()
+        try:
+            self.publisher = pubsub_v1.PublisherClient()
+        except Exception as e:
+            logger.error(f"Failed to initialize Pub/Sub publisher client: {e}")
+            logger.info("Pub/Sub functionality will be disabled")
+            self.publisher = None
 
         logger.info(
             "PubSub client initialized",
@@ -59,6 +69,10 @@ class PubSubClient:
         self, topic_name: str, data: Union[Dict[str, Any], BaseEvent], **kwargs: Any
     ) -> str:
         """Publish a message to a PubSub topic with tracing and logging."""
+        if not self.publisher:
+            logger.warning("Pub/Sub publisher not available, message not published")
+            return "disabled"
+            
         with tracer.start_as_current_span(f"pubsub.publish.{topic_name}") as span:
             try:
                 topic_path = self.publisher.topic_path(self.project_id, topic_name)
@@ -301,10 +315,21 @@ class PubSubConsumer:
         # Set up emulator if specified
         if emulator_host:
             os.environ["PUBSUB_EMULATOR_HOST"] = emulator_host
+        elif "PUBSUB_EMULATOR_HOST" not in os.environ:
+            # If no emulator host is specified and no emulator is configured,
+            # set up the default emulator host to avoid Google credentials issues
+            os.environ["PUBSUB_EMULATOR_HOST"] = "localhost:8085"
+            logger.info("No Pub/Sub emulator host specified, using default: localhost:8085")
 
         # Initialize subscriber client
-        self.subscriber = pubsub_v1.SubscriberClient()
-        self.subscriptions: Dict[str, Any] = {}
+        try:
+            self.subscriber = pubsub_v1.SubscriberClient()
+            self.subscriptions: Dict[str, Any] = {}
+        except Exception as e:
+            logger.error(f"Failed to initialize Pub/Sub subscriber client: {e}")
+            logger.info("Pub/Sub functionality will be disabled")
+            self.subscriber = None
+            self.subscriptions: Dict[str, Any] = {}
 
         logger.info(
             "PubSub consumer initialized",
@@ -323,6 +348,10 @@ class PubSubConsumer:
         **kwargs: Any,
     ) -> Any:
         """Subscribe to a topic with the specified callback and tracing."""
+        if not self.subscriber:
+            logger.warning("Pub/Sub subscriber not available, subscription skipped")
+            return None
+            
         with tracer.start_as_current_span(
             f"pubsub.subscribe.{subscription_name}"
         ) as span:
