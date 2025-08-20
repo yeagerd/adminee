@@ -8,11 +8,11 @@ import { request as __request } from '../core/request';
 export class DefaultService {
     /**
      * Health Check
-     * Health check endpoint
-     * @returns string Successful Response
+     * Enhanced health check endpoint with external service dependency verification
+     * @returns any Successful Response
      * @throws ApiError
      */
-    public static healthCheckHealthGet(): CancelablePromise<Record<string, string>> {
+    public static healthCheckHealthGet(): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/health',
@@ -35,6 +35,7 @@ export class DefaultService {
      * Execute a search query
      * @param query Search query
      * @param userId User ID
+     * @param xApiKey
      * @param maxHits Maximum number of results
      * @param offset Result offset
      * @param sourceTypes Filter by source types
@@ -49,6 +50,7 @@ export class DefaultService {
     public static searchSearchPost(
         query: string,
         userId: string,
+        xApiKey: string,
         maxHits: number = 10,
         offset?: number,
         sourceTypes?: (Array<string> | null),
@@ -61,6 +63,9 @@ export class DefaultService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/search',
+            headers: {
+                'X-API-Key': xApiKey,
+            },
             query: {
                 'query': query,
                 'user_id': userId,
@@ -83,6 +88,7 @@ export class DefaultService {
      * Get autocomplete suggestions
      * @param query Autocomplete query
      * @param userId User ID
+     * @param xApiKey
      * @param maxSuggestions Maximum number of suggestions
      * @returns any Successful Response
      * @throws ApiError
@@ -90,11 +96,15 @@ export class DefaultService {
     public static autocompleteAutocompletePost(
         query: string,
         userId: string,
+        xApiKey: string,
         maxSuggestions: number = 5,
     ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/autocomplete',
+            headers: {
+                'X-API-Key': xApiKey,
+            },
             query: {
                 'query': query,
                 'user_id': userId,
@@ -110,6 +120,7 @@ export class DefaultService {
      * Find similar documents
      * @param documentId Document ID to find similar documents for
      * @param userId User ID
+     * @param xApiKey
      * @param maxHits Maximum number of similar documents
      * @returns any Successful Response
      * @throws ApiError
@@ -117,11 +128,15 @@ export class DefaultService {
     public static findSimilarSimilarPost(
         documentId: string,
         userId: string,
+        xApiKey: string,
         maxHits: number = 10,
     ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/similar',
+            headers: {
+                'X-API-Key': xApiKey,
+            },
             query: {
                 'document_id': documentId,
                 'user_id': userId,
@@ -136,6 +151,7 @@ export class DefaultService {
      * Get Facets
      * Get facet information
      * @param userId User ID
+     * @param xApiKey
      * @param sourceTypes Filter by source types
      * @param providers Filter by providers
      * @param dateFrom Start date for filtering
@@ -145,6 +161,7 @@ export class DefaultService {
      */
     public static getFacetsFacetsPost(
         userId: string,
+        xApiKey: string,
         sourceTypes?: (Array<string> | null),
         providers?: (Array<string> | null),
         dateFrom?: (string | null),
@@ -153,6 +170,9 @@ export class DefaultService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/facets',
+            headers: {
+                'X-API-Key': xApiKey,
+            },
             query: {
                 'user_id': userId,
                 'source_types': sourceTypes,
@@ -169,6 +189,7 @@ export class DefaultService {
      * Get Trending
      * Get trending documents
      * @param userId User ID
+     * @param xApiKey
      * @param timeRange Time range for trending
      * @param maxHits Maximum number of trending documents
      * @returns any Successful Response
@@ -176,12 +197,16 @@ export class DefaultService {
      */
     public static getTrendingTrendingPost(
         userId: string,
+        xApiKey: string,
         timeRange: string = '7d',
         maxHits: number = 10,
     ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/trending',
+            headers: {
+                'X-API-Key': xApiKey,
+            },
             query: {
                 'user_id': userId,
                 'time_range': timeRange,
@@ -196,17 +221,22 @@ export class DefaultService {
      * Get Analytics
      * Get analytics data
      * @param userId User ID
+     * @param xApiKey
      * @param timeRange Time range for analytics
      * @returns any Successful Response
      * @throws ApiError
      */
     public static getAnalyticsAnalyticsPost(
         userId: string,
+        xApiKey: string,
         timeRange: string = '30d',
     ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/analytics',
+            headers: {
+                'X-API-Key': xApiKey,
+            },
             query: {
                 'user_id': userId,
                 'time_range': timeRange,
