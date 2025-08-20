@@ -16,7 +16,8 @@ class EventMetadata(BaseModel):
         default_factory=lambda: str(uuid4()), description="Unique event ID"
     )
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="Event timestamp"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Event timestamp",
     )
     source_service: str = Field(..., description="Service that published the event")
     source_version: str = Field(
