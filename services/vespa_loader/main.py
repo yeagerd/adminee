@@ -125,6 +125,9 @@ async def ingest_document_service(
             "vespa_result": result,
         }
 
+    except ValidationError:
+        # Re-raise ValidationError to preserve the specific error details
+        raise
     except Exception as e:
         logger.error(f"Error ingesting document: {e}")
         raise ServiceError(
