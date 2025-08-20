@@ -332,7 +332,7 @@ class PubSubConsumer:
             logger.error(f"Failed to initialize Pub/Sub subscriber client: {e}")
             logger.info("Pub/Sub functionality will be disabled")
             self.subscriber = None
-            self.subscriptions: Dict[str, Any] = {}
+            self.subscriptions = {}
 
         logger.info(
             "PubSub consumer initialized",
