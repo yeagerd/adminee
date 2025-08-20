@@ -187,6 +187,9 @@ generate_all_schemas() {
     local successful=0
     local total=0
     
+    # Debug: Show initial values
+    echo "DEBUG: Initial values - successful=$successful, total=$total"
+    
     print_status "info" "Starting OpenAPI schema generation for all services..."
     echo "=================================================================="
     
@@ -202,14 +205,15 @@ generate_all_schemas() {
         
         if generate_schema "$service_name" "$service_path"; then
             results+=("✅ $service_name")
-            ((successful++))
-            echo "✅ Successfully processed $service_name"
+            successful=$((successful + 1))
+            echo "✅ Successfully processed $service_name (successful=$successful)"
         else
             results+=("❌ $service_name")
             echo "❌ Failed to process $service_name - check error messages above"
         fi
         
-        ((total++))
+        total=$((total + 1))
+        echo "DEBUG: Completed service $service_name - total=$total, successful=$successful"
         echo
     done
     
@@ -224,7 +228,11 @@ generate_all_schemas() {
     
     echo
     echo "Total: $total services"
-    echo "Success rate: $successful/$total ($(($successful * 100 / $total))%)"
+    if [[ $total -gt 0 ]]; then
+        echo "Success rate: $successful/$total ($(($successful * 100 / $total))%)"
+    else
+        echo "Success rate: 0/0 (0%)"
+    fi
     
     if [[ $successful -eq $total ]]; then
         print_status "success" "All schemas generated successfully!"
