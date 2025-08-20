@@ -96,6 +96,8 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
                 self.request_timeout = 30
                 self.log_level = 'INFO'
                 self.log_format = 'json'
+                self.office_service_url = 'http://localhost:8002'
+                self.user_service_url = 'http://localhost:8001'
         
         # Replace the Settings class temporarily
         main_module.Settings = MockSettings
@@ -227,9 +229,13 @@ class TestVespaQueryAppStartup(BaseIntegrationTest):
             class MockSettings:
                 def __init__(self):
                     self.api_frontend_vespa_query_key = 'test-key'
+                    self.api_vespa_query_office_key = 'test-office-key'
+                    self.api_vespa_query_user_key = 'test-user-key'
                     self.vespa_endpoint = 'http://localhost:8080'
                     self.log_level = 'INFO'
                     self.log_format = 'json'
+                    self.office_service_url = 'http://localhost:8002'
+                    self.user_service_url = 'http://localhost:8001'
             
             main_module.Settings = MockSettings
             
