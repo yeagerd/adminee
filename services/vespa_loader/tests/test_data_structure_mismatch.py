@@ -384,9 +384,7 @@ class TestUserIDValidation:
         from services.common.http_errors import ValidationError
 
         assert isinstance(exc_info.value, ValidationError)
-        assert "Document ID and user_id are required" in str(
-            exc_info.value
-        )
+        assert "Document ID and user_id are required" in str(exc_info.value)
 
     def test_ingest_document_rejects_missing_user_id_nested(self):
         """Test that ingest_document rejects documents without user_id in nested format."""
@@ -425,9 +423,7 @@ class TestUserIDValidation:
         from services.common.http_errors import ValidationError
 
         assert isinstance(exc_info.value, ValidationError)
-        assert "Document ID and user_id are required" in str(
-            exc_info.value
-        )
+        assert "Document ID and user_id are required" in str(exc_info.value)
 
     def test_ingest_batch_rejects_documents_without_user_id(self):
         """Test that batch ingest rejects any document without user_id."""
