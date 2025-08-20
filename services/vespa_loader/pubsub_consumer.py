@@ -581,10 +581,19 @@ class PubSubConsumer:
             # Deserialize the raw message data into the appropriate event type
             event_object = await self._deserialize_message(item, topic_name)
             if event_object is None:
-                logger.error(
-                    f"Failed to deserialize message from {topic_name}: {message_id}"
-                )
-                raise ValueError(f"Invalid message format for topic {topic_name}")
+                # This might be raw email data that needs direct processing
+                if "email" in topic_name.lower() and "backfill" in topic_name.lower():
+                    logger.info(
+                        f"Processing raw email data directly from {topic_name}: {message_id}"
+                    )
+                    # Call the ingest endpoint directly with the raw data
+                    await self._call_ingest_endpoint(item)
+                    return {"status": "processed_raw_data", "message_id": message_id}
+                else:
+                    logger.error(
+                        f"Failed to deserialize message from {topic_name}: {message_id}"
+                    )
+                    raise ValueError(f"Invalid message format for topic {topic_name}")
 
             # Call the processor with the properly typed event object
             result = await processor(event_object)
@@ -617,34 +626,44 @@ class PubSubConsumer:
             # Determine event type based on topic name and data structure
             if "email" in topic_name.lower():
                 if "backfill" in topic_name.lower():
-                    # Validate required fields for EmailBackfillEvent (including BaseEvent metadata)
-                    required_fields = [
-                        "user_id",
-                        "provider",
-                        "emails",
-                        "batch_size",
-                        "metadata",
-                    ]
-                    if not all(field in raw_data for field in required_fields):
-                        logger.error(
-                            f"Missing required fields for EmailBackfillEvent: {required_fields}"
-                        )
-                        return None
-
-                    # Create the event object with proper error handling
-                    try:
-                        return EmailBackfillEvent(**raw_data)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to create EmailBackfillEvent: {e}",
+                    # Check if this is a structured EmailBackfillEvent or a simple email data
+                    if all(
+                        field in raw_data
+                        for field in [
+                            "user_id",
+                            "provider",
+                            "emails",
+                            "batch_size",
+                            "metadata",
+                        ]
+                    ):
+                        # This is a structured EmailBackfillEvent
+                        try:
+                            return EmailBackfillEvent(**raw_data)
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to create EmailBackfillEvent: {e}",
+                                extra={
+                                    "raw_data_keys": (
+                                        list(raw_data.keys()) if raw_data else []
+                                    ),
+                                    "topic_name": topic_name,
+                                    "error_type": type(e).__name__,
+                                },
+                            )
+                            return None
+                    else:
+                        # This appears to be raw email data, wrap it in a simple event
+                        logger.info(
+                            f"Treating message as raw email data for direct processing",
                             extra={
                                 "raw_data_keys": (
                                     list(raw_data.keys()) if raw_data else []
                                 ),
                                 "topic_name": topic_name,
-                                "error_type": type(e).__name__,
                             },
                         )
+                        # Return None to skip structured event processing and handle as raw data
                         return None
                 else:
                     # Validate required fields for EmailUpdateEvent (including BaseEvent metadata)
@@ -793,10 +812,18 @@ class PubSubConsumer:
                 f"Making HTTP POST to ingest endpoint for document {message_id}"
             )
 
-            # Call the ingest endpoint
+            # Call the ingest endpoint with API key for internal service authentication
+            headers = {
+                "X-API-Key": self.settings.api_frontend_vespa_loader_key,
+                "Content-Type": "application/json",
+            }
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    self.settings.ingest_endpoint, json=document_data, timeout=30.0
+                    self.settings.ingest_endpoint,
+                    json=document_data,
+                    headers=headers,
+                    timeout=30.0,
                 )
 
                 logger.info(
@@ -831,8 +858,8 @@ class PubSubConsumer:
             "subscriptions": list(self.subscriptions.keys()),
             "subscription_details": {
                 topic: {
-                    "active": sub.get("active", False),
-                    "path": sub.get("path", "unknown"),
+                    "active": hasattr(sub, "running") and sub.running(),
+                    "type": type(sub).__name__,
                 }
                 for topic, sub in self.subscriptions.items()
             },

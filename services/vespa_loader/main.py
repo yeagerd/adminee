@@ -240,7 +240,7 @@ async def health_check() -> Dict[str, Any]:
             vespa_ok = await vespa_client.test_connection()
             health_status["components"]["vespa"] = {
                 "status": "healthy" if vespa_ok else "unhealthy",
-                "endpoint": vespa_client.endpoint,
+                "endpoint": vespa_client.vespa_endpoint,
             }
         else:
             health_status["components"]["vespa"] = {"status": "not_initialized"}
@@ -754,7 +754,7 @@ async def debug_vespa_status() -> Dict[str, Any]:
         return {
             "status": "success",
             "vespa_connection": connection_ok,
-            "vespa_endpoint": vespa_client.endpoint,
+            "vespa_endpoint": vespa_client.vespa_endpoint,
             "test_user_document_count": doc_count,
             "test_user_id": test_user_id,
         }

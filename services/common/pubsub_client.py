@@ -343,7 +343,6 @@ class PubSubConsumer:
                     flow_control=pubsub_v1.types.FlowControl(
                         max_messages=kwargs.get("max_messages", 100),
                         max_bytes=kwargs.get("max_bytes", 1024 * 1024),  # 1MB
-                        allow_exceeded_limits=False,
                     ),
                 )
 
