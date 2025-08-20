@@ -1,38 +1,32 @@
-[project]
+[tool.poetry]
 name = "briefly-vespa-query"
 version = "0.1.0"
 description = "Briefly Vespa Query Service - Query interface for hybrid search capabilities"
-requires-python = ">=3.12"
-dependencies = [
-    # Web Framework
-    "fastapi>=0.116.1,<1.0.0",
-    "uvicorn[standard]>=0.22.0,<1.0.0",
-    "pydantic==2.11.7",
-    "structlog>=25.4.0,<26.0.0",
-    # HTTP Client
-    "aiohttp>=3.9.1,<4.0.0",
-    # OpenTelemetry (compatible versions)
-    "opentelemetry-api>=1.9.0,<2.0.0",
-    "opentelemetry-sdk>=1.9.0,<2.0.0",
-    "opentelemetry-instrumentation>=0.40.0,<1.0.0",
-    "opentelemetry-instrumentation-fastapi>=0.40.0,<1.0.0",
-    "opentelemetry-distro>=0.40.0,<1.0.0",
-    "opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0",
-    # GCP
-    "google-cloud-secret-manager",
-]
+authors = ["Briefly Team"]
+readme = "README.md"
+packages = [{include = "services/vespa_query"}]
 
-[project.optional-dependencies]
-test = [
-    "pytest",
-    "pytest-asyncio",
-    "respx"
-]
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.116.1"
+uvicorn = {extras = ["standard"], version = "^0.22.0"}
+pydantic = "2.11.7"
+structlog = "^25.4.0"
+aiohttp = "^3.9.1"
+opentelemetry-api = "^1.9.0"
+opentelemetry-sdk = "^1.9.0"
+opentelemetry-instrumentation = "^0.40.0"
+opentelemetry-instrumentation-fastapi = "^0.40.0"
+opentelemetry-distro = "^0.40.0"
+opentelemetry-exporter-gcp-trace = "^1.9.0"
+google-cloud-secret-manager = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+respx = "^0.22.0"
+httpx = "^0.25.0"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["*"]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -9,13 +9,13 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 ## Tasks
 
 ### 1. Dependency Management Issues
-- [ ] Convert `pyproject.toml` from `setuptools` to `poetry` format
-- [ ] Follow the project's UV/poetry dependency management pattern
-- [ ] Organize dependencies into proper groups (dependencies, dev-dependencies)
+- [x] Convert `pyproject.toml` from `setuptools` to `poetry` format
+- [x] Follow the project's UV/poetry dependency management pattern
+- [x] Organize dependencies into proper groups (dependencies, dev-dependencies)
 
 ### 2. Missing Essential Dependencies
-- [ ] Add `httpx` for HTTP client testing (currently only has `aiohttp`)
-- [ ] Ensure all dependencies follow the version constraints from the new service guide
+- [x] Add `httpx` for HTTP client testing (currently only has `aiohttp`)
+- [x] Ensure all dependencies follow the version constraints from the new service guide
 
 ### 3. Configuration Management
 - [ ] Verify API key configuration for inter-service authentication is properly implemented
