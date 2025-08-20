@@ -666,13 +666,21 @@ class PubSubConsumer:
                         # Return None to skip structured event processing and handle as raw data
                         return None
                 else:
-                    # Validate required fields for EmailUpdateEvent (including BaseEvent metadata)
-                    required_fields = ["user_id", "email", "update_type", "metadata"]
-                    if not all(field in raw_data for field in required_fields):
+                    # Validate required fields for EmailUpdateEvent (excluding metadata for backward compatibility)
+                    required_fields = ["user_id", "email", "update_type"]
+                    missing_fields = [field for field in required_fields if field not in raw_data]
+                    if missing_fields:
                         logger.error(
-                            f"Missing required fields for EmailUpdateEvent: {required_fields}"
+                            f"Missing required fields for EmailUpdateEvent: {missing_fields}"
                         )
                         return None
+                    
+                    # Add default metadata if not present for backward compatibility
+                    if "metadata" not in raw_data:
+                        raw_data["metadata"] = {
+                            "source_service": "legacy-service",
+                            "source_version": "1.0.0"
+                        }
 
                     # Create the event object with proper error handling
                     try:
@@ -691,13 +699,21 @@ class PubSubConsumer:
                         return None
 
             elif "calendar" in topic_name.lower():
-                # Validate required fields for CalendarUpdateEvent (including BaseEvent metadata)
-                required_fields = ["user_id", "event", "update_type", "metadata"]
-                if not all(field in raw_data for field in required_fields):
+                # Validate required fields for CalendarUpdateEvent (excluding metadata for backward compatibility)
+                required_fields = ["user_id", "event", "update_type"]
+                missing_fields = [field for field in required_fields if field not in raw_data]
+                if missing_fields:
                     logger.error(
-                        f"Missing required fields for CalendarUpdateEvent: {required_fields}"
+                        f"Missing required fields for CalendarUpdateEvent: {missing_fields}"
                     )
                     return None
+                
+                # Add default metadata if not present for backward compatibility
+                if "metadata" not in raw_data:
+                    raw_data["metadata"] = {
+                        "source_service": "legacy-service",
+                        "source_version": "1.0.0"
+                    }
 
                 # Create the event object with proper error handling
                 try:
@@ -714,13 +730,21 @@ class PubSubConsumer:
                     return None
 
             elif "contact" in topic_name.lower():
-                # Validate required fields for ContactUpdateEvent (including BaseEvent metadata)
-                required_fields = ["user_id", "contact", "update_type", "metadata"]
-                if not all(field in raw_data for field in required_fields):
+                # Validate required fields for ContactUpdateEvent (excluding metadata for backward compatibility)
+                required_fields = ["user_id", "contact", "update_type"]
+                missing_fields = [field for field in required_fields if field not in raw_data]
+                if missing_fields:
                     logger.error(
-                        f"Missing required fields for ContactUpdateEvent: {required_fields}"
+                        f"Missing required fields for ContactUpdateEvent: {missing_fields}"
                     )
                     return None
+                
+                # Add default metadata if not present for backward compatibility
+                if "metadata" not in raw_data:
+                    raw_data["metadata"] = {
+                        "source_service": "legacy-service",
+                        "source_version": "1.0.0"
+                    }
 
                 # Create the event object with proper error handling
                 try:
