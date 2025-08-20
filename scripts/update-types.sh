@@ -164,13 +164,28 @@ update_all_types() {
     
     # Get list of services that have OpenAPI schemas
     local services=()
+    echo "DEBUG: Looking for services in: $PROJECT_ROOT/services/*/"
+    echo "DEBUG: Current working directory: $(pwd)"
+    echo "DEBUG: PROJECT_ROOT: $PROJECT_ROOT"
+    
     for service_dir in "$PROJECT_ROOT"/services/*/; do
-        if [[ -d "$service_dir" ]] && [[ -f "$service_dir/openapi/schema.json" ]]; then
+        echo "DEBUG: Checking service directory: $service_dir"
+        if [[ -d "$service_dir" ]]; then
             local service_name=$(basename "$service_dir")
-            services+=("$service_name")
+            echo "DEBUG: Found service directory: $service_dir (service: $service_name)"
+            
+            if [[ -f "$service_dir/openapi/schema.json" ]]; then
+                echo "DEBUG: Service $service_name has OpenAPI schema"
+                services+=("$service_name")
+            else
+                echo "DEBUG: Service $service_name missing OpenAPI schema: $service_dir/openapi/schema.json"
+            fi
+        else
+            echo "DEBUG: Not a directory: $service_dir"
         fi
     done
     
+    echo "DEBUG: Total services with OpenAPI schemas: ${#services[@]}"
     print_status "info" "Discovered ${#services[@]} services with OpenAPI schemas"
     
     # Debug: Show initial values

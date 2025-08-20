@@ -173,27 +173,34 @@ validate_all_types() {
     
     # Get list of services that have generated types
     local services=()
+    echo "DEBUG: Looking for types in: $PROJECT_ROOT/frontend/types/api/*/"
+    
     for types_dir in "$PROJECT_ROOT"/frontend/types/api/*/; do
         if [[ -d "$types_dir" ]]; then
             local service_name=$(basename "$types_dir")
             services+=("$service_name")
+            echo "DEBUG: Found types directory: $types_dir (service: $service_name)"
         fi
     done
     
+    echo "DEBUG: Total services with types found: ${#services[@]}"
+    
     if [[ ${#services[@]} -eq 0 ]]; then
-        print_status "warning" "No generated types found. Run './scripts/update-types.sh' first."
+        print_status "error" "No generated types found. Run './scripts/update-types.sh' first."
+        echo "ERROR: This means the type generation step failed or no types were created."
+        echo "ERROR: Check the output of the previous 'npm run generate-types' step."
         return 1
     fi
     
     for service_name in "${services[@]}"; do
         if validate_service_types "$service_name" "$strict" "$verbose"; then
             results+=("✅ $service_name")
-            ((successful++))
+            successful=$((successful + 1))
         else
             results+=("❌ $service_name")
         fi
         
-        ((total++))
+        total=$((total + 1))
         echo
     done
     
@@ -208,7 +215,11 @@ validate_all_types() {
     
     echo
     echo "Total: $total services"
-    echo "Success rate: $successful/$total ($(($successful * 100 / $total))%)"
+    if [[ $total -gt 0 ]]; then
+        echo "Success rate: $successful/$total ($(($successful * 100 / $total))%)"
+    else
+        echo "Success rate: 0/0 (0%)"
+    fi
     
     if [[ $successful -eq $total ]]; then
         print_status "success" "All types validated successfully!"
@@ -314,8 +325,14 @@ main() {
     fi
     
     # Check if we're in the right directory
+    echo "DEBUG: Current working directory: $(pwd)"
+    echo "DEBUG: PROJECT_ROOT: $PROJECT_ROOT"
+    echo "DEBUG: Frontend directory exists: $([[ -d "$PROJECT_ROOT/frontend" ]] && echo 'yes' || echo 'no')"
+    
     if [[ ! -d "$PROJECT_ROOT/frontend" ]]; then
         print_status "error" "This script must be run from the project root directory"
+        echo "ERROR: Expected frontend directory at: $PROJECT_ROOT/frontend"
+        echo "ERROR: Current directory: $(pwd)"
         exit 1
     fi
     
