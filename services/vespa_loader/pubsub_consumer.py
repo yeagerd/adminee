@@ -618,7 +618,13 @@ class PubSubConsumer:
             if "email" in topic_name.lower():
                 if "backfill" in topic_name.lower():
                     # Validate required fields for EmailBackfillEvent (including BaseEvent metadata)
-                    required_fields = ["user_id", "provider", "emails", "batch_size", "metadata"]
+                    required_fields = [
+                        "user_id",
+                        "provider",
+                        "emails",
+                        "batch_size",
+                        "metadata",
+                    ]
                     if not all(field in raw_data for field in required_fields):
                         logger.error(
                             f"Missing required fields for EmailBackfillEvent: {required_fields}"
@@ -632,7 +638,9 @@ class PubSubConsumer:
                         logger.error(
                             f"Failed to create EmailBackfillEvent: {e}",
                             extra={
-                                "raw_data_keys": list(raw_data.keys()) if raw_data else [],
+                                "raw_data_keys": (
+                                    list(raw_data.keys()) if raw_data else []
+                                ),
                                 "topic_name": topic_name,
                                 "error_type": type(e).__name__,
                             },
@@ -654,7 +662,9 @@ class PubSubConsumer:
                         logger.error(
                             f"Failed to create EmailUpdateEvent: {e}",
                             extra={
-                                "raw_data_keys": list(raw_data.keys()) if raw_data else [],
+                                "raw_data_keys": (
+                                    list(raw_data.keys()) if raw_data else []
+                                ),
                                 "topic_name": topic_name,
                                 "error_type": type(e).__name__,
                             },
