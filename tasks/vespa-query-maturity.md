@@ -18,9 +18,9 @@ The `vespa_query` service is well-structured but needs alignment with the projec
 - [x] Ensure all dependencies follow the version constraints from the new service guide
 
 ### 3. Configuration Management
-- [ ] Verify API key configuration for inter-service authentication is properly implemented
-- [ ] Add service URL configuration for inter-service communication
-- [ ] Ensure all configuration follows the `services.common.settings` pattern
+- [x] Verify API key configuration for inter-service authentication is properly implemented
+- [x] Add service URL configuration for inter-service communication
+- [x] Ensure all configuration follows the `services.common.settings` pattern
 
 ### 4. Service Registration Incomplete
 - [ ] Add service to environment variable scripts

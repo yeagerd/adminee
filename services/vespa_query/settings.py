@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     enable_user_isolation: bool = Field(default=True, env="ENABLE_USER_ISOLATION")
     max_query_length: int = Field(default=1000, env="MAX_QUERY_LENGTH")
 
+    # API Key configuration for inter-service authentication
+    api_frontend_vespa_query_key: str = Field(..., env="API_FRONTEND_VESPA_QUERY_KEY")
+    api_vespa_query_user_key: str = Field(..., env="API_VESPA_QUERY_USER_KEY")
+    api_vespa_query_office_key: str = Field(..., env="API_VESPA_QUERY_OFFICE_KEY")
+
+    # Service URLs for inter-service communication
+    vespa_loader_url: str = Field(default="http://localhost:9001", env="VESPA_LOADER_URL")
+    office_service_url: str = Field(default="http://localhost:8003", env="OFFICE_SERVICE_URL")
+    user_service_url: str = Field(default="http://localhost:8001", env="USER_SERVICE_URL")
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
