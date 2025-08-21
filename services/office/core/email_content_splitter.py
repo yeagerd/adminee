@@ -15,6 +15,10 @@ from typing import Any, Dict, Optional
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, PageElement, Tag
 
+from services.common.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 class EmailContentSplitter:
     """Splits email content into visible and quoted parts"""
