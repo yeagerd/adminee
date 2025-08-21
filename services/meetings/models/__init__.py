@@ -47,8 +47,8 @@ def get_engine() -> "Engine":
             if _engine is None:
                 db_url = get_settings().db_url_meetings
                 _engine = create_engine(
-                    db_url, 
-                    echo=False, 
+                    db_url,
+                    echo=False,
                     future=True,
                     # Add connection pool settings to prevent connection exhaustion
                     pool_size=10,
