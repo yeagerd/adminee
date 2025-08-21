@@ -10,13 +10,12 @@ from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.common.http_errors import (
     AuthError,
     ErrorCode,
-    NotFoundError,
     RateLimitError,
     ServiceError,
     ValidationError,
@@ -148,96 +147,7 @@ async def ingest_document_service(
         )
 
 
-async def ingest_batch_documents_service(
-    documents: list[Dict[str, Any]], run_background_tasks: bool = True
-) -> Dict[str, Any]:
-    """Shared service function to ingest multiple documents in batch
 
-    This function can be called directly by other parts of the service
-    or through the HTTP API endpoints.
-
-    Args:
-        documents: List of document data to ingest
-        run_background_tasks: Whether to run background post-processing tasks
-
-    Returns:
-        Dict containing the batch ingestion results
-
-    Raises:
-        ServiceError: If the service is not properly initialized
-    """
-    if not all(
-        [vespa_client, content_normalizer, embedding_generator, document_mapper]
-    ):
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
-    try:
-        results = []
-        errors = []
-
-        for doc in documents:
-            try:
-                # Map document to Vespa format
-                if not document_mapper:
-                    raise ServiceError(
-                        "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
-                    )
-                vespa_document = document_mapper.map_to_vespa(doc)
-
-                # Normalize content
-                if vespa_document.get("content") and content_normalizer:
-                    vespa_document["content"] = content_normalizer.normalize(
-                        vespa_document["content"]
-                    )
-
-                # Generate embeddings if content exists
-                if vespa_document.get("content") and embedding_generator:
-                    try:
-                        embedding = await embedding_generator.generate_embedding(
-                            vespa_document["content"]
-                        )
-                        vespa_document["embedding"] = embedding
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to generate embedding for document {doc.get('id')}: {e}"
-                        )
-                        # Continue without embedding
-
-                # Index document in Vespa
-                if not vespa_client:
-                    raise ServiceError(
-                        "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
-                    )
-                result = await vespa_client.index_document(vespa_document)
-
-                results.append(
-                    {"id": doc.get("id"), "status": "success", "result": result}
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Error processing document {doc.get('id', 'unknown')}: {e}"
-                )
-                errors.append({"id": doc.get("id"), "status": "error", "error": str(e)})
-
-        return {
-            "status": "completed",
-            "total_documents": len(documents),
-            "successful": len(results),
-            "failed": len(errors),
-            "results": results,
-            "errors": errors,
-        }
-
-    except Exception as e:
-        logger.error(f"Error in batch ingestion: {e}")
-        raise ServiceError(
-            "Batch ingestion failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
 
 
 class RateLimiter:
@@ -494,7 +404,6 @@ async def root() -> Dict[str, str]:
 @app.post("/ingest")
 async def ingest_document(
     document_data: Dict[str, Any],
-    background_tasks: BackgroundTasks,
     api_key: str = Depends(check_rate_limit),
 ) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
@@ -504,9 +413,8 @@ async def ingest_document(
             document_data, run_background_tasks=False
         )
 
-        # Add background task for post-processing
-        background_tasks.add_task(
-            _post_process_document,
+        # Run post-processing synchronously since we removed background tasks
+        await _post_process_document(
             document_id=document_data["id"],
             user_id=document_data["user_id"],
         )
@@ -528,42 +436,7 @@ async def ingest_document(
         )
 
 
-@app.post("/ingest/batch")
-async def ingest_batch_documents(
-    documents: list[Dict[str, Any]],
-    background_tasks: BackgroundTasks,
-    api_key: str = Depends(check_rate_limit),
-) -> Dict[str, Any]:
-    """Ingest multiple documents in batch"""
-    try:
-        # Call the shared service function
-        result = await ingest_batch_documents_service(
-            documents, run_background_tasks=False
-        )
 
-        # Add background task for batch post-processing
-        if result.get("successful", 0) > 0:
-            background_tasks.add_task(
-                _post_process_batch,
-                successful_docs=result["successful"],
-                failed_docs=result["failed"],
-            )
-
-        return result
-
-    except ValidationError:
-        # Re-raise ValidationError to preserve specific error details
-        raise
-    except ServiceError:
-        # Re-raise ServiceError to preserve specific error details
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error in batch ingestion: {e}")
-        raise ServiceError(
-            "Batch ingestion failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
 
 
 def _flatten_office_router_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -652,104 +525,7 @@ async def process_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
-@app.delete("/document/{user_id}/{document_id}")
-async def delete_document(user_id: str, document_id: str) -> Dict[str, Any]:
-    """Delete a document from Vespa"""
-    if not vespa_client:
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
 
-    try:
-        result = await vespa_client.delete_document(document_id, user_id)
-        return {"status": "success", "document_id": document_id, "deleted": result}
-
-    except Exception as e:
-        logger.error(f"Error deleting document: {e}")
-        raise ServiceError(
-            "Document deletion failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
-
-
-@app.get("/document/{user_id}/{document_id}")
-async def get_document(user_id: str, document_id: str) -> Dict[str, Any]:
-    """Get a document from Vespa"""
-    if not vespa_client:
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
-    try:
-        document = await vespa_client.get_document(document_id, user_id)
-        if document is None:
-            raise NotFoundError("Document", document_id)
-
-        return {"status": "success", "document": document}
-
-    except (NotFoundError, ServiceError):
-        raise
-    except Exception as e:
-        logger.error(f"Error getting document: {e}")
-        raise ServiceError(
-            "Document retrieval failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
-
-
-@app.get("/search/{user_id}")
-async def search_documents(
-    user_id: str, query: str = "", limit: int = 10
-) -> Dict[str, Any]:
-    """Search documents for a user"""
-    if not vespa_client:
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
-    try:
-        results = await vespa_client.search_documents(query, user_id, limit)
-        return {
-            "status": "success",
-            "query": query,
-            "user_id": user_id,
-            "results": results,
-        }
-
-    except Exception as e:
-        logger.error(f"Error searching documents: {e}")
-        raise ServiceError(
-            "Document search failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
-
-
-@app.get("/stats/{user_id}")
-async def get_user_stats(user_id: str) -> Dict[str, Any]:
-    """Get statistics for a user"""
-    if not vespa_client:
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
-    try:
-        document_count = await vespa_client.get_document_count(user_id)
-        return {
-            "status": "success",
-            "user_id": user_id,
-            "document_count": document_count,
-        }
-
-    except Exception as e:
-        logger.error(f"Error getting user stats: {e}")
-        raise ServiceError(
-            "User stats retrieval failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
 
 
 async def _post_process_document(document_id: str, user_id: str) -> None:
@@ -762,16 +538,7 @@ async def _post_process_document(document_id: str, user_id: str) -> None:
         logger.error(f"Error in post-processing document {document_id}: {e}")
 
 
-async def _post_process_batch(successful_docs: int, failed_docs: int) -> None:
-    """Post-process a batch of documents"""
-    try:
-        logger.info(
-            f"Post-processing batch: {successful_docs} successful, {failed_docs} failed"
-        )
-        # Add any batch post-processing logic here
-        # For example: update analytics, send notifications, etc.
-    except Exception as e:
-        logger.error(f"Error in batch post-processing: {e}")
+
 
 
 @app.get("/debug/pubsub")
@@ -838,33 +605,7 @@ async def debug_trigger_pubsub_processing(
         return {"status": "error", "message": str(e)}
 
 
-@app.get("/debug/vespa")
-async def debug_vespa_status() -> Dict[str, Any]:
-    """Debug endpoint to check Vespa connection and stats"""
-    if not vespa_client:
-        return {"status": "error", "message": "Vespa client not initialized"}
 
-    try:
-        # Test Vespa connection
-        connection_ok = await vespa_client.test_connection()
-
-        # Get document count for test user
-        test_user_id = "trybriefly@outlook.com"
-        try:
-            doc_count = await vespa_client.get_document_count(test_user_id)
-        except Exception as e:
-            doc_count = f"error: {str(e)}"
-
-        return {
-            "status": "success",
-            "vespa_connection": connection_ok,
-            "vespa_endpoint": vespa_client.vespa_endpoint,
-            "test_user_document_count": doc_count,
-            "test_user_id": test_user_id,
-        }
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":
