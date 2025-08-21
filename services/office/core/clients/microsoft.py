@@ -1,7 +1,10 @@
 from typing import Any, Dict, Optional
 
+from services.common.logging_config import get_logger
 from services.office.core.clients.base import BaseAPIClient
 from services.office.models import Provider
+
+logger = get_logger(__name__)
 
 
 def escape_odata_string_literal(value: str) -> str:
