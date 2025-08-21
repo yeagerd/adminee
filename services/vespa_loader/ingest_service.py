@@ -91,6 +91,7 @@ async def ingest_document_service(
             except Exception as e:
                 # Log warning but continue without embedding
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to generate embedding: {e}")
 
@@ -112,6 +113,7 @@ async def ingest_document_service(
         raise
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(f"Error ingesting document: {e}")
         raise ServiceError(

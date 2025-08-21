@@ -126,14 +126,20 @@ except ImportError:
 class PubSubConsumer:
     """Consumes messages from Pub/Sub topics for Vespa indexing"""
 
-    def __init__(self, settings: Settings, vespa_client: Any = None, content_normalizer: Any = None, 
-                 embedding_generator: Any = None, document_mapper: Any = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        vespa_client: Any = None,
+        content_normalizer: Any = None,
+        embedding_generator: Any = None,
+        document_mapper: Any = None,
+    ) -> None:
         self.settings = settings
         self.vespa_client = vespa_client
         self.content_normalizer = content_normalizer
         self.embedding_generator = embedding_generator
         self.document_mapper = document_mapper
-        
+
         self.subscriber: Optional[Any] = None
         self.subscriptions: Dict[str, Dict[str, Any]] = {}
         self.running = False
@@ -186,13 +192,17 @@ class PubSubConsumer:
             elif topic_name == "calendar-updates":
                 # Try to determine if it's a single update or batch
                 if "events" in raw_data:
-                    calendar_batch_event: CalendarBatchEvent = CalendarBatchEvent(**raw_data)
+                    calendar_batch_event: CalendarBatchEvent = CalendarBatchEvent(
+                        **raw_data
+                    )
                     logger.debug(
                         f"Parsed as CalendarBatchEvent: message_id={message_id}, user_id={calendar_batch_event.user_id}, events={len(calendar_batch_event.events)}"
                     )
                     return calendar_batch_event
                 else:
-                    calendar_event: CalendarUpdateEvent = CalendarUpdateEvent(**raw_data)
+                    calendar_event: CalendarUpdateEvent = CalendarUpdateEvent(
+                        **raw_data
+                    )
                     logger.debug(
                         f"Parsed as CalendarUpdateEvent: message_id={message_id}, user_id={calendar_event.user_id}, event_id={calendar_event.event.id}"
                     )
@@ -200,7 +210,9 @@ class PubSubConsumer:
             elif topic_name == "contact-updates":
                 # Try to determine if it's a single update or batch
                 if "contacts" in raw_data:
-                    contact_batch_event: ContactBatchEvent = ContactBatchEvent(**raw_data)
+                    contact_batch_event: ContactBatchEvent = ContactBatchEvent(
+                        **raw_data
+                    )
                     logger.debug(
                         f"Parsed as ContactBatchEvent: message_id={message_id}, user_id={contact_batch_event.user_id}, contacts={len(contact_batch_event.contacts)}"
                     )
@@ -824,11 +836,11 @@ class PubSubConsumer:
             # Call the ingest service directly
             logger.info(f"Calling ingest service for document {document.id}")
             result = await ingest_document_service(
-                document.to_dict(), 
-                self.vespa_client, 
-                self.content_normalizer, 
-                self.embedding_generator, 
-                self.document_mapper
+                document.to_dict(),
+                self.vespa_client,
+                self.content_normalizer,
+                self.embedding_generator,
+                self.document_mapper,
             )
 
             # Run post-processing tasks directly since we're not in a FastAPI context

@@ -12,12 +12,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from services.vespa_loader.pubsub_consumer import PubSubConsumer
-from services.vespa_loader.content_normalizer import ContentNormalizer
-from services.vespa_loader.embeddings import EmbeddingGenerator
-from services.vespa_loader.mapper import DocumentMapper
-from services.vespa_loader.vespa_client import VespaClient
-from services.vespa_loader.ingest_service import ingest_document_service
 
 from services.common.http_errors import (
     AuthError,
@@ -35,7 +29,13 @@ from services.common.logging_config import (
     setup_service_logging,
 )
 from services.common.telemetry import get_tracer, setup_telemetry
+from services.vespa_loader.content_normalizer import ContentNormalizer
+from services.vespa_loader.embeddings import EmbeddingGenerator
+from services.vespa_loader.ingest_service import ingest_document_service
+from services.vespa_loader.mapper import DocumentMapper
+from services.vespa_loader.pubsub_consumer import PubSubConsumer
 from services.vespa_loader.types import VespaDocumentType
+from services.vespa_loader.vespa_client import VespaClient
 
 # Setup telemetry
 setup_telemetry("vespa-loader", "1.0.0")
@@ -54,6 +54,7 @@ pubsub_consumer: PubSubConsumer | None = None
 
 # The ingest_document_service function has been moved to ingest_service.py
 # to avoid circular imports
+
 
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
@@ -182,11 +183,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not settings.disable_pubsub_consumer:
         try:
             pubsub_consumer = PubSubConsumer(
-                settings, 
-                vespa_client, 
-                content_normalizer, 
-                embedding_generator, 
-                document_mapper
+                settings,
+                vespa_client,
+                content_normalizer,
+                embedding_generator,
+                document_mapper,
             )
             success = await pubsub_consumer.start()
             if success:
@@ -321,7 +322,11 @@ async def ingest_document(
     try:
         # Call the shared service function
         result = await ingest_document_service(
-            document_data, vespa_client, content_normalizer, embedding_generator, document_mapper
+            document_data,
+            vespa_client,
+            content_normalizer,
+            embedding_generator,
+            document_mapper,
         )
 
         # Run post-processing synchronously since we removed background tasks
