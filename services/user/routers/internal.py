@@ -269,30 +269,38 @@ async def check_user_exists(
     """
     try:
         email_request = EmailResolutionRequest(email=email, provider=provider)
-        resolution_result = await get_user_service().resolve_email_to_user_id(
-            email_request
+
+        # Get user service instance
+        user_service = get_user_service()
+
+        # Import the email collision detector for normalization
+        from services.user.utils.email_collision import EmailCollisionDetector
+
+        detector = EmailCollisionDetector()
+
+        # Use the optimized method that returns the full user object directly
+        # This avoids the second database query
+        user = await user_service._find_user_by_normalized_email(
+            detector._simple_email_normalize(email)
         )
 
-        # Get full user data to return additional info
-        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
-            resolution_result.external_auth_id
-        )
+        if user:
+            return {
+                "exists": True,
+                "user_id": user.external_auth_id,
+                "provider": user.auth_provider,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            }
+        else:
+            return {
+                "exists": False,
+                "user_id": None,
+                "provider": provider,
+                "email": email,
+            }
 
-        return {
-            "exists": True,
-            "user_id": user.external_auth_id,
-            "provider": user.auth_provider,
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-        }
-    except NotFoundError:
-        return {
-            "exists": False,
-            "user_id": None,
-            "provider": provider,
-            "email": email,
-        }
     except ValidationError as e:
         logger.warning(f"User existence check failed - validation error: {e.message}")
         raise e
@@ -340,15 +348,22 @@ async def get_user_by_email_internal(
         # Create email resolution request (reusing existing internal logic)
         email_request = EmailResolutionRequest(email=email, provider=provider)
 
-        # Use existing resolution service (abstracts normalization)
-        resolution_result = await get_user_service().resolve_email_to_user_id(
-            email_request
+        # Get user service instance
+        user_service = get_user_service()
+
+        # Import the email collision detector for normalization
+        from services.user.utils.email_collision import EmailCollisionDetector
+
+        detector = EmailCollisionDetector()
+
+        # Use the optimized method that returns the full user object directly
+        # This avoids the second database query
+        user = await user_service._find_user_by_normalized_email(
+            detector._simple_email_normalize(email)
         )
 
-        # Get full user data to return
-        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
-            resolution_result.external_auth_id
-        )
+        if not user:
+            raise NotFoundError(resource="User", identifier=f"email:{email}")
 
         user_response = UserResponse.from_orm(user)
 
@@ -409,24 +424,42 @@ async def create_or_upsert_user_internal(
         )
 
         try:
-            # Use the same resolution logic as GET endpoint
-            resolution_result = await get_user_service().resolve_email_to_user_id(
-                email_request
+            # Get user service instance
+            user_service = get_user_service()
+
+            # Import the email collision detector for normalization
+            from services.user.utils.email_collision import EmailCollisionDetector
+
+            detector = EmailCollisionDetector()
+
+            # Use the optimized method that returns the full user object directly
+            # This avoids the second database query
+            existing_user = await user_service._find_user_by_normalized_email(
+                detector._simple_email_normalize(user_data.email)
             )
 
-            # Get full user data to return
-            existing_user = (
-                await get_user_service().get_user_by_external_auth_id_auto_detect(
-                    resolution_result.external_auth_id
+            if existing_user:
+                user_response = UserResponse.from_orm(existing_user)
+
+                logger.debug(
+                    f"Found existing user for email {user_data.email} with provider {user_data.auth_provider}: {existing_user.external_auth_id}"
                 )
-            )
-            user_response = UserResponse.from_orm(existing_user)
+                # Return existing user with created=False
+                return UserCreateResponse(user=user_response, created=False)
+            else:
+                # User doesn't exist, create new one
+                logger.debug(
+                    f"User not found for email {user_data.email}, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+                )
 
-            logger.debug(
-                f"Found existing user for email {user_data.email} with provider {user_data.auth_provider}: {existing_user.external_auth_id}"
-            )
-            # Return existing user with created=False
-            return UserCreateResponse(user=user_response, created=False)
+                new_user = await user_service.create_user(user_data)
+                user_response = UserResponse.from_orm(new_user)
+
+                logger.debug(
+                    f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+                )
+                # Return new user with created=True
+                return UserCreateResponse(user=user_response, created=True)
 
         except NotFoundError:
             # User doesn't exist, create new one
@@ -434,7 +467,7 @@ async def create_or_upsert_user_internal(
                 f"User not found for email {user_data.email}, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
             )
 
-            new_user = await get_user_service().create_user(user_data)
+            new_user = await user_service.create_user(user_data)
             user_response = UserResponse.from_orm(new_user)
 
             logger.debug(
