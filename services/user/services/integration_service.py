@@ -83,9 +83,11 @@ class IntegrationService:
             NotFoundException: If user not found
         """
         try:
-            # Verify user exists
+            # Use a single database session for all operations with timeout protection
             async_session = get_async_session()
             async with async_session() as session:
+
+                # Verify user exists
                 result = await session.execute(
                     select(User).where(User.external_auth_id == user_id)
                 )
@@ -93,9 +95,7 @@ class IntegrationService:
                 if not user:
                     raise NotFoundError(resource="User", identifier=str(user_id))
 
-            # Build query for integrations within the same session
-            async_session = get_async_session()
-            async with async_session() as session:
+                # Build query for integrations within the same session
                 query = select(Integration).where(Integration.user_id == user.id)
 
                 if provider:
