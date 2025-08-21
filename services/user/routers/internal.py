@@ -423,45 +423,29 @@ async def create_or_upsert_user_internal(
             email=user_data.email, provider=user_data.auth_provider
         )
 
-        try:
-            # Get user service instance
-            user_service = get_user_service()
+        # Get user service instance
+        user_service = get_user_service()
 
-            # Import the email collision detector for normalization
-            from services.user.utils.email_collision import EmailCollisionDetector
+        # Import the email collision detector for normalization
+        from services.user.utils.email_collision import EmailCollisionDetector
 
-            detector = EmailCollisionDetector()
+        detector = EmailCollisionDetector()
 
-            # Use the optimized method that returns the full user object directly
-            # This avoids the second database query
-            existing_user = await user_service._find_user_by_normalized_email(
-                detector._simple_email_normalize(user_data.email)
+        # Use the optimized method that returns the full user object directly
+        # This avoids the second database query
+        existing_user = await user_service._find_user_by_normalized_email(
+            detector._simple_email_normalize(user_data.email)
+        )
+
+        if existing_user:
+            user_response = UserResponse.from_orm(existing_user)
+
+            logger.debug(
+                f"Found existing user for email {user_data.email} with provider {user_data.auth_provider}: {existing_user.external_auth_id}"
             )
-
-            if existing_user:
-                user_response = UserResponse.from_orm(existing_user)
-
-                logger.debug(
-                    f"Found existing user for email {user_data.email} with provider {user_data.auth_provider}: {existing_user.external_auth_id}"
-                )
-                # Return existing user with created=False
-                return UserCreateResponse(user=user_response, created=False)
-            else:
-                # User doesn't exist, create new one
-                logger.debug(
-                    f"User not found for email {user_data.email}, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
-                )
-
-                new_user = await user_service.create_user(user_data)
-                user_response = UserResponse.from_orm(new_user)
-
-                logger.debug(
-                    f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
-                )
-                # Return new user with created=True
-                return UserCreateResponse(user=user_response, created=True)
-
-        except NotFoundError:
+            # Return existing user with created=False
+            return UserCreateResponse(user=user_response, created=False)
+        else:
             # User doesn't exist, create new one
             logger.debug(
                 f"User not found for email {user_data.email}, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
@@ -475,6 +459,7 @@ async def create_or_upsert_user_internal(
             )
             # Return new user with created=True
             return UserCreateResponse(user=user_response, created=True)
+
 
     except ValidationError as e:
         logger.error(f"Validation error during user creation: {e.message}")
