@@ -457,7 +457,7 @@ wait_for_document_count_stable() {
     local last_count=-1
     local stable_count=0
     local required_stable_checks=3  # Need 3 consecutive stable readings
-    current_count="unknown"  # Initialize current_count to prevent undefined variable errors
+    local current_count="unknown"  # Initialize current_count to prevent undefined variable errors
     
     # Handle case where max_wait_time is 0 (no waiting)
     if [[ $max_wait_time -eq 0 ]]; then
@@ -472,7 +472,7 @@ wait_for_document_count_stable() {
             -H "Content-Type: application/json" \
             -d "{\"yql\": \"select * from briefly_document where true\", \"hits\": 1, \"streaming.groupname\": \"$group_id\"}")
         
-        # Update current_count variable (already declared as local above)
+        # Update current_count variable
         current_count=$(echo "$search_response" | python3 -c "
 import json
 import sys
