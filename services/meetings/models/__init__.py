@@ -146,22 +146,48 @@ async def create_all_tables_for_testing() -> None:
 
 
 async def close_db() -> None:
-    """Close database connections."""
+    """Close database connections in a thread-safe manner."""
     global _engine, _async_engine, _session_maker, _async_session_maker
-    if _async_engine:
-        await _async_engine.dispose()
-        _async_engine = None
-        _async_session_maker = None
-    if _engine:
-        _engine.dispose()
-        _engine = None
-        _session_maker = None
+    # Capture references under locks and clear globals first to avoid awaiting while holding locks
+    async_engine_to_dispose: Optional[AsyncEngine] = None
+    engine_to_dispose: Optional[Engine] = None
+
+    # Async path: clear globals under locks in sessionmaker -> engine order
+    with _async_session_maker_lock:
+        with _async_engine_lock:
+            if _async_engine is not None:
+                async_engine_to_dispose = _async_engine
+                _async_engine = None
+                _async_session_maker = None
+
+    # Sync path: clear globals under locks in sessionmaker -> engine order
+    with _session_maker_lock:
+        with _engine_lock:
+            if _engine is not None:
+                engine_to_dispose = _engine
+                _engine = None
+                _session_maker = None
+
+    # Now dispose outside of locks
+    if async_engine_to_dispose is not None:
+        await async_engine_to_dispose.dispose()
+    if engine_to_dispose is not None:
+        engine_to_dispose.dispose()
 
 
 def reset_db() -> None:
-    """Reset database connections (useful for testing)."""
+    """Reset database connections (useful for testing) in a thread-safe manner.
+
+    Does not dispose engines; use close_db() when disposing is required.
+    """
     global _engine, _async_engine, _session_maker, _async_session_maker
-    _engine = None
-    _async_engine = None
-    _session_maker = None
-    _async_session_maker = None
+    # Reset async globals under locks (sessionmaker -> engine order)
+    with _async_session_maker_lock:
+        with _async_engine_lock:
+            _async_session_maker = None
+            _async_engine = None
+    # Reset sync globals under locks (sessionmaker -> engine order)
+    with _session_maker_lock:
+        with _engine_lock:
+            _session_maker = None
+            _engine = None
