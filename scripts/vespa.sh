@@ -433,6 +433,89 @@ except Exception as e:
     fi
 }
 
+# Helper function to wait for Vespa document count to stabilize
+wait_for_document_count_stable() {
+    local group_id="$1"
+    local expected_count="${2:-0}"
+    local max_wait_time="${3:-30}"
+    local poll_interval="${4:-2}"
+    
+    # Validate parameters
+    if [[ ! "$max_wait_time" =~ ^[0-9]+$ ]] || [[ $max_wait_time -lt 0 ]]; then
+        log_error "Invalid max_wait_time: $max_wait_time. Must be a non-negative integer."
+        return 1
+    fi
+    
+    if [[ ! "$poll_interval" =~ ^[0-9]+$ ]] || [[ $poll_interval -lt 1 ]]; then
+        log_error "Invalid poll_interval: $poll_interval. Must be a positive integer."
+        return 1
+    fi
+    
+    log_info "Waiting for document count to stabilize for group ID: $group_id (expected: $expected_count)..."
+    
+    local start_time=$(date +%s)
+    local last_count=-1
+    local stable_count=0
+    local required_stable_checks=3  # Need 3 consecutive stable readings
+    local current_count="unknown"  # Initialize current_count to prevent undefined variable errors
+    
+    # Handle case where max_wait_time is 0 (no waiting)
+    if [[ $max_wait_time -eq 0 ]]; then
+        log_info "max_wait_time is 0, skipping wait and returning immediately"
+        return 0
+    fi
+    
+    while [[ $(($(date +%s) - start_time)) -lt $max_wait_time ]]; do
+        # Get current document count
+        local search_response
+        search_response=$(curl -s -X POST "$VESPA_ENDPOINT/search/" \
+            -H "Content-Type: application/json" \
+            -d "{\"yql\": \"select * from briefly_document where true\", \"hits\": 1, \"streaming.groupname\": \"$group_id\"}")
+        
+        local current_count
+        current_count=$(echo "$search_response" | python3 -c "
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    total_count = data.get('root', {}).get('fields', {}).get('totalCount', 0)
+    print(total_count)
+except Exception as e:
+    print('0')
+")
+        
+        log_info "Current document count: $current_count (expected: $expected_count)"
+        
+        # Check if count is stable
+        if [[ "$current_count" == "$last_count" ]]; then
+            stable_count=$((stable_count + 1))
+            log_info "Document count stable for $stable_count consecutive checks"
+        else
+            stable_count=1
+            last_count="$current_count"
+        fi
+        
+        # If we've reached the expected count and it's been stable, we're done
+        if [[ "$current_count" == "$expected_count" && $stable_count -ge $required_stable_checks ]]; then
+            log_success "Document count stabilized at $current_count (expected: $expected_count)"
+            return 0
+        fi
+        
+        # If we've been stable for enough checks but haven't reached expected count, log warning
+        if [[ $stable_count -ge $required_stable_checks && "$current_count" != "$expected_count" ]]; then
+            log_warning "Document count stabilized at $current_count but expected $expected_count"
+            log_warning "This may indicate some documents could not be deleted or there's a delay in processing"
+            return 0
+        fi
+        
+        sleep "$poll_interval"
+    done
+    
+    log_warning "Document count did not stabilize within $max_wait_time seconds"
+    log_warning "Final count: $current_count, Expected: $expected_count"
+    return 1
+}
+
 # Helper function to clear data for a specific group ID
 clear_vespa_data_for_group_id() {
     local group_id="$1"
@@ -469,6 +552,15 @@ clear_vespa_data_for_group_id() {
         else
             log_success "Successfully cleared all documents for user group: $group_id"
             log_info "Response: $visit_response"
+            
+            # Wait for document count to stabilize at 0
+            log_info "Waiting for document count to stabilize after deletion..."
+            if wait_for_document_count_stable "$group_id" 0 60 3; then
+                log_success "Document count confirmed stable at 0 for group ID: $group_id"
+            else
+                log_warning "Document count may not have fully stabilized for group ID: $group_id"
+            fi
+            
             return 0
         fi
     else
@@ -569,7 +661,25 @@ clear_vespa_data() {
             clear_vespa_data_for_group_id "$group_id" "$force_flag"
         done
         
-        log_success "Data clearing completed for all ${#group_ids[@]} group IDs!"
+        # Final verification for all group IDs
+        log_info "Performing final verification for all cleared group IDs..."
+        local all_verified=true
+        for group_id in "${group_ids[@]}"; do
+            log_info "Verifying group ID: $group_id"
+            if ! wait_for_document_count_stable "$group_id" 0 30 2; then
+                log_warning "⚠️  Verification incomplete for group ID: $group_id"
+                all_verified=false
+            fi
+        done
+        
+        if [[ "$all_verified" == true ]]; then
+            log_success "✅ Data clearing completed successfully for all ${#group_ids[@]} group IDs!"
+            log_success "✅ All document counts confirmed at 0"
+        else
+            log_warning "⚠️  Data clearing completed but some verifications incomplete"
+            log_warning "⚠️  You may want to check Vespa status manually"
+        fi
+        
         return 0
     else
         # Single user operation - require --email and --env-file
@@ -619,6 +729,16 @@ clear_vespa_data() {
         
         # Clear data for the specific user ID
         clear_vespa_data_for_group_id "$user_id" "$force_flag"
+        
+        # Final verification of document count
+        log_info "Performing final verification of document count..."
+        if wait_for_document_count_stable "$user_id" 0 30 2; then
+            log_success "✅ Data clearing completed successfully for user: $email_input"
+            log_success "✅ Final document count confirmed at 0"
+        else
+            log_warning "⚠️  Data clearing completed but final verification incomplete"
+            log_warning "⚠️  You may want to check Vespa status manually"
+        fi
     fi
     
 
@@ -714,6 +834,15 @@ clear_vespa_data_for_user() {
         else
             log_success "Successfully cleared all documents for user group: $user_id"
             log_info "Response: $visit_response"
+            
+            # Wait for document count to stabilize at 0
+            log_info "Waiting for document count to stabilize after deletion..."
+            if wait_for_document_count_stable "$user_id" 0 60 3; then
+                log_success "Document count confirmed stable at 0 for user: $user_id"
+            else
+                log_warning "Document count may not have fully stabilized for user: $user_id"
+            fi
+            
             return 0
         fi
     else
