@@ -172,7 +172,11 @@ class TestEmailNormalization:
 
 @pytest_asyncio.fixture(scope="function")
 async def db_setup(monkeypatch):
-    db_fd, db_path = tempfile.mkstemp(suffix=".db")
+    # Create a temporary file using NamedTemporaryFile with delete=False
+    temp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    db_path = temp_file.name
+    temp_file.close()  # Close the file handle so SQLite can use it
+
     os.environ["DB_URL_USER"] = f"sqlite+aiosqlite:///{db_path}"
 
     # Patch the global _settings variable to include required API keys
@@ -189,13 +193,20 @@ async def db_setup(monkeypatch):
     )
     monkeypatch.setattr("services.user.settings._settings", test_settings)
 
+    # Reset database connections to pick up new settings
+    from services.user.database import reset_db, reset_settings
+
+    reset_settings()
+    await reset_db()
+
     # Initialize database schema for testing
     from services.user.database import create_all_tables_for_testing
 
     await create_all_tables_for_testing()
     yield
-    os.close(db_fd)
-    os.unlink(db_path)
+    # Clean up the temporary database file
+    if os.path.exists(db_path):
+        os.unlink(db_path)
 
 
 @pytest_asyncio.fixture(scope="function")
