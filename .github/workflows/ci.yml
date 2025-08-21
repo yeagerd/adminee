@@ -107,10 +107,10 @@ jobs:
           echo "📋 Detailed schema status:"
           
           # Services that should have OpenAPI schemas
-          local EXCLUDED_SERVICES="common vector_db email_sync demos vespa_loader briefly.egg-info __pycache__"
-          local missing_schemas=()
-          local total_expected=0
-          local total_found=0
+          EXCLUDED_SERVICES="common vector_db email_sync demos vespa_loader briefly.egg-info __pycache__"
+          missing_schemas=()
+          total_expected=0
+          total_found=0
           
           for service in services/*/; do
             if [[ -d "$service" ]]; then
