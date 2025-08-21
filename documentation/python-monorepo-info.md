@@ -1,6 +1,6 @@
 # Shared Packages Setup for Briefly Services
 
-This document explains the setup for shared `common` and `vector_db` packages across all services in the Briefly project.
+This document explains the setup for shared `common` package across all services in the Briefly project.
 
 ## Overview
 
@@ -27,19 +27,18 @@ This script will:
 
 ### 1. Package Structure
 - `services/common/`: Contains telemetry and shared utilities
-- `services/vector_db/`: Contains vector database utilities (Pinecone client, indexing)
+
 
 ### 2. Setup Files Created
 - `services/common/setup.py`: Makes common installable as a package
-- `services/vector_db/setup.py`: Makes vector_db installable as `vector_db` package
-- `services/vector_db/__init__.py`: Makes the directory a proper Python package
+
 
 ### 3. VS Code Configuration
 Each service's `.vscode/settings.json` includes:
 ```json
 {
   "python.defaultInterpreterPath": "venv/bin/python",
-  "python.analysis.extraPaths": ["../common", "../vector_db"]
+  "python.analysis.extraPaths": ["../common"]
 }
 ```
 
@@ -48,7 +47,7 @@ The VS Code workspace (`briefly.code-workspace`) includes:
 - Root directory (`.`) for running `tox` and accessing shared configurations
 - Individual service directories for development
 
-**Important**: `services/common` and `services/vector_db` are NOT included as separate workspace folders since they're shared libraries, not services. Including them would cause VS Code to expect them to have their own Python interpreters.
+**Important**: `services/common` is NOT included as a separate workspace folder since it's a shared library, not a service. Including it would cause VS Code to expect it to have its own Python interpreter.
 
 ## Usage
 
@@ -58,10 +57,7 @@ After setup, you can import the packages in any service:
 # Import from common package
 from common.telemetry import setup_telemetry, get_tracer, add_span_attributes
 
-# Import from vector_db package
-import vector_db
-from vector_db.pinecone_client import PineconeClient
-from vector_db.indexing_service import IndexingService
+
 ```
 
 ## Manual Installation (Per Service)
@@ -78,7 +74,7 @@ For manual installation (if needed):
 cd services/{service-name}
 source ../../venv/bin/activate  # Use unified venv
 pip install -e ../common
-pip install -e ../vector_db
+
 ```
 
 ## Verification
@@ -93,12 +89,12 @@ To verify the setup works:
 2. Test imports:
    ```bash
    python -c "from common.telemetry import setup_telemetry; print('✓ Common working!')"
-   python -c "import vector_db; print('✓ Vector DB working!')"
+   
    ```
 
 3. Check installed packages:
    ```bash
-   pip list | grep -E "(common|vector_db)"
+   pip list | grep -E "(common)"
    ```
 
 ## Services Configured
@@ -110,8 +106,7 @@ To verify the setup works:
 ## Files Created/Modified
 
 - `services/common/setup.py` (new)
-- `services/vector_db/setup.py` (new)
-- `services/vector_db/__init__.py` (new)
+
 - `services/office/.vscode/settings.json` (updated)
 - `services/chat/.vscode/settings.json` (updated)
 - `services/user/.vscode/settings.json` (updated)

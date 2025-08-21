@@ -80,16 +80,7 @@ def test_email_sync_service_openapi() -> Dict[str, Any]:
         print(f"❌ Email sync service: Failed to generate OpenAPI schema - {e}")
         return {"service": "email_sync", "status": "error", "error": str(e)}
 
-def test_vector_db_service_openapi() -> Dict[str, Any]:
-    """Test vector db service OpenAPI generation."""
-    try:
-        from services.vector_db.main import app
-        schema = app.openapi()
-        print("✅ Vector DB service: OpenAPI schema generated successfully")
-        return {"service": "vector_db", "status": "success", "schema": schema}
-    except Exception as e:
-        print(f"❌ Vector DB service: Failed to generate OpenAPI schema - {e}")
-        return {"service": "vector_db", "status": "error", "error": str(e)}
+
 
 def save_schemas_to_files(results: list) -> None:
     """Save successful OpenAPI schemas to JSON files."""
@@ -121,7 +112,7 @@ def main():
         test_user_service_openapi(),
         test_shipments_service_openapi(),
         test_email_sync_service_openapi(),
-        test_vector_db_service_openapi(),
+
     ]
     
     # Summary

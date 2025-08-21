@@ -18,7 +18,7 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [ ] `services/shipments/` - Package tracking
 - [ ] `services/common/` - Shared schemas and utilities
 - [ ] `services/email_sync/` - Email synchronization
-- [ ] `services/vector_db/` - Vector database operations
+
 
 ## Phase 1: Backend OpenAPI Schema Generation
 
@@ -43,7 +43,7 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - [x] Generate schema for user service: `/openapi.json`
 - [x] Generate schema for shipments service: `/openapi.json`
 - [x] Generate schema for email_sync service: `/openapi.json`
-- [x] Generate schema for vector_db service: `/openapi.json`
+
 
 ### Task 1.4: Schema Validation & Testing
 - [x] Validate all generated OpenAPI schemas against OpenAPI 3.0 spec
@@ -173,7 +173,7 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - Implemented automatic commit and PR creation for type changes
 - Added Slack notifications for success/failure
 - Created `scripts/generate-openapi-schemas.sh` for schema generation
-- Script successfully generates schemas for 5/8 services (chat, meetings, shipments, email_sync, vector_db)
+- Script successfully generates schemas for 4/7 services (chat, meetings, shipments, email_sync)
 - Services without FastAPI apps (common, office) are correctly skipped
 
 ### Task 5.2: Set up Pre-commit Hooks for Type Generation ✅
@@ -246,7 +246,7 @@ Generate OpenAPI schemas from all Pydantic models across services and create Typ
 - **Python Tests**: Fixed 3 pytest failures
   - Meetings service business hours test (used future date to avoid filtering)
   - User service title assertions (updated to match actual 'Briefly User Management Service')
-- **Python Type Checking**: Fixed 2 mypy type annotation errors in vector_db and email_sync services
+- **Python Type Checking**: Fixed 2 mypy type annotation errors in email_sync service
 - **Python Linting**: All issues resolved with `nox -s fix` (black, isort, ruff)
 - **Frontend Linting**: Fixed unused imports and `any` types, reduced from 8+ errors to 0
 - **CI Status**: 

@@ -53,11 +53,6 @@
             "input": "../openapi-schemas/email_sync-openapi.json",
             "output": "./types/api/email-sync",
             "description": "Email sync service types"
-        },
-        "vector-db": {
-            "input": "../openapi-schemas/vector_db-openapi.json",
-            "output": "./types/api/vector-db",
-            "description": "Vector DB service types"
         }
     }
 }

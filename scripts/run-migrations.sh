@@ -75,7 +75,7 @@ export DB_URL_MEETINGS=postgresql://briefly_meetings_service:${BRIEFLY_MEETINGS_
 export DB_URL_SHIPMENTS=postgresql://briefly_shipments_service:${BRIEFLY_SHIPMENTS_SERVICE_PASSWORD:-briefly_shipments_pass}@localhost:5432/briefly_shipments
 export DB_URL_OFFICE=postgresql://briefly_office_service:${BRIEFLY_OFFICE_SERVICE_PASSWORD:-briefly_office_pass}@localhost:5432/briefly_office
 export DB_URL_CHAT=postgresql://briefly_chat_service:${BRIEFLY_CHAT_SERVICE_PASSWORD:-briefly_chat_pass}@localhost:5432/briefly_chat
-export DB_URL_VECTOR=postgresql://briefly_vector_service:${BRIEFLY_VECTOR_SERVICE_PASSWORD:-briefly_vector_pass}@localhost:5432/briefly_vector
+
 # Vespa Loader service - no database required (stateless service)
 export DB_URL_VESPA_LOADER="no_database_required"
 
@@ -85,7 +85,7 @@ export DB_URL_MEETINGS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POST
 export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_shipments
 export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
 export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
-export DB_URL_VECTOR_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_vector
+
 
 echo "✅ Environment variables loaded from $ENV_FILE"
 
@@ -145,7 +145,7 @@ run_service_migrations "meetings" "$DB_URL_MEETINGS_MIGRATIONS"
 run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
 run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
 run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
-# Note: vector service uses Pinecone (cloud vector DB) and doesn't need local migrations
+
 
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
@@ -161,5 +161,5 @@ else
     echo "  - briefly_shipments: Ready"
     echo "  - briefly_office: Ready"
     echo "  - briefly_chat: Ready"
-    echo "  - vector_db: Uses Pinecone (cloud vector DB)"
+
 fi

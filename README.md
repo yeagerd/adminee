@@ -14,9 +14,9 @@ AI-powered calendar and task management platform with intelligent scheduling, do
   - `services/user/` - User management and authentication
   - `services/office/` - Email, calendar, and file integration
   - `services/common/` - Shared utilities and configurations
-  - `services/vector_db/` - Vector database operations
+
 - **Database:** PostgreSQL
-- **Vector Database:** Pinecone
+
 
 > 📚 **New to Briefly?** See our [New Service Guide](documentation/new-service-guide.md) for creating new microservices.
 
