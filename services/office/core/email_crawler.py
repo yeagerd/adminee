@@ -83,7 +83,7 @@ class EmailCrawler:
             return await self._get_email_count()
 
         except Exception as e:
-            logger.error(f"Failed to get email count for user {self.user_id}: {e}")
+            logger.error(f"Failed to get email count for user {self.user_id}: {str(e)}", exc_info=True)
             raise
 
     async def crawl_emails(
@@ -118,7 +118,7 @@ class EmailCrawler:
                     break
 
         except Exception as e:
-            logger.error(f"Failed to crawl emails for user {self.user_id}: {e}")
+            logger.error(f"Failed to crawl emails for user {self.user_id}: {str(e)}", exc_info=True)
             raise
 
     async def _get_email_count(self) -> int:
@@ -175,7 +175,7 @@ class EmailCrawler:
                     return 0  # Return 0 instead of max_email_count to avoid false positives
 
         except Exception as e:
-            logger.error(f"Error getting email count: {e}")
+            logger.error(f"Error getting email count: {str(e)}", exc_info=True)
             return 0  # Return 0 instead of max_email_count to avoid false positives
 
     async def _crawl_emails(
@@ -225,7 +225,8 @@ class EmailCrawler:
 
             except Exception as e:
                 logger.error(
-                    f"Failed to process email batch {batch_num} for provider {self.provider}: {e}"
+                    f"Failed to process email batch {batch_num} for provider {self.provider}: {str(e)}",
+                    exc_info=True
                 )
                 # Continue with next batch
                 continue
@@ -429,7 +430,8 @@ class EmailCrawler:
 
         except Exception as e:
             logger.error(
-                f"Failed to get real emails from office service internal API for {provider_str if 'provider_str' in locals() else provider}: {e}"
+                f"Failed to get real emails from office service internal API for {provider_str if 'provider_str' in locals() else provider}: {str(e)}",
+                exc_info=True
             )
             logger.error("This could be due to:")
             logger.error("1. Office service not running")
@@ -437,7 +439,7 @@ class EmailCrawler:
             logger.error("3. Network connectivity issues")
             logger.error("4. Office service internal errors")
             raise Exception(
-                f"Failed to retrieve real emails from {provider_str if 'provider_str' in locals() else provider} via office service: {e}"
+                f"Failed to retrieve real emails from {provider_str if 'provider_str' in locals() else provider} via office service: {str(e)}"
             )
 
         # Return empty list if no emails found
