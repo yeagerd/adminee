@@ -98,7 +98,7 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
         request_url = f"{user_service_url}/v1/internal/users/exists"
         request_params = {"email": email}
         request_headers = {"X-API-Key": api_key}
-        
+
         logger.info(f"Email resolution - Making request to: {request_url}")
         logger.info(f"Email resolution - Request params: {request_params}")
         logger.info(f"Email resolution - Request headers: X-API-Key: {api_key[:10]}...")
@@ -114,13 +114,15 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
 
             # Log response details
             logger.info(f"Email resolution - Response status: {response.status_code}")
-            logger.info(f"Email resolution - Response headers: {dict(response.headers)}")
-            
+            logger.info(
+                f"Email resolution - Response headers: {dict(response.headers)}"
+            )
+
             if response.status_code == 200:
                 try:
                     data = response.json()
                     logger.info(f"Email resolution - Response data: {data}")
-                    
+
                     if data.get("exists"):
                         user_id = data.get("user_id")
                         logger.info(f"Resolved email {email} to user ID {user_id}")
@@ -129,8 +131,12 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
                         logger.warning(f"Email {email} not found in user service")
                         return None
                 except Exception as json_error:
-                    logger.error(f"Email resolution - Failed to parse JSON response: {json_error}")
-                    logger.error(f"Email resolution - Raw response text: {response.text}")
+                    logger.error(
+                        f"Email resolution - Failed to parse JSON response: {json_error}"
+                    )
+                    logger.error(
+                        f"Email resolution - Raw response text: {response.text}"
+                    )
                     return None
             else:
                 logger.error(
@@ -325,9 +331,13 @@ async def run_backfill_job(
         logger.info(f"Backfill job {job_id} - Starting email resolution for: {user_id}")
         internal_user_id = await _resolve_email_to_user_id(user_id)
         if not internal_user_id:
-            logger.error(f"Backfill job {job_id} - Failed to resolve email {user_id} to internal user ID")
+            logger.error(
+                f"Backfill job {job_id} - Failed to resolve email {user_id} to internal user ID"
+            )
             raise Exception(f"Failed to resolve email {user_id} to internal user ID")
-        logger.info(f"Backfill job {job_id} - Successfully resolved email {user_id} to internal user ID: {internal_user_id}")
+        logger.info(
+            f"Backfill job {job_id} - Successfully resolved email {user_id} to internal user ID: {internal_user_id}"
+        )
 
         # Initialize email crawler and pubsub client
         email_crawler = EmailCrawler(

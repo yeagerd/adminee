@@ -3,13 +3,14 @@ Type definitions for the Vespa Loader service
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class VespaDocumentType:
     """Typed document structure for Vespa ingestion"""
+
     id: str
     user_id: str
     type: str

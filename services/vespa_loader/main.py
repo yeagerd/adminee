@@ -12,6 +12,11 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pubsub_client import PubSubConsumer
+from vespa_loader.content_normalizer import ContentNormalizer
+from vespa_loader.embeddings import EmbeddingGenerator
+from vespa_loader.mapper import DocumentMapper
+from vespa_loader.vespa_client import VespaClient
 
 from services.common.http_errors import (
     AuthError,
@@ -39,15 +44,15 @@ logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
 # Global service instances
-vespa_client: Optional["VespaClient"] = None
-content_normalizer: Optional["ContentNormalizer"] = None
-embedding_generator: Optional["EmbeddingGenerator"] = None
-document_mapper: Optional["DocumentMapper"] = None
-pubsub_consumer: Optional["PubSubConsumer"] = None
+vespa_client: VespaClient | None = None
+content_normalizer: ContentNormalizer | None = None
+embedding_generator: EmbeddingGenerator | None = None
+document_mapper: DocumentMapper | None = None
+pubsub_consumer: PubSubConsumer | None = None
 
 
 async def ingest_document_service(
-    document_data: Union[VespaDocumentType, Dict[str, Any]]
+    document_data: Union[VespaDocumentType, Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
 
@@ -122,8 +127,6 @@ async def ingest_document_service(
             )
         result = await vespa_client.index_document(vespa_document)
 
-
-
         return {
             "status": "success",
             "document_id": document_dict["id"],
@@ -140,9 +143,6 @@ async def ingest_document_service(
             code=ErrorCode.SERVICE_ERROR,
             details={"error": str(e)},
         )
-
-
-
 
 
 class RateLimiter:
@@ -429,18 +429,6 @@ async def ingest_document(
         )
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 async def _post_process_document(document_id: str, user_id: str) -> None:
     """Post-process a document after ingestion"""
     try:
@@ -449,9 +437,6 @@ async def _post_process_document(document_id: str, user_id: str) -> None:
         # For example: update search indices, trigger notifications, etc.
     except Exception as e:
         logger.error(f"Error in post-processing document {document_id}: {e}")
-
-
-
 
 
 @app.get("/debug/pubsub")
@@ -516,9 +501,6 @@ async def debug_trigger_pubsub_processing(
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
-
-
 
 
 if __name__ == "__main__":

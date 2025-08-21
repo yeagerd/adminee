@@ -10,29 +10,37 @@ calendar events, and contacts.
 import asyncio
 import json
 import time
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from services.common.events.calendar_events import (
+    CalendarBatchEvent,
+    CalendarEventData,
+    CalendarUpdateEvent,
+)
+from services.common.events.contact_events import (
+    ContactBatchEvent,
+    ContactData,
+    ContactUpdateEvent,
+)
+from services.common.events.email_events import EmailBackfillEvent, EmailData
 from services.common.logging_config import get_logger
 from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
-from services.common.events.email_events import EmailBackfillEvent, EmailData
-from services.common.events.calendar_events import CalendarUpdateEvent, CalendarBatchEvent, CalendarEventData
-from services.common.events.contact_events import ContactUpdateEvent, ContactBatchEvent, ContactData
 from services.vespa_loader.types import VespaDocumentType
-from abc import ABC, abstractmethod
 
 # PubSub types
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
-    from google.cloud.pubsub_v1.types import ReceivedMessage  # type: ignore[attr-defined]
+    from google.cloud.pubsub_v1.types import (
+        ReceivedMessage,  # type: ignore[attr-defined]
+    )
+
     PUBSUB_AVAILABLE = True
 except ImportError:
     PUBSUB_AVAILABLE = False
     ReceivedMessage = Any  # type: ignore
-
-
-
 
 
 logger = get_logger(__name__)
@@ -43,30 +51,31 @@ from services.vespa_loader.main import ingest_document_service
 # Define union type for all supported event types
 SupportedEventType = Union[
     EmailBackfillEvent,
-    CalendarUpdateEvent, 
+    CalendarUpdateEvent,
     CalendarBatchEvent,
     ContactUpdateEvent,
-    ContactBatchEvent
+    ContactBatchEvent,
 ]
+
 
 # Typed message structure
 class TypedMessage:
     """A properly typed message container that handles all event types"""
-    
+
     def __init__(self, message: Any, data: SupportedEventType):
         self.message = message
         self.data = data
         self.timestamp = time.time()
-    
+
     @property
     def message_id(self) -> str:
         return self.message.message_id
-    
+
     @property
     def user_id(self) -> str:
         """Extract user_id from any supported event type"""
         return self.data.user_id
-    
+
     @property
     def event_type(self) -> str:
         """Get the event type name"""
@@ -82,22 +91,23 @@ class TypedMessage:
             return "contact-batch"
         else:
             raise ValueError(f"Unknown event type: {type(self.data)}")
-    
+
     def is_typed_event(self) -> bool:
         """Check if this message contains a properly typed event"""
         return True  # All events are now typed
-    
+
     def is_email_event(self) -> bool:
         """Check if this message contains an email-related event"""
         return isinstance(self.data, EmailBackfillEvent)
-    
+
     def is_calendar_event(self) -> bool:
         """Check if this message contains a calendar-related event"""
         return isinstance(self.data, (CalendarUpdateEvent, CalendarBatchEvent))
-    
+
     def is_contact_event(self) -> bool:
         """Check if this message contains a contact-related event"""
         return isinstance(self.data, (ContactUpdateEvent, ContactBatchEvent))
+
 
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
@@ -156,7 +166,9 @@ class PubSubConsumer:
         # Event loop reference for cross-thread communication
         self.loop: Optional[asyncio.AbstractEventLoop] = None
 
-    def _parse_event_by_topic(self, topic_name: str, raw_data: Dict[str, Any], message_id: str) -> SupportedEventType:
+    def _parse_event_by_topic(
+        self, topic_name: str, raw_data: Dict[str, Any], message_id: str
+    ) -> SupportedEventType:
         """Parse raw data into appropriate typed event based on topic name"""
         try:
             if topic_name == "email-backfill":
@@ -192,10 +204,14 @@ class PubSubConsumer:
                     )
                 return event
             else:
-                logger.warning(f"Unknown topic {topic_name}, message_id={message_id} - skipping")
+                logger.warning(
+                    f"Unknown topic {topic_name}, message_id={message_id} - skipping"
+                )
                 raise ValueError(f"Unsupported topic: {topic_name}")
         except Exception as e:
-            logger.error(f"Failed to parse event for topic {topic_name}, message_id={message_id}: {e}")
+            logger.error(
+                f"Failed to parse event for topic {topic_name}, message_id={message_id}: {e}"
+            )
             raise
 
     async def start(self) -> bool:
@@ -391,11 +407,13 @@ class PubSubConsumer:
 
                 # Parse message data
                 raw_data = json.loads(message.data.decode("utf-8"))
-                
+
                 # Parse as appropriate typed event based on topic
                 try:
-                    typed_data = self._parse_event_by_topic(topic_name, raw_data, message.message_id)
-                    
+                    typed_data = self._parse_event_by_topic(
+                        topic_name, raw_data, message.message_id
+                    )
+
                     logger.debug(
                         f"Parsed message data: message_id={message.message_id}, user_id={typed_data.user_id}"
                     )
@@ -404,7 +422,9 @@ class PubSubConsumer:
                     typed_message = TypedMessage(message, typed_data)
                     self.message_batches[topic_name].append(typed_message)
                 except Exception as parse_error:
-                    logger.error(f"Failed to parse message from {topic_name}: {parse_error}")
+                    logger.error(
+                        f"Failed to parse message from {topic_name}: {parse_error}"
+                    )
                     message.nack()
                     self.error_count += 1
                     return
@@ -484,9 +504,7 @@ class PubSubConsumer:
         self.message_batches[topic_name] = []
 
         logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
-        logger.info(
-            f"Message IDs: {[item.message_id for item in batch]}"
-        )
+        logger.info(f"Message IDs: {[item.message_id for item in batch]}")
 
         # Process messages in parallel
         tasks = []
@@ -528,17 +546,29 @@ class PubSubConsumer:
             logger.info(
                 f"Calling processor for message from {topic_name}: {message_id} for user {user_id}"
             )
-            
+
             # Log additional info for typed events
             if typed_message.is_typed_event():
-                logger.info(f"Processing {typed_message.event_type} event for user {user_id}")
+                logger.info(
+                    f"Processing {typed_message.event_type} event for user {user_id}"
+                )
                 if typed_message.is_email_event():
-                    logger.info(f"EmailBackfillEvent contains {len(typed_message.data.emails)} emails")
-                elif typed_message.is_calendar_event() and hasattr(typed_message.data, 'events'):
-                    logger.info(f"CalendarBatchEvent contains {len(typed_message.data.events)} events")
-                elif typed_message.is_contact_event() and hasattr(typed_message.data, 'contacts'):
-                    logger.info(f"ContactBatchEvent contains {len(typed_message.data.contacts)} contacts")
-            
+                    logger.info(
+                        f"EmailBackfillEvent contains {len(typed_message.data.emails)} emails"
+                    )
+                elif typed_message.is_calendar_event() and hasattr(
+                    typed_message.data, "events"
+                ):
+                    logger.info(
+                        f"CalendarBatchEvent contains {len(typed_message.data.events)} events"
+                    )
+                elif typed_message.is_contact_event() and hasattr(
+                    typed_message.data, "contacts"
+                ):
+                    logger.info(
+                        f"ContactBatchEvent contains {len(typed_message.data.contacts)} contacts"
+                    )
+
             result = await processor(typed_message.data)
             logger.info(
                 f"Successfully processed message from {topic_name}: {message_id}"
@@ -551,15 +581,17 @@ class PubSubConsumer:
 
     async def _process_email_message(self, data: EmailBackfillEvent) -> None:
         """Process an email message for Vespa indexing using typed EmailBackfillEvent"""
-        
-        logger.info(f"Processing EmailBackfillEvent with {len(data.emails)} emails for user {data.user_id}")
-        
+
+        logger.info(
+            f"Processing EmailBackfillEvent with {len(data.emails)} emails for user {data.user_id}"
+        )
+
         for i, email in enumerate(data.emails):
             try:
                 logger.info(f"Processing email {i+1}/{len(data.emails)} from batch")
                 logger.info(f"Email ID: {email.id}")
                 logger.info(f"Email subject: {email.subject}")
-                
+
                 # Create typed document object
                 document = VespaDocumentType(
                     id=email.id,
@@ -581,23 +613,25 @@ class PubSubConsumer:
                         "labels": email.labels,
                         "size_bytes": email.size_bytes,
                         "mime_type": email.mime_type,
-                        "headers": email.headers or {}
+                        "headers": email.headers or {},
                     },
                     content_chunks=[],
                     quoted_content="",
                     thread_summary={},
-                    search_text=""
+                    search_text="",
                 )
-                
+
                 await self._ingest_document(document)
             except Exception as e:
                 logger.error(f"Failed to process email {i+1} from batch: {e}")
                 # Continue processing other emails in the batch
                 continue
 
-    async def _process_calendar_message(self, data: Union[CalendarUpdateEvent, CalendarBatchEvent]) -> None:
+    async def _process_calendar_message(
+        self, data: Union[CalendarUpdateEvent, CalendarBatchEvent]
+    ) -> None:
         """Process a calendar message for Vespa indexing using typed events"""
-        
+
         if isinstance(data, CalendarUpdateEvent):
             logger.info(f"Processing CalendarUpdateEvent for user {data.user_id}")
             # Create typed document object
@@ -624,18 +658,22 @@ class PubSubConsumer:
                     "reminders": data.event.reminders,
                     "attachments": data.event.attachments,
                     "color_id": data.event.color_id,
-                    "html_link": data.event.html_link
-                }
+                    "html_link": data.event.html_link,
+                },
             )
             await self._ingest_document(document)
-            
+
         elif isinstance(data, CalendarBatchEvent):
-            logger.info(f"Processing CalendarBatchEvent with {len(data.events)} events for user {data.user_id}")
-            
+            logger.info(
+                f"Processing CalendarBatchEvent with {len(data.events)} events for user {data.user_id}"
+            )
+
             for i, event in enumerate(data.events):
                 try:
-                    logger.info(f"Processing calendar event {i+1}/{len(data.events)} from batch")
-                    
+                    logger.info(
+                        f"Processing calendar event {i+1}/{len(data.events)} from batch"
+                    )
+
                     document = VespaDocumentType(
                         id=event.id,
                         user_id=data.user_id,
@@ -659,18 +697,22 @@ class PubSubConsumer:
                             "reminders": event.reminders,
                             "attachments": event.attachments,
                             "color_id": event.color_id,
-                            "html_link": event.html_link
-                        }
+                            "html_link": event.html_link,
+                        },
                     )
-                    
+
                     await self._ingest_document(document)
                 except Exception as e:
-                    logger.error(f"Failed to process calendar event {i+1} from batch: {e}")
+                    logger.error(
+                        f"Failed to process calendar event {i+1} from batch: {e}"
+                    )
                     continue
 
-    async def _process_contact_message(self, data: Union[ContactUpdateEvent, ContactBatchEvent]) -> None:
+    async def _process_contact_message(
+        self, data: Union[ContactUpdateEvent, ContactBatchEvent]
+    ) -> None:
         """Process a contact message for Vespa indexing using typed events"""
-        
+
         if isinstance(data, ContactUpdateEvent):
             logger.info(f"Processing ContactUpdateEvent for user {data.user_id}")
             # Create typed document object
@@ -694,21 +736,29 @@ class PubSubConsumer:
                     "phone_numbers": data.contact.phone_numbers,
                     "addresses": data.contact.addresses,
                     "organizations": data.contact.organizations,
-                    "birthdays": [bd.isoformat() for bd in data.contact.birthdays] if data.contact.birthdays else [],
+                    "birthdays": (
+                        [bd.isoformat() for bd in data.contact.birthdays]
+                        if data.contact.birthdays
+                        else []
+                    ),
                     "photos": data.contact.photos,
                     "groups": data.contact.groups,
-                    "tags": data.contact.tags
-                }
+                    "tags": data.contact.tags,
+                },
             )
             await self._ingest_document(document)
-            
+
         elif isinstance(data, ContactBatchEvent):
-            logger.info(f"Processing ContactBatchEvent with {len(data.contacts)} contacts for user {data.user_id}")
-            
+            logger.info(
+                f"Processing ContactBatchEvent with {len(data.contacts)} contacts for user {data.user_id}"
+            )
+
             for i, contact in enumerate(data.contacts):
                 try:
-                    logger.info(f"Processing contact {i+1}/{len(data.contacts)} from batch")
-                    
+                    logger.info(
+                        f"Processing contact {i+1}/{len(data.contacts)} from batch"
+                    )
+
                     document = VespaDocumentType(
                         id=contact.id,
                         user_id=data.user_id,
@@ -729,18 +779,21 @@ class PubSubConsumer:
                             "phone_numbers": contact.phone_numbers,
                             "addresses": contact.addresses,
                             "organizations": contact.organizations,
-                            "birthdays": [bd.isoformat() for bd in contact.birthdays] if contact.birthdays else [],
+                            "birthdays": (
+                                [bd.isoformat() for bd in contact.birthdays]
+                                if contact.birthdays
+                                else []
+                            ),
                             "photos": contact.photos,
                             "groups": contact.groups,
-                            "tags": contact.tags
-                        }
+                            "tags": contact.tags,
+                        },
                     )
-                    
+
                     await self._ingest_document(document)
                 except Exception as e:
                     logger.error(f"Failed to process contact {i+1} from batch: {e}")
                     continue
-
 
     async def _ingest_document(self, document: VespaDocumentType) -> Dict[str, Any]:
         """Ingest a document into Vespa
@@ -766,9 +819,7 @@ class PubSubConsumer:
 
             # Run post-processing tasks directly since we're not in a FastAPI context
             try:
-                await self._post_process_document(
-                    document.id, document.user_id
-                )
+                await self._post_process_document(document.id, document.user_id)
             except Exception as post_process_error:
                 logger.warning(
                     f"Post-processing failed for document {document.id}: {post_process_error}"
