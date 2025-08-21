@@ -178,37 +178,39 @@ class PubSubConsumer:
         """Parse raw data into appropriate typed event based on topic name"""
         try:
             if topic_name == "email-backfill":
-                event = EmailBackfillEvent(**raw_data)
+                email_event: EmailBackfillEvent = EmailBackfillEvent(**raw_data)
                 logger.debug(
-                    f"Parsed as EmailBackfillEvent: message_id={message_id}, user_id={event.user_id}, emails={len(event.emails)}"
+                    f"Parsed as EmailBackfillEvent: message_id={message_id}, user_id={email_event.user_id}, emails={len(email_event.emails)}"
                 )
-                return event
+                return email_event
             elif topic_name == "calendar-updates":
                 # Try to determine if it's a single update or batch
                 if "events" in raw_data:
-                    event = CalendarBatchEvent(**raw_data)
+                    calendar_batch_event: CalendarBatchEvent = CalendarBatchEvent(**raw_data)
                     logger.debug(
-                        f"Parsed as CalendarBatchEvent: message_id={message_id}, user_id={event.user_id}, events={len(event.events)}"
+                        f"Parsed as CalendarBatchEvent: message_id={message_id}, user_id={calendar_batch_event.user_id}, events={len(calendar_batch_event.events)}"
                     )
+                    return calendar_batch_event
                 else:
-                    event = CalendarUpdateEvent(**raw_data)
+                    calendar_event: CalendarUpdateEvent = CalendarUpdateEvent(**raw_data)
                     logger.debug(
-                        f"Parsed as CalendarUpdateEvent: message_id={message_id}, user_id={event.user_id}, event_id={event.event.id}"
+                        f"Parsed as CalendarUpdateEvent: message_id={message_id}, user_id={calendar_event.user_id}, event_id={calendar_event.event.id}"
                     )
-                return event
+                    return calendar_event
             elif topic_name == "contact-updates":
                 # Try to determine if it's a single update or batch
                 if "contacts" in raw_data:
-                    event = ContactBatchEvent(**raw_data)
+                    contact_batch_event: ContactBatchEvent = ContactBatchEvent(**raw_data)
                     logger.debug(
-                        f"Parsed as ContactBatchEvent: message_id={message_id}, user_id={event.user_id}, contacts={len(event.contacts)}"
+                        f"Parsed as ContactBatchEvent: message_id={message_id}, user_id={contact_batch_event.user_id}, contacts={len(contact_batch_event.contacts)}"
                     )
+                    return contact_batch_event
                 else:
-                    event = ContactUpdateEvent(**raw_data)
+                    contact_event: ContactUpdateEvent = ContactUpdateEvent(**raw_data)
                     logger.debug(
-                        f"Parsed as ContactUpdateEvent: message_id={message_id}, user_id={event.user_id}, contact_id={event.contact.id}"
+                        f"Parsed as ContactUpdateEvent: message_id={message_id}, user_id={contact_event.user_id}, contact_id={contact_event.contact.id}"
                     )
-                return event
+                    return contact_event
             else:
                 logger.warning(
                     f"Unknown topic {topic_name}, message_id={message_id} - skipping"
@@ -559,21 +561,23 @@ class PubSubConsumer:
                     f"Processing {typed_message.event_type} event for user {user_id}"
                 )
                 if typed_message.is_email_event():
-                    logger.info(
-                        f"EmailBackfillEvent contains {len(typed_message.data.emails)} emails"
-                    )
-                elif typed_message.is_calendar_event() and hasattr(
-                    typed_message.data, "events"
-                ):
-                    logger.info(
-                        f"CalendarBatchEvent contains {len(typed_message.data.events)} events"
-                    )
-                elif typed_message.is_contact_event() and hasattr(
-                    typed_message.data, "contacts"
-                ):
-                    logger.info(
-                        f"ContactBatchEvent contains {len(typed_message.data.contacts)} contacts"
-                    )
+                    email_data = typed_message.data
+                    if isinstance(email_data, EmailBackfillEvent):
+                        logger.info(
+                            f"EmailBackfillEvent contains {len(email_data.emails)} emails"
+                        )
+                elif typed_message.is_calendar_event():
+                    calendar_data = typed_message.data
+                    if isinstance(calendar_data, CalendarBatchEvent):
+                        logger.info(
+                            f"CalendarBatchEvent contains {len(calendar_data.events)} events"
+                        )
+                elif typed_message.is_contact_event():
+                    contact_data = typed_message.data
+                    if isinstance(contact_data, ContactBatchEvent):
+                        logger.info(
+                            f"ContactBatchEvent contains {len(contact_data.contacts)} contacts"
+                        )
 
             result = await processor(typed_message.data)
             logger.info(

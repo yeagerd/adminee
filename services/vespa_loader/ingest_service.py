@@ -18,10 +18,10 @@ from services.vespa_loader.types import VespaDocumentType
 
 async def ingest_document_service(
     document_data: Union[VespaDocumentType, Dict[str, Any]],
-    vespa_client,
-    content_normalizer,
-    embedding_generator,
-    document_mapper,
+    vespa_client: Any,
+    content_normalizer: Any,
+    embedding_generator: Any,
+    document_mapper: Any,
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
 
