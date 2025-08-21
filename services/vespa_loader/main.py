@@ -47,7 +47,7 @@ pubsub_consumer: Optional[Any] = None
 
 
 async def ingest_document_service(
-    document_data: Union[VespaDocumentType, Dict[str, Any]], run_background_tasks: bool = True
+    document_data: Union[VespaDocumentType, Dict[str, Any]]
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
 
@@ -56,7 +56,6 @@ async def ingest_document_service(
 
     Args:
         document_data: The document data to ingest
-        run_background_tasks: Whether to run background post-processing tasks
 
     Returns:
         Dict containing the ingestion result
@@ -123,11 +122,7 @@ async def ingest_document_service(
             )
         result = await vespa_client.index_document(vespa_document)
 
-        # Run background task for post-processing if requested
-        if run_background_tasks:
-            # Note: We can't use BackgroundTasks here since this is a service function
-            # The HTTP endpoints will handle background tasks when calling this function
-            pass
+
 
         return {
             "status": "success",
@@ -409,9 +404,7 @@ async def ingest_document(
     """Ingest a document into Vespa"""
     try:
         # Call the shared service function
-        result = await ingest_document_service(
-            document_data, run_background_tasks=False
-        )
+        result = await ingest_document_service(document_data)
 
         # Run post-processing synchronously since we removed background tasks
         await _post_process_document(
