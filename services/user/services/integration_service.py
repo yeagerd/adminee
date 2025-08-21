@@ -543,6 +543,15 @@ class IntegrationService:
                         user_id=user_id,
                     )
 
+                # Log successful token decryption for both tokens
+                if access_token and refresh_token:
+                    self.logger.info(
+                        "Integration tokens decrypted successfully",
+                        user_id=user_id,
+                        provider=provider.value,
+                        integration_id=integration.id,
+                    )
+
                 if not access_token:
                     raise ServiceError(message="No access token found for integration")
 
@@ -825,6 +834,15 @@ class IntegrationService:
                             revocation_errors.append(
                                 f"Refresh token revocation error: {str(e)}"
                             )
+
+                    # Log successful token decryption for revocation
+                    if access_token_record and refresh_token_record:
+                        self.logger.info(
+                            "Integration tokens decrypted for revocation",
+                            user_id=user_id,
+                            provider=provider.value,
+                            integration_id=integration.id,
+                        )
 
                     # Check if any tokens were successfully revoked
                     tokens_revoked = access_token_revoked or refresh_token_revoked

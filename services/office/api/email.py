@@ -3091,40 +3091,33 @@ async def get_internal_email_count(
                     ),
                 }
 
-                # Debug: Log the response structure
-                logger.info(
-                    f"Response from {provider} API: {type(messages)} - Keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
-                )
-
-                # Count messages from the response
+                # Count messages from the response and log consolidated information
+                message_count = 0
                 if (
                     provider == "microsoft"
                     and isinstance(messages, dict)
                     and "value" in messages
                 ):
-                    total_count += len(messages["value"])
-                    logger.info(
-                        f"Microsoft API returned {len(messages['value'])} messages in 'value' array"
-                    )
+                    message_count = len(messages["value"])
+                    total_count += message_count
                 elif (
                     provider == "google"
                     and isinstance(messages, dict)
                     and "messages" in messages
                 ):
-                    total_count += len(messages["messages"])
-                    logger.info(
-                        f"Google API returned {len(messages['messages'])} messages in 'messages' array"
-                    )
+                    message_count = len(messages["messages"])
+                    total_count += message_count
                 else:
                     # Fallback: count the top-level messages if structure is different
-                    fallback_count = len(messages) if isinstance(messages, list) else 0
-                    total_count += fallback_count
-                    logger.info(
-                        f"Fallback count for {provider}: {fallback_count} (response type: {type(messages)})"
-                    )
+                    message_count = len(messages) if isinstance(messages, list) else 0
+                    total_count += message_count
 
+                # Log consolidated information about the API response
                 logger.info(
-                    f"Counted {total_count} total messages from {provider} for user {user_id}"
+                    f"API response from {provider} for user {user_id}: {message_count} messages | "
+                    f"Response type: {type(messages).__name__} | "
+                    f"Keys: {list(messages.keys()) if isinstance(messages, dict) else 'N/A'} | "
+                    f"Total count so far: {total_count}"
                 )
 
             except Exception as e:

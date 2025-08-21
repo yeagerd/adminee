@@ -124,7 +124,7 @@ class UserService:
                     )
                     raise NotFoundError(resource="User", identifier=str(id_str or ""))
 
-                logger.info(
+                logger.debug(
                     f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}"
                 )
                 return user
@@ -214,7 +214,7 @@ class UserService:
                 await session.commit()
                 await session.refresh(user)
 
-                logger.info(
+                logger.debug(
                     f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
                 )
                 return user
@@ -784,7 +784,7 @@ class UserService:
                 user = await self.get_user_by_external_auth_id(
                     external_auth_id, provider
                 )
-                logger.info(f"Found user {external_auth_id} with provider {provider}")
+                logger.debug(f"Found user {external_auth_id} with provider {provider}")
                 return user
             except NotFoundError:
                 continue
@@ -854,7 +854,7 @@ class UserService:
                     if user:
                         all_users.append(user)
 
-                logger.info(
+                logger.debug(
                     f"Retrieved {len(all_users)} users from {len(user_ids)} requested IDs"
                 )
                 return all_users
@@ -919,7 +919,7 @@ class UserService:
             # Use fast local normalization (all normalization is now local and instant)
             normalized_email = detector._simple_email_normalize(email_request.email)
 
-            logger.info(
+            logger.debug(
                 f"Resolving email {email_request.email} (normalized: {normalized_email}) to external_auth_id"
             )
 
@@ -939,7 +939,7 @@ class UserService:
                 auth_provider=user.auth_provider,
             )
 
-            logger.info(
+            logger.debug(
                 f"Successfully resolved email {email_request.email} to external_auth_id {user.external_auth_id}"
             )
             return response

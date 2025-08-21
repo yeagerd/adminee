@@ -48,9 +48,6 @@ class APIClientFactory:
             async with self._token_manager_lock:
                 # Double-check pattern to ensure thread safety
                 if self._shared_token_manager is None:
-                    logger.info(
-                        "Creating shared TokenManager instance for APIClientFactory"
-                    )
                     self._shared_token_manager = TokenManager()
 
         return self._shared_token_manager
@@ -99,13 +96,13 @@ class APIClientFactory:
         if scopes is None:
             scopes = self._get_default_scopes(provider)
 
-        logger.info(
+        logger.debug(
             f"Creating {provider} API client for user {user_id} with scopes: {scopes}"
         )
 
         # Use shared token manager
         token_manager = await self._get_or_create_token_manager()
-        logger.info(
+        logger.debug(
             f"Using shared TokenManager instance for {provider} client (user {user_id})"
         )
 
@@ -131,7 +128,7 @@ class APIClientFactory:
                 else:
                     raise ValueError(f"Unsupported provider: {provider}")
 
-                logger.info(
+                logger.debug(
                     f"Successfully created {provider} API client for user {user_id}"
                 )
                 return client

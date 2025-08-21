@@ -352,13 +352,13 @@ async def get_user_by_email_internal(
 
         user_response = UserResponse.from_orm(user)
 
-        logger.info(
+        logger.debug(
             f"Successfully found user for email {email} with provider {provider}: {user.external_auth_id}"
         )
         return user_response
 
     except NotFoundError as e:
-        logger.info(f"User lookup failed - no user found for email {email}")
+        logger.debug(f"User lookup failed - no user found for email {email}")
         raise e
     except ValidationError as e:
         logger.warning(f"User lookup failed - validation error: {e.message}")
@@ -393,8 +393,8 @@ async def create_or_upsert_user_internal(
     - 500 (Internal Server Error): Unexpected error
     """
     # Add detailed logging for debugging
-    logger.info(f"User creation request from service: {service_name}")
-    logger.info(
+    logger.debug(f"User creation request from service: {service_name}")
+    logger.debug(
         f"User data received: external_auth_id={user_data.external_auth_id}, "
         f"auth_provider={user_data.auth_provider}, email={user_data.email}, "
         f"first_name={user_data.first_name}, last_name={user_data.last_name}, "
@@ -422,7 +422,7 @@ async def create_or_upsert_user_internal(
             )
             user_response = UserResponse.from_orm(existing_user)
 
-            logger.info(
+            logger.debug(
                 f"Found existing user for email {user_data.email} with provider {user_data.auth_provider}: {existing_user.external_auth_id}"
             )
             # Return existing user with created=False
@@ -430,14 +430,14 @@ async def create_or_upsert_user_internal(
 
         except NotFoundError:
             # User doesn't exist, create new one
-            logger.info(
+            logger.debug(
                 f"User not found for email {user_data.email}, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
             )
 
             new_user = await get_user_service().create_user(user_data)
             user_response = UserResponse.from_orm(new_user)
 
-            logger.info(
+            logger.debug(
                 f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
             )
             # Return new user with created=True

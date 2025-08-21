@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -85,6 +86,10 @@ class VespaBackfillDemo:
             project_id=config.get("project_id", "briefly-dev"),
             emulator_host=config.get("emulator_host", "localhost:8085"),
         )
+
+        # Generate a unique trace ID for this backfill operation
+        self.trace_id = str(uuid.uuid4())
+        logger.info(f"Starting backfill operation with trace ID: {self.trace_id}")
 
         # Initialize Vespa search engine for stats
         self.vespa_endpoint = config.get("vespa_endpoint", "http://localhost:8080")
@@ -477,7 +482,8 @@ class VespaBackfillDemo:
 
     async def run_backfill_demo(self) -> Dict[str, Any]:
         """Run the complete real backfill demo"""
-        logger.info("Starting Vespa real backfill demo...")
+        logger.info(f"Starting Vespa real backfill demo with trace ID: {self.trace_id}")
+        print(f"🔍 Trace ID: {self.trace_id}")
 
         start_time = datetime.now(timezone.utc)
         results: Dict[str, Any] = {
@@ -1079,6 +1085,13 @@ class VespaBackfillDemo:
                 folders=self.folders,
             ):
                 try:
+                    # Add trace_id to each email for distributed tracing
+                    for email in email_batch:
+                        if "metadata" not in email:
+                            email["metadata"] = {}
+                        email["metadata"]["trace_id"] = self.trace_id
+                        email["metadata"]["backfill_operation"] = "vespa_backfill_demo"
+
                     # Publish batch to Pub/Sub
                     message_ids = await self.pubsub_publisher.publish_batch_emails(
                         email_batch
@@ -1163,6 +1176,7 @@ class VespaBackfillDemo:
         print("\n" + "=" * 60)
         print("VESPA REAL BACKFILL DEMO RESULTS")
         print("=" * 60)
+        print(f"Trace ID: {self.trace_id}")
 
         print(f"Status: {results['status']}")
         print(f"Duration: {results.get('duration_seconds', 0):.1f} seconds")
