@@ -179,6 +179,11 @@ class EnhancedTextRenderer:
         elif level == "DEBUG":
             level_emoji = "🔍 "  # Magnifying glass emoji
 
+        # Clean up logger name by removing "services." prefix for cleaner output
+        clean_logger_name = logger_name
+        if logger_name.startswith("services."):
+            clean_logger_name = logger_name[9:]  # Remove "services." prefix
+        
         # Build the enhanced log line
         parts = [
             timestamp,
@@ -186,7 +191,7 @@ class EnhancedTextRenderer:
             f"[{service}]",
             f"[{level}]",
             request_id_suffix,
-            f"{logger_name}",
+            f"{clean_logger_name}",
             f"- {message}{user_info}",
         ]
 
