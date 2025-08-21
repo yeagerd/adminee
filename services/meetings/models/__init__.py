@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager, contextmanager
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -24,35 +24,69 @@ from services.meetings.models.meeting import PollResponse as PollResponse
 from services.meetings.models.meeting import TimeSlot as TimeSlot
 from services.meetings.settings import get_settings
 
+# Global engines and session factories - created once and reused
+_engine: Optional[Engine] = None
+_async_engine: Optional[AsyncEngine] = None
+_session_maker: Optional[sessionmaker] = None
+_async_session_maker: Optional[async_sessionmaker] = None
+
 
 def get_engine() -> "Engine":
-    db_url = get_settings().db_url_meetings
-    return create_engine(db_url, echo=False, future=True)
+    """Get or create the shared database engine."""
+    global _engine
+    if _engine is None:
+        db_url = get_settings().db_url_meetings
+        _engine = create_engine(db_url, echo=False, future=True)
+    return _engine
 
 
 def get_async_engine() -> "AsyncEngine":
-    """Get async database engine for async operations."""
-    db_url = get_settings().db_url_meetings
-    async_db_url = get_async_database_url(db_url)
-    return create_async_engine(async_db_url, echo=False, future=True)
+    """Get or create the shared async database engine."""
+    global _async_engine
+    if _async_engine is None:
+        db_url = get_settings().db_url_meetings
+        async_db_url = get_async_database_url(db_url)
+        _async_engine = create_async_engine(
+            async_db_url, 
+            echo=False, 
+            future=True,
+            # Add connection pool settings to prevent hangs
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=3600,
+        )
+    return _async_engine
 
 
 def get_sessionmaker() -> sessionmaker:
-    engine = get_engine()
-    return sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    """Get or create the shared session maker."""
+    global _session_maker
+    if _session_maker is None:
+        engine = get_engine()
+        _session_maker = sessionmaker(
+            bind=engine, 
+            autoflush=False, 
+            autocommit=False, 
+            future=True
+        )
+    return _session_maker
 
 
 def get_async_sessionmaker() -> async_sessionmaker:
-    """Get async session maker for async operations."""
-    engine = get_async_engine()
-    return async_sessionmaker(
-        bind=engine,
-        autoflush=False,
-        autocommit=False,
-        future=True,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
+    """Get or create the shared async session maker."""
+    global _async_session_maker
+    if _async_session_maker is None:
+        engine = get_async_engine()
+        _async_session_maker = async_sessionmaker(
+            bind=engine,
+            autoflush=False,
+            autocommit=False,
+            future=True,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+    return _async_session_maker
 
 
 @contextmanager
@@ -83,3 +117,25 @@ async def create_all_tables_for_testing() -> None:
     from services.meetings.models.base import Base
 
     Base.metadata.create_all(engine)
+
+
+async def close_db() -> None:
+    """Close database connections."""
+    global _engine, _async_engine, _session_maker, _async_session_maker
+    if _async_engine:
+        await _async_engine.dispose()
+        _async_engine = None
+        _async_session_maker = None
+    if _engine:
+        _engine.dispose()
+        _engine = None
+        _session_maker = None
+
+
+def reset_db() -> None:
+    """Reset database connections (useful for testing)."""
+    global _engine, _async_engine, _session_maker, _async_session_maker
+    _engine = None
+    _async_engine = None
+    _session_maker = None
+    _async_session_maker = None
