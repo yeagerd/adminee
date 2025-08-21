@@ -183,7 +183,7 @@ class EnhancedTextRenderer:
         clean_logger_name = logger_name
         if logger_name.startswith("services."):
             clean_logger_name = logger_name[9:]  # Remove "services." prefix
-        
+
         # Build the enhanced log line
         parts = [
             timestamp,
