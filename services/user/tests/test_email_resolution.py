@@ -5,7 +5,7 @@ Tests the email-to-user-ID resolution endpoint and service logic,
 including email normalization edge cases and error handling.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -396,21 +396,24 @@ class TestEmailResolutionService:
         self, email_resolution_service
     ):
         """Test that provider-aware normalization is used when provider is specified."""
-        with patch.object(
-            EmailCollisionDetector,
-            "normalize_email_by_provider",
-            return_value="normalized@gmail.com",
-        ) as mock_provider_norm, patch.object(
-            EmailCollisionDetector,
-            "normalize_email",
-            return_value="generic@gmail.com",
-        ) as mock_generic_norm:
-            
+        with (
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email_by_provider",
+                return_value="normalized@gmail.com",
+            ) as mock_provider_norm,
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email",
+                return_value="generic@gmail.com",
+            ) as mock_generic_norm,
+        ):
+
             # Test with provider specified - should use provider-aware normalization
             await email_resolution_service.find_user_by_email_with_provider(
                 "test@gmail.com", "google"
             )
-            
+
             mock_provider_norm.assert_called_once_with("test@gmail.com", "google")
             mock_generic_norm.assert_not_called()
 
@@ -419,21 +422,24 @@ class TestEmailResolutionService:
         self, email_resolution_service
     ):
         """Test that generic normalization is used when no provider is specified."""
-        with patch.object(
-            EmailCollisionDetector,
-            "normalize_email_by_provider",
-            return_value="normalized@gmail.com",
-        ) as mock_provider_norm, patch.object(
-            EmailCollisionDetector,
-            "normalize_email",
-            return_value="generic@gmail.com",
-        ) as mock_generic_norm:
-            
+        with (
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email_by_provider",
+                return_value="normalized@gmail.com",
+            ) as mock_provider_norm,
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email",
+                return_value="generic@gmail.com",
+            ) as mock_generic_norm,
+        ):
+
             # Test without provider specified - should use generic normalization
             await email_resolution_service.find_user_by_email_with_provider(
                 "test@gmail.com"
             )
-            
+
             mock_generic_norm.assert_called_once_with("test@gmail.com")
             mock_provider_norm.assert_not_called()
 
@@ -442,20 +448,25 @@ class TestEmailResolutionService:
         self, email_resolution_service
     ):
         """Test that database errors are handled gracefully."""
-        with patch.object(
-            EmailCollisionDetector,
-            "normalize_email",
-            return_value="test@gmail.com",
-        ), patch(
-            "services.user.services.user_service.get_async_session"
-        ) as mock_session:
+        with (
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email",
+                return_value="test@gmail.com",
+            ),
+            patch(
+                "services.user.services.user_service.get_async_session"
+            ) as mock_session,
+        ):
             # Mock database error
-            mock_session.return_value.__aenter__.side_effect = Exception("Database error")
-            
+            mock_session.return_value.__aenter__.side_effect = Exception(
+                "Database error"
+            )
+
             result = await email_resolution_service.find_user_by_email_with_provider(
                 "test@gmail.com"
             )
-            
+
             assert result is None
 
     @pytest.mark.asyncio

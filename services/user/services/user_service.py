@@ -1039,7 +1039,7 @@ class UserService:
         """
         try:
             detector = EmailCollisionDetector()
-            
+
             # Use provider-aware normalization if provider is specified
             if provider:
                 normalized_email = detector.normalize_email_by_provider(email, provider)
@@ -1048,9 +1048,7 @@ class UserService:
                 )
             else:
                 normalized_email = detector.normalize_email(email)
-                logger.debug(
-                    f"Generic normalization for {email}: {normalized_email}"
-                )
+                logger.debug(f"Generic normalization for {email}: {normalized_email}")
 
             # Query database by normalized email
             async_session = get_async_session()
@@ -1060,11 +1058,11 @@ class UserService:
                     User.normalized_email == normalized_email,
                     User.deleted_at == None,  # noqa: E711 # Only active users
                 )
-                
+
                 # If provider is specified, add it to the query for disambiguation
                 if provider:
                     query = query.where(User.auth_provider == provider)
-                
+
                 result = await session.execute(query)
                 users = result.scalars().all()
 
