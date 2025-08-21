@@ -14,6 +14,56 @@ from services.office.core.settings import get_settings
 logger = get_logger(__name__)
 
 
+def _safe_log_email_data(msg: Dict[str, Any], max_content_length: int = 100) -> str:
+    """
+    Safely log email message data without exposing sensitive content.
+
+    Args:
+        msg: Email message dictionary
+        max_content_length: Maximum length of content to show in logs
+
+    Returns:
+        Safe string representation of the message
+    """
+    safe_msg = {}
+
+    # Copy non-sensitive fields
+    for key, value in msg.items():
+        if key in [
+            "id",
+            "provider_message_id",
+            "thread_id",
+            "subject",
+            "date",
+            "labels",
+            "is_read",
+            "has_attachments",
+        ]:
+            safe_msg[key] = value
+        elif key in ["body_html", "body_text", "snippet"]:
+            # Truncate content to avoid logging full email bodies
+            if value and len(str(value)) > max_content_length:
+                safe_msg[key] = f"{str(value)[:max_content_length]}... [TRUNCATED]"
+            else:
+                safe_msg[key] = value
+        elif key in ["from_address", "to_addresses", "cc_addresses", "bcc_addresses"]:
+            # Log email address structure but not full addresses
+            if isinstance(value, dict):
+                safe_msg[key] = f"<email_address> (type: {type(value).__name__})"
+            elif isinstance(value, list):
+                safe_msg[key] = f"<{len(value)} email_addresses> (type: list)"
+            else:
+                safe_msg[key] = f"<email_address> (type: {type(value).__name__})"
+        else:
+            # For other fields, show type and length if applicable
+            if isinstance(value, str) and len(value) > max_content_length:
+                safe_msg[key] = f"{str(value)[:max_content_length]}... [TRUNCATED]"
+            else:
+                safe_msg[key] = value
+
+    return str(safe_msg)
+
+
 class EmailCrawler:
     """Crawls emails from email providers for backfill operations"""
 
@@ -256,6 +306,21 @@ class EmailCrawler:
                             split_result = split_email_content(
                                 html_content=msg.get("body_html"),
                                 text_content=msg.get("body_text"),
+                            )
+
+                            # Debug logging to see what we're getting
+                            logger.debug(
+                                f"Content splitting result for email {msg.get('id')}: {split_result}"
+                            )
+                            logger.debug(
+                                f"Original body_html length: {len(msg.get('body_html', '') or '')}"
+                            )
+                            logger.debug(
+                                f"Original body_text length: {len(msg.get('body_text', '') or '')}"
+                            )
+                            logger.debug(f"Message keys: {list(msg.keys())}")
+                            logger.debug(
+                                f"Safe message sample: {_safe_log_email_data(msg)}"
                             )
 
                             # Use visible content as primary body, quoted content for context

@@ -26,6 +26,60 @@ from services.office.schemas import (
 logger = get_logger(__name__)
 
 
+def _safe_log_raw_data(raw_data: Dict[str, Any], max_content_length: int = 100) -> str:
+    """
+    Safely log raw API response data without exposing sensitive content.
+
+    Args:
+        raw_data: Raw API response dictionary
+        max_content_length: Maximum length of content to show in logs
+
+    Returns:
+        Safe string representation of the data
+    """
+    safe_data = {}
+
+    # Copy non-sensitive fields
+    for key, value in raw_data.items():
+        if key in [
+            "id",
+            "conversationId",
+            "subject",
+            "bodyPreview",
+            "receivedDateTime",
+            "sentDateTime",
+            "isRead",
+            "hasAttachments",
+            "categories",
+            "importance",
+        ]:
+            safe_data[key] = value
+        elif key == "body":
+            # Log body structure but not content
+            if isinstance(value, dict):
+                safe_data[key] = (
+                    f"<body_content> (type: dict, keys: {list(value.keys()) if isinstance(value, dict) else 'unknown'})"
+                )
+            else:
+                safe_data[key] = f"<body_content> (type: {type(value).__name__})"
+        elif key in ["from", "toRecipients", "ccRecipients", "bccRecipients"]:
+            # Log email address structure but not full addresses
+            if isinstance(value, dict):
+                safe_data[key] = f"<email_address> (type: {type(value).__name__})"
+            elif isinstance(value, list):
+                safe_data[key] = f"<{len(value)} email_addresses> (type: list)"
+            else:
+                safe_data[key] = f"<email_address> (type: {type(value).__name__})"
+        else:
+            # For other fields, show type and length if applicable
+            if isinstance(value, str) and len(value) > max_content_length:
+                safe_data[key] = f"{str(value)[:max_content_length]}... [TRUNCATED]"
+            else:
+                safe_data[key] = value
+
+    return str(safe_data)
+
+
 def normalize_google_email(
     raw_data: Dict[str, Any], account_email: str, account_name: Optional[str] = None
 ) -> EmailMessage:
@@ -115,7 +169,7 @@ def normalize_google_email(
 
     except Exception as e:
         logger.error(f"Failed to normalize Gmail message: {e}")
-        logger.error(f"Raw data: {raw_data}")
+        logger.error(f"Safe raw data: {_safe_log_raw_data(raw_data)}")
         raise
 
 
@@ -137,6 +191,12 @@ def normalize_microsoft_email(
         ValueError: If required fields are missing from raw_data
     """
     try:
+        # Debug logging to see what we're getting from Microsoft Graph API
+        logger.debug(
+            f"Normalizing Microsoft email with raw data keys: {list(raw_data.keys())}"
+        )
+        logger.debug(f"Safe raw data sample: {_safe_log_raw_data(raw_data)}")
+
         # Extract basic message info
         message_id = raw_data.get("id")
         if not message_id:
@@ -169,7 +229,16 @@ def normalize_microsoft_email(
         )
 
         # Extract body content
-        body_text, body_html = _extract_microsoft_body(raw_data.get("body", {}))
+        body_data = raw_data.get("body", {})
+        logger.debug(
+            f"Microsoft body data for message {message_id}: <body_content> (type: {type(body_data).__name__})"
+        )
+        logger.debug(f"Body data type: {type(body_data)}")
+        logger.debug(
+            f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
+        )
+
+        body_text, body_html = _extract_microsoft_body(body_data)
 
         # Determine read status
         is_read = raw_data.get("isRead", False)
@@ -209,7 +278,7 @@ def normalize_microsoft_email(
 
     except Exception as e:
         logger.error(f"Failed to normalize Microsoft Graph message: {e}")
-        logger.error(f"Raw data: {raw_data}")
+        logger.error(f"Safe raw data: {_safe_log_raw_data(raw_data)}")
         raise
 
 
@@ -294,7 +363,7 @@ def normalize_google_calendar_event(
 
     except Exception as e:
         logger.error(f"Failed to normalize Google Calendar event: {e}")
-        logger.error(f"Raw data: {raw_data}")
+        logger.error(f"Safe raw data: {_safe_log_raw_data(raw_data)}")
         raise
 
 
@@ -367,7 +436,7 @@ def normalize_google_drive_file(
 
     except Exception as e:
         logger.error(f"Failed to normalize Google Drive file: {e}")
-        logger.error(f"Raw data: {raw_data}")
+        logger.error(f"Safe raw data: {_safe_log_raw_data(raw_data)}")
         raise
 
 
@@ -457,7 +526,7 @@ def normalize_microsoft_drive_file(
 
     except Exception as e:
         logger.error(f"Failed to normalize Microsoft OneDrive file: {e}")
-        logger.error(f"Raw data: {raw_data}")
+        logger.error(f"Safe raw data: {_safe_log_raw_data(raw_data)}")
         raise
 
 
@@ -574,15 +643,38 @@ def _extract_microsoft_body(
     body_data: Dict[str, Any],
 ) -> tuple[Optional[str], Optional[str]]:
     """Extract text and HTML body from Microsoft Graph body object."""
+    logger.debug(
+        f"Extracting Microsoft body from: <body_data> (type: {type(body_data).__name__})"
+    )
+    logger.debug(f"Body data type: {type(body_data)}")
+    logger.debug(
+        f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
+    )
+
     content_type = body_data.get("contentType", "").lower()
     content = body_data.get("content")
 
+    logger.debug(f"Content type: {content_type}")
+    logger.debug(f"Content length: {len(content) if content else 0}")
+    logger.debug(
+        f"Content sample: <content_truncated> (length: {len(content) if content else 0})"
+    )
+
     if content_type == "html":
+        logger.debug(
+            f"Returning HTML content, length: {len(content) if content else 0}"
+        )
         return None, content
     elif content_type == "text":
+        logger.debug(
+            f"Returning text content, length: {len(content) if content else 0}"
+        )
         return content, None
     else:
         # Default to text
+        logger.debug(
+            f"Defaulting to text content, length: {len(content) if content else 0}"
+        )
         return content, None
 
 

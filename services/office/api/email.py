@@ -112,6 +112,8 @@ async def get_user_email_providers(user_id: str) -> List[str]:
     Returns:
         List of available provider names (e.g., ['google', 'microsoft'])
     """
+    logger.info(f"Starting get_user_email_providers for user {user_id}")
+
     settings = get_settings()
     url = f"{settings.USER_SERVICE_URL}/v1/internal/users/{user_id}/integrations"
     headers: Dict[str, str] = {}
@@ -217,6 +219,15 @@ async def get_user_email_providers(user_id: str) -> List[str]:
         logger.error(
             f"Request error fetching user integrations for {user_id}: {request_error}"
         )
+        # Log additional context about the error
+        if hasattr(request_error, "request"):
+            logger.error(f"Request URL: {request_error.request.url}")
+            logger.error(f"Request method: {request_error.request.method}")
+            logger.error(
+                f"Request headers: {_safe_log_headers(dict(request_error.request.headers))}"
+            )
+        logger.error(f"Request error type: {type(request_error)}")
+        logger.error(f"Request error details: {str(request_error)}")
         return []
     except ValueError as json_error:
         logger.error(f"JSON parsing error for user {user_id}: {json_error}")
@@ -255,6 +266,29 @@ def get_request_id() -> str:
         # Fallback for cases where middleware hasn't set the context
         return "no-request-id"
     return request_id
+
+
+def _safe_log_headers(headers: Dict[str, str]) -> str:
+    """
+    Safely log headers without exposing sensitive information like API keys.
+
+    Args:
+        headers: Dictionary of request headers
+
+    Returns:
+        String representation of headers with sensitive values redacted
+    """
+    sensitive_keys = {"x-api-key", "authorization", "cookie", "set-cookie"}
+    safe_headers = {}
+
+    for key, value in headers.items():
+        key_lower = key.lower()
+        if key_lower in sensitive_keys:
+            safe_headers[key] = "[REDACTED]"
+        else:
+            safe_headers[key] = value
+
+    return str(safe_headers)
 
 
 @router.get("/messages", response_model=EmailMessageList)
