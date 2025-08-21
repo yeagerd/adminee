@@ -25,6 +25,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Call parent setup to enable HTTP call detection
         super().setup_method(method)
 
+        # Reset any existing database connections to ensure clean state
+        from services.meetings.models import reset_db
+
+        reset_db()
+
         # Use a unique temp file for each test
         self._db_fd, self._db_path = tempfile.mkstemp(suffix=".sqlite3")
         db_url = f"sqlite:///{self._db_path}"
@@ -111,6 +116,18 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
     def teardown_method(self, method):
         """Clean up test environment."""
+
+        # Clean up database connections
+        try:
+            import asyncio
+
+            from services.meetings.models import close_db
+
+            # Run the async close_db function
+            asyncio.run(close_db())
+        except Exception as e:
+            # If cleanup fails, log it but don't fail the test
+            print(f"Warning: Could not close database connections: {e}")
 
         # Clean up environment variables
         env_vars_to_remove = [
