@@ -690,12 +690,10 @@ class MicrosoftAPIClient(BaseAPIClient):
     async def send_draft_message(self, draft_id: str) -> None:
         await self.post(f"/me/messages/{draft_id}/send", json_data={})
 
-    async def get_message_text_only(
-        self, message_id: str
-    ) -> Dict[str, Any]:
+    async def get_message_text_only(self, message_id: str) -> Dict[str, Any]:
         """
         Get a specific Outlook message with text-only content for better indexing.
-        
+
         This method prioritizes text content over HTML for cleaner, more searchable content.
 
         Args:
@@ -712,7 +710,7 @@ class MicrosoftAPIClient(BaseAPIClient):
                 "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
                 "conversationId,conversationIndex,parentFolderId,importance,flag,"
                 "isDraft,webLink,categories"
-            )
+            ),
         }
 
         response = await self.get(f"/me/messages/{message_id}", params=params)

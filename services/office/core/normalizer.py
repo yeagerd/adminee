@@ -589,11 +589,13 @@ def _extract_microsoft_body(
     """Extract text and HTML body from Microsoft Graph body object."""
     logger.debug(f"Extracting Microsoft body from: {body_data}")
     logger.debug(f"Body data type: {type(body_data)}")
-    logger.debug(f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}")
-    
+    logger.debug(
+        f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
+    )
+
     content_type = body_data.get("contentType", "").lower()
     content = body_data.get("content")
-    
+
     logger.debug(f"Content type: {content_type}")
     logger.debug(f"Content length: {len(content) if content else 0}")
     logger.debug(f"Content sample: {content[:200] if content else 'None'}")
@@ -601,10 +603,14 @@ def _extract_microsoft_body(
     # For Vespa indexing, prioritize text content over HTML
     # Text content is cleaner and more searchable
     if content_type == "text":
-        logger.debug(f"Returning text content, length: {len(content) if content else 0}")
+        logger.debug(
+            f"Returning text content, length: {len(content) if content else 0}"
+        )
         return content, None
     elif content_type == "html":
-        logger.debug(f"Returning HTML content, length: {len(content) if content else 0}")
+        logger.debug(
+            f"Returning HTML content, length: {len(content) if content else 0}"
+        )
         return None, content
     else:
         # Default to text if content exists, otherwise return as-is
