@@ -395,53 +395,41 @@ class TestEmailResolutionService:
     async def test_find_user_by_email_with_provider_normalization(
         self, email_resolution_service
     ):
-        """Test that provider-aware normalization is used when provider is specified."""
+        """Test that consistent normalization is used regardless of provider."""
         with (
             patch.object(
                 EmailCollisionDetector,
-                "normalize_email_by_provider",
+                "_simple_email_normalize",
                 return_value="normalized@gmail.com",
-            ) as mock_provider_norm,
-            patch.object(
-                EmailCollisionDetector,
-                "normalize_email",
-                return_value="generic@gmail.com",
-            ) as mock_generic_norm,
+            ) as mock_simple_norm,
         ):
 
-            # Test with provider specified - should use provider-aware normalization
+            # Test with provider specified - should use consistent normalization
             await email_resolution_service.find_user_by_email_with_provider(
                 "test@gmail.com", "google"
             )
 
-            mock_provider_norm.assert_called_once_with("test@gmail.com", "google")
-            mock_generic_norm.assert_not_called()
+            mock_simple_norm.assert_called_once_with("test@gmail.com")
 
     @pytest.mark.asyncio
     async def test_find_user_by_email_without_provider_normalization(
         self, email_resolution_service
     ):
-        """Test that generic normalization is used when no provider is specified."""
+        """Test that consistent normalization is used regardless of provider."""
         with (
             patch.object(
                 EmailCollisionDetector,
-                "normalize_email_by_provider",
+                "_simple_email_normalize",
                 return_value="normalized@gmail.com",
-            ) as mock_provider_norm,
-            patch.object(
-                EmailCollisionDetector,
-                "normalize_email",
-                return_value="generic@gmail.com",
-            ) as mock_generic_norm,
+            ) as mock_simple_norm,
         ):
 
-            # Test without provider specified - should use generic normalization
+            # Test without provider specified - should use consistent normalization
             await email_resolution_service.find_user_by_email_with_provider(
                 "test@gmail.com"
             )
 
-            mock_generic_norm.assert_called_once_with("test@gmail.com")
-            mock_provider_norm.assert_not_called()
+            mock_simple_norm.assert_called_once_with("test@gmail.com")
 
     @pytest.mark.asyncio
     async def test_find_user_by_email_with_provider_database_error(
@@ -451,7 +439,7 @@ class TestEmailResolutionService:
         with (
             patch.object(
                 EmailCollisionDetector,
-                "normalize_email",
+                "_simple_email_normalize",
                 return_value="test@gmail.com",
             ),
             patch(

@@ -1023,9 +1023,13 @@ class UserService:
         """
         Find user by email with provider-aware resolution.
 
-        This method properly handles provider-specific email normalization and
-        considers the provider parameter for disambiguation when multiple users
-        might exist for the same normalized email.
+        This method uses the same email normalization logic as the old lookup logic
+        to ensure consistency and prevent users from being unfindable due to
+        different normalization methods. It considers the provider parameter for
+        disambiguation when multiple users might exist for the same normalized email.
+
+        IMPORTANT: This method uses _simple_email_normalize to maintain consistency
+        with existing user data that was stored using the previous normalization logic.
 
         Args:
             email: Email address to search for
@@ -1040,15 +1044,10 @@ class UserService:
         try:
             detector = EmailCollisionDetector()
 
-            # Use provider-aware normalization if provider is specified
-            if provider:
-                normalized_email = detector.normalize_email_by_provider(email, provider)
-                logger.debug(
-                    f"Provider-aware normalization for {email} with {provider}: {normalized_email}"
-                )
-            else:
-                normalized_email = detector.normalize_email(email)
-                logger.debug(f"Generic normalization for {email}: {normalized_email}")
+            # Use the same normalization logic as the old lookup logic to ensure consistency
+            # This prevents users from being unfindable due to different normalization methods
+            normalized_email = detector._simple_email_normalize(email)
+            logger.debug(f"Using consistent normalization for {email}: {normalized_email}")
 
             # Query database by normalized email
             async_session = get_async_session()
