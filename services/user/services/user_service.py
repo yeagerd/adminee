@@ -778,7 +778,7 @@ class UserService:
                 result = await session.execute(
                     select(User).where(
                         User.external_auth_id == external_auth_id,
-                        User.deleted_at.is_(None)
+                        User.deleted_at.is_(None)  # type: ignore[union-attr]
                     )
                 )
                 users = result.scalars().all()
