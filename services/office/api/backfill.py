@@ -8,10 +8,11 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from services.common.events import EmailBackfillEvent, EmailData, EventMetadata
 from services.common.logging_config import get_logger
+from services.common.pubsub_client import PubSubClient
 from services.office.core.auth import verify_backfill_api_key
 from services.office.core.email_crawler import EmailCrawler
-from services.office.core.pubsub_publisher import PubSubPublisher
 from services.office.core.settings import get_settings
 from services.office.models.backfill import (
     BackfillRequest,
@@ -21,6 +22,44 @@ from services.office.models.backfill import (
 )
 
 logger = get_logger(__name__)
+
+
+def _parse_email_date(
+    date_value: Optional[str], fallback_to_now: bool = True
+) -> datetime:
+    """
+    Safely parse email date values with proper error handling.
+
+    Args:
+        date_value: The date string to parse, can be None or empty
+        fallback_to_now: Whether to fall back to current time if parsing fails
+
+    Returns:
+        Parsed datetime object (timezone-aware) or current time if parsing fails
+    """
+    if not date_value:
+        if fallback_to_now:
+            return datetime.now(timezone.utc)
+        else:
+            raise ValueError("Date value is required but not provided")
+
+    try:
+        # Try to parse the ISO format date
+        parsed_date = datetime.fromisoformat(date_value)
+
+        # Ensure the datetime is timezone-aware
+        if parsed_date.tzinfo is None:
+            # If no timezone info, assume UTC
+            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+
+        return parsed_date
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Failed to parse date '{date_value}': {e}")
+        if fallback_to_now:
+            return datetime.now(timezone.utc)
+        else:
+            raise ValueError(f"Failed to parse date '{date_value}': {e}")
+
 
 internal_router = APIRouter(prefix="/internal/backfill", tags=["internal-backfill"])
 
@@ -55,32 +94,67 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
             logger.error("User service URL or API key not configured")
             return None
 
+        # Log the full request details
+        request_url = f"{user_service_url}/v1/internal/users/exists"
+        request_params = {"email": email}
+        request_headers = {"X-API-Key": api_key}
+
+        logger.info(f"Email resolution - Making request to: {request_url}")
+        logger.info(f"Email resolution - Request params: {request_params}")
+        logger.info(f"Email resolution - Request headers: X-API-Key: {api_key[:10]}...")
+
         # Call user service to resolve email to user ID
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{user_service_url}/v1/internal/users/exists",
-                params={"email": email},
-                headers={"X-API-Key": api_key},
+                request_url,
+                params=request_params,
+                headers=request_headers,
                 timeout=10.0,
             )
 
+            # Log response details
+            logger.info(f"Email resolution - Response status: {response.status_code}")
+            logger.info(
+                f"Email resolution - Response headers: {dict(response.headers)}"
+            )
+
             if response.status_code == 200:
-                data = response.json()
-                if data.get("exists"):
-                    user_id = data.get("user_id")
-                    logger.info(f"Resolved email {email} to user ID {user_id}")
-                    return user_id
-                else:
-                    logger.warning(f"Email {email} not found in user service")
+                try:
+                    data = response.json()
+                    logger.info(f"Email resolution - Response data: {data}")
+
+                    if data.get("exists"):
+                        user_id = data.get("user_id")
+                        logger.info(f"Resolved email {email} to user ID {user_id}")
+                        return user_id
+                    else:
+                        logger.warning(f"Email {email} not found in user service")
+                        return None
+                except Exception as json_error:
+                    logger.error(
+                        f"Email resolution - Failed to parse JSON response: {json_error}"
+                    )
+                    logger.error(
+                        f"Email resolution - Raw response text: {response.text}"
+                    )
                     return None
             else:
                 logger.error(
                     f"Failed to resolve email {email}: {response.status_code} - {response.text}"
                 )
+                logger.error(f"Email resolution - Full response: {response}")
                 return None
 
+    except httpx.TimeoutException as e:
+        logger.error(f"Email resolution - Timeout error for {email}: {e}")
+        return None
+    except httpx.RequestError as e:
+        logger.error(f"Email resolution - Request error for {email}: {e}")
+        return None
     except Exception as e:
         logger.error(f"Error resolving email {email} to user ID: {e}")
+        logger.error(f"Email resolution - Exception type: {type(e).__name__}")
+        logger.error(f"Email resolution - Exception details: {str(e)}")
         return None
 
 
@@ -254,18 +328,25 @@ async def run_backfill_job(
         job.status = BackfillStatusEnum.RUNNING  # Use enum value
 
         # Resolve email to internal user ID for API calls
+        logger.info(f"Backfill job {job_id} - Starting email resolution for: {user_id}")
         internal_user_id = await _resolve_email_to_user_id(user_id)
         if not internal_user_id:
+            logger.error(
+                f"Backfill job {job_id} - Failed to resolve email {user_id} to internal user ID"
+            )
             raise Exception(f"Failed to resolve email {user_id} to internal user ID")
+        logger.info(
+            f"Backfill job {job_id} - Successfully resolved email {user_id} to internal user ID: {internal_user_id}"
+        )
 
-        # Initialize email crawler and pubsub publisher
+        # Initialize email crawler and pubsub client
         email_crawler = EmailCrawler(
             internal_user_id,
             request.provider,
             user_id,
             max_email_count=request.max_emails or 10,
         )
-        pubsub_publisher = PubSubPublisher()
+        pubsub_client = PubSubClient(service_name="office-service")
 
         # Start crawling emails
         total_emails = await email_crawler.get_total_email_count()
@@ -294,13 +375,77 @@ async def run_backfill_job(
             resume_from=resume_from,
             max_emails=request.max_emails,
         ):
-            # Publish emails to pubsub
-            for email in email_batch:
-                try:
-                    await pubsub_publisher.publish_email(email)
-                    processed_count += 1
+            # Convert email batch to EmailData objects and publish as batch
+            try:
+                # Convert raw email data to EmailData objects
+                email_data_objects = []
+                for email in email_batch:
+                    try:
+                        email_data = EmailData(
+                            id=email.get("id", ""),
+                            thread_id=email.get("threadId", ""),
+                            subject=email.get("subject", ""),
+                            body=email.get("body", ""),
+                            from_address=email.get("from", ""),
+                            to_addresses=email.get("to", []),
+                            cc_addresses=email.get("cc", []),
+                            bcc_addresses=email.get("bcc", []),
+                            received_date=_parse_email_date(email.get("receivedDate")),
+                            sent_date=(
+                                _parse_email_date(
+                                    email.get("sentDate"), fallback_to_now=False
+                                )
+                                if email.get("sentDate")
+                                else None
+                            ),
+                            labels=email.get("labels", []),
+                            is_read=email.get("isRead", False),
+                            is_starred=email.get("isStarred", False),
+                            has_attachments=email.get("hasAttachments", False),
+                            provider=request.provider,
+                            provider_message_id=email.get("id", ""),
+                            size_bytes=email.get("sizeBytes"),
+                            mime_type=email.get("mimeType"),
+                        )
+                        email_data_objects.append(email_data)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to convert email data: {e}",
+                            extra={"email_id": email.get("id")},
+                        )
+                        job.failed_emails += 1
+                        continue
+
+                if email_data_objects:
+                    # Create and publish EmailBackfillEvent
+                    backfill_event = EmailBackfillEvent(
+                        user_id=internal_user_id,
+                        provider=request.provider,
+                        emails=email_data_objects,
+                        batch_size=len(email_data_objects),
+                        sync_type="backfill",
+                        start_date=request.start_date,
+                        end_date=request.end_date,
+                        folder=request.folders[0] if request.folders else None,
+                        total_emails=total_emails,
+                        processed_count=processed_count,
+                        metadata=EventMetadata(  # type: ignore[call-arg]
+                            source_service="office-service",
+                            source_version="1.0.0",
+                            user_id=internal_user_id,
+                            correlation_id=job_id,
+                        ),
+                    )
+
+                    # Add correlation ID for tracking
+                    backfill_event.add_correlation_id(job_id)
+
+                    # Publish the batch event
+                    message_id = pubsub_client.publish_email_backfill(backfill_event)
+                    processed_count += len(email_data_objects)
                     job.processed_emails = processed_count
-                    # Update progress based on max_emails if available, otherwise use total_emails
+
+                    # Update progress
                     if request.max_emails:
                         job.progress = min(
                             100.0, (processed_count / request.max_emails) * 100
@@ -310,16 +455,22 @@ async def run_backfill_job(
                             100.0, (processed_count / total_emails) * 100
                         )
 
-                except RuntimeError as e:
-                    # Fatal error (e.g., topic not found) - halt the job
-                    logger.error(f"Fatal error in backfill job {job_id}: {e}")
-                    job.status = BackfillStatusEnum.FAILED  # Use enum value
-                    job.end_time = datetime.now(timezone.utc)
-                    job.error_message = f"Fatal Pub/Sub error: {e}"
-                    return
-                except Exception as e:
-                    logger.error(f"Failed to publish email {email.get('id')}: {e}")
-                    job.failed_emails += 1
+                    logger.info(
+                        f"Published email batch to PubSub",
+                        extra={
+                            "job_id": job_id,
+                            "batch_size": len(email_data_objects),
+                            "message_id": message_id,
+                            "processed_count": processed_count,
+                            "progress": job.progress,
+                        },
+                    )
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to publish email batch: {e}", extra={"job_id": job_id}
+                )
+                job.failed_emails += len(email_batch)
 
             # Check if job was cancelled or paused
             if job.status in [
