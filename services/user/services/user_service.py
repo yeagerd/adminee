@@ -897,123 +897,113 @@ class UserService:
                 resource="User", identifier=str(user_id) if user_id else ""
             )
 
-    async def resolve_email_to_user_id(
-        self, email_request: EmailResolutionRequest
-    ) -> EmailResolutionResponse:
-        """
-        Resolve an email address to external_auth_id using email normalization.
-
-        Args:
-            email_request: Email resolution request containing the email to resolve
-
-        Returns:
-            EmailResolutionResponse: Contains external_auth_id and related user information
-
-        Raises:
-            NotFoundError: If no user is found for the resolved email
-            ValidationError: If email format is invalid
-        """
-        try:
-            detector = EmailCollisionDetector()
-
-            # Use fast local normalization (all normalization is now local and instant)
-            normalized_email = detector._simple_email_normalize(email_request.email)
-
-            logger.debug(
-                f"Resolving email {email_request.email} (normalized: {normalized_email}) to external_auth_id"
-            )
-
-            # Query database by normalized email
-            user = await self._find_user_by_normalized_email(normalized_email)
-
-            if not user:
-                raise NotFoundError(
-                    resource="User", identifier=f"email:{email_request.email}"
-                )
-
-            # Create response with user information
-            response = EmailResolutionResponse(
-                external_auth_id=user.external_auth_id,
-                email=user.email,  # Original email from database
-                normalized_email=normalized_email,
-                auth_provider=user.auth_provider,
-            )
-
-            logger.debug(
-                f"Successfully resolved email {email_request.email} to external_auth_id {user.external_auth_id}"
-            )
-            return response
-
-        except NotFoundError:
-            raise
-        except Exception as e:
-            logger.error(f"Error resolving email {email_request.email}: {e}")
-            raise ValidationError(
-                message=f"Failed to resolve email: {str(e)}",
-                field="email",
-                value=email_request.email,
-            )
-
-    async def _find_user_by_normalized_email(
-        self, normalized_email: str
+    async def find_user_by_email_with_provider(
+        self, email: str, provider: Optional[str] = None
     ) -> Optional[User]:
         """
-        Find user by normalized email address.
+        Find user by email with provider-aware resolution.
+
+        This method uses the same email normalization logic as the old lookup logic
+        to ensure consistency and prevent users from being unfindable due to
+        different normalization methods. It considers the provider parameter for
+        disambiguation when multiple users might exist for the same normalized email.
+
+        IMPORTANT: This method uses _simple_email_normalize to maintain consistency
+        with existing user data that was stored using the previous normalization logic.
 
         Args:
-            normalized_email: Normalized email address to search for
+            email: Email address to search for
+            provider: OAuth provider for context (optional, but recommended for accuracy)
 
         Returns:
             User model instance if found, None otherwise
 
         Raises:
-            ValidationError: If multiple users found for the same normalized email (data integrity issue)
+            ValidationError: If multiple users found for the same email (with or without provider)
         """
         try:
+            detector = EmailCollisionDetector()
+
+            # Use the same normalization logic as the old lookup logic to ensure consistency
+            # This prevents users from being unfindable due to different normalization methods
+            normalized_email = detector._simple_email_normalize(email)
+            logger.debug(
+                f"Using consistent normalization for {email}: {normalized_email}"
+            )
+
+            # Query database by normalized email
             async_session = get_async_session()
             async with async_session() as session:
-                # Query users by normalized_email
-                result = await session.execute(
-                    select(User).where(
-                        User.normalized_email == normalized_email,
-                        User.deleted_at == None,  # noqa: E711 # Only active users
-                    )
+                # Build query with provider consideration
+                query = select(User).where(
+                    User.normalized_email == normalized_email,
+                    User.deleted_at == None,  # noqa: E711 # Only active users
                 )
+
+                # If provider is specified, add it to the query for disambiguation
+                if provider:
+                    query = query.where(User.auth_provider == provider)
+
+                result = await session.execute(query)
                 users = result.scalars().all()
 
                 if not users:
                     logger.debug(
-                        f"No user found for normalized email: {normalized_email}"
+                        f"No user found for email {email} (normalized: {normalized_email}) "
+                        f"with provider {provider or 'any'}"
                     )
                     return None
 
-                if len(users) > 1:
-                    # This shouldn't happen due to normalized_email uniqueness, but handle gracefully
-                    logger.error(
-                        f"Multiple users found for normalized email {normalized_email}: "
-                        f"{[u.external_auth_id for u in users]}"
+                if len(users) == 1:
+                    user = users[0]
+                    logger.debug(
+                        f"Found single user {user.external_auth_id} for email {email} "
+                        f"(normalized: {normalized_email}) with provider {user.auth_provider}"
                     )
+                    return user
+
+                # Multiple users found - need to handle disambiguation
+                logger.warning(
+                    f"Multiple users found for email {email} (normalized: {normalized_email}): "
+                    f"{[u.external_auth_id for u in users]}"
+                )
+
+                if provider:
+                    # Provider was specified but we still got multiple users
+                    # This suggests a data integrity issue
                     raise ValidationError(
-                        message="Data integrity error: multiple users found for email",
-                        field="normalized_email",
-                        value=normalized_email,
+                        message="Data integrity error: multiple users found for email with same provider",
+                        field="email",
+                        value=email,
                         details={
+                            "normalized_email": normalized_email,
+                            "provider": provider,
                             "user_count": len(users),
                             "user_ids": [u.external_auth_id for u in users],
                         },
                     )
-
-                user = users[0]
-                logger.debug(
-                    f"Found user {user.external_auth_id} for normalized email: {normalized_email}"
-                )
-                return user
+                else:
+                    # No provider specified, but we have multiple users
+                    # This indicates a data integrity issue that should be reported
+                    # rather than silently returning None, as it can mask underlying problems
+                    raise ValidationError(
+                        message="Multiple users found for email without provider specification. Provider parameter is required for disambiguation.",
+                        field="email",
+                        value=email,
+                        details={
+                            "normalized_email": normalized_email,
+                            "user_count": len(users),
+                            "user_ids": [u.external_auth_id for u in users],
+                            "auth_providers": [u.auth_provider for u in users],
+                            "message": "Provider parameter is required when multiple users exist for the same email",
+                        },
+                    )
 
         except ValidationError:
             raise
         except Exception as e:
             logger.error(
-                f"Database error finding user by normalized email {normalized_email}: {e}"
+                f"Database error finding user by email {email} with provider {provider}: {e}"
             )
             return None
 
