@@ -486,6 +486,12 @@ except Exception as e:
         
         log_info "Current document count: $current_count (expected: $expected_count)"
         
+        # If we're already at the expected count, we can return immediately
+        if [[ "$current_count" == "$expected_count" ]]; then
+            log_success "Document count already at expected value: $current_count (expected: $expected_count)"
+            return 0
+        fi
+        
         # Check if count is stable
         if [[ "$current_count" == "$last_count" ]]; then
             stable_count=$((stable_count + 1))
@@ -495,7 +501,7 @@ except Exception as e:
             last_count="$current_count"
         fi
         
-        # If we've reached the expected count and it's been stable, we're done
+        # If we've been stable for enough checks and reached expected count, we're done
         if [[ "$current_count" == "$expected_count" && $stable_count -ge $required_stable_checks ]]; then
             log_success "Document count stabilized at $current_count (expected: $expected_count)"
             return 0
