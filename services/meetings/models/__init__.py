@@ -153,21 +153,21 @@ async def close_db() -> None:
     async_engine_to_dispose: Optional[AsyncEngine] = None
     engine_to_dispose: Optional[Engine] = None
 
-    # Async path: clear globals under locks in sessionmaker -> engine order
+    # Async path: clear sessionmaker unconditionally, then clear engine if present (sessionmaker -> engine order)
     with _async_session_maker_lock:
+        _async_session_maker = None
         with _async_engine_lock:
             if _async_engine is not None:
                 async_engine_to_dispose = _async_engine
                 _async_engine = None
-                _async_session_maker = None
 
-    # Sync path: clear globals under locks in sessionmaker -> engine order
+    # Sync path: clear sessionmaker unconditionally, then clear engine if present (sessionmaker -> engine order)
     with _session_maker_lock:
+        _session_maker = None
         with _engine_lock:
             if _engine is not None:
                 engine_to_dispose = _engine
                 _engine = None
-                _session_maker = None
 
     # Now dispose outside of locks
     if async_engine_to_dispose is not None:
