@@ -124,7 +124,15 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             from services.meetings.models import close_db
 
             # Run the async close_db function
-            asyncio.run(close_db())
+            try:
+                asyncio.run(close_db())
+            except RuntimeError:
+                # If we're already in an event loop, create a task in a separate thread
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, close_db())
+                    future.result()
         except Exception as e:
             # If cleanup fails, log it but don't fail the test
             print(f"Warning: Could not close database connections: {e}")
