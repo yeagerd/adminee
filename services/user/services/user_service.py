@@ -778,27 +778,33 @@ class UserService:
                 result = await session.execute(
                     select(User).where(
                         User.external_auth_id == external_auth_id,
-                        User.deleted_at.is_(None)  # type: ignore[union-attr]
+                        User.deleted_at.is_(None),  # type: ignore[union-attr]
                     )
                 )
                 users = result.scalars().all()
-                
+
                 if not users:
-                    raise NotFoundError(resource="User", identifier=str(external_auth_id or ""))
-                
+                    raise NotFoundError(
+                        resource="User", identifier=str(external_auth_id or "")
+                    )
+
                 if len(users) == 1:
                     # Single user found, return immediately
                     user = users[0]
-                    logger.debug(f"Found single user {external_auth_id} with provider {user.auth_provider}")
+                    logger.debug(
+                        f"Found single user {external_auth_id} with provider {user.auth_provider}"
+                    )
                     return user
-                
+
                 # Multiple users found - apply provider preference filtering
-                logger.debug(f"Found {len(users)} users with external_auth_id {external_auth_id}, applying provider preference filtering")
-                
+                logger.debug(
+                    f"Found {len(users)} users with external_auth_id {external_auth_id}, applying provider preference filtering"
+                )
+
                 # Define provider preference order (most preferred first)
                 provider_preference = [
                     "nextauth",
-                    "google", 
+                    "google",
                     "microsoft",
                     "clerk",
                     "custom",
@@ -806,22 +812,28 @@ class UserService:
                     "firebase",
                     "supabase",
                 ]
-                
+
                 # Find the user with the most preferred provider
                 for preferred_provider in provider_preference:
                     for user in users:
                         if user.auth_provider == preferred_provider:
-                            logger.debug(f"Selected user {external_auth_id} with preferred provider {preferred_provider}")
+                            logger.debug(
+                                f"Selected user {external_auth_id} with preferred provider {preferred_provider}"
+                            )
                             return user
-                
+
                 # If no preferred provider found, return the first user (fallback)
-                logger.debug(f"No preferred provider found, returning first user with provider {users[0].auth_provider}")
+                logger.debug(
+                    f"No preferred provider found, returning first user with provider {users[0].auth_provider}"
+                )
                 return users[0]
-                
+
         except NotFoundError:
             raise
         except Exception as e:
-            logger.error(f"Error retrieving user by external auth ID {external_auth_id}: {e}")
+            logger.error(
+                f"Error retrieving user by external auth ID {external_auth_id}: {e}"
+            )
             raise NotFoundError(resource="User", identifier=str(external_auth_id or ""))
 
     async def get_user_profile_by_external_auth_id(

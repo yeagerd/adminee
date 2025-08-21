@@ -6,12 +6,12 @@ error handling, authentication, and authorization.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
-from unittest.mock import AsyncMock
 
+from services.common.http_errors import NotFoundError
 from services.user.models.user import User
 from services.user.schemas.pagination import UserListResponse
 from services.user.schemas.user import (
@@ -19,7 +19,6 @@ from services.user.schemas.user import (
     UserResponse,
 )
 from services.user.services.user_service import get_user_service
-from services.common.http_errors import NotFoundError
 
 
 class TestUserProfileEndpoints:
@@ -156,14 +155,15 @@ class TestUserProfileEndpoints:
 
             assert result.external_auth_id == "user_123"
             # Verify the service method was called
-            get_user_service().get_user_by_external_auth_id_auto_detect.assert_called_once_with("user_123")
+            get_user_service().get_user_by_external_auth_id_auto_detect.assert_called_once_with(
+                "user_123"
+            )
 
     @pytest.mark.asyncio
     async def test_get_current_user_profile_not_found(self):
         """Test current user profile retrieval when user not found."""
         with patch.object(
-            get_user_service(), 
-            "get_user_by_external_auth_id_auto_detect"
+            get_user_service(), "get_user_by_external_auth_id_auto_detect"
         ) as mock_get:
             mock_get.side_effect = NotFoundError(resource="User", identifier="user_123")
 
