@@ -30,7 +30,9 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const isRefreshingRef = useRef(false);
     const refreshAttemptsRef = useRef<Record<string, number>>({});
 
-    const loadIntegrations = async () => {
+    const loadIntegrations = useCallback(async () => {
+        setLoading(true);
+        setError(null);
         try {
             const resp = await userApi.getIntegrations();
             // Convert IntegrationResponse to Integration type
@@ -41,18 +43,21 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setIntegrations(convertedIntegrations);
         } catch (error) {
             console.error('Failed to load integrations:', error);
+            setError('Failed to load integrations');
+        } finally {
+            setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (status === 'authenticated') {
-            loadIntegrations();
+            void loadIntegrations();
         } else if (status === 'unauthenticated') {
             setIntegrations([]);
             setError(null);
             setLoading(false);
         }
-    }, [loadIntegrations, status]);
+    }, [status, loadIntegrations]);
 
     // Helper to check if a token is expired
     const isTokenExpired = useCallback((token_expires_at?: string): boolean => {
