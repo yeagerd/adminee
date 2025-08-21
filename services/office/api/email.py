@@ -3016,6 +3016,31 @@ async def get_internal_email_messages(
                         logger.info(
                             f"Microsoft API returned: {type(messages)} with keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
                         )
+                        
+                        # Debug: Check what's actually in the messages
+                        if isinstance(messages, dict) and messages.get("value"):
+                            email_list = messages["value"]
+                            logger.info(f"Microsoft API returned {len(email_list)} messages")
+                            if email_list:
+                                # Check first message for body content
+                                first_msg = email_list[0]
+                                logger.info(f"First message keys: {list(first_msg.keys())}")
+                                if "body" in first_msg:
+                                    body_data = first_msg["body"]
+                                    logger.info(f"First message body type: {type(body_data)}")
+                                    if isinstance(body_data, dict):
+                                        logger.info(f"Body data keys: {list(body_data.keys())}")
+                                        content = body_data.get("content", "")
+                                        content_type = body_data.get("contentType", "")
+                                        logger.info(f"Body content type: {content_type}, length: {len(content) if content else 0}")
+                                        if content:
+                                            logger.info(f"Body content sample: {content[:200]}")
+                                        else:
+                                            logger.info("Body content is empty!")
+                                    else:
+                                        logger.info(f"Body data is not a dict: {body_data}")
+                                else:
+                                    logger.info("No 'body' field in first message")
                     elif provider == "google" and isinstance(client, GoogleAPIClient):
                         # Google client uses max_results, query
                         logger.info(
@@ -3040,9 +3065,20 @@ async def get_internal_email_messages(
                     email_list = (
                         messages.get("value", []) if isinstance(messages, dict) else []
                     )
-                    normalized_messages = [
-                        normalize_microsoft_email(msg, email) for msg in email_list
-                    ]
+                    logger.info(f"Normalizing {len(email_list)} Microsoft emails")
+                    normalized_messages = []
+                    for i, msg in enumerate(email_list):
+                        try:
+                            normalized = normalize_microsoft_email(msg, email)
+                            # Debug: Check what we got after normalization
+                            if i == 0:  # Log first message details
+                                logger.info(f"First normalized message body length: {len(normalized.body_text or '') + len(normalized.body_html or '')}")
+                                logger.info(f"First normalized message has body_text: {bool(normalized.body_text)}")
+                                logger.info(f"First normalized message has body_html: {bool(normalized.body_html)}")
+                            normalized_messages.append(normalized)
+                        except Exception as e:
+                            logger.error(f"Failed to normalize Microsoft email {i}: {e}")
+                            continue
                 elif provider == "google":
                     # Gmail API returns emails in a 'messages' array
                     email_list = (
