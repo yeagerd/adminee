@@ -46,7 +46,7 @@ except ImportError:
 logger = get_logger(__name__)
 
 # Import the shared ingest service function
-from services.vespa_loader.main import ingest_document_service
+from services.vespa_loader.ingest_service import ingest_document_service
 
 # Define union type for all supported event types
 SupportedEventType = Union[
@@ -126,8 +126,14 @@ except ImportError:
 class PubSubConsumer:
     """Consumes messages from Pub/Sub topics for Vespa indexing"""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, vespa_client: Any = None, content_normalizer: Any = None, 
+                 embedding_generator: Any = None, document_mapper: Any = None) -> None:
         self.settings = settings
+        self.vespa_client = vespa_client
+        self.content_normalizer = content_normalizer
+        self.embedding_generator = embedding_generator
+        self.document_mapper = document_mapper
+        
         self.subscriber: Optional[Any] = None
         self.subscriptions: Dict[str, Dict[str, Any]] = {}
         self.running = False
@@ -814,7 +820,11 @@ class PubSubConsumer:
             # Call the ingest service directly
             logger.info(f"Calling ingest service for document {document.id}")
             result = await ingest_document_service(
-                document.to_dict(), run_background_tasks=False
+                document.to_dict(), 
+                self.vespa_client, 
+                self.content_normalizer, 
+                self.embedding_generator, 
+                self.document_mapper
             )
 
             # Run post-processing tasks directly since we're not in a FastAPI context

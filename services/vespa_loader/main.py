@@ -12,11 +12,12 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pubsub_client import PubSubConsumer
-from vespa_loader.content_normalizer import ContentNormalizer
-from vespa_loader.embeddings import EmbeddingGenerator
-from vespa_loader.mapper import DocumentMapper
-from vespa_loader.vespa_client import VespaClient
+from services.vespa_loader.pubsub_consumer import PubSubConsumer
+from services.vespa_loader.content_normalizer import ContentNormalizer
+from services.vespa_loader.embeddings import EmbeddingGenerator
+from services.vespa_loader.mapper import DocumentMapper
+from services.vespa_loader.vespa_client import VespaClient
+from services.vespa_loader.ingest_service import ingest_document_service
 
 from services.common.http_errors import (
     AuthError,
@@ -51,99 +52,8 @@ document_mapper: DocumentMapper | None = None
 pubsub_consumer: PubSubConsumer | None = None
 
 
-async def ingest_document_service(
-    document_data: Union[VespaDocumentType, Dict[str, Any]],
-) -> Dict[str, Any]:
-    """Shared service function to ingest a document into Vespa
-
-    This function can be called directly by other parts of the service
-    or through the HTTP API endpoints.
-
-    Args:
-        document_data: The document data to ingest
-
-    Returns:
-        Dict containing the ingestion result
-
-    Raises:
-        ServiceError: If the service is not properly initialized
-        ValidationError: If document data is invalid
-    """
-    if not all(
-        [vespa_client, content_normalizer, embedding_generator, document_mapper]
-    ):
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
-
-    try:
-        # Validate document data
-        if isinstance(document_data, VespaDocumentType):
-            if not document_data.id or not document_data.user_id:
-                raise ValidationError(
-                    "Document ID and user_id are required",
-                    field="document_data",
-                    value=document_data,
-                )
-            # Convert to dict for processing
-            document_dict = document_data.to_dict()
-        else:
-            if not document_data.get("id") or not document_data.get("user_id"):
-                raise ValidationError(
-                    "Document ID and user_id are required",
-                    field="document_data",
-                    value=document_data,
-                )
-            document_dict = document_data
-
-        # Map document to Vespa format
-        if not document_mapper:
-            raise ServiceError(
-                "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
-            )
-        vespa_document = document_mapper.map_to_vespa(document_dict)
-
-        # Normalize content
-        if vespa_document.get("content") and content_normalizer:
-            vespa_document["content"] = content_normalizer.normalize(
-                vespa_document["content"]
-            )
-
-        # Generate embeddings if content exists
-        if vespa_document.get("content") and embedding_generator:
-            try:
-                embedding = await embedding_generator.generate_embedding(
-                    vespa_document["content"]
-                )
-                vespa_document["embedding"] = embedding
-            except Exception as e:
-                logger.warning(f"Failed to generate embedding: {e}")
-                # Continue without embedding
-
-        # Index document in Vespa
-        if not vespa_client:
-            raise ServiceError(
-                "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
-            )
-        result = await vespa_client.index_document(vespa_document)
-
-        return {
-            "status": "success",
-            "document_id": document_dict["id"],
-            "vespa_result": result,
-        }
-
-    except ValidationError:
-        # Re-raise ValidationError to preserve the specific error details
-        raise
-    except Exception as e:
-        logger.error(f"Error ingesting document: {e}")
-        raise ServiceError(
-            "Document ingestion failed",
-            code=ErrorCode.SERVICE_ERROR,
-            details={"error": str(e)},
-        )
-
+# The ingest_document_service function has been moved to ingest_service.py
+# to avoid circular imports
 
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
@@ -271,7 +181,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start Pub/Sub consumer if not disabled
     if not settings.disable_pubsub_consumer:
         try:
-            pubsub_consumer = PubSubConsumer(settings)
+            pubsub_consumer = PubSubConsumer(
+                settings, 
+                vespa_client, 
+                content_normalizer, 
+                embedding_generator, 
+                document_mapper
+            )
             success = await pubsub_consumer.start()
             if success:
                 logger.info("Pub/Sub consumer started successfully")
@@ -404,7 +320,9 @@ async def ingest_document(
     """Ingest a document into Vespa"""
     try:
         # Call the shared service function
-        result = await ingest_document_service(document_data)
+        result = await ingest_document_service(
+            document_data, vespa_client, content_normalizer, embedding_generator, document_mapper
+        )
 
         # Run post-processing synchronously since we removed background tasks
         await _post_process_document(
