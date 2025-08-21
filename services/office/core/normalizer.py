@@ -29,27 +29,40 @@ logger = get_logger(__name__)
 def _safe_log_raw_data(raw_data: Dict[str, Any], max_content_length: int = 100) -> str:
     """
     Safely log raw API response data without exposing sensitive content.
-    
+
     Args:
         raw_data: Raw API response dictionary
         max_content_length: Maximum length of content to show in logs
-        
+
     Returns:
         Safe string representation of the data
     """
     safe_data = {}
-    
+
     # Copy non-sensitive fields
     for key, value in raw_data.items():
-        if key in ['id', 'conversationId', 'subject', 'bodyPreview', 'receivedDateTime', 'sentDateTime', 'isRead', 'hasAttachments', 'categories', 'importance']:
+        if key in [
+            "id",
+            "conversationId",
+            "subject",
+            "bodyPreview",
+            "receivedDateTime",
+            "sentDateTime",
+            "isRead",
+            "hasAttachments",
+            "categories",
+            "importance",
+        ]:
             safe_data[key] = value
-        elif key == 'body':
+        elif key == "body":
             # Log body structure but not content
             if isinstance(value, dict):
-                safe_data[key] = f"<body_content> (type: dict, keys: {list(value.keys()) if isinstance(value, dict) else 'unknown'})"
+                safe_data[key] = (
+                    f"<body_content> (type: dict, keys: {list(value.keys()) if isinstance(value, dict) else 'unknown'})"
+                )
             else:
                 safe_data[key] = f"<body_content> (type: {type(value).__name__})"
-        elif key in ['from', 'toRecipients', 'ccRecipients', 'bccRecipients']:
+        elif key in ["from", "toRecipients", "ccRecipients", "bccRecipients"]:
             # Log email address structure but not full addresses
             if isinstance(value, dict):
                 safe_data[key] = f"<email_address> (type: {type(value).__name__})"
@@ -63,7 +76,7 @@ def _safe_log_raw_data(raw_data: Dict[str, Any], max_content_length: int = 100) 
                 safe_data[key] = f"{str(value)[:max_content_length]}... [TRUNCATED]"
             else:
                 safe_data[key] = value
-    
+
     return str(safe_data)
 
 
@@ -217,7 +230,9 @@ def normalize_microsoft_email(
 
         # Extract body content
         body_data = raw_data.get("body", {})
-        logger.debug(f"Microsoft body data for message {message_id}: <body_content> (type: {type(body_data).__name__})")
+        logger.debug(
+            f"Microsoft body data for message {message_id}: <body_content> (type: {type(body_data).__name__})"
+        )
         logger.debug(f"Body data type: {type(body_data)}")
         logger.debug(
             f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
@@ -628,7 +643,9 @@ def _extract_microsoft_body(
     body_data: Dict[str, Any],
 ) -> tuple[Optional[str], Optional[str]]:
     """Extract text and HTML body from Microsoft Graph body object."""
-    logger.debug(f"Extracting Microsoft body from: <body_data> (type: {type(body_data).__name__})")
+    logger.debug(
+        f"Extracting Microsoft body from: <body_data> (type: {type(body_data).__name__})"
+    )
     logger.debug(f"Body data type: {type(body_data)}")
     logger.debug(
         f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
@@ -639,7 +656,9 @@ def _extract_microsoft_body(
 
     logger.debug(f"Content type: {content_type}")
     logger.debug(f"Content length: {len(content) if content else 0}")
-    logger.debug(f"Content sample: <content_truncated> (length: {len(content) if content else 0})")
+    logger.debug(
+        f"Content sample: <content_truncated> (length: {len(content) if content else 0})"
+    )
 
     if content_type == "html":
         logger.debug(

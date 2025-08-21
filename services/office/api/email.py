@@ -223,7 +223,9 @@ async def get_user_email_providers(user_id: str) -> List[str]:
         if hasattr(request_error, "request"):
             logger.error(f"Request URL: {request_error.request.url}")
             logger.error(f"Request method: {request_error.request.method}")
-            logger.error(f"Request headers: {_safe_log_headers(dict(request_error.request.headers))}")
+            logger.error(
+                f"Request headers: {_safe_log_headers(dict(request_error.request.headers))}"
+            )
         logger.error(f"Request error type: {type(request_error)}")
         logger.error(f"Request error details: {str(request_error)}")
         return []
@@ -269,23 +271,23 @@ def get_request_id() -> str:
 def _safe_log_headers(headers: Dict[str, str]) -> str:
     """
     Safely log headers without exposing sensitive information like API keys.
-    
+
     Args:
         headers: Dictionary of request headers
-        
+
     Returns:
         String representation of headers with sensitive values redacted
     """
-    sensitive_keys = {'x-api-key', 'authorization', 'cookie', 'set-cookie'}
+    sensitive_keys = {"x-api-key", "authorization", "cookie", "set-cookie"}
     safe_headers = {}
-    
+
     for key, value in headers.items():
         key_lower = key.lower()
         if key_lower in sensitive_keys:
-            safe_headers[key] = '[REDACTED]'
+            safe_headers[key] = "[REDACTED]"
         else:
             safe_headers[key] = value
-    
+
     return str(safe_headers)
 
 
