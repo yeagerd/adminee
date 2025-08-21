@@ -143,7 +143,7 @@ update_service_types() {
     # Generate types using openapi-typescript-codegen
     cd "$PROJECT_ROOT/frontend"
     
-    if npx openapi-typescript-codegen --input "$schema_file" --output "$types_dir" --exportServices false --exportCore false; then
+    if npx --no-install openapi-typescript-codegen --input "$schema_file" --output "$types_dir" --exportServices false --exportCore false; then
         print_status "success" "Types updated for $service_name"
         return 0
     else
@@ -309,8 +309,8 @@ main() {
     
     # Check if openapi-typescript-codegen is installed
     cd "$PROJECT_ROOT/frontend"
-    if ! npx openapi-typescript-codegen --version &> /dev/null; then
-        print_status "error" "openapi-typescript-codegen is not installed. Please run 'npm install' first."
+    if ! npx --no-install openapi-typescript-codegen --version &> /dev/null; then
+        print_status "error" "openapi-typescript-codegen is not installed locally. Please run 'cd frontend && npm i -D openapi-typescript-codegen' first."
         exit 1
     fi
     
