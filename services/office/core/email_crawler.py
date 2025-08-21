@@ -83,10 +83,7 @@ class EmailCrawler:
             return await self._get_email_count()
 
         except Exception as e:
-            logger.error(
-                f"Failed to get email count for user {self.user_id}: {str(e)}",
-                exc_info=True,
-            )
+            logger.error(f"Failed to get email count for user {self.user_id}: {str(e)}", exc_info=True)
             raise
 
     async def crawl_emails(
@@ -121,10 +118,7 @@ class EmailCrawler:
                     break
 
         except Exception as e:
-            logger.error(
-                f"Failed to crawl emails for user {self.user_id}: {str(e)}",
-                exc_info=True,
-            )
+            logger.error(f"Failed to crawl emails for user {self.user_id}: {str(e)}", exc_info=True)
             raise
 
     async def _get_email_count(self) -> int:
@@ -232,7 +226,7 @@ class EmailCrawler:
             except Exception as e:
                 logger.error(
                     f"Failed to process email batch {batch_num} for provider {self.provider}: {str(e)}",
-                    exc_info=True,
+                    exc_info=True
                 )
                 # Continue with next batch
                 continue
@@ -437,7 +431,7 @@ class EmailCrawler:
         except Exception as e:
             logger.error(
                 f"Failed to get real emails from office service internal API for {provider_str if 'provider_str' in locals() else provider}: {str(e)}",
-                exc_info=True,
+                exc_info=True
             )
             logger.error("This could be due to:")
             logger.error("1. Office service not running")
