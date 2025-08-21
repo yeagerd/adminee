@@ -131,20 +131,105 @@ async def get_user_email_providers(user_id: str) -> List[str]:
             resp.raise_for_status()
             data = resp.json()
 
+            # Debug logging to see what's being returned
+            logger.info(f"User service response for {user_id}: {data}")
+            logger.info(
+                f"Response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}"
+            )
+
             # Extract active email providers
             available_providers = []
-            for integration in data.get("integrations", []):
-                provider = integration.get("provider", "").lower()
-                status = integration.get("status", "").lower()
+            integrations = data.get("integrations", [])
+            logger.info(f"Found {len(integrations)} integrations: {integrations}")
 
-                # Only include active integrations for email providers
-                if status == "active" and provider in ["google", "microsoft"]:
-                    available_providers.append(provider)
+            # Validate integration data structure
+            if not isinstance(integrations, list):
+                logger.error(
+                    f"Expected integrations to be a list, got {type(integrations)}: {integrations}"
+                )
+                return []
 
+            for i, integration in enumerate(integrations):
+                try:
+                    if not isinstance(integration, dict):
+                        logger.error(f"Integration {i} is not a dict: {integration}")
+                        continue
+
+                    provider = integration.get("provider")
+                    status = integration.get("status")
+
+                    logger.info(
+                        f"Processing integration {i}: provider='{provider}' (type: {type(provider)}), status='{status}' (type: {type(status)})"
+                    )
+
+                    # Validate required fields
+                    if provider is None:
+                        logger.error(
+                            f"Integration {i} missing provider field: {integration}"
+                        )
+                        continue
+                    if status is None:
+                        logger.error(
+                            f"Integration {i} missing status field: {integration}"
+                        )
+                        continue
+
+                    # Convert to lowercase strings for comparison
+                    provider_str = str(provider).lower()
+                    status_str = str(status).lower()
+
+                    logger.info(
+                        f"Normalized integration {i}: provider='{provider_str}', status='{status_str}'"
+                    )
+
+                    # Only include active integrations for email providers
+                    if status_str == "active" and provider_str in [
+                        "google",
+                        "microsoft",
+                    ]:
+                        available_providers.append(provider_str)
+                        logger.info(
+                            f"Added provider '{provider_str}' to available providers"
+                        )
+                    else:
+                        logger.info(
+                            f"Skipped integration {i}: provider='{provider_str}' with status '{status_str}' (not active or not email provider)"
+                        )
+
+                except Exception as integration_error:
+                    logger.error(
+                        f"Error processing integration {i}: {integration_error}"
+                    )
+                    logger.error(f"Integration data: {integration}")
+                    continue
+
+            logger.info(
+                f"Final available providers for {user_id}: {available_providers}"
+            )
             return available_providers
+
+    except httpx.HTTPStatusError as http_error:
+        logger.error(
+            f"HTTP error fetching user integrations for {user_id}: {http_error.response.status_code} - {http_error.response.text}"
+        )
+        return []
+    except httpx.RequestError as request_error:
+        logger.error(
+            f"Request error fetching user integrations for {user_id}: {request_error}"
+        )
+        return []
+    except ValueError as json_error:
+        logger.error(f"JSON parsing error for user {user_id}: {json_error}")
+        logger.error(
+            f"Response text: {resp.text if 'resp' in locals() else 'No response'}"
+        )
+        return []
     except Exception as e:
-        logger.warning(f"Could not fetch user integrations for user {user_id}: {e}")
-        # If we can't fetch providers, return empty list
+        logger.error(f"Unexpected error fetching user integrations for {user_id}: {e}")
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return []
 
 
@@ -2872,9 +2957,16 @@ async def get_internal_email_messages(
             try:
                 # Check if user has integration for this provider
                 user_providers = await get_user_email_providers(user_id)
+                logger.info(f"User {user_id} has providers: {user_providers}")
+                logger.info(f"Checking if provider '{provider}' is in {user_providers}")
+
                 if provider not in user_providers:
                     logger.info(f"User {user_id} has no integration for {provider}")
                     continue
+
+                logger.info(
+                    f"User {user_id} has integration for {provider}, proceeding to create API client"
+                )
 
                 # Create API client for this provider
                 client = await api_client_factory.create_client(user_id, provider)
@@ -2884,25 +2976,44 @@ async def get_internal_email_messages(
                     )
                     continue
 
+                logger.info(
+                    f"Successfully created {provider} client for user {user_id}"
+                )
+
                 # Get messages from provider
                 async with client:
                     if provider == "microsoft" and isinstance(
                         client, MicrosoftAPIClient
                     ):
                         # Microsoft client uses top, filter, search, order_by
+                        logger.info(
+                            f"Fetching messages from Microsoft API for user {user_id}"
+                        )
                         messages = await client.get_messages(
                             top=limit,
                             filter=filter_str,
                             search=q,
                             order_by="receivedDateTime desc",
                         )
+                        logger.info(
+                            f"Microsoft API returned: {type(messages)} with keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
+                        )
                     elif provider == "google" and isinstance(client, GoogleAPIClient):
                         # Google client uses max_results, query
+                        logger.info(
+                            f"Fetching messages from Google API for user {user_id}"
+                        )
                         messages = await client.get_messages(
                             max_results=limit,
                             query=q,
                         )
+                        logger.info(
+                            f"Google API returned: {type(messages)} with keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
+                        )
                     else:
+                        logger.warning(
+                            f"Unknown client type for provider {provider}: {type(client)}"
+                        )
                         continue
 
                 # Normalize messages

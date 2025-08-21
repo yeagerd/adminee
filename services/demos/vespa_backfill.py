@@ -652,7 +652,7 @@ class VespaBackfillDemo:
             import httpx
 
             # Check office service health first
-            office_service_url = "http://localhost:8003"
+            office_service_url = self.office_service_url
 
             # First check if office service is running
             async with httpx.AsyncClient() as client:
@@ -672,18 +672,20 @@ class VespaBackfillDemo:
                         }
                 except Exception as e:
                     print(f"❌ Cannot connect to office service: {e}")
-                    print("   Make sure the office service is running on port 8003")
+                    print(
+                        f"   Make sure the office service is running at {self.office_service_url}"
+                    )
                     return {"office_service_running": False, "error": str(e)}
 
                 # Check integration status through the user service
-                user_service_url = "http://localhost:8001"
+                user_service_url = self.user_service_url
                 try:
                     # Get user's integrations list
                     integrations_response = await client.get(
                         f"{user_service_url}/v1/users/{user_id}/integrations/",
                         headers={
                             "X-User-Id": user_id,
-                            "X-API-Key": "test-FRONTEND_USER_KEY",
+                            "X-API-Key": self.api_keys["user"],
                         },
                         timeout=10.0,
                     )
@@ -768,8 +770,8 @@ class VespaBackfillDemo:
         try:
             import httpx
 
-            user_service_url = "http://localhost:8001"
-            office_service_url = "http://localhost:8003"
+            user_service_url = self.user_service_url
+            office_service_url = self.office_service_url
 
             async with httpx.AsyncClient() as client:
                 # First, get the user's integrations to check their status
@@ -778,21 +780,28 @@ class VespaBackfillDemo:
                         f"{user_service_url}/v1/users/{user_id}/integrations/",
                         headers={
                             "X-User-Id": user_id,
-                            "X-API-Key": "test-FRONTEND_USER_KEY",
+                            "X-API-Key": self.api_keys["user"],
                         },
                         timeout=10.0,
                     )
 
                     if integrations_response.status_code == 200:
                         integrations = integrations_response.json()
+                        print(f"📋 Raw integrations response: {integrations}")
                         active_integrations = []
 
-                        for integration in integrations.get("integrations", []):
+                        integrations_list = integrations.get("integrations", [])
+                        print(f"📋 Processing {len(integrations_list)} integrations")
+
+                        for i, integration in enumerate(integrations_list):
+                            print(f"📋 Processing integration {i}: {integration}")
                             provider = integration.get("provider")
                             status = integration.get("status")
                             token_expires_at = integration.get("token_expires_at")
 
-                            print(f"📋 Provider: {provider}, Status: {status}")
+                            print(
+                                f"📋 Integration {i} - Provider: {provider}, Status: {status}, Token expires: {token_expires_at}"
+                            )
 
                             # Check if token is expired (same logic as frontend)
                             if token_expires_at:
@@ -816,7 +825,7 @@ class VespaBackfillDemo:
                                             f"{user_service_url}/v1/users/{user_id}/integrations/{provider}/refresh",
                                             headers={
                                                 "X-User-Id": user_id,
-                                                "X-API-Key": "test-FRONTEND_USER_KEY",
+                                                "X-API-Key": self.api_keys["user"],
                                             },
                                             json={"force": True},
                                             timeout=30.0,
@@ -875,6 +884,10 @@ class VespaBackfillDemo:
 
                 except Exception as e:
                     print(f"❌ Error checking integrations: {e}")
+                    print(f"   Error type: {type(e)}")
+                    import traceback
+
+                    print(f"   Traceback: {traceback.format_exc()}")
                     return {
                         "success": False,
                         "error": str(e),
@@ -883,6 +896,10 @@ class VespaBackfillDemo:
 
         except Exception as e:
             print(f"❌ Error in token refresh process: {e}")
+            print(f"   Error type: {type(e)}")
+            import traceback
+
+            print(f"   Traceback: {traceback.format_exc()}")
             return {
                 "success": False,
                 "error": str(e),
@@ -1208,14 +1225,14 @@ class VespaBackfillDemo:
         try:
             import httpx
 
-            user_service_url = "http://localhost:8001"
+            user_service_url = self.user_service_url
 
             async with httpx.AsyncClient() as client:
                 # Use the same endpoint the frontend uses: /v1/internal/users/exists
                 response = await client.get(
                     f"{user_service_url}/v1/internal/users/exists",
                     params={"email": email},
-                    headers={"X-API-Key": "test-FRONTEND_USER_KEY"},
+                    headers={"X-API-Key": self.api_keys["user"]},
                     timeout=10.0,
                 )
 
