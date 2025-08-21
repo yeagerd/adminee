@@ -472,7 +472,6 @@ wait_for_document_count_stable() {
             -H "Content-Type: application/json" \
             -d "{\"yql\": \"select * from briefly_document where true\", \"hits\": 1, \"streaming.groupname\": \"$group_id\"}")
         
-        local current_count
         current_count=$(echo "$search_response" | python3 -c "
 import json
 import sys
@@ -501,11 +500,11 @@ except Exception as e:
             return 0
         fi
         
-        # If we've been stable for enough checks but haven't reached expected count, log warning
+        # If we've been stable for enough checks but haven't reached expected count, log warning and return failure
         if [[ $stable_count -ge $required_stable_checks && "$current_count" != "$expected_count" ]]; then
             log_warning "Document count stabilized at $current_count but expected $expected_count"
             log_warning "This may indicate some documents could not be deleted or there's a delay in processing"
-            return 0
+            return 1
         fi
         
         sleep "$poll_interval"
