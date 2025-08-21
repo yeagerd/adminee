@@ -36,7 +36,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Service configuration
 # Services to exclude from OpenAPI generation (no meaningful schemas or not FastAPI apps)
-EXCLUDED_SERVICES="common vector_db email_sync demos vespa_loader briefly.egg-info __pycache__"
+EXCLUDED_SERVICES="common email_sync demos vespa_loader briefly.egg-info __pycache__"
 
 # Auto-discover services
 discover_services() {

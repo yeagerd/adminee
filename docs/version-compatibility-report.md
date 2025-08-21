@@ -28,14 +28,7 @@ Generated: 2025-08-18T07:29:04.616975
 - **Generated**: 2025-08-18T07:27:34.230814
 - **Last Commit**: 0b0220b5
 
-### Vector_Db
 
-- **Version**: 1.0.0-20250818
-- **Title**: Vector_Db Service API
-- **Endpoints**: 3
-- **Models**: 0
-- **Generated**: 2025-08-18T07:27:34.247114
-- **Last Commit**: 0b0220b5
 
 ### Meetings
 
@@ -61,7 +54,7 @@ Generated: 2025-08-18T07:29:04.616975
 |---------|---------|--------|------------------|
 | Shipments | 1.0.0-20250818 | ✅ Stable | None |
 | Chat | 1.0.0-20250818 | ✅ Stable | None |
-| Vector_Db | 1.0.0-20250818 | ✅ Stable | None |
+
 | Meetings | 1.0.0-20250818 | ✅ Stable | None |
 | Email_Sync | 1.0.0-20250818 | ✅ Stable | None |
 
@@ -109,11 +102,7 @@ Generated: 2025-08-18T07:29:04.616975
 - `POST /v1/chat/feedback`
 - `PUT /v1/chat/drafts/{draft_id}`
 
-### Vector_Db (3 endpoints)
 
-- `GET /`
-- `GET /health`
-- `GET /openapi.json`
 
 ### Meetings (43 endpoints)
 
@@ -207,7 +196,7 @@ Generated: 2025-08-18T07:29:04.616975
 - `UserDraftResponse`
 - `ValidationError`
 
-### Vector_Db (0 models)
+
 
 
 ### Meetings (21 models)

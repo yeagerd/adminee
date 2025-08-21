@@ -38,7 +38,7 @@ echo "📝 Generating types for Email Sync service..."
 npx openapi --input ../openapi-schemas/email_sync-openapi.json --output ./types/api/email-sync
 
 echo "📝 Generating types for Vector DB service..."
-npx openapi --input ../openapi-schemas/vector_db-openapi.json --output ./types/api/vector-db
+
 
 # Create index file
 echo "📄 Creating index file..."
