@@ -48,8 +48,8 @@ def get_engine() -> AsyncEngine:
 
         # Prepare connect_args based on database type
         connect_args = {}
-        if db_url.startswith("postgresql://"):
-            # PostgreSQL-specific statement timeout
+        if db_url.startswith("postgresql"):
+            # PostgreSQL-specific statement timeout (covers all drivers: postgresql://, postgresql+asyncpg://, etc.)
             connect_args["options"] = "-c statement_timeout=10000"
 
         _engine = create_async_engine(
