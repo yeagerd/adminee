@@ -162,6 +162,11 @@ class MicrosoftAPIClient(BaseAPIClient):
                             f"Failed to fetch full message {message_id}: {e}"
                         )
                         full_messages.append(message)
+                else:
+                    # Include messages without ID using their summary data
+                    # This ensures we don't lose messages and maintain accurate pagination
+                    logger.debug(f"Message without ID, using summary data: {message.get('subject', 'No subject')}")
+                    full_messages.append(message)
 
             messages_data["value"] = full_messages
 
@@ -225,6 +230,11 @@ class MicrosoftAPIClient(BaseAPIClient):
                             f"Failed to fetch full message {message_id}: {e}"
                         )
                         full_messages.append(message)
+                else:
+                    # Include messages without ID using their summary data
+                    # This ensures we don't lose messages and maintain accurate pagination
+                    logger.debug(f"Message without ID, using summary data: {message.get('subject', 'No subject')}")
+                    full_messages.append(message)
 
             messages_data["value"] = full_messages
 
