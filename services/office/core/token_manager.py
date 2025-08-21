@@ -87,13 +87,12 @@ class TokenManager:
         self._client_ref_count = 0
         # Add instance tracking
         self._instance_id = str(uuid.uuid4())[:8]
-        logger.info(f"TokenManager instance created: {self._instance_id}")
 
     async def __aenter__(self) -> "TokenManager":
         """Async context manager entry"""
         async with self._client_lock:
             self._client_ref_count += 1
-            logger.info(
+            logger.debug(
                 f"TokenManager instance {self._instance_id}: Client ref count increased to {self._client_ref_count}"
             )
 
@@ -115,7 +114,7 @@ class TokenManager:
                         headers=headers,
                     )
                     logger.info(
-                        f"TokenManager instance {self._instance_id} initialized successfully"
+                        f"TokenManager instance {self._instance_id} created and initialized successfully"
                     )
                 except Exception as e:
                     # If initialization fails, decrement the ref count and re-raise
@@ -131,7 +130,7 @@ class TokenManager:
         """Async context manager exit"""
         async with self._client_lock:
             self._client_ref_count -= 1
-            logger.info(
+            logger.debug(
                 f"TokenManager instance {self._instance_id}: Client ref count decreased to {self._client_ref_count}"
             )
 
@@ -140,7 +139,7 @@ class TokenManager:
                 if self.http_client:
                     await self.http_client.aclose()
                     self.http_client = None
-                    logger.info(f"TokenManager instance {self._instance_id} closed")
+                    logger.debug(f"TokenManager instance {self._instance_id} closed")
             elif self._client_ref_count < 0:
                 logger.warning(
                     f"TokenManager instance {self._instance_id}: Negative ref count detected: {self._client_ref_count}"
@@ -228,12 +227,12 @@ class TokenManager:
         cache_key = self._generate_cache_key(user_id, provider, scopes)
         cached_token = await self._get_from_cache(cache_key)
         if cached_token:
-            logger.info(
+            logger.debug(
                 f"TokenManager instance {self._instance_id}: Cache HIT for user {user_id}, provider {provider}"
             )
             return cached_token
 
-        logger.info(
+        logger.debug(
             f"TokenManager instance {self._instance_id}: Cache MISS for user {user_id}, provider {provider}"
         )
 
@@ -245,7 +244,7 @@ class TokenManager:
             return None
 
         try:
-            logger.info(
+            logger.debug(
                 f"TokenManager instance {self._instance_id}: Requesting token for user {user_id}, provider {provider}"
             )
 
@@ -288,7 +287,7 @@ class TokenManager:
                     # Cache the token
                     await self._set_cache(cache_key, token_data)
 
-                    logger.info(
+                    logger.debug(
                         f"TokenManager instance {self._instance_id}: Successfully retrieved and cached token for user {user_id}, provider {provider}"
                     )
                     return token_data

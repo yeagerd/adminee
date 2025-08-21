@@ -334,9 +334,18 @@ class EmailCrawler:
                                     "is_read": msg.get("is_read", True),
                                 },
                             }
+
+                            # Validate email data quality and log warnings for missing/empty fields
+                            self._validate_email_data_quality(
+                                email,
+                                msg.get(
+                                    "provider_message_id", msg.get("id", "unknown")
+                                ),
+                            )
+
                             emails.append(email)
 
-                        logger.info(
+                        logger.debug(
                             f"Retrieved {len(emails)} real emails from {provider_str} using office service internal API"
                         )
                         return emails
@@ -376,4 +385,53 @@ class EmailCrawler:
         else:
             self.rate_limit_delay = 0.0
 
-        logger.info(f"Set email crawl rate limit to {emails_per_second} emails/second")
+        logger.debug(f"Set email crawl rate limit to {emails_per_second} emails/second")
+
+    def _validate_email_data_quality(
+        self, email: Dict[str, Any], email_id: str
+    ) -> None:
+        """Validate email data quality and log warnings for missing/empty fields"""
+
+        # Check for empty or missing critical fields
+        quality_issues = []
+
+        if not email.get("from") or email["from"].strip() == "":
+            quality_issues.append("empty_from_address")
+
+        if not email.get("to") or len(email["to"]) == 0:
+            quality_issues.append("empty_to_addresses")
+        elif all(not addr or addr.strip() == "" for addr in email["to"]):
+            quality_issues.append("all_empty_to_addresses")
+
+        if not email.get("subject") or email["subject"].strip() == "":
+            quality_issues.append("empty_subject")
+
+        if not email.get("body") or email["body"].strip() == "":
+            quality_issues.append("empty_body")
+
+        if not email.get("thread_id") or email["thread_id"].strip() == "":
+            quality_issues.append("empty_thread_id")
+
+        # Log quality issues with distributed trace information
+        if quality_issues:
+            # Extract trace_id from metadata if available
+            trace_id = "unknown"
+            if email.get("metadata") and isinstance(email["metadata"], dict):
+                trace_id = email["metadata"].get("trace_id", "unknown")
+
+            logger.warning(
+                f"Email data quality issues detected in email_crawler for email {email_id}: "
+                f"provider={email.get('provider', 'unknown')}, user_id={email.get('user_id', 'unknown')}, "
+                f"trace_id={trace_id}, issues={quality_issues}"
+            )
+
+            # Log the raw email data for debugging
+            logger.debug(
+                f"Raw email data with quality issues: "
+                f"from='{email.get('from', '')}', "
+                f"to={email.get('to', [])}, "
+                f"subject='{email.get('subject', '')}', "
+                f"body_length={len(email.get('body', ''))}, "
+                f"thread_id='{email.get('thread_id', '')}', "
+                f"trace_id={trace_id}"
+            )

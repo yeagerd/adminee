@@ -259,7 +259,7 @@ class TokenEncryption:
             # Decode to string
             token = plaintext.decode("utf-8")
 
-            logger.info("Token decrypted successfully", user_id=user_id)
+            logger.debug("Token decrypted successfully", user_id=user_id)
             return token
 
         except Exception as e:

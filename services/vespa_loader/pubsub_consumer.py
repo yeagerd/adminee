@@ -614,6 +614,9 @@ class PubSubConsumer:
                 logger.info(f"Email ID: {email.id}")
                 logger.info(f"Email subject: {email.subject}")
 
+                # Validate email data quality and log warnings for missing/empty fields
+                self._validate_email_data_quality(email, data.user_id, i)
+
                 # Create typed document object
                 document = VespaDocumentType(
                     id=email.id,
@@ -893,3 +896,56 @@ class PubSubConsumer:
             # This mirrors the logic in main.py:_post_process_document
         except Exception as e:
             logger.error(f"Error in post-processing document {document_id}: {e}")
+
+    def _validate_email_data_quality(
+        self, email: EmailData, user_id: str, email_index: int
+    ) -> None:
+        """Validate email data quality and log warnings for missing/empty fields"""
+
+        # Check for empty or missing critical fields
+        quality_issues = []
+
+        if not email.from_address or email.from_address.strip() == "":
+            quality_issues.append("empty_from_address")
+
+        if not email.to_addresses or len(email.to_addresses) == 0:
+            quality_issues.append("empty_to_addresses")
+        elif all(not addr or addr.strip() == "" for addr in email.to_addresses):
+            quality_issues.append("all_empty_to_addresses")
+
+        if not email.subject or email.subject.strip() == "":
+            quality_issues.append("empty_subject")
+
+        if not email.body or email.body.strip() == "":
+            quality_issues.append("empty_body")
+
+        if not email.thread_id or email.thread_id.strip() == "":
+            quality_issues.append("empty_thread_id")
+
+        # Log quality issues with distributed trace information
+        if quality_issues:
+            # Extract trace_id from metadata if available
+            trace_id = "unknown"
+            if (
+                hasattr(email, "metadata")
+                and email.metadata
+                and "trace_id" in email.metadata
+            ):
+                trace_id = email.metadata["trace_id"]
+
+            # Log the main warning message with trace_id
+            logger.warning(
+                f"Email data quality issues detected for user {user_id}, email {email_index + 1}: "
+                f"ID={email.id}, provider={email.provider}, trace_id={trace_id}, issues={quality_issues}"
+            )
+
+            # Log the raw email data for debugging
+            logger.debug(
+                f"Raw email data with quality issues: "
+                f"from_address='{email.from_address}', "
+                f"to_addresses={email.to_addresses}, "
+                f"subject='{email.subject}', "
+                f"body_length={len(email.body) if email.body else 0}, "
+                f"thread_id='{email.thread_id}', "
+                f"trace_id={trace_id}"
+            )

@@ -255,6 +255,15 @@ class TokenService:
                     user_id=user_id,
                 )
 
+            # Log successful token decryption
+            if access_token and refresh_token:
+                self.logger.info(
+                    "Integration tokens decrypted successfully",
+                    user_id=user_id,
+                    provider=provider.value,
+                    integration_id=integration.id,
+                )
+
             # Validate scopes if required
             granted_scopes = (
                 list(integration.scopes.keys()) if integration.scopes else []
@@ -730,6 +739,15 @@ class TokenService:
                     provider, refresh_token, "refresh_token"
                 )
                 revocation_results.append(provider_result)
+
+            # Log successful token decryption for revocation
+            if access_token_record and refresh_token_record:
+                self.logger.info(
+                    "Integration tokens decrypted for revocation",
+                    user_id=user_id,
+                    provider=provider.value,
+                    integration_id=integration.id,
+                )
 
             # Clean up local token storage and update integration status
             async_session = get_async_session()

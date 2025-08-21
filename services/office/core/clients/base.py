@@ -56,7 +56,7 @@ class BaseAPIClient(ABC):
             timeout=httpx.Timeout(30.0),  # 30 second timeout for external APIs
             headers=self._get_default_headers(),
         )
-        logger.info(f"Initialized {self.provider} API client for user {self.user_id}")
+        logger.debug(f"Initialized {self.provider} API client for user {self.user_id}")
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
