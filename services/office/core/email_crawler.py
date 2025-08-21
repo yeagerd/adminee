@@ -258,6 +258,25 @@ class EmailCrawler:
                                 text_content=msg.get("body_text"),
                             )
 
+                            # Debug logging to see what we're getting
+                            logger.debug(
+                                f"Content splitting result for email {msg.get('id')}: {split_result}"
+                            )
+                            logger.debug(
+                                f"Original body_html length: {len(msg.get('body_html', '') or '')}"
+                            )
+                            logger.debug(
+                                f"Original body_text length: {len(msg.get('body_text', '') or '')}"
+                            )
+                            logger.debug(
+                                f"Original body_html sample: {msg.get('body_html', '')[:200] if msg.get('body_html') else 'None'}"
+                            )
+                            logger.debug(
+                                f"Original body_text sample: {msg.get('body_text', '')[:200] if msg.get('body_text') else 'None'}"
+                            )
+                            logger.debug(f"Message keys: {list(msg.keys())}")
+                            logger.debug(f"Full message sample: {msg}")
+
                             # Use visible content as primary body, quoted content for context
                             visible_content = split_result.get("visible_content", "")
                             quoted_content = split_result.get("quoted_content", "")

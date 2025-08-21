@@ -137,6 +137,12 @@ def normalize_microsoft_email(
         ValueError: If required fields are missing from raw_data
     """
     try:
+        # Debug logging to see what we're getting from Microsoft Graph API
+        logger.debug(
+            f"Normalizing Microsoft email with raw data keys: {list(raw_data.keys())}"
+        )
+        logger.debug(f"Raw data sample: {raw_data}")
+
         # Extract basic message info
         message_id = raw_data.get("id")
         if not message_id:
@@ -169,7 +175,14 @@ def normalize_microsoft_email(
         )
 
         # Extract body content
-        body_text, body_html = _extract_microsoft_body(raw_data.get("body", {}))
+        body_data = raw_data.get("body", {})
+        logger.debug(f"Microsoft body data for message {message_id}: {body_data}")
+        logger.debug(f"Body data type: {type(body_data)}")
+        logger.debug(
+            f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
+        )
+
+        body_text, body_html = _extract_microsoft_body(body_data)
 
         # Determine read status
         is_read = raw_data.get("isRead", False)
@@ -574,15 +587,34 @@ def _extract_microsoft_body(
     body_data: Dict[str, Any],
 ) -> tuple[Optional[str], Optional[str]]:
     """Extract text and HTML body from Microsoft Graph body object."""
+    logger.debug(f"Extracting Microsoft body from: {body_data}")
+    logger.debug(f"Body data type: {type(body_data)}")
+    logger.debug(
+        f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
+    )
+
     content_type = body_data.get("contentType", "").lower()
     content = body_data.get("content")
 
+    logger.debug(f"Content type: {content_type}")
+    logger.debug(f"Content length: {len(content) if content else 0}")
+    logger.debug(f"Content sample: {content[:200] if content else 'None'}")
+
     if content_type == "html":
+        logger.debug(
+            f"Returning HTML content, length: {len(content) if content else 0}"
+        )
         return None, content
     elif content_type == "text":
+        logger.debug(
+            f"Returning text content, length: {len(content) if content else 0}"
+        )
         return content, None
     else:
         # Default to text
+        logger.debug(
+            f"Defaulting to text content, length: {len(content) if content else 0}"
+        )
         return content, None
 
 
