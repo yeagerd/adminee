@@ -1039,7 +1039,7 @@ class UserService:
             User model instance if found, None otherwise
 
         Raises:
-            ValidationError: If multiple users found and provider disambiguation fails
+            ValidationError: If multiple users found for the same email (with or without provider)
         """
         try:
             detector = EmailCollisionDetector()
@@ -1104,12 +1104,20 @@ class UserService:
                     )
                 else:
                     # No provider specified, but we have multiple users
-                    # This is expected behavior - we need provider for disambiguation
-                    logger.info(
-                        f"Multiple users found for email {email} without provider specification. "
-                        f"Provider parameter is required for disambiguation."
+                    # This indicates a data integrity issue that should be reported
+                    # rather than silently returning None, as it can mask underlying problems
+                    raise ValidationError(
+                        message="Multiple users found for email without provider specification. Provider parameter is required for disambiguation.",
+                        field="email",
+                        value=email,
+                        details={
+                            "normalized_email": normalized_email,
+                            "user_count": len(users),
+                            "user_ids": [u.external_auth_id for u in users],
+                            "auth_providers": [u.auth_provider for u in users],
+                            "message": "Provider parameter is required when multiple users exist for the same email"
+                        },
                     )
-                    return None
 
         except ValidationError:
             raise
