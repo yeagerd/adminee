@@ -86,8 +86,6 @@ class IntegrationService:
             # Use a single database session for all operations with timeout protection
             async_session = get_async_session()
             async with async_session() as session:
-                # Set a reasonable timeout for database operations
-                session.bind.execution_options(timeout=10)  # 10 second timeout
 
                 # Verify user exists
                 result = await session.execute(

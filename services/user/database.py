@@ -4,7 +4,7 @@ Database configuration for User Management Service.
 Sets up database connection using SQLModel and SQLAlchemy.
 """
 
-from typing import AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -29,7 +29,7 @@ _session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 _settings = None
 
 
-def get_settings():
+def get_settings() -> Any:
     """Get or create the settings singleton."""
     global _settings
     if _settings is None:
@@ -52,6 +52,8 @@ def get_engine() -> AsyncEngine:
             max_overflow=20,
             pool_timeout=30,
             pool_recycle=3600,
+            # Set statement timeout to 10 seconds to prevent hanging queries
+            connect_args={"options": "-c statement_timeout=10000"},
         )
     return _engine
 
