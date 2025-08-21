@@ -1017,6 +1017,109 @@ class UserService:
             )
             return None
 
+    async def find_user_by_email_with_provider(
+        self, email: str, provider: Optional[str] = None
+    ) -> Optional[User]:
+        """
+        Find user by email with provider-aware resolution.
+
+        This method properly handles provider-specific email normalization and
+        considers the provider parameter for disambiguation when multiple users
+        might exist for the same normalized email.
+
+        Args:
+            email: Email address to search for
+            provider: OAuth provider for context (optional, but recommended for accuracy)
+
+        Returns:
+            User model instance if found, None otherwise
+
+        Raises:
+            ValidationError: If multiple users found and provider disambiguation fails
+        """
+        try:
+            detector = EmailCollisionDetector()
+            
+            # Use provider-aware normalization if provider is specified
+            if provider:
+                normalized_email = detector.normalize_email_by_provider(email, provider)
+                logger.debug(
+                    f"Provider-aware normalization for {email} with {provider}: {normalized_email}"
+                )
+            else:
+                normalized_email = detector.normalize_email(email)
+                logger.debug(
+                    f"Generic normalization for {email}: {normalized_email}"
+                )
+
+            # Query database by normalized email
+            async_session = get_async_session()
+            async with async_session() as session:
+                # Build query with provider consideration
+                query = select(User).where(
+                    User.normalized_email == normalized_email,
+                    User.deleted_at == None,  # noqa: E711 # Only active users
+                )
+                
+                # If provider is specified, add it to the query for disambiguation
+                if provider:
+                    query = query.where(User.auth_provider == provider)
+                
+                result = await session.execute(query)
+                users = result.scalars().all()
+
+                if not users:
+                    logger.debug(
+                        f"No user found for email {email} (normalized: {normalized_email}) "
+                        f"with provider {provider or 'any'}"
+                    )
+                    return None
+
+                if len(users) == 1:
+                    user = users[0]
+                    logger.debug(
+                        f"Found single user {user.external_auth_id} for email {email} "
+                        f"(normalized: {normalized_email}) with provider {user.auth_provider}"
+                    )
+                    return user
+
+                # Multiple users found - need to handle disambiguation
+                logger.warning(
+                    f"Multiple users found for email {email} (normalized: {normalized_email}): "
+                    f"{[u.external_auth_id for u in users]}"
+                )
+
+                if provider:
+                    # Provider was specified but we still got multiple users
+                    # This suggests a data integrity issue
+                    raise ValidationError(
+                        message="Data integrity error: multiple users found for email with same provider",
+                        field="email",
+                        value=email,
+                        details={
+                            "normalized_email": normalized_email,
+                            "provider": provider,
+                            "user_count": len(users),
+                            "user_ids": [u.external_auth_id for u in users],
+                        },
+                    )
+                else:
+                    # No provider specified, but we have multiple users
+                    # This is expected behavior - we need provider for disambiguation
+                    logger.info(
+                        f"Multiple users found for email {email} without provider specification. "
+                        f"Provider parameter is required for disambiguation."
+                    )
+                    return None
+
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Database error finding user by email {email} with provider {provider}: {e}"
+            )
+            return None
+
 
 # Global user service instance
 _user_service: UserService | None = None

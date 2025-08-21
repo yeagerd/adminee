@@ -268,21 +268,11 @@ async def check_user_exists(
         {"exists": true/false, "user_id": "id_if_exists", "provider": "provider_if_exists"}
     """
     try:
-        email_request = EmailResolutionRequest(email=email, provider=provider)
-
         # Get user service instance
         user_service = get_user_service()
 
-        # Import the email collision detector for normalization
-        from services.user.utils.email_collision import EmailCollisionDetector
-
-        detector = EmailCollisionDetector()
-
-        # Use the optimized method that returns the full user object directly
-        # This avoids the second database query
-        user = await user_service._find_user_by_normalized_email(
-            detector._simple_email_normalize(email)
-        )
+        # Use the new provider-aware method that properly considers the provider parameter
+        user = await user_service.find_user_by_email_with_provider(email, provider)
 
         if user:
             return {
@@ -345,22 +335,11 @@ async def get_user_by_email_internal(
         422: If email format is invalid
     """
     try:
-        # Create email resolution request (reusing existing internal logic)
-        email_request = EmailResolutionRequest(email=email, provider=provider)
-
         # Get user service instance
         user_service = get_user_service()
 
-        # Import the email collision detector for normalization
-        from services.user.utils.email_collision import EmailCollisionDetector
-
-        detector = EmailCollisionDetector()
-
-        # Use the optimized method that returns the full user object directly
-        # This avoids the second database query
-        user = await user_service._find_user_by_normalized_email(
-            detector._simple_email_normalize(email)
-        )
+        # Use the new provider-aware method that properly considers the provider parameter
+        user = await user_service.find_user_by_email_with_provider(email, provider)
 
         if not user:
             raise NotFoundError(resource="User", identifier=f"email:{email}")
@@ -417,24 +396,13 @@ async def create_or_upsert_user_internal(
     )
 
     try:
-        # Try to find existing user first using the same method as GET /internal/users/id
-        # This ensures consistency between GET and POST endpoints
-        email_request = EmailResolutionRequest(
-            email=user_data.email, provider=user_data.auth_provider
-        )
-
-        # Get user service instance
+        # Try to find existing user first using the new provider-aware method
+        # This ensures consistency between GET and POST endpoints and properly considers the provider
         user_service = get_user_service()
 
-        # Import the email collision detector for normalization
-        from services.user.utils.email_collision import EmailCollisionDetector
-
-        detector = EmailCollisionDetector()
-
-        # Use the optimized method that returns the full user object directly
-        # This avoids the second database query
-        existing_user = await user_service._find_user_by_normalized_email(
-            detector._simple_email_normalize(user_data.email)
+        # Use the new provider-aware method that properly considers the provider parameter
+        existing_user = await user_service.find_user_by_email_with_provider(
+            user_data.email, user_data.auth_provider
         )
 
         if existing_user:
