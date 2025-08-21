@@ -610,9 +610,11 @@ class PubSubConsumer:
 
         for i, email in enumerate(data.emails):
             try:
-                logger.info(f"Processing email {i+1}/{len(data.emails)} from batch")
-                logger.info(f"Email ID: {email.id}")
-                logger.info(f"Email subject: {email.subject}")
+                # Log email processing with key details in one line
+                logger.info(
+                    f"Processing email {i+1}/{len(data.emails)}: ID={email.id}, "
+                    f"Subject='{email.subject or 'No subject'}', Provider={email.provider}"
+                )
 
                 # Validate email data quality and log warnings for missing/empty fields
                 self._validate_email_data_quality(email, data.user_id, i)
@@ -695,8 +697,11 @@ class PubSubConsumer:
 
             for i, event in enumerate(data.events):
                 try:
+                    # Log calendar event processing with key details in one line
                     logger.info(
-                        f"Processing calendar event {i+1}/{len(data.events)} from batch"
+                        f"Processing calendar event {i+1}/{len(data.events)}: "
+                        f"ID={event.id}, Title='{event.title or 'No title'}', "
+                        f"Provider={event.provider}"
                     )
 
                     document = VespaDocumentType(
@@ -780,8 +785,11 @@ class PubSubConsumer:
 
             for i, contact in enumerate(data.contacts):
                 try:
+                    # Log contact processing with key details in one line
                     logger.info(
-                        f"Processing contact {i+1}/{len(data.contacts)} from batch"
+                        f"Processing contact {i+1}/{len(data.contacts)}: "
+                        f"ID={contact.id}, Name='{contact.given_name or ''} {contact.family_name or ''}'.strip(), "
+                        f"Provider={contact.provider}"
                     )
 
                     document = VespaDocumentType(
@@ -827,17 +835,13 @@ class PubSubConsumer:
             Dict containing the ingestion result
         """
         try:
+            # Log document ingestion start with key details in one line
             logger.info(
-                f"Starting ingest for document {document.id} from user {document.user_id}"
+                f"Starting ingest for document {document.id} "
+                f"(type: {document.type}, user: {document.user_id})"
             )
 
-            logger.info(f"Document data prepared: {document.to_dict()}")
-            logger.info(f"Document ID: {document.id}")
-            logger.info(f"Document user_id: {document.user_id}")
-            logger.info(f"Document type: {document.type}")
-
             # Call the ingest service directly
-            logger.info(f"Calling ingest service for document {document.id}")
             result = await ingest_document_service(
                 document.to_dict(),
                 self.vespa_client,
@@ -890,10 +894,10 @@ class PubSubConsumer:
         run as a background task in the HTTP endpoint.
         """
         try:
-            logger.info(f"Post-processing document {document_id} for user {user_id}")
             # Add any post-processing logic here
             # For example: update search indices, trigger notifications, etc.
             # This mirrors the logic in main.py:_post_process_document
+            pass
         except Exception as e:
             logger.error(f"Error in post-processing document {document_id}: {e}")
 
