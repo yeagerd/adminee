@@ -143,7 +143,7 @@ update_service_types() {
     # Generate types using openapi-typescript-codegen
     cd "$PROJECT_ROOT/frontend"
     
-    if npx openapi-typescript-codegen --input "$schema_file" --output "$types_dir" --client axios; then
+    if npx openapi-typescript-codegen --input "$schema_file" --output "$types_dir" --exportServices false --exportCore false; then
         print_status "success" "Types updated for $service_name"
         return 0
     else
