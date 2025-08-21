@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager, contextmanager
+from threading import Lock
 from typing import AsyncGenerator, Generator, Optional
 
 from sqlalchemy import create_engine
@@ -30,59 +31,87 @@ _async_engine: Optional[AsyncEngine] = None
 _session_maker: Optional[sessionmaker] = None
 _async_session_maker: Optional[async_sessionmaker] = None
 
+# Thread-safe initialization locks
+_engine_lock = Lock()
+_async_engine_lock = Lock()
+_session_maker_lock = Lock()
+_async_session_maker_lock = Lock()
+
 
 def get_engine() -> "Engine":
-    """Get or create the shared database engine."""
+    """Get or create the shared database engine in a thread-safe manner."""
     global _engine
     if _engine is None:
-        db_url = get_settings().db_url_meetings
-        _engine = create_engine(db_url, echo=False, future=True)
+        with _engine_lock:
+            # Double-check pattern to prevent race conditions
+            if _engine is None:
+                db_url = get_settings().db_url_meetings
+                _engine = create_engine(
+                    db_url, 
+                    echo=False, 
+                    future=True,
+                    # Add connection pool settings to prevent connection exhaustion
+                    pool_size=10,
+                    max_overflow=20,
+                    pool_timeout=30,
+                    pool_recycle=3600,
+                    pool_pre_ping=True,
+                )
     return _engine
 
 
 def get_async_engine() -> "AsyncEngine":
-    """Get or create the shared async database engine."""
+    """Get or create the shared async database engine in a thread-safe manner."""
     global _async_engine
     if _async_engine is None:
-        db_url = get_settings().db_url_meetings
-        async_db_url = get_async_database_url(db_url)
-        _async_engine = create_async_engine(
-            async_db_url,
-            echo=False,
-            future=True,
-            # Add connection pool settings to prevent hangs
-            pool_size=10,
-            max_overflow=20,
-            pool_timeout=30,
-            pool_recycle=3600,
-        )
+        with _async_engine_lock:
+            # Double-check pattern to prevent race conditions
+            if _async_engine is None:
+                db_url = get_settings().db_url_meetings
+                async_db_url = get_async_database_url(db_url)
+                _async_engine = create_async_engine(
+                    async_db_url,
+                    echo=False,
+                    future=True,
+                    # Add connection pool settings to prevent hangs
+                    pool_size=10,
+                    max_overflow=20,
+                    pool_timeout=30,
+                    pool_recycle=3600,
+                )
     return _async_engine
 
 
 def get_sessionmaker() -> sessionmaker:
-    """Get or create the shared session maker."""
+    """Get or create the shared session maker in a thread-safe manner."""
     global _session_maker
     if _session_maker is None:
-        engine = get_engine()
-        _session_maker = sessionmaker(
-            bind=engine, autoflush=False, autocommit=False, future=True
-        )
+        with _session_maker_lock:
+            # Double-check pattern to prevent race conditions
+            if _session_maker is None:
+                engine = get_engine()
+                _session_maker = sessionmaker(
+                    bind=engine, autoflush=False, autocommit=False, future=True
+                )
     return _session_maker
 
 
 def get_async_sessionmaker() -> async_sessionmaker:
-    """Get or create the shared async session maker."""
+    """Get or create the shared async session maker in a thread-safe manner."""
     global _async_session_maker
     if _async_session_maker is None:
-        engine = get_async_engine()
-        _async_session_maker = async_sessionmaker(
-            bind=engine,
-            autoflush=False,
-            autocommit=False,
-            future=True,
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
+        with _async_session_maker_lock:
+            # Double-check pattern to prevent race conditions
+            if _async_session_maker is None:
+                engine = get_async_engine()
+                _async_session_maker = async_sessionmaker(
+                    bind=engine,
+                    autoflush=False,
+                    autocommit=False,
+                    future=True,
+                    class_=AsyncSession,
+                    expire_on_commit=False,
+                )
     return _async_session_maker
 
 
