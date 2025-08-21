@@ -460,7 +460,6 @@ async def create_or_upsert_user_internal(
             # Return new user with created=True
             return UserCreateResponse(user=user_response, created=True)
 
-
     except ValidationError as e:
         logger.error(f"Validation error during user creation: {e.message}")
         logger.error(f"Validation error details: {e.details}")
