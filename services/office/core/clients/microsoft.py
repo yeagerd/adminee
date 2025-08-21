@@ -231,7 +231,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         return messages_data
 
     async def get_message(
-        self, message_id: str, select: Optional[str] = None, format: str = "full"
+        self, message_id: str, select: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Get a specific Outlook message.
@@ -239,12 +239,11 @@ class MicrosoftAPIClient(BaseAPIClient):
         Args:
             message_id: Outlook message ID
             select: Comma-separated list of properties to select
-            format: Message format - 'full' (default), 'minimal', 'raw', 'metadata'
 
         Returns:
             Dictionary containing message details
         """
-        params = {"format": format}
+        params = {}
         if select:
             params["$select"] = select
 
