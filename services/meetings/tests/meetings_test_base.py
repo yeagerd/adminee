@@ -160,4 +160,29 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             os.close(self._db_fd)
         if hasattr(self, "_db_path") and os.path.exists(self._db_path):
             os.unlink(self._db_path)
+
+        # Call parent teardown to clean up HTTP patches
         super().teardown_method(method)
+
+
+class BaseMeetingsIntegrationTest(BaseMeetingsTest):
+    """Base class for Meetings Service integration tests with full app setup."""
+
+    def setup_method(self, method):
+        """Set up Meetings Service integration test environment."""
+        # Call parent setup for environment variables and database
+        super().setup_method(method)
+
+        # Create test client using app from base class
+        from fastapi.testclient import TestClient
+
+        self.client = TestClient(self.app)
+
+        # Set up authentication overrides if needed
+        self._override_auth()
+
+    def _override_auth(self):
+        """Override authentication for testing."""
+        # Override authentication dependencies if needed for testing
+        # This can be customized based on specific test requirements
+        pass

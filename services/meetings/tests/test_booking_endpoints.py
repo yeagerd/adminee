@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.meetings.models.booking_entities import BookingLink, OneTimeLink
-from services.meetings.tests.test_base import BaseMeetingsIntegrationTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsIntegrationTest
 
 
 class TestBookingEndpoints(BaseMeetingsIntegrationTest):

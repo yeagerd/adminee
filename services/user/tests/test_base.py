@@ -57,11 +57,17 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
         # Use selective HTTP patches that don't interfere with TestClient
         self.http_patches = [
-            # Patch async httpx client (most likely to be used for real external calls)
+            # Patch httpx AsyncClient methods (most common for async HTTP calls)
             patch(
                 "httpx.AsyncClient._send_single_request",
                 side_effect=AssertionError(
                     "Real HTTP call detected! AsyncClient._send_single_request was called"
+                ),
+            ),
+            patch(
+                "httpx.AsyncClient.request",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! AsyncClient.request was called"
                 ),
             ),
             # Patch requests (commonly used for external calls)
@@ -71,11 +77,23 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
                     "Real HTTP call detected! requests HTTPAdapter.send was called"
                 ),
             ),
+            patch(
+                "requests.Session.request",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! requests.Session.request was called"
+                ),
+            ),
             # Patch urllib (basic HTTP library)
             patch(
                 "urllib.request.urlopen",
                 side_effect=AssertionError(
                     "Real HTTP call detected! urllib.request.urlopen was called"
+                ),
+            ),
+            patch(
+                "urllib3.poolmanager.PoolManager.urlopen",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! urllib3.PoolManager.urlopen was called"
                 ),
             ),
             # Note: We don't patch httpx.Client.send because TestClient uses it internally
