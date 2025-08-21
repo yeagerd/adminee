@@ -25,8 +25,12 @@ async def get_user_email_providers(user_id: str) -> list[str]:
     if request_id and request_id != "uninitialized":
         headers["X-Request-Id"] = request_id
 
+    # Use a longer timeout to handle cases where the first request is still processing
+    # due to reference counting/singleton patterns in the user service
+    timeout = httpx.Timeout(60.0)  # 60 seconds instead of default
+
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             data = resp.json()
