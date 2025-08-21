@@ -39,11 +39,11 @@ logger = get_logger(__name__)
 tracer = get_tracer(__name__)
 
 # Global service instances
-vespa_client: Optional[Any] = None
-content_normalizer: Optional[Any] = None
-embedding_generator: Optional[Any] = None
-document_mapper: Optional[Any] = None
-pubsub_consumer: Optional[Any] = None
+vespa_client: Optional["VespaClient"] = None
+content_normalizer: Optional["ContentNormalizer"] = None
+embedding_generator: Optional["EmbeddingGenerator"] = None
+document_mapper: Optional["DocumentMapper"] = None
+pubsub_consumer: Optional["PubSubConsumer"] = None
 
 
 async def ingest_document_service(
