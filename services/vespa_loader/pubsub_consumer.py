@@ -788,7 +788,7 @@ class PubSubConsumer:
                     # Log contact processing with key details in one line
                     logger.info(
                         f"Processing contact {i+1}/{len(data.contacts)}: "
-                        f"ID={contact.id}, Name='{contact.given_name or ''} {contact.family_name or ''}'.strip(), "
+                        f"ID={contact.id}, Name='{(contact.given_name or '') + ' ' + (contact.family_name or '')}'.strip(), "
                         f"Provider={contact.provider}"
                     )
 
