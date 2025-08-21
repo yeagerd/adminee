@@ -9,7 +9,7 @@ echo ""
 
 # Set environment variables for human-readable logging
 export LOG_FORMAT=text
-export LOG_LEVEL=INFO
+export LOG_LEVEL=DEBUG
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(dirname "$0")"
