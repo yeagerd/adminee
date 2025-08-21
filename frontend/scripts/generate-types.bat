@@ -14,7 +14,6 @@ if not exist "types\api\office" mkdir "types\api\office"
 if not exist "types\api\user" mkdir "types\api\user"
 if not exist "types\api\shipments" mkdir "types\api\shipments"
 if not exist "types\api\email-sync" mkdir "types\api\email-sync"
-if not exist "types\api\vector-db" mkdir "types\api\vector-db"
 
 REM Install dependencies if not already installed
 npm list openapi-typescript-codegen >nul 2>&1
@@ -57,7 +56,6 @@ echo export * from './office';
 echo export * from './user';
 echo export * from './shipments';
 echo export * from './email-sync';
-echo export * from './vector-db';
 ) > types\api\index.ts
 
 echo ✅ Type generation completed successfully!
