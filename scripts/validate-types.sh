@@ -78,20 +78,12 @@ validate_service_types() {
     
     # Check for essential type files
     local has_models=false
-    local has_services=false
     local has_index=false
     
     if [[ -d "$types_dir/models" ]]; then
         has_models=true
         if [[ "$verbose" == "true" ]]; then
             print_status "info" "  ✓ Models directory found"
-        fi
-    fi
-    
-    if [[ -d "$types_dir/services" ]]; then
-        has_services=true
-        if [[ "$verbose" == "true" ]]; then
-            print_status "info" "  ✓ Services directory found"
         fi
     fi
     
@@ -102,7 +94,7 @@ validate_service_types() {
         fi
     fi
     
-    if [[ "$has_models" == "false" ]] || [[ "$has_services" == "false" ]] || [[ "$has_index" == "false" ]]; then
+    if [[ "$has_models" == "false" ]] || [[ "$has_index" == "false" ]]; then
         print_status "error" "Missing essential type files for $service_name"
         return 1
     fi
