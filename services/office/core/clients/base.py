@@ -370,7 +370,7 @@ class BaseAPIClient(ABC):
             )
             # Note: In a real implementation, you'd want to save this asynchronously
             # For now, we'll just log it
-            logger.info(
+            logger.debug(
                 f"API Call: {method.upper()} {endpoint} | "
                 f"Status: {status} | User: {self.user_id} | "
                 f"Provider: {self.provider} | Time: {response_time_ms}ms"
