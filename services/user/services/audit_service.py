@@ -139,13 +139,13 @@ class AuditLogger:
                 user_agent=user_agent,
             )
 
-            # Get user object if user_id provided
+            # Get user object if user_id provided and create audit log in single session
             user = None
-            if user_id:
-                try:
-                    async_session = get_async_session()
-                    async with async_session() as session:
-                        # Handle both internal ID and external auth ID
+            async_session = get_async_session()
+            async with async_session() as session:
+                # Handle both internal ID and external auth ID
+                if user_id:
+                    try:
                         if user_id.isdigit():
                             # Numeric user ID - internal database ID
                             result = await session.execute(
@@ -157,17 +157,15 @@ class AuditLogger:
                                 select(User).where(User.external_auth_id == user_id)
                             )
                         user = result.scalar_one_or_none()
-                except Exception:
-                    # User might be deleted, log as system event
-                    self.logger.warning(
-                        "audit_user_not_found",
-                        user_id=user_id,
-                        action=action,
-                    )
+                    except Exception:
+                        # User might be deleted, log as system event
+                        self.logger.warning(
+                            "audit_user_not_found",
+                            user_id=user_id,
+                            action=action,
+                        )
 
-            # Create database audit log using async session
-            async_session = get_async_session()
-            async with async_session() as session:
+                # Create database audit log using the same session
                 audit_log = AuditLog(
                     user_id=user.id if user else None,
                     action=action,
