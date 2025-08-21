@@ -439,90 +439,10 @@ async def ingest_document(
 
 
 
-def _flatten_office_router_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Flatten Office Router nested document into loader's expected flat format.
-
-    Office Router sends: {"document_type": "briefly_document", "fields": {...}}
-    Loader expects: flat dict with keys like id, type, subject, body, sender, to, etc.
-    """
-    if "fields" not in document_data:
-        # Assume it's already flat
-        return dict(document_data)
-
-    fields = document_data.get("fields", {}) or {}
-    flat: Dict[str, Any] = {
-        "user_id": fields.get("user_id"),
-        "id": fields.get("doc_id"),
-        "provider": fields.get("provider"),
-        "type": fields.get("source_type"),
-        "subject": fields.get("title"),
-        "body": fields.get("content"),
-        "sender": fields.get("sender"),
-        "to": fields.get("recipients"),
-        "thread_id": fields.get("thread_id"),
-        "folder": fields.get("folder"),
-        "created_at": fields.get("created_at"),
-        "updated_at": fields.get("updated_at"),
-        "metadata": fields.get("metadata", {}),
-    }
-    return flat
 
 
-async def process_document(document_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Process a single document, handling both nested and flat formats.
 
-    Steps:
-    - Flatten Office Router nested format to loader flat format
-    - Map to Vespa document via DocumentMapper
-    - Normalize content and compute embedding if available
-    - Validate required fields (e.g., user_id)
-    """
-    try:
-        # 1) Flatten if needed
-        flat_input = _flatten_office_router_document(document_data)
 
-        # 2) Validate minimally before mapping
-        # user_id will be validated after mapping as well, but quick guard helps tests
-        if flat_input.get("user_id") is None and "fields" in document_data:
-            # In nested format, user_id is mandatory in fields
-            # Let mapper/validation catch missing too, but we keep informative errors
-            pass
-
-        # 3) Map to Vespa document structure
-        if not document_mapper:
-            raise ValueError("Document mapper not initialized")
-        vespa_doc = document_mapper.map_to_vespa(flat_input)
-
-        # 4) Normalize content and search_text if present
-        content = vespa_doc.get("content")
-        if content and content_normalizer:
-            try:
-                normalized = content_normalizer.normalize(content)
-                vespa_doc["content"] = normalized
-                # Keep search_text aligned with content if present/expected
-                vespa_doc["search_text"] = normalized
-            except Exception as e:
-                logger.warning(f"Content normalization failed: {e}")
-
-        # 5) Generate embedding if we have content
-        if vespa_doc.get("content") and embedding_generator:
-            try:
-                embedding = await embedding_generator.generate_embedding(
-                    vespa_doc["content"]
-                )
-                vespa_doc["embedding"] = embedding
-            except Exception as e:
-                logger.warning(f"Embedding generation failed: {e}")
-
-        # 6) Validate required fields post-processing
-        if not vespa_doc.get("user_id"):
-            raise ValueError("user_id is required")
-
-        return vespa_doc
-
-    except Exception:
-        # Bubble up for tests to assert
-        raise
 
 
 
