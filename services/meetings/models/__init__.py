@@ -78,6 +78,7 @@ def get_async_engine() -> "AsyncEngine":
                     max_overflow=20,
                     pool_timeout=30,
                     pool_recycle=3600,
+                    pool_pre_ping=True,
                 )
     return _async_engine
 
