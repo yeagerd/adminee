@@ -628,7 +628,7 @@ def _extract_microsoft_body(
     body_data: Dict[str, Any],
 ) -> tuple[Optional[str], Optional[str]]:
     """Extract text and HTML body from Microsoft Graph body object."""
-    logger.debug(f"Extracting Microsoft body from: {body_data}")
+    logger.debug(f"Extracting Microsoft body from: <body_data> (type: {type(body_data).__name__})")
     logger.debug(f"Body data type: {type(body_data)}")
     logger.debug(
         f"Body data keys: {list(body_data.keys()) if isinstance(body_data, dict) else 'Not a dict'}"
@@ -639,7 +639,7 @@ def _extract_microsoft_body(
 
     logger.debug(f"Content type: {content_type}")
     logger.debug(f"Content length: {len(content) if content else 0}")
-    logger.debug(f"Content sample: {content[:200] if content else 'None'}")
+    logger.debug(f"Content sample: <content_truncated> (length: {len(content) if content else 0})")
 
     if content_type == "html":
         logger.debug(
