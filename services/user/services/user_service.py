@@ -756,7 +756,11 @@ class UserService:
         """
         Get user by external auth ID with auto-detection of auth provider.
 
-        Tries multiple auth providers to find the user.
+        Uses a smart approach to find users efficiently:
+        1. First searches across all providers to see how many results exist
+        2. If multiple results found, applies provider preference filtering
+        3. If single result found, returns immediately
+        4. If no results found, raises NotFoundError
 
         Args:
             external_auth_id: External auth provider user ID
@@ -767,30 +771,70 @@ class UserService:
         Raises:
             NotFoundError: If user is not found with any provider
         """
-        # Try different auth providers in order of preference
-        providers_to_try = [
-            "nextauth",
-            "google",
-            "microsoft",
-            "clerk",
-            "custom",
-            "auth0",
-            "firebase",
-            "supabase",
-        ]
-
-        for provider in providers_to_try:
-            try:
-                user = await self.get_user_by_external_auth_id(
-                    external_auth_id, provider
+        try:
+            async_session = get_async_session()
+            async with async_session() as session:
+                # First, search for users with this external_auth_id across all providers
+                result = await session.execute(
+                    select(User).where(
+                        User.external_auth_id == external_auth_id,
+                        User.deleted_at.is_(None),  # type: ignore[union-attr]
+                    )
                 )
-                logger.debug(f"Found user {external_auth_id} with provider {provider}")
-                return user
-            except NotFoundError:
-                continue
+                users = result.scalars().all()
 
-        # If we get here, user was not found with any provider
-        raise NotFoundError(resource="User", identifier=str(external_auth_id or ""))
+                if not users:
+                    raise NotFoundError(
+                        resource="User", identifier=str(external_auth_id or "")
+                    )
+
+                if len(users) == 1:
+                    # Single user found, return immediately
+                    user = users[0]
+                    logger.debug(
+                        f"Found single user {external_auth_id} with provider {user.auth_provider}"
+                    )
+                    return user
+
+                # Multiple users found - apply provider preference filtering
+                logger.debug(
+                    f"Found {len(users)} users with external_auth_id {external_auth_id}, applying provider preference filtering"
+                )
+
+                # Define provider preference order (most preferred first)
+                provider_preference = [
+                    "nextauth",
+                    "google",
+                    "microsoft",
+                    "clerk",
+                    "custom",
+                    "auth0",
+                    "firebase",
+                    "supabase",
+                ]
+
+                # Find the user with the most preferred provider
+                for preferred_provider in provider_preference:
+                    for user in users:
+                        if user.auth_provider == preferred_provider:
+                            logger.debug(
+                                f"Selected user {external_auth_id} with preferred provider {preferred_provider}"
+                            )
+                            return user
+
+                # If no preferred provider found, return the first user (fallback)
+                logger.debug(
+                    f"No preferred provider found, returning first user with provider {users[0].auth_provider}"
+                )
+                return users[0]
+
+        except NotFoundError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Error retrieving user by external auth ID {external_auth_id}: {e}"
+            )
+            raise NotFoundError(resource="User", identifier=str(external_auth_id or ""))
 
     async def get_user_profile_by_external_auth_id(
         self, external_auth_id: str, auth_provider: Optional[str] = None

@@ -6,11 +6,12 @@ error handling, authentication, and authorization.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
 
+from services.common.http_errors import NotFoundError
 from services.user.models.user import User
 from services.user.schemas.pagination import UserListResponse
 from services.user.schemas.user import (
@@ -126,12 +127,11 @@ class TestUserProfileEndpoints:
         with (
             patch.object(
                 get_user_service(),
-                "get_user_by_external_auth_id",
+                "get_user_by_external_auth_id_auto_detect",
                 return_value=mock_user,
             ),
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
-
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
@@ -154,26 +154,24 @@ class TestUserProfileEndpoints:
             )
 
             assert result.external_auth_id == "user_123"
-            get_user_service().get_user_by_external_auth_id.assert_called_once_with(
-                "user_123", "nextauth"
+            # Verify the service method was called
+            get_user_service().get_user_by_external_auth_id_auto_detect.assert_called_once_with(
+                "user_123"
             )
 
     @pytest.mark.asyncio
     async def test_get_current_user_profile_not_found(self):
         """Test current user profile retrieval when user not found."""
         with patch.object(
-            get_user_service(), "get_user_by_external_auth_id"
+            get_user_service(), "get_user_by_external_auth_id_auto_detect"
         ) as mock_get:
-            mock_get.side_effect = HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            mock_get.side_effect = NotFoundError(resource="User", identifier="user_123")
 
-            from services.common.http_errors import ServiceError
             from services.user.routers.users import get_current_user_profile
 
-            with pytest.raises(ServiceError) as exc_info:
+            with pytest.raises(NotFoundError) as exc_info:
                 await get_current_user_profile(current_user_external_auth_id="user_123")
-            assert "Failed to retrieve current user profile" in str(exc_info.value)
+            assert "User user_123 not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_user_profile_workflow(self):
