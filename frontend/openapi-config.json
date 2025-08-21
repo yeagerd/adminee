@@ -54,9 +54,5 @@
             "output": "./types/api/email-sync",
             "description": "Email sync service types"
         },
-        "vector-db": {
-            "output": "./types/api/vector-db",
-            "description": "Vector DB service types"
-        }
     }
 }
