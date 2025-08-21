@@ -26,10 +26,10 @@ from services.meetings.models.meeting import TimeSlot as TimeSlot
 from services.meetings.settings import get_settings
 
 # Global engines and session factories - created once and reused
-_engine: Optional[Engine] = None
-_async_engine: Optional[AsyncEngine] = None
-_session_maker: Optional[sessionmaker] = None
-_async_session_maker: Optional[async_sessionmaker] = None
+_engine: Engine | None = None
+_async_engine: AsyncEngine | None = None
+_session_maker: sessionmaker | None = None
+_async_session_maker: async_sessionmaker | None = None
 
 # Thread-safe initialization locks
 _engine_lock = Lock()
