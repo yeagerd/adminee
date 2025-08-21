@@ -440,12 +440,30 @@ wait_for_document_count_stable() {
     local max_wait_time="${3:-30}"
     local poll_interval="${4:-2}"
     
+    # Validate parameters
+    if [[ ! "$max_wait_time" =~ ^[0-9]+$ ]] || [[ $max_wait_time -lt 0 ]]; then
+        log_error "Invalid max_wait_time: $max_wait_time. Must be a non-negative integer."
+        return 1
+    fi
+    
+    if [[ ! "$poll_interval" =~ ^[0-9]+$ ]] || [[ $poll_interval -lt 1 ]]; then
+        log_error "Invalid poll_interval: $poll_interval. Must be a positive integer."
+        return 1
+    fi
+    
     log_info "Waiting for document count to stabilize for group ID: $group_id (expected: $expected_count)..."
     
     local start_time=$(date +%s)
     local last_count=-1
     local stable_count=0
     local required_stable_checks=3  # Need 3 consecutive stable readings
+    local current_count="unknown"  # Initialize current_count to prevent undefined variable errors
+    
+    # Handle case where max_wait_time is 0 (no waiting)
+    if [[ $max_wait_time -eq 0 ]]; then
+        log_info "max_wait_time is 0, skipping wait and returning immediately"
+        return 0
+    fi
     
     while [[ $(($(date +%s) - start_time)) -lt $max_wait_time ]]; do
         # Get current document count
