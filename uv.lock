@@ -281,8 +281,8 @@ requires-dist = [
     { name = "nox", marker = "extra == 'dev'" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-mock", marker = "extra == 'dev'" },
     { name = "pytest-timeout", marker = "extra == 'dev'" },
@@ -363,8 +363,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic", specifier = "==2.11.7" },
-    { name = "pytest", marker = "extra == 'test'" },
-    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "respx", marker = "extra == 'test'" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
@@ -409,8 +409,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.57b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.36.0" },
     { name = "pydantic", specifier = "==2.11.7" },
-    { name = "pytest", marker = "extra == 'test'" },
-    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
     { name = "respx", marker = "extra == 'test'" },
     { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
@@ -515,8 +515,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic", specifier = "==2.11.7" },
-    { name = "pytest", marker = "extra == 'test'" },
-    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "python-dotenv" },
     { name = "redis" },
     { name = "requests" },
@@ -592,8 +592,8 @@ requires-dist = [
     { name = "psycopg2-binary" },
     { name = "pydantic", specifier = "==2.11.7" },
     { name = "pyjwt", specifier = ">=2.10.1" },
-    { name = "pytest", marker = "extra == 'test'" },
-    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
     { name = "pytz" },
     { name = "redis" },
@@ -672,8 +672,8 @@ requires-dist = [
     { name = "psycopg2-binary" },
     { name = "pydantic", specifier = "==2.11.7" },
     { name = "pyjwt" },
-    { name = "pytest", marker = "extra == 'test'" },
-    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
     { name = "pytz" },
     { name = "redis" },
@@ -733,8 +733,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.40.0,<1.0.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.9.0,<2.0.0" },
     { name = "pydantic", specifier = "==2.11.7" },
-    { name = "pytest", marker = "extra == 'test'" },
-    { name = "pytest-asyncio", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "respx", marker = "extra == 'test'" },
     { name = "sentence-transformers", specifier = ">=2.5.0,<3.0.0" },
     { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
@@ -784,8 +784,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.57b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.9.0,<2.0.0" },
     { name = "pydantic", specifier = "==2.11.7" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.4.0,<8.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0,<1.0.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
     { name = "respx", marker = "extra == 'test'", specifier = ">=0.22.0,<1.0.0" },
     { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
@@ -2846,17 +2846,18 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "7.4.4"
+version = "8.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
+    { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/1f/9d8e98e4133ffb16c90f3b405c43e38d3abb715bb5d7a63a5a684f7e46a3/pytest-7.4.4.tar.gz", hash = "sha256:2cf0005922c6ace4a3e2ec8b4080eb0d9753fdc93107415332f50ce9e7994280", size = 1357116 }
+sdist = { url = "https://files.pythonhosted.org/packages/08/ba/45911d754e8eba3d5a841a5ce61a65a685ff1798421ac054f85aa8747dfb/pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c", size = 1517714 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/ff/f6e8b8f39e08547faece4bd80f89d5a8de68a38b2d179cc1c4490ffa3286/pytest-7.4.4-py3-none-any.whl", hash = "sha256:b090cdf5ed60bf4c45261be03239c2c1c22df034fbffe691abe93cd80cea01d8", size = 325287 },
+    { url = "https://files.pythonhosted.org/packages/29/16/c8a903f4c4dffe7a12843191437d7cd8e32751d5de349d45d3fe69544e87/pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7", size = 365474 },
 ]
 
 [[package]]

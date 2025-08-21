@@ -16,7 +16,7 @@ try:
     from services.common.pubsub_client import PubSubClient
 except ImportError:
     # Mock PubSubClient for testing
-    class PubSubClient:
+    class MockPubSubClient:
         def __init__(self, project_id: str, host: str):
             self.project_id = project_id
             self.host = host
@@ -72,6 +72,12 @@ BackfillRequest = MockBackfillRequest
 EmailCrawler = MockEmailCrawler
 PubSubPublisher = MockPubSubPublisher
 VespaClient = MockVespaClient
+
+# Handle PubSubClient import/mock assignment
+try:
+    from services.common.pubsub_client import PubSubClient
+except ImportError:
+    PubSubClient = MockPubSubClient
 
 # Real imports commented out to prevent HTTP calls during module loading:
 # try:

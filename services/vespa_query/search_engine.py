@@ -49,7 +49,7 @@ class SearchEngine:
 
                 if self.session:
                     async with self.session.get(
-                        f"{self.vespa_endpoint}/application/v2/status"
+                        f"{self.vespa_endpoint}/ApplicationStatus"
                     ) as response:
                         span.set_attribute("vespa.response.status", response.status)
 

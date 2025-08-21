@@ -2,21 +2,24 @@
 
 This directory contains comprehensive demonstration services for the Vespa-powered hybrid search system. These demos showcase end-to-end functionality including data ingestion, indexing, search capabilities, and chat integration.
 
-## 🚀 Recent Updates: Script Consolidation
+## 🚀 Quick Demo Flow
 
-**All Vespa management scripts have been consolidated into a single `./scripts/vespa.sh` script!**
+**Complete end-to-end demo in 4 steps:**
 
-Previously, you had to manage three separate scripts:
-- ~~`deploy-vespa.sh`~~ → Now `./scripts/vespa.sh --deploy`
-- ~~`local_vespa.sh`~~ → Now `./scripts/vespa.sh --start`
-- ~~`start-vespa-local.sh`~~ → Now `./scripts/vespa.sh --start`
+```bash
+# 1. Start all services with human-readable logging
+./scripts/start-dev-logs.sh
 
-**Benefits of consolidation:**
-- ✅ **Single source of truth** for all Vespa operations
-- ✅ **Proper Briefly configuration** deployment
-- ✅ **Better error handling** and user feedback
-- ✅ **Comprehensive service management** in one place
-- ✅ **Real-time deployment monitoring** with live logs
+# 2. Clear existing data from Vespa
+./scripts/vespa.sh --clear-data --email {email} --env-file {env_file} --force
+
+# 3. Backfill with fresh data
+python services/demos/vespa_backfill.py
+
+# 4. Search and dump results
+python services/demos/vespa_search.py {email} --dump
+```
+
 
 **Quick Reference:**
 ```bash
@@ -45,14 +48,7 @@ Previously, you had to manage three separate scripts:
 ./scripts/vespa.sh --cleanup
 ```
 
-## Overview
-
-The Vespa demo services provide:
-- **Full-stack demonstrations** of the Vespa data pipeline
-- **Interactive chat experiences** with search integration
-- **Performance benchmarking** and optimization insights
-- **Data quality validation** and consistency checks
-- **Real-world usage scenarios** for testing and development
+**Note**: Replace `{email}` with actual email address and `{env_file}` with path to environment file containing API keys.
 
 ## Demo Scripts
 
@@ -257,7 +253,7 @@ VESPA_APPLICATION=briefly
 
 # Vespa Services Configuration
 VESPA_LOADER_PORT=9001
-VESPA_QUERY_PORT=9002
+VESPA_QUERY_PORT=8006
 
 # Pub/Sub Configuration
 PUBSUB_PROJECT_ID=briefly-dev
@@ -285,7 +281,7 @@ DEMO_PROVIDERS=microsoft,google
   },
   "services": {
     "vespa_loader": "http://localhost:9001",
-    "vespa_query": "http://localhost:9002"
+    "vespa_query": "http://localhost:8006"
   },
   "demo": {
     "users": ["demo_user_1", "demo_user_2"],
@@ -301,6 +297,20 @@ DEMO_PROVIDERS=microsoft,google
 
 ## Starting Backend Services
 
+### Demo Flow: Infrastructure + Data Operations
+
+The Vespa demo requires two types of scripts working together:
+
+**Infrastructure Management** (using `vespa.sh`):
+- Manages Vespa Docker container
+- Deploys Briefly application configuration
+- Handles data clearing operations
+
+**Data Operations** (using Python scripts in `demos/`):
+- `vespa_backfill.py` - Ingests and indexes data
+- `vespa_search.py` - Performs searches and dumps results
+- `vespa_synthetic.py` - Tests conversational search
+
 ### Option 1: Use the Consolidated Management Script (Recommended)
 
 The new `./scripts/vespa.sh` script consolidates all Vespa management functionality that was previously spread across multiple scripts:
@@ -308,7 +318,7 @@ The new `./scripts/vespa.sh` script consolidates all Vespa management functional
 **What it manages:**
 - ✅ **Vespa Container**: Docker container running Vespa engine
 - ✅ **Briefly Application**: Deploys your Vespa configuration from `vespa/` directory
-- ✅ **Python Services**: Vespa Loader Service (port 9001) and Query Service (port 9002)
+- ✅ **Python Services**: Vespa Loader Service (port 9001) and Query Service (port 8006)
 
 **Key benefits:**
 - 🚀 **Single command**: One script to manage everything
@@ -376,47 +386,20 @@ python -m uvicorn main:app --host 0.0.0.0 --port 9001 --reload
 #### Start Vespa Query Service
 ```bash
 cd services/vespa_query
-python -m uvicorn main:app --host 0.0.0.0 --port 9002 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8006 --reload
 ```
 
 ## Running Demos
 
-### Complete Testing Workflow
+### Complete Demo Flow
+The full Vespa demo workflow involves both infrastructure management and data operations:
 
-**Before running demos, ensure all services are properly configured and running:**
+1. **Start Services**: `./scripts/start-dev-logs.sh` - Start all services with human-readable logging
+2. **Clear Data**: `./scripts/vespa.sh --clear-data --email {email} --env-file {env_file}` - Clear existing data from Vespa
+3. **Backfill Data**: `python services/demos/vespa_backfill.py` - Populate Vespa with fresh data
+4. **Search & Dump**: `python services/demos/vespa_search.py {email} --dump` - Search and dump all content for the user
 
-1. **Start and configure services**:
-   ```bash
-   # Make sure pubsub and vespa are running and configured
-   ./scripts/local-pubsub.sh --status
-   ./scripts/vespa.sh --status
-   
-   # Start services if needed
-   ./scripts/local-pubsub.sh
-   ./scripts/vespa.sh --start
-   ```
-
-2. **Start development logs in background**:
-   ```bash
-   ./scripts/start-dev-logs.sh &
-   ```
-
-3. **Clear existing data**:
-   ```bash
-   ./scripts/vespa.sh --clear-data
-   ```
-
-4. **Run data ingestion demo**:
-   ```bash
-   python services/demos/vespa_backfill.py trybriefly@outlook.com
-   ```
-
-5. **Test search functionality**:
-   ```bash
-   python services/demos/vespa_query.py trybriefly@outlook.com --dump
-   ```
-
-### Alternative Demo Workflow
+### Individual Demo Scripts
 1. **First time setup**: Run `vespa_backfill.py` once to populate Vespa with data
 2. **Search testing**: Run `vespa_search.py` multiple times to test different scenarios
 3. **Conversational testing**: Run `vespa_synthetic.py` to test chat-like interactions
