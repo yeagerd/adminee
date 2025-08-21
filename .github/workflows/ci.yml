@@ -105,18 +105,52 @@ jobs:
           find frontend/types/api -type d 2>/dev/null | wc -l | xargs echo "  - Total service type directories:"
           echo ""
           echo "📋 Detailed schema status:"
+          
+          # Services that should have OpenAPI schemas
+          EXCLUDED_SERVICES="common vector_db email_sync demos vespa_loader briefly.egg-info __pycache__"
+          missing_schemas=()
+          total_expected=0
+          total_found=0
+          
           for service in services/*/; do
             if [[ -d "$service" ]]; then
               service_name=$(basename "$service")
+              
+              # Skip excluded services
+              if [[ " $EXCLUDED_SERVICES " =~ " $service_name " ]]; then
+                echo "  ⏭️  $service_name: excluded from schema validation"
+                continue
+              fi
+              
+              total_expected=$((total_expected + 1))
+              
               if [[ -f "$service/openapi/schema.json" ]]; then
                 echo "  ✅ $service_name: schema.json exists"
+                total_found=$((total_found + 1))
               else
                 echo "  ❌ $service_name: schema.json missing"
+                missing_schemas+=("$service_name")
               fi
             fi
           done
+          
           echo ""
-          echo "✅ Generated files check completed successfully!"
+          echo "📊 Schema validation summary:"
+          echo "  - Expected schemas: $total_expected"
+          echo "  - Found schemas: $total_found"
+          echo "  - Missing schemas: ${#missing_schemas[@]}"
+          
+          if [[ ${#missing_schemas[@]} -gt 0 ]]; then
+            echo ""
+            echo "❌ Missing required OpenAPI schemas:"
+            printf "  - %s\n" "${missing_schemas[@]}"
+            echo ""
+            echo "This CI check will fail. Please ensure all required services have OpenAPI schemas generated."
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All required OpenAPI schemas are present!"
 
   lint:
     name: Python Linting & Formatting
