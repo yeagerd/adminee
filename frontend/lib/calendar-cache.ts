@@ -1,4 +1,4 @@
-import { CalendarEvent } from '@/types/office-service';
+import { CalendarEvent } from "@/types/api/office";
 
 interface CachedCalendarData {
     events: CalendarEvent[];

@@ -271,7 +271,9 @@ class TestThreadAPIEndpoints:
                         )
 
                         assert response.success is True
-                        assert "threads" in response.data
+                        assert response.data.threads == []
+                        assert response.data.total_count == 0
+                        assert response.data.providers_used == ["google"]
                         mock_cache_set.assert_called_once()
 
     @pytest.mark.asyncio
@@ -313,7 +315,10 @@ class TestThreadAPIEndpoints:
                         )
 
                         assert response.success is True
-                        assert "thread" in response.data
+                        assert len(response.data.threads) == 1
+                        assert response.data.threads[0].id == "gmail_thread1"
+                        assert response.data.total_count == 1
+                        assert response.data.providers_used == ["google"]
                         mock_cache_set.assert_called_once()
 
     @pytest.mark.asyncio
@@ -355,7 +360,10 @@ class TestThreadAPIEndpoints:
                         )
 
                         assert response.success is True
-                        assert "thread" in response.data
+                        assert len(response.data.threads) == 1
+                        assert response.data.threads[0].id == "gmail_thread1"
+                        assert response.data.total_count == 1
+                        assert response.data.providers_used == ["google"]
                         mock_cache_set.assert_called_once()
 
 

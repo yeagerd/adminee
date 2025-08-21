@@ -32,6 +32,7 @@ class PackageOut(BaseModel):
     package_description: Optional[str]
     order_number: Optional[str]
     tracking_link: Optional[str]
+    created_at: datetime
     updated_at: datetime
     events_count: int
     labels: List[LabelOut]

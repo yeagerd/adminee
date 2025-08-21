@@ -4,7 +4,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { safeFormatDateAndTime } from '@/lib/utils';
-import { EmailMessage } from '@/types/office-service';
+import type { EmailMessage } from '@/types/api/office';
+import { Provider } from '@/types/api/office';
 import DOMPurify from 'dompurify';
 import { CalendarRange, Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -326,7 +327,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
 
     // Compute quoted split on client to avoid SSR document usage
     useEffect(() => {
-        const res = splitQuotedContent({ html: email.body_html, text: email.body_text });
+        const res = splitQuotedContent({ html: email.body_html || undefined, text: email.body_text || undefined });
         setSplitResult(res);
         // If the entire message is detected as quoted (no visible part), show quoted by default
         const shouldShowQuotedHtml = !!email.body_html && !res?.visibleHtml && !!res?.quotedHtml;
@@ -376,7 +377,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     };
 
     const senderName = email.from_address?.name || email.from_address?.email || 'Unknown';
-    const senderInitials = getSenderInitials(email.from_address?.name, email.from_address?.email);
+    const senderInitials = getSenderInitials(email.from_address?.name || undefined, email.from_address?.email || undefined);
     const formattedDate = formatEmailDate(email.date);
     const isUnread = !email.is_read;
 
@@ -421,7 +422,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                     )}
                                 </div>
                                 <div className="text-sm text-gray-600">
-                                    To: {email.to_addresses.map(addr => addr.name || addr.email).join(', ')}
+                                    To: {email.to_addresses?.map(addr => addr.name || addr.email).join(', ') || 'No recipients'}
                                 </div>
                             </div>
 
@@ -521,8 +522,8 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                                     }
                                                 };
                                                 // Only include recipients (to + cc)
-                                                email.to_addresses.forEach(a => addAddr(a));
-                                                email.cc_addresses.forEach(a => addAddr(a));
+                                                email.to_addresses?.forEach(a => addAddr({ email: a.email || undefined, name: a.name || undefined }));
+                                                email.cc_addresses?.forEach(a => addAddr({ email: a.email || undefined, name: a.name || undefined }));
                                                 const params = new URLSearchParams();
                                                 params.set('tool', 'meetings');
                                                 params.set('view', 'new');
@@ -695,7 +696,26 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
             <TrackShipmentModal
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
-                email={email}
+                email={{
+                    id: email.id,
+                    thread_id: email.thread_id || undefined,
+                    subject: email.subject || undefined,
+                    body_text: email.body_text || undefined,
+                    body_html: email.body_html || undefined,
+                    snippet: email.snippet || undefined,
+                    from_address: email.from_address ? { email: email.from_address.email || '', name: email.from_address.name ?? undefined } : undefined,
+                    to_addresses: (email.to_addresses || []).map(addr => ({ email: addr.email || '', name: addr.name ?? undefined })),
+                    cc_addresses: (email.cc_addresses || []).map(addr => ({ email: addr.email || '', name: addr.name ?? undefined })),
+                    bcc_addresses: (email.bcc_addresses || []).map(addr => ({ email: addr.email || '', name: addr.name ?? undefined })),
+                    labels: email.labels || [],
+                    date: email.date || new Date().toISOString(),
+                    is_read: false, // Default value
+                    has_attachments: false, // Default value
+                    provider: Provider.GOOGLE, // Default value
+                    provider_message_id: email.id, // Use email ID as provider message ID
+                    account_email: 'unknown@example.com', // Default value
+                    account_name: email.account_name || undefined
+                }}
                 onTrackShipment={handleTrackShipmentSubmit}
             />
         </>

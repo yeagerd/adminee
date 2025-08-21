@@ -356,8 +356,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                 data = response.json()
                 assert data["success"] is True
                 # The ID will be normalized by the system
-                assert "message" in data["data"]
-                assert data["data"]["provider"] == "google"
+                assert "messages" in data["data"]
+                assert len(data["data"]["messages"]) == 1
+                assert "google" in data["data"]["providers_used"]
 
     def test_get_email_message_not_found(self):
         """Test retrieval of non-existent email message."""
@@ -623,8 +624,9 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
 
                 data = response.json()
                 assert data["success"] is True
-                assert isinstance(data["data"], dict)
-                assert "files" in data["data"]
+                assert isinstance(data["data"], list)
+                assert len(data["data"]) == 1
+                assert data["data"][0]["name"] == "Test Document.docx"
 
     def test_search_files_success(self):
         """Test successful file search."""

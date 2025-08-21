@@ -1,13 +1,14 @@
 "use client";
 
 import { userApi } from '@/api';
-import type { Integration } from '@/api/types/common';
+import type { IntegrationResponse } from '@/types/api/user';
+import { IntegrationProvider } from '@/types/api/user';
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { INTEGRATION_STATUS } from '../lib/constants';
 
 interface IntegrationsContextType {
-    integrations: Integration[];
+    integrations: IntegrationResponse[];
     loading: boolean;
     error: string | null;
     refreshIntegrations: () => Promise<void>;
@@ -19,7 +20,7 @@ interface IntegrationsContextType {
 const IntegrationsContext = createContext<IntegrationsContextType | undefined>(undefined);
 
 export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [integrations, setIntegrations] = useState<IntegrationResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { status } = useSession();
@@ -29,14 +30,20 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const isRefreshingRef = useRef(false);
     const refreshAttemptsRef = useRef<Record<string, number>>({});
 
-    const fetchIntegrations = useCallback(async () => {
+    const loadIntegrations = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
             const resp = await userApi.getIntegrations();
-            setIntegrations(resp.integrations || []);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Failed to load integrations');
+            // Convert IntegrationResponse to Integration type
+            const convertedIntegrations: IntegrationResponse[] = (resp.integrations || []).map(integration => ({
+                ...integration,
+                scopes: integration.scopes || []
+            }));
+            setIntegrations(convertedIntegrations);
+        } catch (error) {
+            console.error('Failed to load integrations:', error);
+            setError('Failed to load integrations');
         } finally {
             setLoading(false);
         }
@@ -44,13 +51,13 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     useEffect(() => {
         if (status === 'authenticated') {
-            fetchIntegrations();
+            void loadIntegrations();
         } else if (status === 'unauthenticated') {
             setIntegrations([]);
             setError(null);
             setLoading(false);
         }
-    }, [fetchIntegrations, status]);
+    }, [status, loadIntegrations]);
 
     // Helper to check if a token is expired
     const isTokenExpired = useCallback((token_expires_at?: string): boolean => {
@@ -62,10 +69,10 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, []);
 
     // Helper to determine if an integration is expired but refreshable
-    const isExpiredButRefreshableIntegration = useCallback((i: Integration): boolean => {
+    const isExpiredButRefreshableIntegration = useCallback((i: IntegrationResponse): boolean => {
         return (
             (i.status === INTEGRATION_STATUS.EXPIRED ||
-                (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at))
+                (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at || undefined))
             ) &&
             (i.provider === 'google' || i.provider === 'microsoft') &&
             i.has_refresh_token
@@ -78,7 +85,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             .filter(i =>
                 i.status === INTEGRATION_STATUS.ACTIVE &&
                 (i.provider === 'google' || i.provider === 'microsoft') &&
-                !isTokenExpired(i.token_expires_at)
+                !isTokenExpired(i.token_expires_at || undefined)
             )
             .map(i => i.provider);
     }, [integrations, isTokenExpired]);
@@ -116,7 +123,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     (integration.status === INTEGRATION_STATUS.ACTIVE && attempts < 3)
                 ) {
                     try {
-                        await userApi.refreshIntegrationTokens(integration.provider);
+                        await userApi.refreshIntegrationTokens(integration.provider as IntegrationProvider);
                         // Reset counter on successful refresh
                         refreshAttemptsRef.current[integration.provider] = 0;
                         hasSuccessfulRefreshes = true;
@@ -132,17 +139,17 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             // Update local state if any tokens were successfully refreshed
             if (hasSuccessfulRefreshes) {
-                await fetchIntegrations();
+                await loadIntegrations();
             }
         } finally {
             isRefreshingRef.current = false;
         }
-    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, fetchIntegrations]);
+    }, [integrations, loading, hasExpiredButRefreshableTokens, activeProviders.length, isExpiredButRefreshableIntegration, loadIntegrations]);
 
     // Remove the auto-refresh useEffect (now handled by triggerAutoRefreshIfNeeded)
 
     return (
-        <IntegrationsContext.Provider value={{ integrations, loading, error, refreshIntegrations: fetchIntegrations, activeProviders, hasExpiredButRefreshableTokens, triggerAutoRefreshIfNeeded }}>
+        <IntegrationsContext.Provider value={{ integrations, loading, error, refreshIntegrations: loadIntegrations, activeProviders, hasExpiredButRefreshableTokens, triggerAutoRefreshIfNeeded }}>
             {children}
         </IntegrationsContext.Provider>
     );

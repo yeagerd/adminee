@@ -27,6 +27,9 @@ from services.office.core.normalizer import (
 from services.office.models import Provider
 from services.office.schemas import (
     ApiResponse,
+    FileDetailResponse,
+    FileListResponse,
+    FileSearchResponse,
 )
 
 logger = get_logger(__name__)
@@ -78,7 +81,7 @@ def get_request_id() -> str:
     return request_id
 
 
-@router.get("/", response_model=ApiResponse)
+@router.get("/", response_model=FileListResponse)
 async def get_files(
     request: Request,
     providers: Optional[List[str]] = Query(
@@ -102,7 +105,7 @@ async def get_files(
         True, description="Whether to include folders in results"
     ),
     service_name: str = Depends(service_permission_required(["read_files"])),
-) -> ApiResponse:
+) -> FileListResponse:
     """
     Get unified files from multiple providers.
 
@@ -163,8 +166,12 @@ async def get_files(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for files")
-            return ApiResponse(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+            # Convert cached DriveFile objects to dictionaries if needed
+            cached_files = cached_result.get("files", [])
+            if cached_files and hasattr(cached_files[0], "model_dump"):
+                cached_files = [file.model_dump() for file in cached_files]
+            return FileListResponse(
+                success=True, data=cached_files, cache_hit=True, request_id=request_id
             )
 
         # Fetch files from each provider
@@ -356,8 +363,11 @@ async def get_files(
         for k in ["files", "providers"]:
             if k in response_data and response_data[k] is None:
                 response_data[k] = []  # type: ignore[assignment]
-        return ApiResponse(
-            success=True, data=response_data, cache_hit=False, request_id=request_id
+        return FileListResponse(
+            success=True,
+            data=[file.model_dump() for file in files_list],
+            cache_hit=False,
+            request_id=request_id,
         )
 
     except ValidationError:
@@ -367,7 +377,7 @@ async def get_files(
         raise ServiceError(message=f"Failed to fetch files: {str(e)}")
 
 
-@router.get("/search", response_model=ApiResponse)
+@router.get("/search", response_model=FileSearchResponse)
 async def search_files(
     request: Request,
     q: str = Query(..., description="Search query"),
@@ -381,7 +391,7 @@ async def search_files(
         None, description="Filter by file types/mime types"
     ),
     service_name: str = Depends(service_permission_required(["read_files"])),
-) -> ApiResponse:
+) -> FileSearchResponse:
     """
     Search files across multiple providers.
 
@@ -434,8 +444,12 @@ async def search_files(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for file search")
-            return ApiResponse(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+            # Convert cached DriveFile objects to dictionaries if needed
+            cached_files = cached_result.get("files", [])
+            if cached_files and hasattr(cached_files[0], "model_dump"):
+                cached_files = [file.model_dump() for file in cached_files]
+            return FileSearchResponse(
+                success=True, data=cached_files, cache_hit=True, request_id=request_id
             )
 
         # Search files from each provider
@@ -585,9 +599,12 @@ async def search_files(
             f"File search completed in {response_time_ms}ms: {len(all_results)} results from {len(providers_used)} providers"
         )
 
-        return ApiResponse(
-            success=True, data=response_data, cache_hit=False, request_id=request_id
-        )  # type: ignore
+        return FileSearchResponse(
+            success=True,
+            data=[file.model_dump() for file in all_results],
+            cache_hit=False,
+            request_id=request_id,
+        )
 
     except ValidationError:
         raise
@@ -596,7 +613,7 @@ async def search_files(
         raise ServiceError(message=f"Failed to search files: {str(e)}")
 
 
-@router.get("/{file_id}", response_model=ApiResponse)
+@router.get("/{file_id}", response_model=FileDetailResponse)
 async def get_file(
     request: Request,
     file_id: str = Path(..., description="File ID (format: provider_originalId)"),
@@ -604,7 +621,7 @@ async def get_file(
         False, description="Whether to include download URL"
     ),
     service_name: str = Depends(service_permission_required(["read_files"])),
-) -> ApiResponse:
+) -> FileDetailResponse:
     """
     Get a specific file by ID.
 
@@ -692,7 +709,7 @@ async def get_file(
                     f"File detail request completed in {response_time_ms}ms: {normalized_file.name}"
                 )
 
-                return ApiResponse(
+                return FileDetailResponse(
                     success=True,
                     data=response_data,
                     cache_hit=False,
@@ -716,7 +733,7 @@ async def get_file(
                     },
                 }
 
-                return ApiResponse(
+                return FileDetailResponse(
                     success=False,
                     data=response_data,
                     cache_hit=False,

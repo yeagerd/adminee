@@ -1,5 +1,6 @@
 'use client';
 
+import { meetingsApi, officeApi } from "@/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,9 +8,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SmartTimeDurationInput } from "@/components/ui/smart-time-duration-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToolState } from "@/contexts/tool-context";
-import { meetingsApi, officeApi } from "@/api";
-import type { MeetingPoll, PollParticipant } from "@/api/clients/meetings-client";
-import { CalendarEvent } from "@/types/office-service";
+import type {
+    MeetingPoll,
+    MeetingPollCreate,
+    MeetingType,
+    PollParticipant
+} from "@/types/api/meetings";
+import type { TypedApiResponse_List_CalendarEvent__ } from "@/types/api/office";
+import type { CalendarEvent } from "@/types/api/office";
 import { ArrowLeft, LinkIcon, XCircle } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
@@ -195,13 +201,12 @@ export function MeetingPollNew() {
         setLoading(true);
 
         try {
-            const pollData = {
+            const pollData: MeetingPollCreate = {
                 title: title.trim(),
                 description: description.trim(),
                 duration_minutes: duration!,
                 location: location.trim(),
-                timezone: timeZone,
-                meeting_type: "tbd",
+                meeting_type: "tbd" as MeetingType,
                 time_slots: timeSlots.map(slot => ({
                     start_time: slot.start,
                     end_time: slot.end,
@@ -549,13 +554,14 @@ export function MeetingPollNew() {
                 undefined,
                 timeZone
             )
-                .then((response) => {
+                .then((response: TypedApiResponse_List_CalendarEvent__) => {
                     if (response.success && response.data) {
-                        // Handle both array and object response formats
-                        const events = Array.isArray(response.data)
-                            ? response.data
-                            : response.data.events || [];
-                        setCalendarEvents(events);
+                        // Convert generated CalendarEvent to office-service CalendarEvent
+                        const convertedEvents: CalendarEvent[] = response.data.map(event => ({
+                            ...event,
+                            description: event.description || undefined
+                        }));
+                        setCalendarEvents(convertedEvents);
                     }
                 })
                 .catch((err) => {

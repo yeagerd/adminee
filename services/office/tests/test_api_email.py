@@ -135,6 +135,13 @@ class TestEmailMessagesEndpoint:
             "total_count": 0,
             "providers_used": ["google"],
             "provider_errors": None,
+            "has_more": False,
+            "request_metadata": {
+                "user_id": "test_user",
+                "providers_requested": ["google"],
+                "limit": 10,
+                "include_body": False,
+            },
         }
         mock_cache_manager.get_from_cache.return_value = cached_data
 
@@ -300,8 +307,7 @@ class TestEmailMessageDetailEndpoint:
 
         assert data["success"] is True
         assert data["cache_hit"] is False
-        assert data["data"]["message"]["id"] == "gmail_test123"
-        assert data["data"]["provider"] == "google"
+        assert data["data"]["messages"][0]["id"] == "gmail_test123"
 
     @patch("services.office.api.email.fetch_single_message")
     @pytest.mark.asyncio
@@ -381,7 +387,9 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["id"] == "gmail_sent_123"
+        assert data["data"]["message_id"] == "gmail_sent_123"
+        assert data["data"]["provider"] == "google"
+        assert data["data"]["recipient_count"] == 2
 
         # Verify API client was created
         mock_create_client.assert_called_once()
@@ -432,7 +440,7 @@ class TestSendEmailEndpoint:
 
         assert data["success"] is True
         # Microsoft generates a custom ID since the API doesn't return one
-        assert data["data"]["id"].startswith("outlook_sent_")
+        assert data["data"]["message_id"].startswith("outlook_sent_")
 
         # Verify API client was created
         mock_create_client.assert_called_once()
@@ -679,7 +687,7 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["id"] == "gmail_sent_789"
+        assert data["data"]["message_id"] == "gmail_sent_789"
 
         # Verify the client send_message was called
         mock_google_client.send_message.assert_called_once()
@@ -701,8 +709,37 @@ class TestSendEmailEndpoint:
     ):
         """Test email message retrieval with cache hit."""
         cached_data = {
-            "message": {"id": "gmail_test123", "subject": "Test"},
-            "provider": "google",
+            "messages": [
+                {
+                    "id": "gmail_test123",
+                    "subject": "Test",
+                    "date": "2023-01-01T12:00:00Z",
+                    "provider": "google",
+                    "provider_message_id": "test123",
+                    "account_email": "test@example.com",
+                    "account_name": "Test Account",
+                    "thread_id": None,
+                    "snippet": None,
+                    "body_text": None,
+                    "body_html": None,
+                    "from_address": None,
+                    "to_addresses": [],
+                    "cc_addresses": [],
+                    "bcc_addresses": [],
+                    "labels": [],
+                    "is_read": False,
+                    "has_attachments": False,
+                }
+            ],
+            "total_count": 1,
+            "providers_used": ["google"],
+            "provider_errors": None,
+            "has_more": False,
+            "request_metadata": {
+                "user_id": "test_user",
+                "message_id": "gmail_test123",
+                "include_body": False,
+            },
         }
         mock_cache_manager.get_from_cache.return_value = cached_data
 
@@ -713,7 +750,7 @@ class TestSendEmailEndpoint:
 
         assert data["success"] is True
         assert data["cache_hit"] is True
-        assert data["data"] == cached_data
+        assert data["data"]["messages"][0]["id"] == "gmail_test123"
 
 
 class TestEmailHelperFunctions:

@@ -1,0 +1,63 @@
+{
+    "openapi": {
+        "version": "3.0.0",
+        "generator": "openapi-typescript-codegen",
+        "options": {
+            "client": "fetch",
+            "useUnionTypes": true,
+            "exportSchemas": true,
+            "exportServices": false,
+            "exportCore": false,
+            "exportClient": false,
+            "exportModels": true,
+            "exportServer": false,
+            "exportUtils": false,
+            "exportTest": false,
+            "exportReadme": false,
+            "exportApi": false,
+            "exportApiCore": false,
+            "exportApiClient": false,
+            "exportApiServer": false,
+            "exportApiUtils": false,
+            "exportApiTest": false,
+            "exportApiReadme": false
+        }
+    },
+    "services": {
+        "chat": {
+            "input": "../openapi-schemas/chat-openapi.json",
+            "output": "./types/api/chat",
+            "description": "Chat service types"
+        },
+        "meetings": {
+            "input": "../openapi-schemas/meetings-openapi.json",
+            "output": "./types/api/meetings",
+            "description": "Meetings service types"
+        },
+        "office": {
+            "input": "../openapi-schemas/office-openapi.json",
+            "output": "./types/api/office",
+            "description": "Office service types"
+        },
+        "user": {
+            "input": "../openapi-schemas/user-openapi.json",
+            "output": "./types/api/user",
+            "description": "User service types"
+        },
+        "shipments": {
+            "input": "../openapi-schemas/shipments-openapi.json",
+            "output": "./types/api/shipments",
+            "description": "Shipments service types"
+        },
+        "email-sync": {
+            "input": "../openapi-schemas/email_sync-openapi.json",
+            "output": "./types/api/email-sync",
+            "description": "Email sync service types"
+        },
+        "vector-db": {
+            "input": "../openapi-schemas/vector_db-openapi.json",
+            "output": "./types/api/vector-db",
+            "description": "Vector DB service types"
+        }
+    }
+}

@@ -1,6 +1,6 @@
 import { officeApi } from '@/api';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { EmailMessage } from '@/types/office-service';
+import { EmailMessage, Provider } from "@/types/api/office";
 import { act, render, screen, waitFor } from '@testing-library/react';
 import EmailView from './email-view';
 
@@ -41,7 +41,7 @@ describe('EmailView - Select All Functionality', () => {
             is_read: false,
             has_attachments: false,
             labels: [],
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'provider-email-1',
             account_email: 'test@example.com',
         },
@@ -59,7 +59,7 @@ describe('EmailView - Select All Functionality', () => {
             is_read: true,
             has_attachments: false,
             labels: [],
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'provider-email-2',
             account_email: 'test@example.com',
         },
@@ -77,7 +77,7 @@ describe('EmailView - Select All Functionality', () => {
             is_read: false,
             has_attachments: false,
             labels: [],
-            provider: 'google',
+            provider: Provider.GOOGLE,
             provider_message_id: 'provider-email-3',
             account_email: 'test@example.com',
         },

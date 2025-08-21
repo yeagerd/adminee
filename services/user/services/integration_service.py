@@ -24,12 +24,15 @@ from services.user.models.integration import (
 from services.user.models.token import EncryptedToken, TokenType
 from services.user.models.user import User
 from services.user.schemas.integration import (
+    ExternalUserInfo,
+    IntegrationErrorSummary,
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationResponse,
     IntegrationStatsResponse,
     OAuthCallbackResponse,
     OAuthStartResponse,
+    SyncStats,
     TokenRefreshResponse,
 )
 from services.user.security.encryption import TokenEncryption
@@ -402,13 +405,24 @@ class IntegrationService:
             # all requested scopes in their token response
             granted_scopes = oauth_state.scopes
 
+            # Transform user_info into ExternalUserInfo schema
+            external_user_info = ExternalUserInfo(
+                id=user_info.get("id") or user_info.get("sub", ""),
+                email=user_info.get("email", ""),
+                name=user_info.get("name"),
+                picture=user_info.get("picture"),
+                locale=user_info.get("locale"),
+                verified_email=user_info.get("verified_email"),
+                provider=provider.value,
+            )
+
             return OAuthCallbackResponse(
                 success=True,
                 integration_id=integration.id,
                 provider=provider,
                 status=IntegrationStatus.ACTIVE,
                 scopes=granted_scopes,
-                external_user_info=user_info,
+                external_user_info=external_user_info,
                 error=None,
             )
 
@@ -1105,32 +1119,36 @@ class IntegrationService:
                 if (
                     integration.status == IntegrationStatus.ERROR
                     and integration.error_message
+                    and integration.id is not None
                 ):
                     recent_errors.append(
-                        {
-                            "integration_id": integration.id,
-                            "provider": integration.provider.value,
-                            "error": integration.error_message,
-                            "timestamp": integration.updated_at.isoformat(),
-                        }
+                        IntegrationErrorSummary(
+                            integration_id=integration.id,
+                            provider=integration.provider.value,
+                            error_type="integration_error",
+                            error_message=integration.error_message,
+                            occurred_at=integration.updated_at,
+                            retry_count=0,
+                        )
                     )
 
             # Sort recent errors by timestamp (most recent first)
             recent_errors = sorted(
-                recent_errors, key=lambda x: x["timestamp"] or "", reverse=True
+                recent_errors, key=lambda x: x.occurred_at, reverse=True
             )[
                 :10
             ]  # Keep only 10 most recent
 
             # Calculate sync stats
-            sync_stats: Dict[str, Any] = {}
+            sync_stats = SyncStats()
             if integrations:
                 last_sync_times = [
                     i.last_sync_at for i in integrations if i.last_sync_at
                 ]
                 if last_sync_times:
-                    sync_stats["last_sync"] = max(last_sync_times).isoformat()
-                    sync_stats["total_synced"] = len(last_sync_times)
+                    sync_stats.last_successful_sync = max(last_sync_times)
+                    sync_stats.total_syncs = len(last_sync_times)
+                    sync_stats.successful_syncs = len(last_sync_times)
 
             return IntegrationStatsResponse(
                 total_integrations=total,

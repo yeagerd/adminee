@@ -1,43 +1,17 @@
 "use client";
-import { env } from '@/lib/env';
+import { meetingsApi } from '@/api';
+import type {
+    MeetingPoll,
+    PollResponseCreate
+} from '@/types/api/meetings';
 import { Check, ChevronDown, ChevronUp, HelpCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-type TimeSlot = {
-    id: string;
-    start_time: string;
-    end_time: string;
-    timezone: string;
-    is_available: boolean;
-};
+// Legacy types for backward compatibility - these should be removed once all components are updated
 
-type Participant = {
-    id: string;
-    email: string;
-    name?: string;
-    status: string;
-    invited_at: string;
-    responded_at?: string;
-    reminder_sent_count: number;
-    response_token: string;
-};
+type Poll = MeetingPoll;
 
-type Poll = {
-    title: string;
-    description?: string;
-    duration_minutes: number;
-    location?: string;
-    meeting_type: string;
-    reveal_participants?: boolean;
-    time_slots: TimeSlot[];
-    participants?: Participant[];
-};
-
-type PollResponse = {
-    time_slot_id: string;
-    response: 'available' | 'unavailable' | 'maybe';
-    comment?: string
-};
+type PollResponse = PollResponseCreate;
 
 export default function PollResponsePage() {
     // next/navigation does not have router.query, so use URLSearchParams or params prop if available
@@ -50,58 +24,20 @@ export default function PollResponsePage() {
     const [poll, setPoll] = useState<Poll | null>(null);
     const [responses, setResponses] = useState<PollResponse[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!response_token) return;
-        fetch(`${env.GATEWAY_URL}/api/v1/public/polls/response/${response_token}`)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
-            })
-            .then(data => {
-                setPoll(data.poll);
-                // Initialize responses for all time slots
-                const initialResponses = data.poll.time_slots.map((slot: TimeSlot) => {
-                    // Check if there's an existing response for this time slot
-                    const existingResponse = data.responses?.find((r: { time_slot_id: string; response: string; comment?: string }) => r.time_slot_id === slot.id);
-
-                    if (existingResponse) {
-                        // Use existing response
-                        return {
-                            time_slot_id: slot.id,
-                            response: existingResponse.response as 'available' | 'unavailable' | 'maybe',
-                            comment: existingResponse.comment || ''
-                        };
-                    } else {
-                        // Default to unavailable
-                        return {
-                            time_slot_id: slot.id,
-                            response: 'unavailable' as const,
-                            comment: ''
-                        };
-                    }
-                });
-                setResponses(initialResponses);
-
-                // Auto-expand comment sections that have content
-                const commentSectionsToExpand = new Set<string>();
-                initialResponses.forEach((response: PollResponse) => {
-                    if (response.comment && response.comment.trim()) {
-                        commentSectionsToExpand.add(response.time_slot_id);
-                    }
-                });
-                setExpandedComments(commentSectionsToExpand);
-
+        meetingsApi.getPollResponse(response_token)
+            .then((data: Record<string, unknown>) => {
+                setPoll(data.poll as Poll);
                 setLoading(false);
             })
-            .catch((error) => {
-                console.error('Error fetching poll:', error);
-                setError('Invalid or expired link.');
+            .catch((error: unknown) => {
+                console.error('Failed to fetch poll:', error);
+                setError('Failed to load poll data');
                 setLoading(false);
             });
     }, [response_token]);
@@ -176,17 +112,19 @@ export default function PollResponsePage() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const res = await fetch(`${env.GATEWAY_URL}/api/v1/public/polls/response/${response_token}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ responses }),
-        });
-        if (res.ok) {
+        setError(null);
+        try {
+            await meetingsApi.updatePollResponse(response_token!, { responses });
             setSubmitted(true);
-        } else {
-            setError('Failed to submit response.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to submit response.');
+            }
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     if (loading) return (

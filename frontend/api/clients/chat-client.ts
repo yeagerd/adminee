@@ -1,32 +1,31 @@
 import { env } from '../../lib/env';
-import { DraftApiResponse, DraftListResponse } from '../types/common';
+import {
+    ChatRequest,
+    ChatResponse,
+    DeleteUserDraftResponse,
+    UserDraftListResponse,
+    UserDraftRequest,
+    UserDraftResponse
+} from '../../types/api/chat';
 import { GatewayClient } from './gateway-client';
 
 export class ChatClient extends GatewayClient {
     // Chat Service
-    async chat(message: string, threadId?: string, userContext?: Record<string, unknown>) {
-        return this.request('/api/v1/chat/completions', {
+    async chat(request: ChatRequest): Promise<ChatResponse> {
+        return this.request<ChatResponse>('/api/v1/chat/completions', {
             method: 'POST',
-            body: {
-                message,
-                thread_id: threadId,
-                user_context: userContext,
-            },
+            body: request,
         });
     }
 
-    async chatStream(message: string, threadId?: string, userContext?: Record<string, unknown>, signal?: AbortSignal): Promise<ReadableStream> {
+    async chatStream(request: ChatRequest, signal?: AbortSignal): Promise<ReadableStream> {
         // Get authentication headers from the base class
         const authHeaders = await this.getAuthHeaders();
 
         const response = await fetch(`${this.getGatewayUrl()}/api/v1/chat/completions/stream`, {
             method: 'POST',
             headers: authHeaders,
-            body: JSON.stringify({
-                message,
-                thread_id: threadId,
-                user_context: userContext,
-            }),
+            body: JSON.stringify(request),
             signal,
         });
 
@@ -48,7 +47,7 @@ export class ChatClient extends GatewayClient {
     }
 
     // Draft Management
-    async listDrafts(filters?: { type?: string | string[]; status?: string | string[]; search?: string; }): Promise<DraftListResponse> {
+    async listDrafts(filters?: { type?: string | string[]; status?: string | string[]; search?: string; }): Promise<UserDraftListResponse> {
         const params = new URLSearchParams();
         if (filters?.type) {
             if (Array.isArray(filters.type)) {
@@ -65,37 +64,35 @@ export class ChatClient extends GatewayClient {
             }
         }
         if (filters?.search) params.append('search', filters.search);
-        return this.request<DraftListResponse>(`/api/v1/drafts?${params.toString()}`);
+        return this.request<UserDraftListResponse>(`/api/v1/drafts?${params.toString()}`);
     }
 
-    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>('/api/v1/drafts', {
+    async createDraft(draftData: UserDraftRequest): Promise<UserDraftResponse> {
+        return this.request<UserDraftResponse>('/api/v1/drafts', {
             method: 'POST',
             body: draftData,
         });
     }
 
-    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>(`/api/v1/drafts/${draftId}`, {
+    async updateDraft(draftId: string, draftData: Partial<UserDraftRequest>): Promise<UserDraftResponse> {
+        return this.request<UserDraftResponse>(`/api/v1/drafts/${draftId}`, {
             method: 'PUT',
             body: draftData,
         });
     }
 
-    async deleteDraft(draftId: string): Promise<void> {
-        return this.request<void>(`/api/v1/drafts/${draftId}`, {
+    async deleteDraft(draftId: string): Promise<DeleteUserDraftResponse> {
+        return this.request<DeleteUserDraftResponse>(`/api/v1/drafts/${draftId}`, {
             method: 'DELETE',
         });
     }
 
-    async getDraft(draftId: string): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>(`/api/v1/drafts/${draftId}`);
+    async getDraft(draftId: string): Promise<UserDraftResponse> {
+        return this.request<UserDraftResponse>(`/api/v1/drafts/${draftId}`);
     }
 
     // Helper method for gateway URL - use the validated env from base class
     private getGatewayUrl(): string {
         return env.GATEWAY_URL;
     }
-
-
 }

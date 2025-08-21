@@ -37,13 +37,18 @@ from services.office.models import Provider
 from services.office.schemas import (
     EmailDraftCreateRequest,
     EmailDraftResponse,
+    EmailDraftResult,
     EmailDraftUpdateRequest,
     EmailFolder,
     EmailFolderList,
+    EmailFolderListData,
     EmailMessage,
     EmailMessageList,
+    EmailMessageListData,
+    EmailSendResult,
     EmailThread,
     EmailThreadList,
+    EmailThreadListData,
     SendEmailRequest,
     SendEmailResponse,
 )
@@ -262,8 +267,41 @@ async def get_email_messages(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result and not no_cache:
             logger.info("Cache hit for email messages")
+            # Ensure cached data has required request_metadata field
+            if "request_metadata" not in cached_result:
+                cached_result["request_metadata"] = {
+                    "user_id": user_id,
+                    "providers_requested": valid_providers,
+                    "limit": limit,
+                    "include_body": include_body,
+                }
+            # Convert cached dicts to models for typed response
+            try:
+                cached_messages = cached_result.get("messages", [])
+                messages_models = [
+                    (m if isinstance(m, EmailMessage) else EmailMessage(**m))
+                    for m in cached_messages
+                ]
+                data_obj = EmailMessageListData(
+                    messages=messages_models,
+                    total_count=cached_result.get("total_count", len(messages_models)),
+                    providers_used=cached_result.get("providers_used", []),
+                    provider_errors=cached_result.get("provider_errors"),
+                    has_more=cached_result.get("has_more", False),
+                    request_metadata=cached_result.get("request_metadata", {}),
+                )
+            except Exception:
+                # Fallback to minimal empty response if cache format unexpected
+                data_obj = EmailMessageListData(
+                    messages=[],
+                    total_count=0,
+                    providers_used=cached_result.get("providers_used", []),
+                    provider_errors=cached_result.get("provider_errors"),
+                    has_more=False,
+                    request_metadata=cached_result.get("request_metadata", {}),
+                )
             return EmailMessageList(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+                success=True, data=data_obj, cache_hit=True, request_id=request_id
             )
 
         # Fetch from providers in parallel
@@ -321,9 +359,9 @@ async def get_email_messages(
         if len(providers_used) > 1:
             aggregated_messages = aggregated_messages[: limit * 2]  # Allow some overlap
 
-        # Build response
+        # Build response (models for response, dicts for cache)
         response_data = {
-            "messages": [msg.model_dump() for msg in aggregated_messages],
+            "messages": aggregated_messages,
             "total_count": len(aggregated_messages),
             "providers_used": providers_used,
             "provider_errors": provider_errors if provider_errors else None,
@@ -339,7 +377,11 @@ async def get_email_messages(
         # Only cache if we have successful results from at least one provider
         if providers_used:  # Only cache if at least one provider succeeded
             # Cache the result for 15 minutes
-            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
+            cache_data = {
+                **response_data,
+                "messages": [msg.model_dump() for msg in aggregated_messages],
+            }
+            await cache_manager.set_to_cache(cache_key, cache_data, ttl_seconds=900)
         else:
             logger.info(
                 "Not caching response due to no successful providers",
@@ -357,7 +399,19 @@ async def get_email_messages(
 
         return EmailMessageList(
             success=True,
-            data=response_data,
+            data=EmailMessageListData(
+                messages=aggregated_messages,
+                total_count=len(aggregated_messages),
+                providers_used=providers_used,
+                provider_errors=provider_errors if provider_errors else None,
+                has_more=len(aggregated_messages) >= limit,
+                request_metadata={
+                    "user_id": user_id,
+                    "providers_requested": valid_providers,
+                    "limit": limit,
+                    "include_body": include_body,
+                },
+            ),
             cache_hit=False,
             provider_used=(
                 Provider(providers_used[0]) if len(providers_used) == 1 else None
@@ -436,14 +490,23 @@ async def get_email_folders(
             # The cached data contains folder dictionaries, but we need to return the original format
             response_data = {
                 "folders": [
-                    EmailFolder(**folder_data)
-                    for folder_data in cached_result.get("folders", [])
+                    (f if isinstance(f, EmailFolder) else EmailFolder(**f))
+                    for f in cached_result.get("folders", [])
                 ],
                 "providers_used": cached_result.get("providers_used", []),
                 "provider_errors": cached_result.get("provider_errors", {}),
+                "request_metadata": {
+                    "request_id": request_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "providers_requested": valid_providers,
+                    "cache_hit": True,
+                },
             }
             return EmailFolderList(
-                success=True, data=response_data, cache_hit=True, request_id=request_id
+                success=True,
+                data=EmailFolderListData(**response_data),
+                cache_hit=True,
+                request_id=request_id,
             )
 
         # Fetch from providers in parallel
@@ -499,6 +562,14 @@ async def get_email_folders(
             "folders": unique_folders,
             "providers_used": providers_used,
             "provider_errors": provider_errors,
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "providers_requested": valid_providers,
+                "duration_seconds": (
+                    datetime.now(timezone.utc) - start_time
+                ).total_seconds(),
+            },
         }
 
         # Convert Pydantic models to dictionaries for caching
@@ -521,7 +592,10 @@ async def get_email_folders(
         )
 
         return EmailFolderList(
-            success=True, data=response_data, cache_hit=False, request_id=request_id
+            success=True,
+            data=EmailFolderListData(**response_data),
+            cache_hit=False,
+            request_id=request_id,
         )
 
     except Exception as e:
@@ -577,6 +651,13 @@ async def get_email_message(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for message detail")
+            # Ensure cached data has required request_metadata field
+            if "request_metadata" not in cached_result:
+                cached_result["request_metadata"] = {
+                    "user_id": user_id,
+                    "message_id": message_id,
+                    "include_body": include_body,
+                }
             return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -591,8 +672,11 @@ async def get_email_message(
 
         # Build response
         response_data = {
-            "message": message.model_dump(),
-            "provider": provider,
+            "messages": [message],
+            "total_count": 1,
+            "providers_used": [provider],
+            "provider_errors": None,
+            "has_more": False,
             "request_metadata": {
                 "user_id": user_id,
                 "message_id": message_id,
@@ -601,7 +685,11 @@ async def get_email_message(
         }
 
         # Cache the result for 1 hour (messages don't change often)
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=3600)
+        cache_payload = {
+            **response_data,
+            "messages": [message.model_dump()],
+        }
+        await cache_manager.set_to_cache(cache_key, cache_payload, ttl_seconds=3600)
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
@@ -611,7 +699,18 @@ async def get_email_message(
 
         return EmailMessageList(
             success=True,
-            data=response_data,
+            data=EmailMessageListData(
+                messages=[message],
+                total_count=1,
+                providers_used=[provider],
+                provider_errors=None,
+                has_more=False,
+                request_metadata={
+                    "user_id": user_id,
+                    "message_id": message_id,
+                    "include_body": include_body,
+                },
+            ),
             cache_hit=False,
             provider_used=Provider(provider),
             request_id=request_id,
@@ -704,9 +803,21 @@ async def send_email(
                     request_id=request_id,
                 )
 
+        # Transform the raw API result into EmailSendResult format
+        email_send_result = EmailSendResult(
+            message_id=result.get("id", "unknown"),
+            thread_id=result.get("threadId"),
+            provider=Provider(provider),
+            sent_at=datetime.now(timezone.utc),
+            recipient_count=len(email_data.to)
+            + len(email_data.cc or [])
+            + len(email_data.bcc or []),
+            has_attachments=False,  # TODO: Implement attachment detection
+        )
+
         return SendEmailResponse(
             success=True,
-            data=result,
+            data=email_send_result,
             request_id=request_id,
         )
 
@@ -790,9 +901,35 @@ async def get_email_threads(
             cached_result = await cache_manager.get_from_cache(cache_key)
             if cached_result:
                 logger.info(f"Cache hit for email threads request {request_id}")
+                try:
+                    cached_threads = cached_result.get("threads", [])
+                    threads_models = [
+                        (t if isinstance(t, EmailThread) else EmailThread(**t))
+                        for t in cached_threads
+                    ]
+                    data_obj = EmailThreadListData(
+                        threads=threads_models,
+                        total_count=cached_result.get(
+                            "total_count", len(threads_models)
+                        ),
+                        providers_used=cached_result.get("providers_used", []),
+                        provider_errors=cached_result.get("provider_errors"),
+                        has_more=cached_result.get("has_more", False),
+                        request_metadata=cached_result.get("request_metadata", {}),
+                    )
+                except Exception:
+                    data_obj = EmailThreadListData(
+                        threads=[],
+                        total_count=0,
+                        providers_used=cached_result.get("providers_used", []),
+                        provider_errors=cached_result.get("provider_errors"),
+                        has_more=False,
+                        request_metadata=cached_result.get("request_metadata", {}),
+                    )
+
                 return EmailThreadList(
                     success=True,
-                    data=cached_result,
+                    data=data_obj,
                     cache_hit=True,
                     request_id=request_id,
                 )
@@ -835,6 +972,17 @@ async def get_email_threads(
             "providers_used": providers_used,
             "provider_errors": provider_errors if provider_errors else None,
             "has_more": len(all_threads) >= limit,  # Simple heuristic for pagination
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "providers_requested": providers,
+                "limit": limit,
+                "include_body": include_body,
+                "labels": labels,
+                "folder_id": folder_id,
+                "query": q,
+                "page_token": page_token,
+            },
         }
 
         # Cache the result
@@ -845,7 +993,24 @@ async def get_email_threads(
 
         return EmailThreadList(
             success=True,
-            data=response_data,
+            data=EmailThreadListData(
+                threads=all_threads,
+                total_count=len(all_threads),
+                providers_used=providers_used,
+                provider_errors=provider_errors if provider_errors else None,
+                has_more=len(all_threads) >= limit,
+                request_metadata={
+                    "request_id": request_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "providers_requested": providers,
+                    "limit": limit,
+                    "include_body": include_body,
+                    "labels": labels,
+                    "folder_id": folder_id,
+                    "query": q,
+                    "page_token": page_token,
+                },
+            ),
             provider_used=(
                 get_provider_enum(primary_provider) if primary_provider else None
             ),
@@ -900,9 +1065,35 @@ async def get_email_thread(
             cached_result = await cache_manager.get_from_cache(cache_key)
             if cached_result:
                 logger.info(f"Cache hit for email thread request {request_id}")
+                try:
+                    cached_threads = cached_result.get("threads", [])
+                    threads_models = [
+                        (t if isinstance(t, EmailThread) else EmailThread(**t))
+                        for t in cached_threads
+                    ]
+                    data_obj = EmailThreadListData(
+                        threads=threads_models,
+                        total_count=cached_result.get(
+                            "total_count", len(threads_models)
+                        ),
+                        providers_used=cached_result.get("providers_used", []),
+                        provider_errors=cached_result.get("provider_errors"),
+                        has_more=cached_result.get("has_more", False),
+                        request_metadata=cached_result.get("request_metadata", {}),
+                    )
+                except Exception:
+                    data_obj = EmailThreadListData(
+                        threads=[],
+                        total_count=0,
+                        providers_used=cached_result.get("providers_used", []),
+                        provider_errors=cached_result.get("provider_errors"),
+                        has_more=False,
+                        request_metadata=cached_result.get("request_metadata", {}),
+                    )
+
                 return EmailThreadList(
                     success=True,
-                    data=cached_result,
+                    data=data_obj,
                     cache_hit=True,
                     request_id=request_id,
                 )
@@ -921,8 +1112,18 @@ async def get_email_thread(
 
         # Prepare response data
         response_data = {
-            "thread": thread,
-            "provider_used": provider,
+            "threads": [thread],
+            "total_count": 1,
+            "providers_used": [provider],
+            "provider_errors": None,
+            "has_more": False,
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "provider": provider,
+                "thread_id": thread_id,
+                "include_body": include_body,
+            },
         }
 
         # Cache the result
@@ -933,7 +1134,20 @@ async def get_email_thread(
 
         return EmailThreadList(
             success=True,
-            data=response_data,
+            data=EmailThreadListData(
+                threads=[thread],
+                total_count=1,
+                providers_used=[provider],
+                provider_errors=None,
+                has_more=False,
+                request_metadata={
+                    "request_id": request_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "provider": provider,
+                    "thread_id": thread_id,
+                    "include_body": include_body,
+                },
+            ),
             provider_used=get_provider_enum(provider),
             request_id=request_id,
         )
@@ -1007,8 +1221,18 @@ async def get_message_thread(
 
         # Prepare response data
         response_data = {
-            "thread": thread,
-            "provider_used": provider,
+            "threads": [thread],
+            "total_count": 1,
+            "providers_used": [provider],
+            "provider_errors": None,
+            "has_more": False,
+            "request_metadata": {
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "provider": provider,
+                "message_id": message_id,
+                "include_body": include_body,
+            },
         }
 
         # Cache the result
@@ -1019,7 +1243,20 @@ async def get_message_thread(
 
         return EmailThreadList(
             success=True,
-            data=response_data,
+            data=EmailThreadListData(
+                threads=[thread],
+                total_count=1,
+                providers_used=[provider],
+                provider_errors=None,
+                has_more=False,
+                request_metadata={
+                    "request_id": request_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "provider": provider,
+                    "message_id": message_id,
+                    "include_body": include_body,
+                },
+            ),
             provider_used=get_provider_enum(provider),
             request_id=request_id,
         )
@@ -2110,9 +2347,21 @@ async def create_email_draft(
                 )
                 raw = _build_gmail_raw_message(to, cc, bcc, subject, body)
                 draft = await google_client.create_draft(raw, thread_id)
+                draft_result = EmailDraftResult(
+                    draft_id=str((draft or {}).get("id", "")),
+                    thread_id=(draft or {}).get("message", {}).get("threadId"),
+                    provider=Provider.GOOGLE,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=None,
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
+                )
                 return EmailDraftResponse(
                     success=True,
-                    data={"provider": provider, "draft": draft},
+                    data=draft_result,
                     request_id=request_id,
                 )
             else:
@@ -2220,9 +2469,21 @@ async def create_email_draft(
                     created = await microsoft_client.update_draft_message(
                         draft_id_value, patch
                     )
+                draft_result = EmailDraftResult(
+                    draft_id=str((created or {}).get("id", "")),
+                    thread_id=(created or {}).get("conversationId"),
+                    provider=Provider.MICROSOFT,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=None,
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
+                )
                 return EmailDraftResponse(
                     success=True,
-                    data={"provider": provider, "draft": created},
+                    data=draft_result,
                     request_id=request_id,
                 )
     except Exception as e:
@@ -2271,9 +2532,21 @@ async def update_email_draft(
                 body = draft_request.body or ""
                 raw = _build_gmail_raw_message(to, cc, bcc, subject, body)
                 updated = await google_client.update_draft(draft_id, raw)
+                draft_result = EmailDraftResult(
+                    draft_id=str((updated or {}).get("id", "")),
+                    thread_id=(updated or {}).get("message", {}).get("threadId"),
+                    provider=Provider.GOOGLE,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
+                )
                 return EmailDraftResponse(
                     success=True,
-                    data={"provider": provider, "draft": updated},
+                    data=draft_result,
                     request_id=request_id,
                 )
             else:
@@ -2317,9 +2590,21 @@ async def update_email_draft(
                         for a in draft_request.bcc
                     ]
                 updated = await microsoft_client.update_draft_message(draft_id, patch)
+                draft_result = EmailDraftResult(
+                    draft_id=str((updated or {}).get("id", "")),
+                    thread_id=(updated or {}).get("conversationId"),
+                    provider=Provider.MICROSOFT,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                    action=(
+                        (draft_request.action or "new")
+                        if hasattr(draft_request, "action")
+                        else "new"
+                    ),
+                )
                 return EmailDraftResponse(
                     success=True,
-                    data={"provider": provider, "draft": updated},
+                    data=draft_result,
                     request_id=request_id,
                 )
     except Exception as e:
@@ -2363,8 +2648,20 @@ async def delete_email_draft(
             else:
                 microsoft_client = cast(MicrosoftAPIClient, client)
                 await microsoft_client.delete_draft_message(draft_id)
+        # Represent deletion as an EmailDraftResult with minimal info
         return EmailDraftResponse(
-            success=True, data={"deleted": True}, request_id=request_id
+            success=True,
+            data=EmailDraftResult(
+                draft_id=draft_id,
+                thread_id=None,
+                provider=(
+                    Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+                ),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+                action="delete",
+            ),
+            request_id=request_id,
         )
     except Exception as e:
         logger.error(f"Failed to delete email draft: {e}")
@@ -2393,7 +2690,16 @@ async def list_thread_drafts(
             provider_thread_id = thread_id.split("outlook_", 1)[1]
         else:
             return EmailDraftResponse(
-                success=True, data={"drafts": []}, request_id=request_id
+                success=True,
+                data=EmailDraftResult(
+                    draft_id="",
+                    thread_id=None,
+                    provider=Provider.GOOGLE,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=None,
+                    action="list",
+                ),
+                request_id=request_id,
             )
 
         factory = await get_api_client_factory()
@@ -2425,9 +2731,28 @@ async def list_thread_drafts(
                 for msg in raw_list.get("value", []) or []:
                     drafts.append(msg)
 
+        # For listing, return the most recent draft as representative result
+        representative = (drafts or [{}])[-1]
+        draft_id_value = (
+            representative.get("id") if isinstance(representative, dict) else None
+        )
+        thread_id_value = None
+        if isinstance(representative, dict):
+            thread_id_value = representative.get("message", {}).get(
+                "threadId"
+            ) or representative.get("conversationId")
         return EmailDraftResponse(
             success=True,
-            data={"provider": provider, "drafts": drafts},
+            data=EmailDraftResult(
+                draft_id=str(draft_id_value or ""),
+                thread_id=thread_id_value,
+                provider=(
+                    Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+                ),
+                created_at=datetime.now(timezone.utc),
+                updated_at=None,
+                action="list",
+            ),
             request_id=request_id,
         )
     except Exception as e:
@@ -2622,7 +2947,19 @@ async def get_internal_email_messages(
         if count_only:
             return EmailMessageList(
                 success=True,
-                data={"messages": [], "total_count": total_count},
+                data=EmailMessageListData(
+                    messages=[],
+                    total_count=total_count,
+                    providers_used=valid_providers,
+                    provider_errors=None,
+                    has_more=False,
+                    request_metadata={
+                        "user_id": user_id,
+                        "providers_requested": valid_providers,
+                        "limit": limit,
+                        "include_body": include_body,
+                    },
+                ),
                 cache_hit=False,
                 request_id=request_id,
             )
@@ -2642,7 +2979,19 @@ async def get_internal_email_messages(
 
         return EmailMessageList(
             success=True,
-            data={"messages": all_messages, "total_count": total_count},
+            data=EmailMessageListData(
+                messages=all_messages,
+                total_count=total_count,
+                providers_used=valid_providers,
+                provider_errors=None,
+                has_more=False,
+                request_metadata={
+                    "user_id": user_id,
+                    "providers_requested": valid_providers,
+                    "limit": limit,
+                    "include_body": include_body,
+                },
+            ),
             cache_hit=False,
             request_id=request_id,
         )

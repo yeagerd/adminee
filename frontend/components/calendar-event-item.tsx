@@ -26,7 +26,7 @@ import {
 import { useState } from "react"
 
 import { useUserPreferences } from '@/contexts/settings-context'
-import { CalendarEvent } from "@/types/office-service"
+import type { CalendarEvent } from "@/types/api/office"
 import { DateTime } from 'luxon'
 
 interface EventItemProps {
@@ -66,7 +66,7 @@ export function CalendarEventItem({ event, effectiveTimezone: propTimezone }: Ev
     const organizerIsInternal = event.organizer?.email?.includes('@company.com') || false
 
     // Process attendees - convert from EmailAddress to internal format
-    const processedAttendees = event.attendees.map((attendee, index) => ({
+    const processedAttendees = (event.attendees || []).map((attendee, index) => ({
         id: `${event.id}_attendee_${index}`,
         name: attendee.name || attendee.email.split('@')[0],
         email: attendee.email,

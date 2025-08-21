@@ -1,7 +1,7 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { officeApi } from '@/api';
-import type { CalendarEvent } from '@/types/office-service';
+import type { CalendarEvent } from '@/types/api/office';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import CalendarGridView from './calendar-grid-view';

@@ -1,5 +1,6 @@
 import { shipmentsApi } from '@/api';
 import { usePagination } from '@/hooks/use-pagination';
+import type { Package } from '@/types/package-types';
 import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -15,7 +16,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '../ui/input';
 import PaginatedDataTable, { ColumnDefinition } from '../ui/paginated-data-table';
 import { TableCell } from '../ui/table';
-import type { Package } from './AddPackageModal';
 import AddPackageModal from './AddPackageModal';
 import LabelChip from './LabelChip';
 
@@ -186,7 +186,26 @@ export default function PackageDashboard() {
             // Cache the result
             setCachedData(cacheKey, res);
 
-            setPackages(res.packages || []);
+            setPackages((res.packages || []).map(pkg => ({
+                id: pkg.id,
+                tracking_number: pkg.tracking_number,
+                carrier: pkg.carrier,
+                status: pkg.status,
+                estimated_delivery: pkg.estimated_delivery || undefined,
+                actual_delivery: pkg.actual_delivery || undefined,
+                recipient_name: pkg.recipient_name || undefined,
+                recipient_address: undefined, // Not available in PackageOut
+                shipper_name: pkg.shipper_name || undefined,
+                package_description: pkg.package_description || undefined,
+                order_number: pkg.order_number || undefined,
+                tracking_link: pkg.tracking_link || undefined,
+                email_message_id: undefined, // Not available in PackageOut
+                created_at: pkg.created_at,
+                updated_at: pkg.updated_at,
+                events_count: pkg.events_count,
+                labels: pkg.labels.map(label => label.name),
+                events: [], // Not available in PackageOut
+            })));
             setPaginationData({
                 hasNext: res.has_next,
                 hasPrev: res.has_prev,
@@ -568,19 +587,21 @@ export default function PackageDashboard() {
                     onClose={() => setSelectedPackage(null)}
                     shipment={{
                         id: selectedPackage.id,
+                        user_id: 'unknown', // Package interface doesn't have user_id
                         tracking_number: selectedPackage.tracking_number,
                         carrier: selectedPackage.carrier,
                         status: selectedPackage.status,
-                        estimated_delivery: selectedPackage.estimated_delivery,
-                        actual_delivery: selectedPackage.actual_delivery,
-                        recipient_name: selectedPackage.recipient_name,
-                        shipper_name: selectedPackage.shipper_name,
-                        package_description: selectedPackage.package_description,
-                        order_number: selectedPackage.order_number,
-                        tracking_link: selectedPackage.tracking_link,
+                        estimated_delivery: selectedPackage.estimated_delivery ?? null,
+                        actual_delivery: selectedPackage.actual_delivery ?? null,
+                        recipient_name: selectedPackage.recipient_name ?? null,
+                        shipper_name: selectedPackage.shipper_name ?? null,
+                        package_description: selectedPackage.package_description ?? null,
+                        order_number: selectedPackage.order_number ?? null,
+                        tracking_link: selectedPackage.tracking_link ?? null,
+                        created_at: selectedPackage.created_at || new Date().toISOString(),
                         updated_at: selectedPackage.updated_at || new Date().toISOString(),
                         events_count: selectedPackage.events?.length || 0,
-                        labels: selectedPackage.labels?.map(label => typeof label === 'string' ? label : label?.name || '') || [],
+                        labels: selectedPackage.labels?.map(label => ({ id: `label_${label}`, user_id: 'unknown', name: label, color: '#000000', created_at: new Date().toISOString() })) || [],
                     }}
                     onShipmentUpdated={(updatedPackage) => {
                         // Update the package in the local state
@@ -592,16 +613,16 @@ export default function PackageDashboard() {
                                         tracking_number: updatedPackage.tracking_number,
                                         carrier: updatedPackage.carrier,
                                         status: updatedPackage.status,
-                                        estimated_delivery: updatedPackage.estimated_delivery,
-                                        actual_delivery: updatedPackage.actual_delivery,
-                                        recipient_name: updatedPackage.recipient_name,
-                                        shipper_name: updatedPackage.shipper_name,
-                                        package_description: updatedPackage.package_description,
-                                        order_number: updatedPackage.order_number,
-                                        tracking_link: updatedPackage.tracking_link,
+                                        estimated_delivery: updatedPackage.estimated_delivery || undefined,
+                                        actual_delivery: updatedPackage.actual_delivery || undefined,
+                                        recipient_name: updatedPackage.recipient_name || undefined,
+                                        shipper_name: updatedPackage.shipper_name || undefined,
+                                        package_description: updatedPackage.package_description || undefined,
+                                        order_number: updatedPackage.order_number || undefined,
+                                        tracking_link: updatedPackage.tracking_link || undefined,
                                         updated_at: updatedPackage.updated_at,
                                         events_count: updatedPackage.events_count,
-                                        labels: updatedPackage.labels,
+                                        labels: updatedPackage.labels?.map(label => label.name) || [],
                                     }
                                     : pkg
                             )

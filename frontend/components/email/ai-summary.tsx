@@ -1,4 +1,4 @@
-import { EmailMessage } from '@/types/office-service';
+import type { EmailMessage } from "@/types/api/office";
 import React from 'react';
 
 const AISummary: React.FC<{ email: EmailMessage }> = () => {

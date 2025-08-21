@@ -1,98 +1,26 @@
-import { ApiResponse } from '../types/common';
+import {
+    MeetingPoll,
+    MeetingPollCreate,
+    MeetingPollUpdate,
+    PollParticipant,
+    PollResponseTokenRequest,
+    SuccessResponse
+} from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
 
-// Meeting Poll Types
-export interface MeetingPoll {
-    id: string;
-    user_id: string;
-    title: string;
-    description?: string;
-    duration_minutes: number;
-    location?: string;
-    meeting_type: string;
-    response_deadline?: string;
-    min_participants?: number;
-    max_participants?: number;
-    reveal_participants?: boolean;
-    status: string;
-    created_at: string;
-    updated_at: string;
-    poll_token: string;
-    time_slots: TimeSlot[];
-    participants: PollParticipant[];
-    responses?: PollResponse[];
-    scheduled_slot_id?: string;
-    calendar_event_id?: string;
-}
-
-export interface PollResponse {
-    id: string;
-    participant_id: string;
-    time_slot_id: string;
-    response: string;
-    comment?: string;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface TimeSlot {
-    id: string;
-    start_time: string;
-    end_time: string;
-    timezone: string;
-    is_available: boolean;
-}
-
-export interface PollParticipant {
-    id: string;
-    email: string;
-    name?: string;
-    status: string;
-    invited_at: string;
-    responded_at?: string;
-    reminder_sent_count: number;
-    response_token: string;
-}
-
-export interface MeetingPollCreate {
-    title: string;
-    description?: string;
-    duration_minutes: number;
-    location?: string;
-    meeting_type: string;
-    response_deadline?: string;
-    min_participants?: number;
-    max_participants?: number;
-    reveal_participants?: boolean;
-    time_slots: TimeSlotCreate[];
-    participants: PollParticipantCreate[];
-}
-
-export interface TimeSlotCreate {
-    start_time: string;
-    end_time: string;
-    timezone: string;
-}
-
-export interface PollParticipantCreate {
-    email: string;
-    name?: string;
-    poll_id?: string;
-    response_token?: string;
-}
-
-export interface MeetingPollUpdate {
-    title?: string;
-    description?: string;
-    duration_minutes?: number;
-    location?: string;
-    meeting_type?: string;
-    response_deadline?: string;
-    min_participants?: number;
-    max_participants?: number;
-}
-
 export class MeetingsClient extends GatewayClient {
+    // Public polls service
+    async getPollResponse(responseToken: string): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>(`/api/v1/public/polls/response/${responseToken}`);
+    }
+
+    async updatePollResponse(responseToken: string, requestBody: PollResponseTokenRequest): Promise<SuccessResponse> {
+        return this.request<SuccessResponse>(`/api/v1/public/polls/response/${responseToken}`, {
+            method: 'PUT',
+            body: requestBody,
+        });
+    }
+
     // Meetings Service
     async listMeetingPolls(): Promise<MeetingPoll[]> {
         return this.request<MeetingPoll[]>('/api/v1/meetings/polls');
@@ -103,24 +31,45 @@ export class MeetingsClient extends GatewayClient {
     }
 
     async createMeetingPoll(pollData: MeetingPollCreate): Promise<MeetingPoll> {
-        const normalized: MeetingPollCreate = {
-            ...pollData,
-            response_deadline: this.normalizeDate(pollData.response_deadline),
+        // Handle null values properly for the API
+        const apiData = {
+            title: pollData.title,
+            description: pollData.description,
+            duration_minutes: pollData.duration_minutes,
+            location: pollData.location,
+            meeting_type: pollData.meeting_type,
+            response_deadline: pollData.response_deadline,
+            min_participants: pollData.min_participants,
+            max_participants: pollData.max_participants,
+            reveal_participants: pollData.reveal_participants,
+            send_emails: pollData.send_emails,
+            time_slots: pollData.time_slots,
+            participants: pollData.participants,
         };
+
         return this.request<MeetingPoll>('/api/v1/meetings/polls', {
             method: 'POST',
-            body: normalized,
+            body: apiData,
         });
     }
 
     async updateMeetingPoll(pollId: string, pollData: MeetingPollUpdate): Promise<MeetingPoll> {
-        const normalized: MeetingPollUpdate = {
-            ...pollData,
-            response_deadline: this.normalizeDate(pollData.response_deadline),
+        // Handle null values properly for the API
+        const apiData = {
+            title: pollData.title,
+            description: pollData.description,
+            duration_minutes: pollData.duration_minutes,
+            location: pollData.location,
+            meeting_type: pollData.meeting_type,
+            response_deadline: pollData.response_deadline,
+            min_participants: pollData.min_participants,
+            max_participants: pollData.max_participants,
+            reveal_participants: pollData.reveal_participants,
         };
+
         return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`, {
             method: 'PUT',
-            body: normalized,
+            body: apiData,
         });
     }
 
@@ -142,8 +91,8 @@ export class MeetingsClient extends GatewayClient {
         });
     }
 
-    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<ApiResponse<{ event_id?: string; status: string; provider: string }>> {
-        return this.request<ApiResponse<{ event_id?: string; status: string; provider: string }>>(`/api/v1/meetings/polls/${pollId}/schedule`, {
+    async scheduleMeeting(pollId: string, selectedSlotId: string): Promise<SuccessResponse> {
+        return this.request<SuccessResponse>(`/api/v1/meetings/polls/${pollId}/schedule`, {
             method: 'POST',
             body: { selectedSlotId },
         });
@@ -156,8 +105,8 @@ export class MeetingsClient extends GatewayClient {
         });
     }
 
-    async unscheduleMeeting(pollId: string): Promise<ApiResponse<{ status?: string }>> {
-        return this.request<ApiResponse<{ status?: string }>>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
+    async unscheduleMeeting(pollId: string): Promise<SuccessResponse> {
+        return this.request<SuccessResponse>(`/api/v1/meetings/polls/${pollId}/unschedule`, {
             method: 'POST',
         });
     }

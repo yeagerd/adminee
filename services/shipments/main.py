@@ -51,7 +51,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Briefly Shipments Service",
     version="0.1.0",
-    description="Package shipment tracking microservice for Briefly.",
+    description="Package shipment tracking microservice for Briefly with carrier integration and label management",
+    contact={
+        "name": "Briefly Team",
+        "email": "support@briefly.ai",
+    },
+    license_info={
+        "name": "Private",
+    },
+    openapi_tags=[
+        {
+            "name": "packages",
+            "description": "Package management and tracking operations",
+        },
+        {"name": "labels", "description": "Shipping label generation and management"},
+        {"name": "carriers", "description": "Carrier configuration and integration"},
+        {"name": "events", "description": "Shipment event tracking and management"},
+    ],
     lifespan=lifespan,
 )
 

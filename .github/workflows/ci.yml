@@ -19,6 +19,105 @@ jobs:
         # No specific `with` configuration needed, defaults are fine.
         # All previous lines were comments after removing deprecated params.
 
+  check-generated-files:
+    name: Check Generated Files Are Up to Date
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for Git operations
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Python dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          uv sync --all-packages --all-extras --active
+
+      - name: Install Node.js dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Copy .env file for schema generation
+        run: cp .example.env .env
+
+      - name: Generate OpenAPI schemas
+        run: |
+          source .venv/bin/activate
+          ./scripts/generate-openapi-schemas.sh
+
+      - name: Clean existing types
+        run: |
+          cd frontend
+          rm -rf types/api
+          echo "🧹 Cleaned existing type directories"
+
+      - name: Generate TypeScript types
+        run: |
+          cd frontend
+          npm run generate-types
+
+      - name: Copy .example.env to frontend/.env
+        run: cp .example.env frontend/.env
+
+      - name: Build Application
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Check for uncommitted changes
+        run: |
+          # Check if any generated files have changed
+          if ! git diff --quiet; then
+            echo "❌ Generated files are out of date!"
+            echo "The following files have been modified:"
+            git diff --name-only
+            echo ""
+            echo "Please run the following commands to update generated files:"
+            echo "  ./scripts/generate-openapi-schemas.sh"
+            echo "  cd frontend && npm run generate-types"
+            echo "  git add . && git commit -m 'Update generated files'"
+            echo ""
+            echo "This ensures that your PR includes the latest generated types and schemas."
+            exit 1
+          else
+            echo "✅ All generated files are up to date!"
+          fi
+
+      - name: Show generated files status
+        run: |
+          echo "📊 Generated files status:"
+          echo "OpenAPI schemas:"
+          find services/*/openapi -name "schema.json" 2>/dev/null | wc -l | xargs echo "  - Total schemas:"
+          echo "TypeScript types:"
+          find frontend/types/api -type d 2>/dev/null | wc -l | xargs echo "  - Total service type directories:"
+          echo ""
+          echo "📋 Detailed schema status:"
+          for service in services/*/; do
+            if [[ -d "$service" ]]; then
+              service_name=$(basename "$service")
+              if [[ -f "$service/openapi/schema.json" ]]; then
+                echo "  ✅ $service_name: schema.json exists"
+              else
+                echo "  ❌ $service_name: schema.json missing"
+              fi
+            fi
+          done
+          echo ""
+          echo "✅ Generated files check completed successfully!"
+
   lint:
     name: Python Linting & Formatting
     runs-on: ubuntu-latest
@@ -228,6 +327,10 @@ jobs:
       working-directory: ./frontend
       run: echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> .env
 
+    - name: Set NEXTAUTH_URL for CI build
+      working-directory: ./frontend
+      run: echo "NEXTAUTH_URL=https://github.com" >> .env
+
     - name: Build application
       working-directory: ./frontend
       run: npm run build
@@ -235,7 +338,7 @@ jobs:
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, coverage, frontend-quality]
+    needs: [lint, typecheck, test, coverage, frontend-quality, check-generated-files]
 
     steps:
     - uses: actions/checkout@v4
@@ -253,6 +356,10 @@ jobs:
     - name: Set NEXTAUTH_SECRET for Docker build
       run: |
         echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> frontend/.env
+
+    - name: Set NEXTAUTH_URL for Docker build
+      run: |
+        echo "NEXTAUTH_URL=https://github.com" >> frontend/.env
 
     - name: Test Docker Compose build
       env:

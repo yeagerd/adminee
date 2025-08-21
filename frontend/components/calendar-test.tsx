@@ -3,7 +3,7 @@
 import { officeApi } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CalendarEvent } from "@/types/office-service"
+import type { CalendarEvent } from "@/types/api/office"
 import { useSession } from "next-auth/react"
 import { useState } from "react"
 
@@ -31,7 +31,7 @@ export function CalendarTest() {
             )
 
             if (response.success && response.data) {
-                setEvents(response.data.events || [])
+                setEvents(response.data || [])
                 console.log('Calendar test response:', response)
             } else {
                 setError('API call failed')

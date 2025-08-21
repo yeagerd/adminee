@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsApi } from '@/api';
+import { shipmentsApi } from '@/api';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
-import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
-import { EmailMessage } from '@/types/office-service';
+import { EmailMessage } from "@/types";
+import { PackageStatus, PackageCreate, PackageOut, PackageUpdate, DataCollectionRequest, TrackingEventCreate } from '@/types/api/shipments';
+import { PACKAGE_STATUS_OPTIONS } from '@/lib/package-status-constants';
 import DOMPurify from 'dompurify';
 import { CheckCircle, Info, Loader2, Package, PackageCheck, Search, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -150,13 +151,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [isCheckingPackage, setIsCheckingPackage] = useState(false);
-    const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
-    const [originalPackageData, setOriginalPackageData] = useState<PackageResponse | null>(null);
+    const [existingPackage, setExistingPackage] = useState<PackageOut | null>(null);
+    const [originalPackageData, setOriginalPackageData] = useState<PackageOut | null>(null);
     const [dataCollectionConsent, setDataCollectionConsent] = useState(false);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
-        status: PACKAGE_STATUS.PENDING,
+        status: PackageStatus.PENDING,
         recipient_name: '',
         shipper_name: '',
         package_description: '',
@@ -274,7 +275,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     const detectedData: PackageFormData = {
                         tracking_number: selectedTrackingNumber,
                         carrier: selectedCarrier,
-                        status: PACKAGE_STATUS.PENDING,
+                        status: PackageStatus.PENDING,
                         recipient_name: '',
                         shipper_name: '',
                         package_description: email.subject || '',
@@ -366,12 +367,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             }
 
             const dataCollectionRequest: DataCollectionRequest = {
-                user_id: session?.user?.id || '',
                 email_message_id: email.id,
                 original_email_data: {
-                    subject: email.subject,
-                    sender: email.from_address?.email,
-                    body: email.body_html || email.body_text,
+                    subject: email.subject || 'No Subject',
+                    sender: email.from_address?.email || 'unknown@example.com',
+                    body: email.body_html || email.body_text || 'No body content',
                 },
                 auto_detected_data: {
                     tracking_number: initialFormData.tracking_number,
@@ -414,23 +414,18 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         try {
             if (existingPackage) {
                 // If package exists, create a tracking event instead of new package
-                const eventData: {
-                    event_date: string;
-                    status: PackageStatus;
-                    location?: string;
-                    description?: string;
-                    email_message_id?: string;
-                } = {
+                const eventData: TrackingEventCreate = {
                     event_date: new Date().toISOString(),
-                    status: formData.status,
-                    description: `New tracking event from email - Status: ${formData.status}`,
+                    status: formData.status as PackageStatus, // Use the local PackageStatus type for now
+                    location: undefined,
+                    description: undefined,
                     email_message_id: email.id, // Include the email message ID to prevent duplicates
                 };
 
                 await shipmentsApi.createTrackingEvent(existingPackage.id, eventData);
 
                 // Check if any package fields need to be updated
-                const packageUpdates: Partial<PackageCreateRequest> = {};
+                const packageUpdates: Partial<PackageCreate> = {};
 
                 // Check each field and add to updates if different from original
                 if (originalPackageData) {
@@ -456,11 +451,33 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                 // Update package if there are any changes
                 if (Object.keys(packageUpdates).length > 0) {
-                    await shipmentsApi.updatePackage(existingPackage.id, packageUpdates);
+                    const updateData: PackageUpdate = {
+                        status: packageUpdates.status || null,
+                        estimated_delivery: packageUpdates.estimated_delivery || null,
+                        actual_delivery: packageUpdates.actual_delivery || null,
+                        recipient_name: packageUpdates.recipient_name || null,
+                        shipper_name: packageUpdates.shipper_name || null,
+                        package_description: packageUpdates.package_description || null,
+                        order_number: packageUpdates.order_number || null,
+                        tracking_link: packageUpdates.tracking_link || null,
+                        archived_at: null // PackageUpdate requires this field
+                    };
+                    await shipmentsApi.updatePackage(existingPackage.id, updateData);
                 }
             } else {
                 // Create new package
-                await onTrackShipment(formData);
+                const packageData: PackageCreate = {
+                    tracking_number: formData.tracking_number,
+                    carrier: formData.carrier,
+                    status: formData.status || PackageStatus.PENDING,
+                    estimated_delivery: formData.expected_delivery || null,
+                    recipient_name: formData.recipient_name || null,
+                    shipper_name: formData.shipper_name || null,
+                    package_description: formData.package_description || null,
+                    order_number: formData.order_number || null,
+                    tracking_link: formData.tracking_link || null,
+                };
+                await onTrackShipment(packageData as PackageFormData);
             }
 
             // Submit data collection if user has consented
@@ -766,7 +783,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.order_number}
-                                            originalValue={originalPackageData?.order_number}
+                                            originalValue={originalPackageData?.order_number || undefined}
                                         />
                                     )}
 
@@ -786,7 +803,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.package_description}
-                                            originalValue={originalPackageData?.package_description}
+                                            originalValue={originalPackageData?.package_description || undefined}
                                         />
                                     )}
 
@@ -805,7 +822,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.recipient_name}
-                                            originalValue={originalPackageData?.recipient_name}
+                                            originalValue={originalPackageData?.recipient_name || undefined}
                                         />
                                     )}
 
@@ -824,7 +841,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.shipper_name}
-                                            originalValue={originalPackageData?.shipper_name}
+                                            originalValue={originalPackageData?.shipper_name || undefined}
                                         />
                                     )}
 
@@ -844,7 +861,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <FieldUpdateMessage
                                             existingPackage={existingPackage}
                                             currentValue={formData.tracking_link}
-                                            originalValue={originalPackageData?.tracking_link}
+                                            originalValue={originalPackageData?.tracking_link || undefined}
                                         />
                                     )}
 

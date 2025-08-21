@@ -27,7 +27,14 @@ export const useShipmentEvents = (emailId: string) => {
 
             try {
                 const response = await shipmentsApi.getEventsByEmail(emailId);
-                setEvents(response);
+                setEvents(response.map(event => ({
+                    id: event.id,
+                    event_date: event.event_date,
+                    status: event.status,
+                    location: event.location || undefined,
+                    description: event.description || undefined,
+                    created_at: event.created_at
+                })));
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to fetch shipment events';
                 setError(errorMessage);

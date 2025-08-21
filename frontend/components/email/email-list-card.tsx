@@ -1,5 +1,5 @@
 import { safeFormatDateOrTime, safeParseDate } from '@/lib/utils';
-import { EmailMessage } from '@/types/office-service';
+import type { EmailMessage } from '@/types/api/office';
 import DOMPurify from 'dompurify';
 import { Star } from 'lucide-react';
 import React from 'react';
@@ -249,7 +249,7 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
             <div className="mb-4">
                 {sortedEmails.map((email, index) => {
                     const senderName = email.from_address?.name || email.from_address?.email || 'Unknown';
-                    const senderInitials = getSenderInitials(email.from_address?.name, email.from_address?.email);
+                    const senderInitials = getSenderInitials(email.from_address?.name || undefined, email.from_address?.email || undefined);
                     const formattedDate = formatEmailDate(email.date);
                     const isUnread = !email.is_read;
 
@@ -276,7 +276,7 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
                                             {email.subject || '(No subject)'}
                                         </div>
                                         <div className="text-xs text-gray-500">
-                                            {formattedDate} • To: {email.to_addresses.map(addr => addr.name || addr.email).join(', ')}
+                                            {formattedDate} • To: {email.to_addresses?.map(addr => addr.name || addr.email).join(', ') || 'No recipients'}
                                         </div>
                                     </div>
                                 </div>
@@ -312,7 +312,7 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
             <div className="border-b border-gray-100">
                 {sortedEmails.map((email) => {
                     const senderName = email.from_address?.name || email.from_address?.email || 'Unknown';
-                    const senderInitials = getSenderInitials(email.from_address?.name, email.from_address?.email);
+                    const senderInitials = getSenderInitials(email.from_address?.name || undefined, email.from_address?.email || undefined);
                     const formattedDate = formatEmailDate(email.date);
                     const isUnread = !email.is_read;
 

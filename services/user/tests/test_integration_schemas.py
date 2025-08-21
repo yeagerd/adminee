@@ -344,7 +344,11 @@ class TestOAuthCallbackResponse:
             provider=IntegrationProvider.GOOGLE,
             status=IntegrationStatus.ACTIVE,
             scopes=["email", "profile"],
-            external_user_info={"id": "google123", "email": "user@gmail.com"},
+            external_user_info={
+                "id": "google123",
+                "email": "user@gmail.com",
+                "provider": "google",
+            },
             error=None,
         )
 
@@ -353,7 +357,7 @@ class TestOAuthCallbackResponse:
         assert response.provider == IntegrationProvider.GOOGLE
         assert response.status == IntegrationStatus.ACTIVE
         assert response.scopes == ["email", "profile"]
-        assert response.external_user_info["id"] == "google123"
+        assert response.external_user_info.id == "google123"
         assert response.error is None
 
     def test_oauth_callback_response_failure(self):
@@ -512,6 +516,8 @@ class TestIntegrationStatsResponse:
 
     def test_integration_stats_response_creation(self):
         """Test creating integration stats response."""
+        from datetime import datetime, timezone
+
         response = IntegrationStatsResponse(
             total_integrations=10,
             active_integrations=8,
@@ -520,9 +526,20 @@ class TestIntegrationStatsResponse:
             by_provider={"google": 5, "microsoft": 5},
             by_status={"active": 8, "failed": 2},
             recent_errors=[
-                {"error": "Token expired", "timestamp": "2023-01-01T00:00:00Z"}
+                {
+                    "integration_id": 123,
+                    "provider": "google",
+                    "error_type": "token_expired",
+                    "error_message": "Token expired",
+                    "occurred_at": datetime(2023, 1, 1, tzinfo=timezone.utc),
+                }
             ],
-            sync_stats={"last_sync": "2023-01-01T00:00:00Z", "items_synced": 100},
+            sync_stats={
+                "total_syncs": 100,
+                "successful_syncs": 95,
+                "failed_syncs": 5,
+                "last_successful_sync": datetime(2023, 1, 1, tzinfo=timezone.utc),
+            },
         )
 
         assert response.total_integrations == 10
@@ -532,7 +549,8 @@ class TestIntegrationStatsResponse:
         assert response.by_provider == {"google": 5, "microsoft": 5}
         assert response.by_status == {"active": 8, "failed": 2}
         assert len(response.recent_errors) == 1
-        assert response.sync_stats["items_synced"] == 100
+        assert response.sync_stats.total_syncs == 100
+        assert response.sync_stats.successful_syncs == 95
 
     def test_integration_stats_response_defaults(self):
         """Test integration stats response defaults."""
@@ -546,7 +564,9 @@ class TestIntegrationStatsResponse:
         assert response.by_provider == {}
         assert response.by_status == {}
         assert response.recent_errors == []
-        assert response.sync_stats == {}
+        assert response.sync_stats.total_syncs == 0
+        assert response.sync_stats.successful_syncs == 0
+        assert response.sync_stats.failed_syncs == 0
 
 
 class TestIntegrationDisconnectRequest:
@@ -689,14 +709,16 @@ class TestIntegrationErrorResponse:
         response = IntegrationErrorResponse(
             error="validation_error",
             message="Invalid provider configuration",
-            details={"field": "client_id", "issue": "missing"},
+            details=[{"field": "client_id", "constraint": "missing"}],
             provider=IntegrationProvider.GOOGLE,
             integration_id=123,
         )
 
         assert response.error == "validation_error"
         assert response.message == "Invalid provider configuration"
-        assert response.details == {"field": "client_id", "issue": "missing"}
+        assert len(response.details) == 1
+        assert response.details[0].field == "client_id"
+        assert response.details[0].constraint == "missing"
         assert response.provider == IntegrationProvider.GOOGLE
         assert response.integration_id == 123
         assert isinstance(response.timestamp, datetime)

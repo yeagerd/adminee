@@ -2,7 +2,7 @@
 Package management endpoints for the shipments service
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -64,17 +64,41 @@ router = APIRouter()
 
 
 # Data collection schemas
+class EmailData(BaseModel):
+    """Model for email content data."""
+
+    subject: str
+    sender: str
+    body: str
+    content_type: str = "text"
+    received_at: Optional[datetime] = None
+    message_id: Optional[str] = None
+
+
+class TrackingData(BaseModel):
+    """Model for tracking information data."""
+
+    tracking_number: str
+    carrier: Optional[str] = None
+    status: Optional[str] = None
+    estimated_delivery: Optional[date] = None
+    recipient_name: Optional[str] = None
+    shipper_name: Optional[str] = None
+    package_description: Optional[str] = None
+    order_number: Optional[str] = None
+    tracking_link: Optional[str] = None
+    confidence: Optional[float] = None
+
+
 class DataCollectionRequest(BaseModel):
     """Request schema for collecting user-corrected shipment data"""
 
     email_message_id: str = Field(..., description="Original email message ID")
-    original_email_data: Dict[str, Any] = Field(
-        ..., description="Original email content"
-    )
-    auto_detected_data: Dict[str, Any] = Field(
+    original_email_data: EmailData = Field(..., description="Original email content")
+    auto_detected_data: TrackingData = Field(
         ..., description="Auto-detected shipment data"
     )
-    user_corrected_data: Dict[str, Any] = Field(
+    user_corrected_data: TrackingData = Field(
         ..., description="User-corrected shipment data"
     )
     detection_confidence: float = Field(
@@ -321,6 +345,7 @@ async def list_packages(
                 package_description=pkg.package_description,
                 order_number=pkg.order_number,
                 tracking_link=pkg.tracking_link,
+                created_at=pkg.created_at,
                 updated_at=pkg.updated_at,
                 events_count=events_count,
                 labels=[],
@@ -447,6 +472,7 @@ async def add_package(
         package_description=package_description,
         order_number=order_number,
         tracking_link=tracking_link,
+        created_at=updated_at,  # Use updated_at as created_at for now
         updated_at=updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
@@ -489,6 +515,7 @@ async def get_package(
         package_description=package.package_description,
         order_number=package.order_number,
         tracking_link=package.tracking_link,
+        created_at=package.created_at,
         updated_at=package.updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
@@ -573,6 +600,7 @@ async def update_package(
         package_description=package.package_description,
         order_number=package.order_number,
         tracking_link=package.tracking_link,
+        created_at=package.created_at,
         updated_at=package.updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels

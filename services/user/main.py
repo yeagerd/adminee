@@ -153,7 +153,7 @@ def create_app() -> FastAPI:
 
     # Create FastAPI application with enhanced configuration
     app = FastAPI(
-        title="User Management Service",
+        title="Briefly User Management Service",
         description="Manages user profiles, preferences, and OAuth integrations for the Briefly platform",
         version="0.1.0",
         contact={
@@ -163,6 +163,25 @@ def create_app() -> FastAPI:
         license_info={
             "name": "Private",
         },
+        openapi_tags=[
+            {"name": "users", "description": "User profile management and operations"},
+            {
+                "name": "preferences",
+                "description": "User preferences and settings management",
+            },
+            {
+                "name": "integrations",
+                "description": "OAuth integrations and provider management",
+            },
+            {
+                "name": "providers",
+                "description": "Authentication provider configuration",
+            },
+            {
+                "name": "internal",
+                "description": "Internal service-to-service endpoints",
+            },
+        ],
         lifespan=lifespan,
     )
 

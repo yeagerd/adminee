@@ -1,5 +1,7 @@
 'use client';
 
+import { userApi } from '@/api';
+import type { IntegrationResponse } from '@/types/api/user';
 import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -7,11 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
-import { userApi, type Integration, type OAuthStartResponse } from '@/api';
+import { IntegrationProvider } from '@/types/api/user';
 import { AlertCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface IntegrationConfig {
     provider: string;
@@ -46,49 +48,43 @@ export function IntegrationsContent() {
     const { integrations, loading, error, refreshIntegrations } = useIntegrations();
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
     const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
-    const [providerScopes, setProviderScopes] = useState<Record<string, OAuthScope[]>>({});
+    const [providerScopes] = useState<Record<string, OAuthScope[]>>({});
     const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
     const [currentProvider, setCurrentProvider] = useState<string | null>(null);
+    const [availableScopes, setAvailableScopes] = useState<string[]>([]);
 
-    const loadProviderScopes = useCallback(async (provider: string) => {
+    const loadProviderScopes = async (provider: IntegrationProvider) => {
         try {
-            if (providerScopes[provider]) {
-                console.log(`Using cached scopes for ${provider}:`, providerScopes[provider].map(s => s.name));
-                return providerScopes[provider];
-            }
-
-            console.log(`Loading scopes for ${provider}...`);
             const response = await userApi.getProviderScopes(provider);
-            const scopes = response.scopes;
-            console.log(`Loaded scopes for ${provider}:`, scopes.map(s => s.name));
+            // IntegrationScopeResponse is an array of scope objects
+            if (response && Array.isArray(response)) {
+                const scopes = response;
+                console.log(`Loaded scopes for ${provider}:`, scopes.map((s: { name: string }) => s.name));
 
-            setProviderScopes(prev => ({ ...prev, [provider]: scopes }));
-
-            // For new/disconnected integrations, select ALL available scopes by default
-            const allScopeNames = scopes.map(scope => scope.name);
-            console.log(`Setting selected scopes to all scopes:`, allScopeNames);
-            setSelectedScopes(allScopeNames);
-
-            return scopes;
+                // Extract scope names for display
+                const allScopeNames = scopes.map((scope: { name: string }) => scope.name);
+                setAvailableScopes(allScopeNames);
+                return scopes; // Return the scopes array
+            }
+            return []; // Return empty array if no response or not an array
         } catch (error) {
             console.error(`Failed to load scopes for ${provider}:`, error);
-            // error is now handled by the global context
-            return [];
+            return []; // Return empty array on error
         }
-    }, [providerScopes]);
+    };
 
     const handleScopeSelection = (provider: string) => {
         setCurrentProvider(provider);
         setScopeDialogOpen(true);
 
         // Load provider scopes and set initial selection
-        loadProviderScopes(provider).then(() => {
+        loadProviderScopes(provider as IntegrationProvider).then((scopes) => {
             const existingIntegration = getIntegrationStatus(provider);
             if (existingIntegration && existingIntegration.status === INTEGRATION_STATUS.ACTIVE && existingIntegration.scopes) {
                 // For existing active integrations, merge current scopes with any missing default scopes
                 // Also convert any Read-only scopes to ReadWrite scopes
                 const currentScopes = new Set(existingIntegration.scopes);
-                const availableScopes = providerScopes[provider] || [];
+                const availableScopes = scopes || []; // Use the loaded scopes
                 const defaultScopeNames = availableScopes.map(scope => scope.name);
 
                 // Convert Read-only scopes to ReadWrite scopes
@@ -115,9 +111,10 @@ export function IntegrationsContent() {
                     }
                 }
                 setSelectedScopes(mergedScopes);
+            } else {
+                // For new/disconnected integrations, use all available scopes
+                setSelectedScopes(availableScopes);
             }
-            // For new/disconnected integrations, all scopes will be selected by default
-            // (this is handled in the loadProviderScopes function)
         });
     };
 
@@ -147,16 +144,18 @@ export function IntegrationsContent() {
             let scopesToUse = selectedScopes;
             if (scopesToUse.length === 0) {
                 // Load provider scopes and use all of them
-                const scopes = await loadProviderScopes(config.provider);
-                scopesToUse = scopes.map(scope => scope.name);
+                const scopes = await loadProviderScopes(config.provider as IntegrationProvider);
+                if (scopes && Array.isArray(scopes)) {
+                    scopesToUse = scopes.map((scope: { name: string }) => scope.name);
+                }
             }
 
             console.log(`Starting OAuth flow for ${config.provider} with scopes:`, scopesToUse);
 
             const response = await userApi.startOAuthFlow(
-                config.provider,
+                config.provider as IntegrationProvider,
                 scopesToUse
-            ) as OAuthStartResponse;
+            );
 
             // Update preferred provider when connecting
             // setPreferredProvider(config.provider); // This line was removed
@@ -174,7 +173,7 @@ export function IntegrationsContent() {
         try {
             // error is now handled by the global context
             console.log(`Disconnecting ${provider} integration...`);
-            await userApi.disconnectIntegration(provider);
+            await userApi.disconnectIntegration(provider as IntegrationProvider);
             console.log('Integration disconnected, clearing frontend cache...');
 
             // Clear frontend calendar cache for this user
@@ -193,7 +192,7 @@ export function IntegrationsContent() {
         }
     };
 
-    const getIntegrationStatus = (provider: string): Integration | undefined => {
+    const getIntegrationStatus = (provider: string): IntegrationResponse | undefined => {
         return integrations.find(integration => integration.provider === provider);
     };
 

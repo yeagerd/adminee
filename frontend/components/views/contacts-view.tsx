@@ -1,6 +1,6 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { officeApi } from '@/api';
-import type { Contact } from '@/types/office-service';
+import type { Contact } from "@/types/api/office";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSession } from 'next-auth/react';
 import { RefreshCw } from 'lucide-react';
@@ -52,7 +52,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
 
       const resp = await officeApi.getContacts(activeProviders, 200, search || undefined, companyFilter || undefined, noCache);
       if (resp.success && resp.data) {
-        const list = (resp.data.contacts || []) as Contact[];
+        const list = resp.data as Contact[];
         setContacts(list);
         setError(null);
       } else {
@@ -134,9 +134,9 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                   )}
                   <div className="min-w-0">
                     <div className="font-medium truncate">{c.full_name || c.primary_email?.email}</div>
-                    <div className="text-sm text-gray-500 truncate">{c.primary_email?.email || (c.emails[0]?.email)}</div>
-                    {(c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails[0]?.email)) && (
-                      <div className="text-xs text-gray-500 truncate">{c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails[0]?.email)}</div>
+                    <div className="text-sm text-gray-500 truncate">{c.primary_email?.email || (c.emails?.[0]?.email)}</div>
+                    {(c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails?.[0]?.email)) && (
+                      <div className="text-xs text-gray-500 truncate">{c.company || detectCompanyFromEmail(c.primary_email?.email || c.emails?.[0]?.email)}</div>
                     )}
                   </div>
                 </div>

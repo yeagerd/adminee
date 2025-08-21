@@ -1,25 +1,36 @@
-import { Integration, IntegrationListResponse, OAuthCallbackResponse, OAuthStartResponse, User } from '../types/common';
+import {
+    IntegrationListResponse,
+    IntegrationProvider,
+    IntegrationScopeResponse,
+    OAuthCallbackRequest,
+    OAuthCallbackResponse,
+    OAuthStartRequest,
+    OAuthStartResponse,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
+    UserResponse
+} from '../../types/api/user';
 import { GatewayClient } from './gateway-client';
 
 export class UserClient extends GatewayClient {
     // User Service
-    async getCurrentUser() {
-        return this.request('/api/v1/users/me');
+    async getCurrentUser(): Promise<UserResponse> {
+        return this.request<UserResponse>('/api/v1/users/me');
     }
 
-    async updateUser(userData: Record<string, unknown>) {
-        return this.request('/api/v1/users/me', {
+    async updateUser(userData: Partial<UserResponse>) {
+        return this.request<UserResponse>('/api/v1/users/me', {
             method: 'PUT',
             body: userData,
         });
     }
 
-    async getUserPreferences() {
-        return this.request('/api/v1/users/me/preferences');
+    async getUserPreferences(): Promise<UserPreferencesResponse> {
+        return this.request<UserPreferencesResponse>('/api/v1/users/me/preferences');
     }
 
-    async updateUserPreferences(preferences: Record<string, unknown>) {
-        return this.request('/api/v1/users/me/preferences', {
+    async updateUserPreferences(preferences: UserPreferencesUpdate): Promise<UserPreferencesResponse> {
+        return this.request<UserPreferencesResponse>('/api/v1/users/me/preferences', {
             method: 'PUT',
             body: preferences,
         });
@@ -30,49 +41,43 @@ export class UserClient extends GatewayClient {
         return this.request<IntegrationListResponse>('/api/v1/users/me/integrations');
     }
 
-    async startOAuthFlow(provider: string, scopes: string[]) {
+    async startOAuthFlow(provider: IntegrationProvider, scopes: string[]): Promise<OAuthStartResponse> {
         // Use a dedicated integration callback URL to avoid conflicts with NextAuth
         const redirectUri = `${window.location.origin}/integrations/callback`;
 
-        return this.request('/api/v1/users/me/integrations/oauth/start', {
+        const request: OAuthStartRequest = {
+            provider,
+            scopes,
+            redirect_uri: redirectUri,
+        };
+
+        return this.request<OAuthStartResponse>('/api/v1/users/me/integrations/oauth/start', {
             method: 'POST',
-            body: {
-                provider,
-                scopes,
-                redirect_uri: redirectUri,
-            },
+            body: request,
         });
     }
 
-    async completeOAuthFlow(provider: string, code: string, state: string): Promise<OAuthCallbackResponse> {
+    async completeOAuthFlow(provider: IntegrationProvider, code: string, state: string): Promise<OAuthCallbackResponse> {
+        const request: OAuthCallbackRequest = { code, state };
         return this.request<OAuthCallbackResponse>(`/api/v1/users/me/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
-            body: { code, state },
+            body: request,
         });
     }
 
-    async disconnectIntegration(provider: string) {
+    async disconnectIntegration(provider: IntegrationProvider) {
         return this.request(`/api/v1/users/me/integrations/${provider}`, {
             method: 'DELETE',
         });
     }
 
-    async refreshIntegrationTokens(provider: string) {
+    async refreshIntegrationTokens(provider: IntegrationProvider) {
         return this.request(`/api/v1/users/me/integrations/${provider}/refresh`, {
             method: 'PUT',
         });
     }
 
-    async getProviderScopes(provider: string) {
-        return this.request<{
-            provider: string;
-            scopes: Array<{
-                name: string;
-                description: string;
-                required: boolean;
-                sensitive: boolean;
-            }>;
-            default_scopes: string[];
-        }>(`/api/v1/users/me/integrations/${provider}/scopes`);
+    async getProviderScopes(provider: IntegrationProvider): Promise<IntegrationScopeResponse> {
+        return this.request<IntegrationScopeResponse>(`/api/v1/users/me/integrations/${provider}/scopes`);
     }
 }

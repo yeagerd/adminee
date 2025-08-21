@@ -22,7 +22,7 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
     """Test cases for application startup and configuration."""
 
     def test_app_creation(self):
-        assert self.app.title == "User Management Service"
+        assert self.app.title == "Briefly User Management Service"
         assert self.app.version == "0.1.0"
         assert (
             "Manages user profiles, preferences, and OAuth integrations"
@@ -342,7 +342,7 @@ class TestAPIDocumentation(BaseUserManagementIntegrationTest):
         response = self.client.get("/openapi.json")
         assert response.status_code == 200
         data = response.json()
-        assert data["info"]["title"] == "User Management Service"
+        assert data["info"]["title"] == "Briefly User Management Service"
         assert data["info"]["version"] == "0.1.0"
 
     def test_docs_endpoint_available(self):

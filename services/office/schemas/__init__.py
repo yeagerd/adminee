@@ -78,11 +78,22 @@ class Conversation(BaseModel):
     preview: Optional[str] = Field(None, description="Preview of the conversation")
 
 
+class EmailThreadListData(BaseModel):
+    """Data structure for email thread list responses."""
+
+    threads: List[EmailThread]
+    total_count: int
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    has_more: bool = False
+    request_metadata: Dict[str, Any]
+
+
 class EmailThreadList(BaseModel):
     """Response model for email thread lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains threads, metadata, etc.
+    data: Optional[EmailThreadListData] = None  # ✅ Contains threads and metadata
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -102,11 +113,22 @@ class SendEmailRequest(BaseModel):
     importance: Optional[str] = None  # "high", "normal", "low"
 
 
+class EmailSendResult(BaseModel):
+    """Result data for email send operations."""
+
+    message_id: str
+    thread_id: Optional[str] = None
+    provider: Provider
+    sent_at: datetime
+    recipient_count: int
+    has_attachments: bool = False
+
+
 class SendEmailResponse(BaseModel):
     """Response model for sending emails."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[EmailSendResult] = None  # ✅ Specific response type
     error: Optional[Dict[str, Any]] = None
     request_id: str
 
@@ -145,20 +167,42 @@ class EmailDraftUpdateRequest(BaseModel):
     provider: Optional[str] = None
 
 
+class EmailDraftResult(BaseModel):
+    """Result data for email draft operations."""
+
+    draft_id: str
+    thread_id: Optional[str] = None
+    provider: Provider
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    action: str  # new, reply, reply_all, forward
+
+
 class EmailDraftResponse(BaseModel):
     """Response model for email draft operations."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[EmailDraftResult] = None  # ✅ Specific response type
     error: Optional[Dict[str, Any]] = None
     request_id: str
+
+
+class EmailMessageListData(BaseModel):
+    """Data structure for email message list responses."""
+
+    messages: List[EmailMessage]
+    total_count: int
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    has_more: bool = False
+    request_metadata: Dict[str, Any]
 
 
 class EmailMessageList(BaseModel):
     """Response model for email message lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains messages, metadata, etc.
+    data: Optional[EmailMessageListData] = None  # ✅ Contains messages and metadata
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -188,11 +232,20 @@ class EmailFolder(BaseModel):
     )
 
 
+class EmailFolderListData(BaseModel):
+    """Data structure for email folder list responses."""
+
+    folders: List[EmailFolder]
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    request_metadata: Dict[str, Any]
+
+
 class EmailFolderList(BaseModel):
     """Response model for email folder lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains folders, metadata, etc.
+    data: Optional[EmailFolderListData] = None  # ✅ Contains folders and metadata
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
@@ -458,12 +511,19 @@ class AvailableSlot(BaseModel):
     duration_minutes: int
 
 
+class TimeRange(BaseModel):
+    """Model for time range with start and end times."""
+
+    start: str
+    end: str
+
+
 class AvailabilityResponse(BaseModel):
     """Response model for availability checks."""
 
     available_slots: List[AvailableSlot]
     total_slots: int
-    time_range: Dict[str, str]  # start and end times
+    time_range: TimeRange  # ✅ Specific type instead of Dict[str, str]
     providers_used: List[str]
     provider_errors: Optional[Dict[str, str]] = None
     request_metadata: Dict[str, Any]
@@ -479,8 +539,21 @@ class CalendarEventResponse(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     deleted_at: Optional[str] = None
-    event_data: Optional[Dict[str, Any]] = None
+    event_data: Optional[CalendarEvent] = (
+        None  # ✅ Specific type instead of Dict[str, Any]
+    )
     request_metadata: Dict[str, Any]
+
+
+class CalendarEventDetailResponse(BaseModel):
+    """Response model for calendar event detail operations."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains event, provider, request_metadata
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
 
 
 class PaginatedResponse(BaseModel):
@@ -545,7 +618,67 @@ class ContactList(BaseModel):
     """Response model for contact lists."""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None  # Contains contacts, metadata, etc.
+    data: Optional[List[Contact]] = None  # ✅ Contains contacts, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class ContactCreateResponse(BaseModel):
+    """Response model for contact creation."""
+
+    success: bool
+    contact: Optional[Contact] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class ContactUpdateResponse(BaseModel):
+    """Response model for contact updates."""
+
+    success: bool
+    contact: Optional[Contact] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class ContactDeleteResponse(BaseModel):
+    """Response model for contact deletion."""
+
+    success: bool
+    deleted_contact_id: Optional[str] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class FileListResponse(BaseModel):
+    """Response model for file list operations."""
+
+    success: bool
+    data: Optional[List[Dict[str, Any]]] = None  # List of files
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class FileDetailResponse(BaseModel):
+    """Response model for file detail operations."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # File details
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class FileSearchResponse(BaseModel):
+    """Response model for file search operations."""
+
+    success: bool
+    data: Optional[List[Dict[str, Any]]] = None  # Search results
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None

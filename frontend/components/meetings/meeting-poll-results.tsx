@@ -1,14 +1,14 @@
 'use client';
 
 import { meetingsApi } from '@/api';
-import type { PollResponse } from '@/api/clients/meetings-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Mail, Plus, Users } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { PollResponse } from '@/types/api/meetings';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Plus, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Participant {
     id: string;
@@ -124,7 +124,6 @@ function PollHeader({ onBack }: PollHeaderProps) {
                 onClick={onBack}
                 className="flex items-center gap-2"
             >
-                <ArrowLeft className="h-4 w-4" />
                 Back to List
             </Button>
             <h1 className="text-2xl font-bold">Meeting Poll Results</h1>
@@ -205,7 +204,7 @@ function ParticipantTable({ participants, onResendEmail, resendingEmails }: Part
                                         disabled={resendingEmails.has(participant.id)}
                                         className="flex items-center gap-1"
                                     >
-                                        <Mail className="h-3 w-3" />
+                                        Mail
                                         {resendingEmails.has(participant.id) ? 'Sending...' : 'Resend'}
                                     </Button>
                                 )}
@@ -368,9 +367,9 @@ function TimeSlotRow({ slot, stats, isExpanded, isScheduled, poll, participantRe
                 <td className="px-3 py-2 border cursor-pointer" onClick={onToggleExpansion}>
                     <div className="flex items-center gap-2">
                         {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                            <ChevronDown className="h-4 w-4" />
                         ) : (
-                            <ChevronRight className="h-4 w-4 text-gray-500" />
+                            <ChevronRight className="h-4 w-4" />
                         )}
                         <span className="font-medium">{formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}</span>
                         {isScheduled && (
@@ -492,7 +491,7 @@ function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRo
         }).filter(item => item.participant).map(item => ({
             participant: item.participant!,
             response: item.response,
-            comment: item.comment,
+            comment: item.comment || undefined,
             respondedAt: item.respondedAt
         }));
     };

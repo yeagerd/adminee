@@ -1,5 +1,6 @@
 'use client';
 
+import { meetingsApi } from '@/api';
 import BookingsPage from '@/app/bookings/page';
 import DraftsList from '@/components/drafts/drafts-list';
 import { MeetingPollEdit } from '@/components/meetings/meeting-poll-edit';
@@ -9,7 +10,6 @@ import PackageDashboard from '@/components/packages/PackageDashboard';
 import { Button } from '@/components/ui/button';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { meetingsApi } from '@/api';
 import { MeetingSubView } from '@/types/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
@@ -17,16 +17,8 @@ import CalendarView from './views/calendar-view';
 import ContactsView from './views/contacts-view';
 import EmailView from './views/email-view';
 
-// Define MeetingPoll type for frontend use
-export interface MeetingPoll {
-    id: string;
-    title: string;
-    status: string;
-    created_at: string;
-    updated_at: string;
-    poll_token: string;
-    // Add other fields as needed from backend schema
-}
+// Import generated types from OpenAPI schema
+import type { MeetingPoll } from '@/types/api/meetings';
 
 export function ToolContent() {
     const {

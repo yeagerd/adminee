@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartTimeDurationInput } from '@/components/ui/smart-time-duration-input';
-import { CalendarEvent } from '@/types/office-service';
+import { CalendarEvent } from "@/types/api/office";
 import { Check, CheckCheck, Clock, Eye, EyeOff, Pencil, X } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
