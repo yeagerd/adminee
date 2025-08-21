@@ -1047,7 +1047,9 @@ class UserService:
             # Use the same normalization logic as the old lookup logic to ensure consistency
             # This prevents users from being unfindable due to different normalization methods
             normalized_email = detector._simple_email_normalize(email)
-            logger.debug(f"Using consistent normalization for {email}: {normalized_email}")
+            logger.debug(
+                f"Using consistent normalization for {email}: {normalized_email}"
+            )
 
             # Query database by normalized email
             async_session = get_async_session()
