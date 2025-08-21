@@ -30,7 +30,7 @@ export default function PollResponsePage() {
 
     useEffect(() => {
         if (!response_token) return;
-        meetingsApi.publicPolls.getPollResponse(response_token)
+        meetingsApi.getPollResponse(response_token)
             .then((data: Record<string, unknown>) => {
                 setPoll(data.poll as Poll);
                 setLoading(false);
@@ -112,13 +112,19 @@ export default function PollResponsePage() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const res = await meetingsApi.publicPolls.updatePollResponse(response_token!, { responses });
-        if (res.ok) {
+        setError(null);
+        try {
+            await meetingsApi.updatePollResponse(response_token!, { responses });
             setSubmitted(true);
-        } else {
-            setError('Failed to submit response.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to submit response.');
+            }
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     if (loading) return (

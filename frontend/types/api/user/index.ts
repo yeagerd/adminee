@@ -1,11 +1,7 @@
-/* generated using openapi-typescript-codegen -- do no edit */
+/* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export { ApiError } from './core/ApiError';
-export { CancelablePromise, CancelError } from './core/CancelablePromise';
-export { OpenAPI } from './core/OpenAPI';
-export type { OpenAPIConfig } from './core/OpenAPI';
 
 export { AIModelProvider } from './models/AIModelProvider';
 export { AIModelType } from './models/AIModelType';
@@ -61,11 +57,3 @@ export type { UserPreferencesResponse } from './models/UserPreferencesResponse';
 export type { UserPreferencesUpdate } from './models/UserPreferencesUpdate';
 export type { UserResponse } from './models/UserResponse';
 export type { ValidationError } from './models/ValidationError';
-
-export { DefaultService } from './services/DefaultService';
-export { HealthService } from './services/HealthService';
-export { IntegrationProvidersService } from './services/IntegrationProvidersService';
-export { IntegrationsService } from './services/IntegrationsService';
-export { InternalService } from './services/InternalService';
-export { PreferencesService } from './services/PreferencesService';
-export { UsersService } from './services/UsersService';

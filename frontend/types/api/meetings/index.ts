@@ -1,11 +1,7 @@
-/* generated using openapi-typescript-codegen -- do no edit */
+/* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export { ApiError } from './core/ApiError';
-export { CancelablePromise, CancelError } from './core/CancelablePromise';
-export { OpenAPI } from './core/OpenAPI';
-export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { AvailabilityDataResponse } from './models/AvailabilityDataResponse';
 export type { AvailabilityResponse } from './models/AvailabilityResponse';
@@ -28,11 +24,3 @@ export type { SuccessResponse } from './models/SuccessResponse';
 export type { TimeSlot } from './models/TimeSlot';
 export type { TimeSlotCreate } from './models/TimeSlotCreate';
 export type { ValidationError } from './models/ValidationError';
-
-export { BookingsService } from './services/BookingsService';
-export { DefaultService } from './services/DefaultService';
-export { EmailService } from './services/EmailService';
-export { InvitationsService } from './services/InvitationsService';
-export { PollsService } from './services/PollsService';
-export { PublicService } from './services/PublicService';
-export { SlotsService } from './services/SlotsService';

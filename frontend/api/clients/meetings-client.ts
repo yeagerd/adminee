@@ -4,22 +4,22 @@ import {
     MeetingPollUpdate,
     PollParticipant,
     PollResponseTokenRequest,
-    PublicService,
     SuccessResponse
 } from '../../types/api/meetings';
 import { GatewayClient } from './gateway-client';
 
 export class MeetingsClient extends GatewayClient {
     // Public polls service
-    public publicPolls = {
-        async getPollResponse(responseToken: string) {
-            return PublicService.getPollByResponseTokenApiV1PublicPollsResponseResponseTokenGet(responseToken);
-        },
+    async getPollResponse(responseToken: string): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>(`/api/v1/public/polls/response/${responseToken}`);
+    }
 
-        async updatePollResponse(responseToken: string, requestBody: PollResponseTokenRequest) {
-            return PublicService.respondWithTokenApiV1PublicPollsResponseResponseTokenPut(responseToken, requestBody);
-        }
-    };
+    async updatePollResponse(responseToken: string, requestBody: PollResponseTokenRequest): Promise<SuccessResponse> {
+        return this.request<SuccessResponse>(`/api/v1/public/polls/response/${responseToken}`, {
+            method: 'PUT',
+            body: requestBody,
+        });
+    }
 
     // Meetings Service
     async listMeetingPolls(): Promise<MeetingPoll[]> {
