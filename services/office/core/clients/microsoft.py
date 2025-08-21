@@ -112,6 +112,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         filter: Optional[str] = None,
         search: Optional[str] = None,
         order_by: Optional[str] = None,
+        include_body: bool = True,
     ) -> Dict[str, Any]:
         """
         Get list of Outlook messages.
@@ -122,11 +123,28 @@ class MicrosoftAPIClient(BaseAPIClient):
             filter: OData filter expression
             search: Search query
             order_by: Order by expression
+            include_body: Whether to include message body content
 
         Returns:
             Dictionary containing messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
+
+        # Always include essential fields for email processing
+        if include_body:
+            params["$select"] = (
+                "id,subject,bodyPreview,from,toRecipients,ccRecipients,"
+                "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
+                "conversationId,conversationIndex,parentFolderId,importance,flag,"
+                "isDraft,webLink,categories"
+            )
+        else:
+            params["$select"] = (
+                "id,subject,bodyPreview,from,toRecipients,ccRecipients,"
+                "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
+                "conversationId,conversationIndex,parentFolderId,importance,flag,"
+                "isDraft,webLink,categories"
+            )
 
         if search:
             params["$search"] = search
@@ -140,7 +158,33 @@ class MicrosoftAPIClient(BaseAPIClient):
                 params["$orderby"] = "receivedDateTime desc"
 
         response = await self.get("/me/messages", params=params)
-        return response.json()
+        messages_data = response.json()
+
+        # If include_body is True, fetch full message content for each message
+        if include_body and messages_data.get("value"):
+            messages = messages_data["value"]
+            full_messages = []
+
+            for message in messages:
+                message_id = message.get("id")
+                if message_id:
+                    try:
+                        # Fetch full message with body content
+                        full_message = await self.get_message(
+                            message_id,
+                            select="id,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,uniqueBody,categories",
+                        )
+                        full_messages.append(full_message)
+                    except Exception as e:
+                        # If fetching full message fails, use the summary message
+                        # logger.warning(f"Failed to fetch full message {message_id}: {e}") # Original code had this line commented out
+                        full_messages.append(message)
+                else:
+                    full_messages.append(message)
+
+            messages_data["value"] = full_messages
+
+        return messages_data
 
     async def get_messages_from_folder(
         self,
@@ -150,6 +194,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         filter: Optional[str] = None,
         search: Optional[str] = None,
         order_by: Optional[str] = None,
+        include_body: bool = True,
     ) -> Dict[str, Any]:
         """
         Get list of Outlook messages from a specific folder.
@@ -161,11 +206,29 @@ class MicrosoftAPIClient(BaseAPIClient):
             filter: OData filter expression
             search: Search query
             order_by: Order by expression
+            include_body: Whether to include message body content
 
         Returns:
             Dictionary containing messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
+
+        # Always include essential fields for email processing
+        if include_body:
+            params["$select"] = (
+                "id,subject,bodyPreview,from,toRecipients,ccRecipients,"
+                "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
+                "conversationId,conversationIndex,parentFolderId,importance,flag,"
+                "isDraft,webLink,categories"
+            )
+        else:
+            params["$select"] = (
+                "id,subject,bodyPreview,from,toRecipients,ccRecipients,"
+                "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
+                "conversationId,conversationIndex,parentFolderId,importance,flag,"
+                "isDraft,webLink,categories"
+            )
+
         if filter:
             params["$filter"] = filter
         if search:
@@ -178,7 +241,35 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get(
             f"/me/mailFolders/{folder_id}/messages", params=params
         )
-        return response.json()
+        messages_data = response.json()
+
+        # If include_body is True, fetch full message content for each message
+        if include_body and messages_data.get("value"):
+            messages = messages_data["value"]
+            full_messages = []
+
+            for message in messages:
+                message_id = message.get("id")
+                if message_id:
+                    try:
+                        # Fetch full message with body content
+                        full_message = await self.get_message(
+                            message_id,
+                            select="id,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,uniqueBody,categories",
+                        )
+                        full_messages.append(full_message)
+                    except Exception as e:
+                        # If fetching full message fails, use the summary message
+                        logger.warning(
+                            f"Failed to fetch full message {message_id}: {e}"
+                        )
+                        full_messages.append(message)
+                else:
+                    full_messages.append(message)
+
+            messages_data["value"] = full_messages
+
+        return messages_data
 
     async def get_message(
         self, message_id: str, select: Optional[str] = None

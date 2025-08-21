@@ -1668,6 +1668,7 @@ async def fetch_provider_emails(
                         filter=filter_expr,
                         search=q,
                         order_by="receivedDateTime desc",
+                        include_body=True,  # Always include body for email processing
                     )
                 else:
                     messages_response = await microsoft_client.get_messages(
@@ -1676,6 +1677,7 @@ async def fetch_provider_emails(
                         filter=filter_expr,
                         search=q,
                         order_by="receivedDateTime desc",
+                        include_body=True,  # Always include body for email processing
                     )
                 messages = messages_response.get("value", [])
 
@@ -3009,6 +3011,7 @@ async def get_internal_email_messages(
                             filter=filter_str,
                             search=q,
                             order_by="receivedDateTime desc",
+                            include_body=include_body,
                         )
                         logger.info(
                             f"Microsoft API returned: {type(messages)} with keys: {list(messages.keys()) if isinstance(messages, dict) else 'Not a dict'}"
