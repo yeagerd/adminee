@@ -472,7 +472,7 @@ wait_for_document_count_stable() {
             -H "Content-Type: application/json" \
             -d "{\"yql\": \"select * from briefly_document where true\", \"hits\": 1, \"streaming.groupname\": \"$group_id\"}")
         
-        local current_count
+        # Update current_count variable
         current_count=$(echo "$search_response" | python3 -c "
 import json
 import sys
@@ -486,6 +486,12 @@ except Exception as e:
         
         log_info "Current document count: $current_count (expected: $expected_count)"
         
+        # If we're already at the expected count, we can return immediately
+        if [[ "$current_count" == "$expected_count" ]]; then
+            log_success "Document count already at expected value: $current_count (expected: $expected_count)"
+            return 0
+        fi
+        
         # Check if count is stable
         if [[ "$current_count" == "$last_count" ]]; then
             stable_count=$((stable_count + 1))
@@ -495,17 +501,17 @@ except Exception as e:
             last_count="$current_count"
         fi
         
-        # If we've reached the expected count and it's been stable, we're done
+        # If we've been stable for enough checks and reached expected count, we're done
         if [[ "$current_count" == "$expected_count" && $stable_count -ge $required_stable_checks ]]; then
             log_success "Document count stabilized at $current_count (expected: $expected_count)"
             return 0
         fi
         
-        # If we've been stable for enough checks but haven't reached expected count, log warning
+        # If we've been stable for enough checks but haven't reached expected count, log warning and return failure
         if [[ $stable_count -ge $required_stable_checks && "$current_count" != "$expected_count" ]]; then
             log_warning "Document count stabilized at $current_count but expected $expected_count"
             log_warning "This may indicate some documents could not be deleted or there's a delay in processing"
-            return 0
+            return 1
         fi
         
         sleep "$poll_interval"
