@@ -10,7 +10,7 @@ echo "🚀 Generating TypeScript types from OpenAPI schemas..."
 cd "$(dirname "$0")/.."
 
 # Create types directory structure
-mkdir -p types/api/{chat,meetings,office,user,shipments,email-sync,vector-db}
+mkdir -p types/api/{chat,meetings,office,user,shipments,email-sync}
 
 # Install dependencies if not already installed
 if ! npm list openapi-typescript-codegen >/dev/null 2>&1; then
@@ -37,9 +37,6 @@ npx openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/a
 echo "📝 Generating types for Email Sync service..."
 npx openapi --input ../openapi-schemas/email_sync-openapi.json --output ./types/api/email-sync
 
-echo "📝 Generating types for Vector DB service..."
-npx openapi --input ../openapi-schemas/vector_db-openapi.json --output ./types/api/vector-db
-
 # Create index file
 echo "📄 Creating index file..."
 cat > types/api/index.ts << 'EOF'
@@ -52,7 +49,6 @@ export * from './office';
 export * from './user';
 export * from './shipments';
 export * from './email-sync';
-export * from './vector-db';
 EOF
 
 echo "✅ Type generation completed successfully!"

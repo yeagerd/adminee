@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **User Management**: FastAPI for profiles, OAuth tokens (`/services/user/`)
 - **Office Service**: Unified Google/Microsoft calendar/email API (`/services/office/`)
 - **Chat Service**: AI conversations with LLM integration (`/services/chat/`)
-- **Vector DB**: Pinecone for RAG pipeline (`/services/vector_db/`)
+
 
 **Tech**: Python 3.11+, FastAPI, PostgreSQL, Redis, Next.js, NextAuth, LangChain, OpenAI, Docker
 
