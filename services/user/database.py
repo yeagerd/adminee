@@ -44,16 +44,24 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
+        db_url = settings.db_url_user
+
+        # Prepare connect_args based on database type
+        connect_args = {}
+        if db_url.startswith("postgresql://"):
+            # PostgreSQL-specific statement timeout
+            connect_args["options"] = "-c statement_timeout=10000"
+
         _engine = create_async_engine(
-            get_async_database_url(settings.db_url_user),
+            get_async_database_url(db_url),
             echo=settings.debug,
             # Add connection pool settings to prevent hangs
             pool_size=10,
             max_overflow=20,
             pool_timeout=30,
             pool_recycle=3600,
-            # Set statement timeout to 10 seconds to prevent hanging queries
-            connect_args={"options": "-c statement_timeout=10000"},
+            # Apply database-specific connect_args
+            connect_args=connect_args,
         )
     return _engine
 
