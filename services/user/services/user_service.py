@@ -1115,7 +1115,7 @@ class UserService:
                             "user_count": len(users),
                             "user_ids": [u.external_auth_id for u in users],
                             "auth_providers": [u.auth_provider for u in users],
-                            "message": "Provider parameter is required when multiple users exist for the same email"
+                            "message": "Provider parameter is required when multiple users exist for the same email",
                         },
                     )
 
