@@ -70,6 +70,8 @@ class EmailContentSplitter:
         Returns:
             Dict with keys: visible_content, quoted_content, thread_summary
         """
+        logger.debug(f"Content splitter called with html_content length: {len(html_content) if html_content else 0}, text_content length: {len(text_content) if text_content else 0}")
+        
         result: Dict[str, Any] = {
             "visible_content": "",
             "quoted_content": "",
@@ -78,8 +80,10 @@ class EmailContentSplitter:
 
         # Try HTML splitting first if available
         if html_content:
+            logger.debug("Attempting HTML content splitting")
             html_result = self._split_html_content(html_content)
             if html_result:
+                logger.debug(f"HTML splitting successful: visible={len(html_result['visible'])}, quoted={len(html_result['quoted'])}")
                 result["visible_content"] = html_result["visible"]
                 result["quoted_content"] = html_result["quoted"]
                 # Pass full content for thread summary to find all participants
@@ -87,11 +91,15 @@ class EmailContentSplitter:
                     html_content, ""
                 )
                 return result
+            else:
+                logger.debug("HTML splitting failed, no result")
 
         # Fall back to text-based splitting
         if text_content:
+            logger.debug("Attempting text content splitting")
             text_result = self._split_text_content(text_content)
             if text_result:
+                logger.debug(f"Text splitting successful: visible={len(text_result['visible'])}, quoted={len(text_result['quoted'])}")
                 result["visible_content"] = text_result["visible"]
                 result["quoted_content"] = text_result["quoted"]
                 # Pass full content for thread summary to find all participants
@@ -99,15 +107,20 @@ class EmailContentSplitter:
                     text_content, ""
                 )
                 return result
+            else:
+                logger.debug("Text splitting failed, no result")
 
         # If no splitting possible, use original content as visible
         if html_content:
+            logger.debug("Using HTML content as fallback visible content")
             result["visible_content"] = self._html_to_text(html_content)
             result["thread_summary"] = self._extract_thread_summary(html_content, "")
         elif text_content:
+            logger.debug("Using text content as fallback visible content")
             result["visible_content"] = text_content
             result["thread_summary"] = self._extract_thread_summary(text_content, "")
-
+        
+        logger.debug(f"Final result: visible={len(result['visible_content'])}, quoted={len(result['quoted_content'])}")
         return result
 
     def _split_html_content(self, html_content: str) -> Optional[Dict[str, str]]:
