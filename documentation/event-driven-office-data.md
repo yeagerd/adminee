@@ -111,9 +111,62 @@ All events extend `BaseEvent` and include `metadata` (trace_id/span_id, correlat
 
 - Vespa Loader (`services/vespa_loader`)
   - Subscribes to all data-type topics and indexes normalized content. Uses batching and backpressure controls already implemented.
+  - **Document Type Strategy**: Creates type-appropriate Vespa documents (EmailDocument, CalendarDocument, ContactDocument, etc.) while maintaining unified search capabilities.
+  - Uses factory pattern to instantiate correct document type based on event data.
 
 - FE Client SSE Notifier (thin service)
   - Subscribes to relevant data-type topics and pushes user-scoped signals to the frontend via SSE/WebSockets.
+
+### Vespa Document Type Design
+
+**Strategy**: Hybrid approach with unified base and type-specific extensions for optimal search and flexibility.
+
+#### Document Structure
+```python
+class BaseVespaDocument(BaseEvent):
+    id: str
+    user_id: str
+    type: Literal["email", "calendar", "contact", "document", "todo"]
+    provider: str
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    metadata: Dict[str, Any]
+    content_chunks: List[str]
+    search_text: str
+
+class EmailDocument(BaseVespaDocument):
+    type: Literal["email"]
+    subject: str
+    body: str
+    from_address: str
+    to_addresses: List[str]
+    thread_id: str
+    # email-specific fields
+
+class CalendarDocument(BaseVespaDocument):
+    type: Literal["calendar"]
+    title: str
+    description: str
+    start_time: datetime
+    end_time: datetime
+    attendees: List[str]
+    # calendar-specific fields
+
+...
+```
+
+#### Benefits of This Approach
+- **Type-appropriate fields**: Each document type has relevant fields (no `from_address` for contacts)
+- **Unified search**: Cross-type queries work seamlessly
+- **Flexible indexing**: Can optimize per document type while maintaining unified pipeline
+- **Clean event handling**: Vespa consumer uses factory pattern to create appropriate document types
+- **Future extensibility**: Easy to add new document types (sheets, presentations, etc.)
+
+#### Implementation Details
+- Vespa consumer processes events from unified topics (`emails`, `calendars`, `contacts`)
+- Factory pattern determines document type based on event data
+- All document types share common base fields for unified search
+- Type-specific fields enable optimized search within each category
 
 ### Sequence of operations
 1. Integration connected
