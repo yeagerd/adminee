@@ -16,13 +16,16 @@ class DocumentMapper:
 
     def __init__(self) -> None:
         # Field mappings from office service to Vespa
+        # Aligned with VespaDocumentType field names and supporting aliases
         self.field_mappings = {
             "email": {
-                "id": "doc_id",
-                "subject": "title",
-                "body": "content",
-                "from": "sender",
-                "to": "recipients",
+                "id": "id",
+                "subject": "subject",
+                "body": "body",
+                "from_address": "from_address",  # Primary field name
+                "from": "from_address",          # Alias for compatibility
+                "to_addresses": "to_addresses",  # Primary field name
+                "to": "to_addresses",            # Alias for compatibility
                 "thread_id": "thread_id",
                 "folder": "folder",
                 "created_at": "created_at",
@@ -32,9 +35,13 @@ class DocumentMapper:
                 "search_text": "search_text",
             },
             "calendar": {
-                "id": "doc_id",
-                "subject": "title",
-                "body": "content",
+                "id": "id",
+                "subject": "subject",
+                "body": "body",
+                "from_address": "from_address",  # Primary field name
+                "from": "from_address",          # Alias for compatibility
+                "to_addresses": "to_addresses",  # Primary field name
+                "to": "to_addresses",            # Alias for compatibility
                 "start_time": "start_time",
                 "end_time": "end_time",
                 "attendees": "attendees",
@@ -43,9 +50,9 @@ class DocumentMapper:
                 "updated_at": "updated_at",
             },
             "contact": {
-                "id": "doc_id",
-                "display_name": "title",
-                "email_addresses": "email_addresses",
+                "id": "id",
+                "display_name": "subject",  # Map to subject field
+                "email_addresses": "to_addresses",  # Map to to_addresses field
                 "phone_numbers": "phone_numbers",
                 "company": "company",
                 "job_title": "job_title",
@@ -53,9 +60,9 @@ class DocumentMapper:
                 "updated_at": "updated_at",
             },
             "file": {
-                "id": "doc_id",
-                "name": "title",
-                "content": "content",
+                "id": "id",
+                "name": "subject",  # Map to subject field
+                "content": "body",   # Map to body field
                 "file_type": "file_type",
                 "size": "size",
                 "created_at": "created_at",
@@ -74,16 +81,15 @@ class DocumentMapper:
 
             # Create Vespa document
             vespa_doc: Dict[str, Any] = {
-                # Remove id field - Vespa streaming mode generates this automatically from URL path
+                # Use field names that align with VespaDocumentType
                 "user_id": document_data.get("user_id"),
-                "doc_id": document_data.get("id"),
+                "id": document_data.get("id"),
                 "provider": document_data.get("provider"),
-                "source_type": doc_type,
-                "title": "",
-                "content": "",
-                "search_text": "",
-                "sender": "",
-                "recipients": [],
+                "type": doc_type,
+                "subject": "",
+                "body": "",
+                "from_address": "",
+                "to_addresses": [],
                 "thread_id": "",
                 "folder": "",
                 "created_at": None,
@@ -92,6 +98,7 @@ class DocumentMapper:
                 # Add email-specific fields that exist in Vespa schema
                 "quoted_content": "",
                 "thread_summary": {},
+                "search_text": "",
             }
 
             # Map fields according to type
@@ -150,23 +157,23 @@ class DocumentMapper:
         """Generate searchable text content for the document"""
         search_parts = []
 
-        # Add title
-        if vespa_doc.get("title"):
-            search_parts.append(vespa_doc["title"])
+        # Add subject (was title)
+        if vespa_doc.get("subject"):
+            search_parts.append(vespa_doc["subject"])
 
-        # Add content
-        if vespa_doc.get("content"):
-            search_parts.append(vespa_doc["content"])
+        # Add body (was content)
+        if vespa_doc.get("body"):
+            search_parts.append(vespa_doc["body"])
 
         # Add type-specific fields
         if doc_type == "email":
-            if vespa_doc.get("sender"):
-                search_parts.append(f"From: {vespa_doc['sender']}")
-            if vespa_doc.get("recipients"):
-                if isinstance(vespa_doc["recipients"], list):
-                    search_parts.append(f"To: {', '.join(vespa_doc['recipients'])}")
+            if vespa_doc.get("from_address"):
+                search_parts.append(f"From: {vespa_doc['from_address']}")
+            if vespa_doc.get("to_addresses"):
+                if isinstance(vespa_doc["to_addresses"], list):
+                    search_parts.append(f"To: {', '.join(vespa_doc['to_addresses'])}")
                 else:
-                    search_parts.append(f"To: {vespa_doc['recipients']}")
+                    search_parts.append(f"To: {vespa_doc['to_addresses']}")
 
         elif doc_type == "calendar":
             if vespa_doc.get("location"):
