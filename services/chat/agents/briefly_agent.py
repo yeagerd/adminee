@@ -156,8 +156,8 @@ class BrieflyAgent(FunctionAgent):
         self._vespa_endpoint = vespa_endpoint
         self._tool_catalog = tool_catalog
 
-        # Initialize context for conversation history
-        self._context = Context(self)
+        # Initialize simple state management instead of problematic Context
+        self._state = {}
 
         # Store tools and system prompt for the worker functions
         self._tools = tools
@@ -197,12 +197,12 @@ class BrieflyAgent(FunctionAgent):
                 )
 
             # Store in context state
-            if self._context and hasattr(self._context, "store"):
-                state = await self._context.store.get("state", {})
+            if self._state:
+                state = self._state.get("state", {})
                 if not isinstance(state, dict):
                     state = {}
                 state["conversation_history"] = chat_history
-                await self._context.store.set("state", state)
+                self._state["state"] = state
 
                 logger.debug(
                     f"Loaded {len(chat_history)} conversation messages into context"
@@ -241,11 +241,8 @@ class BrieflyAgent(FunctionAgent):
             # Use the FunctionAgent's run method with streaming following the correct pattern
             logger.info(f"BrieflyAgent: Starting streaming chat for message: {message}")
 
-            # Create a context for the agent to maintain state
-            ctx = Context(self)
-
-            # Get the handler (don't await yet)
-            handler = self.run(user_msg=message, ctx=ctx)
+            # FunctionAgent doesn't require Context - use simple run method
+            handler = self.run(user_msg=message)
 
             # Import the event types we need to check
             from llama_index.core.agent.workflow import AgentStream, ToolCallResult

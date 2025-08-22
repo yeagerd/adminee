@@ -278,6 +278,87 @@ class UserDataSearchTool:
             snippet = snippet + "..."
         return snippet
 
+    def _group_results_by_type(self, processed_results: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+        """Group search results by source type for better organization."""
+        grouped: Dict[str, List[Dict[str, Any]]] = {
+            "emails": [],
+            "calendar": [],
+            "contacts": [],
+            "files": [],
+            "other": []
+        }
+
+        for result in processed_results:
+            source_type = result.get("type", "other")
+            if source_type == "email":
+                grouped["emails"].append(result)
+            elif source_type == "calendar":
+                grouped["calendar"].append(result)
+            elif source_type == "contact":
+                grouped["contacts"].append(result)
+            elif source_type in ["file", "document"]:
+                grouped["files"].append(result)
+            else:
+                grouped["other"].append(result)
+
+        # Remove empty groups
+        return {k: v for k, v in grouped.items() if v}
+
+    def _generate_search_summary(self, grouped_results: Dict[str, List[Dict[str, Any]]], query: str) -> Dict[str, Any]:
+        """Generate a summary of search results across all data types."""
+        total_results = sum(len(results) for results in grouped_results.values())
+        
+        if total_results == 0:
+            return {
+                "message": f"No results found for '{query}'",
+                "suggestions": [
+                    "Try different keywords",
+                    "Check spelling",
+                    "Use more general terms"
+                ]
+            }
+
+        summary = {
+            "total_results": total_results,
+            "data_types_found": list(grouped_results.keys()),
+            "top_matches": [],
+            "insights": []
+        }
+
+        # Collect top matches across all types
+        all_results = []
+        for results in grouped_results.values():
+            all_results.extend(results)
+        
+        # Sort by relevance and take top 5
+        top_matches = sorted(all_results, key=lambda x: x.get("relevance_score", 0.0), reverse=True)[:5]
+        summary["top_matches"] = [
+            {
+                "type": match.get("type"),
+                "title": match.get("title", "")[:100],
+                "relevance": match.get("relevance_score", 0.0),
+                "search_method": match.get("search_method", "Unknown")
+            }
+            for match in top_matches
+        ]
+
+        # Generate insights
+        if grouped_results.get("emails"):
+            summary["insights"].append(f"Found {len(grouped_results['emails'])} relevant emails")
+        if grouped_results.get("calendar"):
+            summary["insights"].append(f"Found {len(grouped_results['calendar'])} calendar events")
+        if grouped_results.get("contacts"):
+            summary["insights"].append(f"Found {len(grouped_results['contacts'])} matching contacts")
+        if grouped_results.get("files"):
+            summary["insights"].append(f"Found {len(grouped_results['files'])} relevant files")
+
+        # Add search quality insights
+        high_confidence = sum(1 for r in all_results if r.get("match_confidence") in ["Very High", "High"])
+        if high_confidence > 0:
+            summary["insights"].append(f"{high_confidence} high-confidence matches found")
+
+        return summary
+
 
 class SearchTools:
     """Collection exposing the unified search tool with pre-authenticated user context.
