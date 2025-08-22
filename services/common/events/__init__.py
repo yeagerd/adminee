@@ -9,18 +9,46 @@ from .base_events import BaseEvent, EventMetadata
 from .calendar_events import (
     CalendarBatchEvent,
     CalendarEventData,
+    CalendarEvent,
     CalendarUpdateEvent,
 )
 from .contact_events import (
     ContactBatchEvent,
     ContactData,
+    ContactEvent,
     ContactUpdateEvent,
 )
 from .email_events import (
     EmailBackfillEvent,
     EmailBatchEvent,
     EmailData,
+    EmailEvent,
     EmailUpdateEvent,
+)
+from .document_events import (
+    DocumentData,
+    DocumentEvent,
+    DocumentFragmentData,
+    DocumentFragmentEvent,
+    WordDocumentData,
+    SheetDocumentData,
+    PresentationDocumentData,
+)
+from .todo_events import (
+    TodoData,
+    TodoEvent,
+    TodoListData,
+    TodoListEvent,
+)
+from .internal_tool_events import (
+    LLMChatMessageData,
+    LLMChatEvent,
+    ShipmentEventData,
+    ShipmentEvent,
+    MeetingPollData,
+    MeetingPollEvent,
+    BookingData,
+    BookingEvent,
 )
 
 __all__ = [
@@ -29,15 +57,40 @@ __all__ = [
     "EventMetadata",
     # Email data and events
     "EmailData",
-    "EmailBackfillEvent",
-    "EmailUpdateEvent",
-    "EmailBatchEvent",
+    "EmailEvent",
+    "EmailBackfillEvent",  # Deprecated
+    "EmailUpdateEvent",    # Deprecated
+    "EmailBatchEvent",     # Deprecated
     # Calendar data and events
     "CalendarEventData",
-    "CalendarUpdateEvent",
-    "CalendarBatchEvent",
+    "CalendarEvent",
+    "CalendarUpdateEvent", # Deprecated
+    "CalendarBatchEvent",  # Deprecated
     # Contact data and events
     "ContactData",
-    "ContactUpdateEvent",
-    "ContactBatchEvent",
+    "ContactEvent",
+    "ContactUpdateEvent",  # Deprecated
+    "ContactBatchEvent",   # Deprecated
+    # Document data and events
+    "DocumentData",
+    "DocumentEvent",
+    "DocumentFragmentData",
+    "DocumentFragmentEvent",
+    "WordDocumentData",
+    "SheetDocumentData",
+    "PresentationDocumentData",
+    # Todo data and events
+    "TodoData",
+    "TodoEvent",
+    "TodoListData",
+    "TodoListEvent",
+    # Internal tool events
+    "LLMChatMessageData",
+    "LLMChatEvent",
+    "ShipmentEventData",
+    "ShipmentEvent",
+    "MeetingPollData",
+    "MeetingPollEvent",
+    "BookingData",
+    "BookingEvent",
 ]
