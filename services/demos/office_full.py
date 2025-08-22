@@ -62,7 +62,7 @@ class OfficeServiceClient:
         return {
             "message": "Integration health endpoint not implemented in office service",
             "note": "Use user service /users/{user_id}/integrations/{provider}/health instead",
-            "user_id": user_id
+            "user_id": user_id,
         }
 
     async def get_emails(
@@ -105,7 +105,9 @@ class OfficeServiceClient:
         async with httpx.AsyncClient(
             timeout=self.timeout, follow_redirects=True
         ) as client:
-            response = await client.post(f"{self.base_url}/v1/email/send", json=payload, headers=headers)
+            response = await client.post(
+                f"{self.base_url}/v1/email/send", json=payload, headers=headers
+            )
             response.raise_for_status()
             return ApiResponse(**response.json())
 
@@ -132,7 +134,9 @@ class OfficeServiceClient:
                 k: str(v) if v is not None else None for k, v in params.items()
             }
             response = await client.get(
-                f"{self.base_url}/v1/calendar/events", params=params_str, headers=headers
+                f"{self.base_url}/v1/calendar/events",
+                params=params_str,
+                headers=headers,
             )
             response.raise_for_status()
             return ApiResponse(**response.json())
@@ -165,7 +169,9 @@ class OfficeServiceClient:
             params_str = {
                 k: str(v) if v is not None else None for k, v in params.items()
             }
-            response = await client.get(f"{self.base_url}/v1/files/", params=params_str, headers=headers)
+            response = await client.get(
+                f"{self.base_url}/v1/files/", params=params_str, headers=headers
+            )
             response.raise_for_status()
             return ApiResponse(**response.json())
 
