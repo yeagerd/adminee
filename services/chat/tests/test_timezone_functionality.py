@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.chat.models import ChatRequest
 
 
@@ -56,7 +57,7 @@ class TestTimezoneFormatting:
         end_utc = "2025-06-20T17:30:00Z"  # 5:30 PM UTC
         timezone_str = "America/New_York"
 
-        result = UtilityTools().UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
 
         # In summer, Eastern Time is UTC-4, so 17:00 UTC = 1:00 PM EDT
         # Note: The exact format may vary based on system locale
@@ -235,17 +236,17 @@ class TestBrieflyAgentTimezone:
             assert "get_tool" in tool_names  # The GetTool that provides calendar access
 
 
-class TestTimezoneIntegration:
+class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
     """Test end-to-end timezone integration."""
 
-    @patch("services.chat.tools.utility_tools.requests.get")
-    def test_calendar_events_get_display_time_field(self, mock_requests_get):
-        """Test that calendar events get a display_time field with proper timezone formatting via BrieflyAgent tools."""
-        from datetime import datetime, timezone
-
-        from services.chat.tools.get_tools import get_calendar_events
-        from services.office.schemas import CalendarEvent, Provider
-
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
+        
+        # Create a mock for requests.get that will be used by DataTools
+        self.mock_requests_get = patch("requests.get").start()
+        
+        # Configure the mock to return appropriate responses
         def mock_get(*args, **kwargs):
             url = args[0]
             mock_response = MagicMock()
@@ -268,6 +269,9 @@ class TestTimezoneIntegration:
                 }
             elif "calendar/events" in url:
                 # Create proper CalendarEvent object
+                from datetime import datetime, timezone
+                from services.office.schemas import CalendarEvent, Provider
+                
                 event = CalendarEvent(
                     id="google_event_1",
                     calendar_id="google_primary",
@@ -302,12 +306,24 @@ class TestTimezoneIntegration:
                 }
 
             return mock_response
+        
+        self.mock_requests_get.side_effect = mock_get
 
-        mock_requests_get.side_effect = mock_get
+    def teardown_method(self, method):
+        """Clean up after each test method."""
+        self.mock_requests_get.stop()
+        super().teardown_method(method)
 
-        # Call get_calendar_events with timezone
-        result = get_calendar_events(
-            user_id="test_user",
+    def test_calendar_events_get_display_time_field(self):
+        """Test that calendar events get a display_time field with proper timezone formatting via DataTools."""
+        from datetime import datetime, timezone
+
+        from services.chat.tools.data_tools import DataTools
+        from services.office.schemas import CalendarEvent, Provider
+
+        # Call get_calendar_events with timezone using DataTools
+        data_tools = DataTools("test_user")
+        result = data_tools.get_calendar_events(
             start_date="2025-06-20",
             end_date="2025-06-21",
             time_zone="America/New_York",
