@@ -110,11 +110,18 @@ class BrieflyAgent(FunctionAgent):
 
         system_prompt = (
             "You are Briefly, a single-agent assistant with comprehensive tools.\n\n"
-            "Available tools:\n"
+            "CORE TOOLS (always available):\n"
             "- user_data_search: INTELLIGENT search across all your personal data (emails, calendar, contacts, files) - USE THIS FOR ALL SEARCHING EXISTING DATA\n"
             "- web_search: Search the public web for current information - USE THIS FOR EXTERNAL KNOWLEDGE\n"
-            "- get_tool: Access service APIs to CREATE, UPDATE, or DELETE data - USE THIS FOR MODIFYING DATA, NOT SEARCHING\n"
             "- create_draft_*: Create and manage drafts for emails and calendar events\n\n"
+            "DISCOVERABLE TOOLS (use tool discovery workflow):\n"
+            "- list_get_tools: Discover available service API tools\n"
+            "- get_tool_info: Get complete API specification for any tool\n"
+            "- get_tool: Execute discovered tools with proper parameters\n\n"
+            "TOOL DISCOVERY WORKFLOW:\n"
+            "1. Use list_get_tools to see what tools are available\n"
+            "2. Use get_tool_info(tool_id) to get complete API documentation\n"
+            "3. Use get_tool(tool_id, params) to execute with proper parameters\n\n"
             "CRITICAL TOOL SELECTION RULES - FOLLOW THESE EXACTLY:\n"
             "1. ANY request to FIND, SEARCH, or GET existing data MUST use user_data_search\n"
             "2. NEVER use get_tool for searching - it's ONLY for data modification\n"
@@ -364,9 +371,15 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
         return await web_tools.web_search.search(query=query, max_results=max_results)
 
     def get_tool_list_wrapper() -> Any:
+        """List available tools for discovery."""
         return get_tools.get_tool.list_tools()
 
+    def get_tool_info_wrapper(tool_id: str) -> Any:
+        """Get complete API specification for a tool."""
+        return get_tools.get_tool.get_tool_info(tool_id)
+
     def get_tool_execute_wrapper(tool_name: str, params: Optional[dict] = None) -> Any:
+        """Execute a named tool with parameters."""
         return get_tools.get_tool.execute(tool_name=tool_name, params=params)
 
     def create_draft_email_wrapper(
@@ -455,7 +468,17 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
         FunctionTool.from_defaults(
             fn=get_tool_list_wrapper,
             name="list_get_tools",
-            description="List available get_* tools that can be executed via get_tool.",
+            description="List available tools that can be executed via get_tool.",
+        ),
+        FunctionTool.from_defaults(
+            fn=get_tool_list_wrapper,
+            name="list_get_tools",
+            description="List available tools that can be executed via get_tool.",
+        ),
+        FunctionTool.from_defaults(
+            fn=get_tool_info_wrapper,
+            name="get_tool_info",
+            description="Get complete API specification for a named tool including parameters, examples, and return format.",
         ),
         FunctionTool.from_defaults(
             fn=get_tool_execute_wrapper,

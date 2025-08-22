@@ -40,10 +40,10 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 - [x] Update `list_tools()` to return `[(tool_id, description)]` format
 - [x] Ensure `execute_tool()` works with the registry
 
-### [ ] Task 1.5: Update BrieflyAgent Integration
-- [ ] Modify `create_briefly_agent_tools()` to provide initial core tools
-- [ ] Add discoverable tools list to agent initialization
-- [ ] Update agent system prompt to explain tool discovery workflow
+### [x] Task 1.5: Update BrieflyAgent Integration
+- [x] Modify `create_briefly_agent_tools()` to provide initial core tools
+- [x] Add discoverable tools list to agent initialization
+- [x] Update agent system prompt to explain tool discovery workflow
 - [ ] Test that agent can discover and use tools dynamically
 
 ## Phase 2: Reorganize llm_tools.py by Category
