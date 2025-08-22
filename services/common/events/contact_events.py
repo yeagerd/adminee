@@ -47,8 +47,26 @@ class ContactData(BaseModel):
     )
 
 
+class ContactEvent(BaseEvent):
+    """Event for contact operations (create, update, delete)."""
+
+    user_id: str = Field(..., description="User ID for the contact operation")
+    contact: ContactData = Field(..., description="Contact data")
+    operation: str = Field(..., description="Operation type (create, update, delete)")
+    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    last_updated: datetime = Field(..., description="When the contact was last updated")
+    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    provider: str = Field(..., description="Contact provider (google, outlook, etc.)")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Set default source service if not provided."""
+        super().model_post_init(__context)
+        if not self.metadata.source_service:
+            self.metadata.source_service = "office-service"
+
+
 class ContactUpdateEvent(BaseEvent):
-    """Event for individual contact updates."""
+    """Event for individual contact updates (deprecated - use ContactEvent)."""
 
     user_id: str = Field(..., description="User ID for the contact update")
     contact: ContactData = Field(..., description="Updated contact data")
@@ -63,7 +81,7 @@ class ContactUpdateEvent(BaseEvent):
 
 
 class ContactBatchEvent(BaseEvent):
-    """Event for batch contact operations."""
+    """Event for batch contact operations (deprecated - use ContactEvent with batch_id)."""
 
     user_id: str = Field(..., description="User ID for the batch operation")
     provider: str = Field(..., description="Contact provider")

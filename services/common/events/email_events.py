@@ -42,8 +42,28 @@ class EmailData(BaseModel):
     headers: Dict[str, str] = Field(default_factory=dict, description="Email headers")
 
 
+class EmailEvent(BaseEvent):
+    """Event for email operations (create, update, delete)."""
+
+    user_id: str = Field(..., description="User ID for the email operation")
+    email: EmailData = Field(..., description="Email data")
+    operation: str = Field(..., description="Operation type (create, update, delete)")
+    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    last_updated: datetime = Field(..., description="When the email was last updated")
+    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    provider: str = Field(..., description="Email provider (gmail, outlook, etc.)")
+    sync_type: str = Field(default="sync", description="Type of sync operation")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Set default source service if not provided."""
+        super().model_post_init(__context)
+        if not self.metadata.source_service:
+            self.metadata.source_service = "office-service"
+
+
+# Keep EmailBackfillEvent for backward compatibility during transition
 class EmailBackfillEvent(BaseEvent):
-    """Event for email backfill operations."""
+    """Event for email backfill operations (deprecated - use EmailEvent)."""
 
     user_id: str = Field(..., description="User ID for the backfill operation")
     provider: str = Field(..., description="Email provider being backfilled")
@@ -72,7 +92,7 @@ class EmailBackfillEvent(BaseEvent):
 
 
 class EmailUpdateEvent(BaseEvent):
-    """Event for individual email updates."""
+    """Event for individual email updates (deprecated - use EmailEvent)."""
 
     user_id: str = Field(..., description="User ID for the email update")
     email: EmailData = Field(..., description="Updated email data")
@@ -87,7 +107,7 @@ class EmailUpdateEvent(BaseEvent):
 
 
 class EmailBatchEvent(BaseEvent):
-    """Event for batch email operations."""
+    """Event for batch email operations (deprecated - use EmailEvent with batch_id)."""
 
     user_id: str = Field(..., description="User ID for the batch operation")
     provider: str = Field(..., description="Email provider")

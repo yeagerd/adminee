@@ -49,8 +49,27 @@ class CalendarEventData(BaseModel):
     )
 
 
+class CalendarEvent(BaseEvent):
+    """Event for calendar operations (create, update, delete)."""
+
+    user_id: str = Field(..., description="User ID for the calendar operation")
+    event: CalendarEventData = Field(..., description="Calendar event data")
+    operation: str = Field(..., description="Operation type (create, update, delete)")
+    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    last_updated: datetime = Field(..., description="When the event was last updated")
+    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    provider: str = Field(..., description="Calendar provider (google, outlook, etc.)")
+    calendar_id: str = Field(..., description="Calendar ID where the event is stored")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Set default source service if not provided."""
+        super().model_post_init(__context)
+        if not self.metadata.source_service:
+            self.metadata.source_service = "office-service"
+
+
 class CalendarUpdateEvent(BaseEvent):
-    """Event for individual calendar event updates."""
+    """Event for individual calendar event updates (deprecated - use CalendarEvent)."""
 
     user_id: str = Field(..., description="User ID for the calendar update")
     event: CalendarEventData = Field(..., description="Updated calendar event data")
@@ -65,7 +84,7 @@ class CalendarUpdateEvent(BaseEvent):
 
 
 class CalendarBatchEvent(BaseEvent):
-    """Event for batch calendar operations."""
+    """Event for batch calendar operations (deprecated - use CalendarEvent with batch_id)."""
 
     user_id: str = Field(..., description="User ID for the batch operation")
     provider: str = Field(..., description="Calendar provider")
