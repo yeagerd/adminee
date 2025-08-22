@@ -27,6 +27,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Disable rate limiting for tests
         from services.meetings.services.security import set_test_mode
+
         set_test_mode(True)
 
         # Reset any existing database connections to ensure clean state
@@ -114,7 +115,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             prefix="/api/v1/meetings/process-email-response",
             tags=["email"],
         )
-        
+
         # Include booking endpoints router
         self.app.include_router(
             bookings_router, prefix="/api/v1/bookings", tags=["bookings"]

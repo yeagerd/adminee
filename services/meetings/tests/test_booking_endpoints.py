@@ -95,7 +95,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         """Helper method to create a test booking link."""
         if slug_suffix is None:
             slug_suffix = str(uuid.uuid4())[:8]
-        
+
         booking_link = BookingLink(
             id=uuid.uuid4(),  # Use unique ID for each test
             owner_user_id=self.test_user_id,
@@ -117,7 +117,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         """Helper method to create a test one-time link."""
         if token_suffix is None:
             token_suffix = str(uuid.uuid4())[:8]
-        
+
         one_time_link = OneTimeLink(
             id=uuid.uuid4(),
             token=f"{self.test_token}-{token_suffix}",
