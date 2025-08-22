@@ -30,7 +30,7 @@ import argparse
 import asyncio
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 
@@ -120,7 +120,7 @@ class OfficeServiceClient:
     ) -> ApiResponse:
         """Get unified calendar events from all providers."""
         headers = {"X-User-Id": user_id}
-        params = {"limit": limit}  # user_id is passed via header
+        params: Dict[str, Union[str, int, None]] = {"limit": limit}  # user_id is passed via header
         if start_date:
             params["start_date"] = start_date
         if end_date:
