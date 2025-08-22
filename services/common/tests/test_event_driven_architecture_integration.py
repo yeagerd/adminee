@@ -291,7 +291,7 @@ class TestEventDrivenArchitectureIntegration:
                 ], f"Invalid chunk type: {chunk['chunk_type']}"
 
         # Test fragment search
-        search_queries = ["important", "information", "data", "content"]
+        search_queries = ["important", "info", "data", "content"]
         for query in search_queries:
             fragment_results = self._simulate_fragment_search(query, chunking_results)
 
