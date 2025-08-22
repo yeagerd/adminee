@@ -292,7 +292,9 @@ class BrieflyAgent(FunctionAgent):
             return []
 
 
-def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[FunctionTool], str, SearchTools]:
+def create_briefly_agent_tools(
+    vespa_endpoint: str, user_id: str
+) -> Tuple[List[FunctionTool], str, SearchTools]:
     """Create and return tools, tool catalog string, and the SearchTools instance."""
     # Initialize pre-authenticated tools with user context
     search_tools = SearchTools(vespa_endpoint, user_id)
@@ -393,7 +395,9 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[
             catalog_entries.extend(get_tools.registry.list_tools_by_category(cat))
         except Exception:
             continue
-    tool_catalog = "\n".join([f"- {tool_id}: {desc}" for tool_id, desc in catalog_entries])
+    tool_catalog = "\n".join(
+        [f"- {tool_id}: {desc}" for tool_id, desc in catalog_entries]
+    )
 
     tools: List[FunctionTool] = [
         FunctionTool.from_defaults(
@@ -463,7 +467,9 @@ def create_briefly_agent(
     **llm_kwargs: Any,
 ) -> BrieflyAgent:
     """Create a new BrieflyAgent instance with pre-authenticated tools."""
-    tools, tool_catalog, search_tools = create_briefly_agent_tools(vespa_endpoint, user_id)
+    tools, tool_catalog, search_tools = create_briefly_agent_tools(
+        vespa_endpoint, user_id
+    )
     agent = BrieflyAgent(
         thread_id=thread_id,
         user_id=user_id,

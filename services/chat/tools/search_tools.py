@@ -35,7 +35,7 @@ class UserDataSearchTool:
 
     async def cleanup(self) -> None:
         """Clean up resources, including closing the search engine session."""
-        if hasattr(self, 'search_engine') and self.search_engine:
+        if hasattr(self, "search_engine") and self.search_engine:
             await self.search_engine.close()
 
     async def __aenter__(self) -> "UserDataSearchTool":
@@ -46,7 +46,9 @@ class UserDataSearchTool:
         """Async context manager exit - ensure cleanup."""
         await self.cleanup()
 
-    async def search_all_data(self, query: str, max_results: int = 20) -> Dict[str, Any]:
+    async def search_all_data(
+        self, query: str, max_results: int = 20
+    ) -> Dict[str, Any]:
         """Single entry point: perform a hybrid search across all data types."""
         try:
             yql_query = self._build_yql_query(query)
@@ -71,9 +73,9 @@ class UserDataSearchTool:
                 "query": query,
                 "summary": summary,
                 "grouped_results": grouped_results,
-                "total_found": results.get("root", {}).get("fields", {}).get(
-                    "totalCount", 0
-                ),
+                "total_found": results.get("root", {})
+                .get("fields", {})
+                .get("totalCount", 0),
                 "search_time_ms": results.get("performance", {}).get(
                     "query_time_ms", 0
                 ),
@@ -123,7 +125,9 @@ class UserDataSearchTool:
             f'or content contains "{query}")'
         )
 
-    def _process_search_results(self, results: Dict[str, Any], query: str) -> List[Dict[str, Any]]:
+    def _process_search_results(
+        self, results: Dict[str, Any], query: str
+    ) -> List[Dict[str, Any]]:
         """Process and format search results with enhanced metadata."""
         processed: List[Dict[str, Any]] = []
 
@@ -146,11 +150,17 @@ class UserDataSearchTool:
                     "created_at": fields.get("created_at"),
                     "updated_at": fields.get("updated_at"),
                     "relevance_score": child.get("relevance", 0.0),
-                    "snippet": self._generate_snippet(fields.get("search_text", ""), query),
+                    "snippet": self._generate_snippet(
+                        fields.get("search_text", ""), query
+                    ),
                     "search_method": search_method,
-                    "match_confidence": self._calculate_match_confidence(child, fields, query),
+                    "match_confidence": self._calculate_match_confidence(
+                        child, fields, query
+                    ),
                     "vector_similarity": fields.get("embedding_similarity", None),
-                    "keyword_matches": self._count_keyword_matches(fields.get("search_text", ""), query),
+                    "keyword_matches": self._count_keyword_matches(
+                        fields.get("search_text", ""), query
+                    ),
                     "content_length": len(fields.get("content", "")),
                     "search_text_length": len(fields.get("search_text", "")),
                 }
@@ -165,8 +175,12 @@ class UserDataSearchTool:
                             "quoted_content": fields.get("quoted_content", ""),
                             "thread_summary": fields.get("thread_summary", {}),
                             "is_read": fields.get("metadata", {}).get("is_read", False),
-                            "has_attachments": fields.get("metadata", {}).get("has_attachments", False),
-                            "attachment_count": fields.get("metadata", {}).get("attachment_count", 0),
+                            "has_attachments": fields.get("metadata", {}).get(
+                                "has_attachments", False
+                            ),
+                            "attachment_count": fields.get("metadata", {}).get(
+                                "attachment_count", 0
+                            ),
                         }
                     )
                 elif fields.get("source_type") == "calendar":
@@ -200,7 +214,9 @@ class UserDataSearchTool:
 
         return processed
 
-    def _determine_search_method(self, child: Dict[str, Any], fields: Dict[str, Any], query: str) -> str:
+    def _determine_search_method(
+        self, child: Dict[str, Any], fields: Dict[str, Any], query: str
+    ) -> str:
         """Heuristic to label origin as vector/keyword/hybrid for explainability."""
         relevance = child.get("relevance", 0.0)
         search_text = fields.get("search_text", "").lower()
@@ -218,7 +234,9 @@ class UserDataSearchTool:
             return "Keyword Matching"
         return "Semantic/Contextual"
 
-    def _calculate_match_confidence(self, child: Dict[str, Any], fields: Dict[str, Any], query: str) -> str:
+    def _calculate_match_confidence(
+        self, child: Dict[str, Any], fields: Dict[str, Any], query: str
+    ) -> str:
         relevance = child.get("relevance", 0.0)
         search_text = fields.get("search_text", "").lower()
         query_lower = query.lower()
@@ -291,14 +309,16 @@ class UserDataSearchTool:
             snippet = snippet + "..."
         return snippet
 
-    def _group_results_by_type(self, processed_results: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    def _group_results_by_type(
+        self, processed_results: List[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Group search results by source type for better organization."""
         grouped: Dict[str, List[Dict[str, Any]]] = {
             "emails": [],
             "calendar": [],
             "contacts": [],
             "files": [],
-            "other": []
+            "other": [],
         }
 
         for result in processed_results:
@@ -317,27 +337,29 @@ class UserDataSearchTool:
         # Remove empty groups
         return {k: v for k, v in grouped.items() if v}
 
-    def _generate_search_summary(self, grouped_results: Dict[str, List[Dict[str, Any]]], query: str) -> Dict[str, Any]:
+    def _generate_search_summary(
+        self, grouped_results: Dict[str, List[Dict[str, Any]]], query: str
+    ) -> Dict[str, Any]:
         """Generate a summary of search results across all data types."""
         total_results = sum(len(results) for results in grouped_results.values())
-        
+
         if total_results == 0:
             return {
                 "message": f"No results found for '{query}'",
                 "suggestions": [
                     "Try different keywords",
                     "Check spelling",
-                    "Use more general terms"
-                ]
+                    "Use more general terms",
+                ],
             }
 
         summary: Dict[str, Any] = {
             "total_results": total_results,
             "data_types_found": list(grouped_results.keys()),
             "top_matches": [],
-            "insights": []
+            "insights": [],
         }
-        
+
         # Type assertion to help mypy understand the structure
         insights: List[str] = summary["insights"]
 
@@ -345,15 +367,17 @@ class UserDataSearchTool:
         all_results = []
         for results in grouped_results.values():
             all_results.extend(results)
-        
+
         # Sort by relevance and take top 5
-        top_matches = sorted(all_results, key=lambda x: x.get("relevance_score", 0.0), reverse=True)[:5]
+        top_matches = sorted(
+            all_results, key=lambda x: x.get("relevance_score", 0.0), reverse=True
+        )[:5]
         summary["top_matches"] = [
             {
                 "type": match.get("type"),
                 "title": match.get("title", "")[:100],
                 "relevance": match.get("relevance_score", 0.0),
-                "search_method": match.get("search_method", "Unknown")
+                "search_method": match.get("search_method", "Unknown"),
             }
             for match in top_matches
         ]
@@ -364,12 +388,16 @@ class UserDataSearchTool:
         if grouped_results.get("calendar"):
             insights.append(f"Found {len(grouped_results['calendar'])} calendar events")
         if grouped_results.get("contacts"):
-            insights.append(f"Found {len(grouped_results['contacts'])} matching contacts")
+            insights.append(
+                f"Found {len(grouped_results['contacts'])} matching contacts"
+            )
         if grouped_results.get("files"):
             insights.append(f"Found {len(grouped_results['files'])} relevant files")
 
         # Add search quality insights
-        high_confidence = sum(1 for r in all_results if r.get("match_confidence") in ["Very High", "High"])
+        high_confidence = sum(
+            1 for r in all_results if r.get("match_confidence") in ["Very High", "High"]
+        )
         if high_confidence > 0:
             insights.append(f"{high_confidence} high-confidence matches found")
 
@@ -396,7 +424,9 @@ class SearchTools:
     def user_data_search(self) -> UserDataSearchTool:
         """Lazy initialization of UserDataSearchTool."""
         if self._user_data_search is None:
-            self._user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_id)
+            self._user_data_search = UserDataSearchTool(
+                self.vespa_endpoint, self.user_id
+            )
         return self._user_data_search
 
     @property
@@ -460,7 +490,9 @@ class _SemanticSearchCompat:
             "Compatibility: delegates to unified hybrid search across user data"
         )
 
-    async def semantic_search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
+    async def semantic_search(
+        self, query: str, max_results: int = 10
+    ) -> Dict[str, Any]:
         return await self._uds.search_all_data(query=query, max_results=max_results)
 
 

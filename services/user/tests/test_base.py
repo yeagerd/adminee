@@ -18,10 +18,10 @@ class BaseUserManagementTest:
     def setup_method(self):
         """Set up User Management test environment with required variables."""
         # Reset database settings and connections before importing app
-        from services.user.database import reset_settings, reset_db
-        
+        from services.user.database import reset_db, reset_settings
+
         reset_settings()
-        
+
         # Create temporary database file for tests that need file-based SQLite
         # Use tempfile.NamedTemporaryFile with delete=False and close immediately
         # so SQLite can open the file
@@ -51,19 +51,21 @@ class BaseUserManagementTest:
     def teardown_method(self):
         """Clean up User Management test environment."""
         # Reset database connections
-        from services.user.database import reset_db
         import asyncio
-        
+
+        from services.user.database import reset_db
+
         try:
             # Try to reset database asynchronously
             asyncio.run(reset_db())
         except RuntimeError:
             # If we're already in an event loop, use ThreadPoolExecutor
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, reset_db())
                 future.result()
-        
+
         # Remove temporary database file
         if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)

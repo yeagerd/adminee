@@ -77,8 +77,7 @@ class Settings(BaseSettings):
     )
     openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
     llm_kwargs: dict = Field(
-        default={}, 
-        description="Additional keyword arguments to pass to LLM calls"
+        default={}, description="Additional keyword arguments to pass to LLM calls"
     )
 
     # Logging Configuration
