@@ -39,7 +39,7 @@ class ContactDiscoveryService:
                 contacts_to_process.append(
                     {
                         "email": event.email.from_address,
-                        "name": event.email.from_name,
+                        "name": None,  # Names not available in current model
                         "event_type": "email",
                         "timestamp": event.last_updated or datetime.now(timezone.utc),
                     }
@@ -48,12 +48,14 @@ class ContactDiscoveryService:
             # To addresses
             if event.email.to_addresses:
                 for to_addr in event.email.to_addresses:
-                    if isinstance(to_addr, dict):
-                        email = to_addr.get("email")
-                        name = to_addr.get("name")
-                    else:
+                    # Current model has to_addresses as list of strings
+                    if isinstance(to_addr, str):
                         email = to_addr
                         name = None
+                    else:
+                        # Fallback for backward compatibility
+                        email = to_addr.get("email") if isinstance(to_addr, dict) else str(to_addr)
+                        name = to_addr.get("name") if isinstance(to_addr, dict) else None
 
                     if email:
                         contacts_to_process.append(
@@ -61,19 +63,22 @@ class ContactDiscoveryService:
                                 "email": email,
                                 "name": name,
                                 "event_type": "email",
-                                "timestamp": event.last_updated or datetime.now(timezone.utc),
+                                "timestamp": event.last_updated
+                                or datetime.now(timezone.utc),
                             }
                         )
 
             # CC addresses
             if event.email.cc_addresses:
                 for cc_addr in event.email.cc_addresses:
-                    if isinstance(cc_addr, dict):
-                        email = cc_addr.get("email")
-                        name = cc_addr.get("name")
-                    else:
+                    # Current model has cc_addresses as list of strings
+                    if isinstance(cc_addr, str):
                         email = cc_addr
                         name = None
+                    else:
+                        # Fallback for backward compatibility
+                        email = cc_addr.get("email") if isinstance(cc_addr, dict) else str(cc_addr)
+                        name = cc_addr.get("name") if isinstance(cc_addr, dict) else None
 
                     if email:
                         contacts_to_process.append(
@@ -81,7 +86,8 @@ class ContactDiscoveryService:
                                 "email": email,
                                 "name": name,
                                 "event_type": "email",
-                                "timestamp": event.last_updated or datetime.now(timezone.utc),
+                                "timestamp": event.last_updated
+                                or datetime.now(timezone.utc),
                             }
                         )
 
@@ -120,7 +126,8 @@ class ContactDiscoveryService:
                             "email": email,
                             "name": name,
                             "event_type": "calendar",
-                            "timestamp": event.last_updated or datetime.now(timezone.utc),
+                            "timestamp": event.last_updated
+                            or datetime.now(timezone.utc),
                         }
                     )
 
@@ -140,7 +147,8 @@ class ContactDiscoveryService:
                                 "email": email,
                                 "name": name,
                                 "event_type": "calendar",
-                                "timestamp": event.last_updated or datetime.now(timezone.utc),
+                                "timestamp": event.last_updated
+                                or datetime.now(timezone.utc),
                             }
                         )
 
@@ -434,6 +442,7 @@ class ContactDiscoveryService:
                     last_seen=timestamp,
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc),
+                    source_services=[source_service],  # Initialize with source service
                 )
                 self._contacts_cache[contact_key] = contact
                 logger.info(f"Created new contact: {email} for user {user_id}")

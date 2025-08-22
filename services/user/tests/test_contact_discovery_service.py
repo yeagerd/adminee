@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from services.common.events import CalendarEvent, DocumentEvent, EmailEvent, TodoEvent
+from services.common.events.base_events import EventMetadata
 from services.common.models.email_contact import EmailContact, EmailContactUpdate
 from services.user.services.contact_discovery_service import ContactDiscoveryService
 
@@ -32,18 +33,18 @@ class TestContactDiscoveryService:
             user_id="user123",
             email={
                 "id": "email123",
-                "message_id": "msg123",
+                "thread_id": "thread123",
+                "subject": "Test Email",
+                "body": "Test body",
                 "from_address": "sender@example.com",
-                "from_name": "John Doe",
                 "to_addresses": [
-                    {"email": "recipient1@example.com", "name": "Recipient One"},
+                    "recipient1@example.com",
                     "recipient2@example.com",
                 ],
                 "cc_addresses": ["cc@example.com"],
-                "subject": "Test Email",
-                "body": "Test body",
-                "received_date": "2024-01-01T10:00:00Z",
-                "folder": "INBOX",
+                "received_date": datetime(2024, 1, 1, 10, 0, 0),
+                "provider": "gmail",
+                "provider_message_id": "msg123",
             },
             operation="create",
             batch_id="batch123",
@@ -51,6 +52,10 @@ class TestContactDiscoveryService:
             sync_timestamp=datetime(2024, 1, 1, 10, 0, 0),
             provider="gmail",
             sync_type="backfill",
+            metadata=EventMetadata(
+                source_service="test-service",
+                source_version="1.0.0",
+            ),
         )
 
     @pytest.fixture
@@ -60,18 +65,17 @@ class TestContactDiscoveryService:
             user_id="user123",
             event={
                 "id": "cal123",
-                "summary": "Test Meeting",
-                "organizer": {
-                    "email": "organizer@example.com",
-                    "name": "Meeting Organizer",
-                },
+                "title": "Test Meeting",
+                "organizer": "organizer@example.com",
                 "attendees": [
-                    {"email": "attendee1@example.com", "name": "Attendee One"},
-                    {"email": "attendee2@example.com", "name": "Attendee Two"},
+                    "attendee1@example.com",
+                    "attendee2@example.com",
                 ],
-                "start_time": "2024-01-01T14:00:00Z",
-                "end_time": "2024-01-01T15:00:00Z",
+                "start_time": datetime(2024, 1, 1, 14, 0, 0),
+                "end_time": datetime(2024, 1, 1, 15, 0, 0),
                 "calendar_id": "cal1",
+                "provider": "google",
+                "provider_event_id": "cal123",
             },
             operation="create",
             batch_id="batch123",
@@ -79,6 +83,10 @@ class TestContactDiscoveryService:
             sync_timestamp=datetime(2024, 1, 1, 14, 0, 0),
             provider="google",
             calendar_id="cal1",
+            metadata=EventMetadata(
+                source_service="test-service",
+                source_version="1.0.0",
+            ),
         )
 
     def test_process_email_event_creates_contacts(self, service, sample_email_event):
@@ -92,16 +100,13 @@ class TestContactDiscoveryService:
         cc_contact = service.get_contact("user123", "cc@example.com")
 
         assert from_contact is not None
-        assert from_contact.display_name == "John Doe"
         assert from_contact.email_address == "sender@example.com"
         assert "email_sync" in from_contact.source_services
 
         assert to_contact1 is not None
-        assert to_contact1.display_name == "Recipient One"
         assert to_contact1.email_address == "recipient1@example.com"
 
         assert to_contact2 is not None
-        assert to_contact2.display_name is None
         assert to_contact2.email_address == "recipient2@example.com"
 
         assert cc_contact is not None
@@ -119,16 +124,13 @@ class TestContactDiscoveryService:
         attendee2_contact = service.get_contact("user123", "attendee2@example.com")
 
         assert organizer_contact is not None
-        assert organizer_contact.display_name == "Meeting Organizer"
         assert organizer_contact.email_address == "organizer@example.com"
         assert "calendar_sync" in organizer_contact.source_services
 
         assert attendee1_contact is not None
-        assert attendee1_contact.display_name == "Attendee One"
         assert attendee1_contact.email_address == "attendee1@example.com"
 
         assert attendee2_contact is not None
-        assert attendee2_contact.display_name == "Attendee Two"
         assert attendee2_contact.email_address == "attendee2@example.com"
 
     def test_contact_event_counting(self, service, sample_email_event):
@@ -137,10 +139,34 @@ class TestContactDiscoveryService:
         service.process_email_event(sample_email_event)
 
         # Process another email event with the same sender
-        sample_email_event2 = sample_email_event.model_copy()
-        sample_email_event2.email["id"] = "email124"
-        sample_email_event2.email["message_id"] = "msg124"
-        sample_email_event2.last_updated = datetime(2024, 1, 2, 10, 0, 0)
+        sample_email_event2 = EmailEvent(
+            user_id="user123",
+            email={
+                "id": "email124",
+                "thread_id": "thread124",
+                "subject": "Test Email 2",
+                "body": "Test body 2",
+                "from_address": "sender@example.com",
+                "to_addresses": [
+                    "recipient1@example.com",
+                    "recipient2@example.com",
+                ],
+                "cc_addresses": ["cc@example.com"],
+                "received_date": datetime(2024, 1, 2, 10, 0, 0),
+                "provider": "gmail",
+                "provider_message_id": "msg124",
+            },
+            operation="create",
+            batch_id="batch124",
+            last_updated=datetime(2024, 1, 2, 10, 0, 0),
+            sync_timestamp=datetime(2024, 1, 2, 10, 0, 0),
+            provider="gmail",
+            sync_type="backfill",
+            metadata=EventMetadata(
+                source_service="test-service",
+                source_version="1.0.0",
+            ),
+        )
         service.process_email_event(sample_email_event2)
 
         # Check contact
@@ -213,15 +239,15 @@ class TestContactDiscoveryService:
         service.process_email_event(sample_email_event)
         service.process_calendar_event(sample_calendar_event)
 
-        # Search by name
-        results = service.search_contacts("user123", "John")
-        assert len(results) >= 1
-        assert any("john" in contact.get_primary_name().lower() for contact in results)
-
-        # Search by email
+        # Search by email (since names are not available in current model)
         results = service.search_contacts("user123", "sender@example.com")
         assert len(results) >= 1
         assert any("sender@example.com" in contact.email_address for contact in results)
+
+        # Search by another email
+        results = service.search_contacts("user123", "organizer@example.com")
+        assert len(results) >= 1
+        assert any("organizer@example.com" in contact.email_address for contact in results)
 
         # Search with no query
         results = service.search_contacts("user123", "")
@@ -262,15 +288,15 @@ class TestContactDiscoveryService:
             user_id="user123",
             email={
                 "id": "email123",
-                "message_id": "msg123",
-                "from_address": "invalid-email",
-                "from_name": "Invalid User",
-                "to_addresses": [],
-                "cc_addresses": [],
+                "thread_id": "thread123",
                 "subject": "Test",
                 "body": "Test",
-                "received_date": "2024-01-01T10:00:00Z",
-                "folder": "INBOX",
+                "from_address": "invalid-email",
+                "to_addresses": [],
+                "cc_addresses": [],
+                "received_date": datetime(2024, 1, 1, 10, 0, 0),
+                "provider": "gmail",
+                "provider_message_id": "msg123",
             },
             operation="create",
             batch_id="batch123",
@@ -278,6 +304,10 @@ class TestContactDiscoveryService:
             sync_timestamp=datetime(2024, 1, 1, 10, 0, 0),
             provider="gmail",
             sync_type="backfill",
+            metadata=EventMetadata(
+                source_service="test-service",
+                source_version="1.0.0",
+            ),
         )
 
         service.process_email_event(invalid_email_event)
@@ -296,7 +326,6 @@ class TestContactDiscoveryService:
         assert vespa_doc["doc_id"] == f"contact_user123_sender@example.com"
         assert vespa_doc["user_id"] == "user123"
         assert vespa_doc["content_type"] == "contact"
-        assert vespa_doc["title"] == "John Doe"
         assert vespa_doc["operation"] == "create"
         assert "email_address" in vespa_doc["metadata"]
         assert "relevance_score" in vespa_doc["metadata"]
