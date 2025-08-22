@@ -71,7 +71,7 @@ def test(session: nox.Session) -> None:
     session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     # Run tests
-    session.run("python", "-m", "pytest", "services/", "-n", "auto", "-r", "fE")
+    session.run("python", "-m", "pytest", "services/", "-n", "auto", "-r", "fE", "--tb=short")
 
 @nox.session(python="3.12")
 def test_cov(session: nox.Session) -> None:
@@ -92,6 +92,6 @@ def test_cov(session: nox.Session) -> None:
         "--cov-report=xml:coverage.xml",
         "-r",
         "fE",
-        "--disable-warnings",
+        "--tb=short",
     )
 
