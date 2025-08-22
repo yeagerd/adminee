@@ -75,10 +75,35 @@ class VespaSearchTool:
             source_types_str = '", "'.join(source_types)
             yql += f' and source_type in ("{source_types_str}")'
 
-        # Add text search across all indexed text fields
-        yql += f' and (search_text contains "{query}" or title contains "{query}" or content contains "{query}")'
+        # Parse and enhance the query for better search results
+        enhanced_query = self._parse_and_enhance_query(query)
+        yql += enhanced_query
 
         return yql
+
+    def _parse_and_enhance_query(self, query: str) -> str:
+        """Parse the query and create enhanced search conditions"""
+        import re
+
+        query_lower = query.lower().strip()
+
+        # Pattern: "emails from [sender]" or "email from [sender]"
+        email_from_pattern = r"\b(?:emails?|email)\s+from\s+(.+?)(?:\s|$)"
+        match = re.search(email_from_pattern, query_lower)
+        if match:
+            sender = match.group(1).strip()
+            # Search in sender field and also in general content for the sender name
+            return f' and (sender contains "{sender}" or search_text contains "{sender}" or title contains "{sender}" or content contains "{sender}")'
+
+        # Pattern: "find [anything] from [sender]"
+        find_from_pattern = r"\bfind\s+.+?\s+from\s+(.+?)(?:\s|$)"
+        match = re.search(find_from_pattern, query_lower)
+        if match:
+            sender = match.group(1).strip()
+            return f' and (sender contains "{sender}" or search_text contains "{sender}" or title contains "{sender}" or content contains "{sender}")'
+
+        # Default: search across all text fields
+        return f' and (search_text contains "{query}" or title contains "{query}" or content contains "{query}")'
 
     def _process_search_results(
         self, results: Dict[str, Any], query: str
