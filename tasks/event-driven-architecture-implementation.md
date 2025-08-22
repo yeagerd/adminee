@@ -314,6 +314,6 @@ As each item is completed:
 - [x] Remove unused `EmailContentProcessor` wiring from `pubsub_consumer.py`; decide to deprecate or delete `services/vespa_loader/email_processor.py` and its tests if truly unused.
 - [x] Decide fate of `services/vespa_loader/models.py` (Pydantic router models). If unused, deprecate or delete and adjust any references.
 - [x] Ensure `ingest_document_service()` path remains stable after refactor; keep `DocumentMapper` in the event path for now.
-- [ ] Add/adjust tests to cover: event parsing by topic, factory output, mapper alias handling, and end-to-end ingest after refactor.
+- [x] Add/adjust tests to cover: event parsing by topic, factory output, mapper alias handling, and end-to-end ingest after refactor.
 - [ ] Skip `DocumentMapper` for event-driven path when the factory returns Vespa-ready dicts; keep `DocumentMapper` only for HTTP/legacy ingestion.
 - [ ] Update `ingest_document_service()` to detect Vespa-ready payloads and bypass mapping accordingly.
