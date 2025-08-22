@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script for Pub/Sub topics required by the Vespa backfill demo.
+Setup script for Pub/Sub topics required by the event-driven architecture.
 """
 
 import os
@@ -15,21 +15,40 @@ from services.demos.settings_demos import get_demo_settings
 
 
 def setup_pubsub_topics() -> None:
-    """Set up Pub/Sub topics for the Vespa backfill demo"""
+    """Set up Pub/Sub topics for the event-driven architecture"""
     settings = get_demo_settings()
 
-    print("Setting up Pub/Sub topics for Vespa backfill demo...")
+    print("Setting up Pub/Sub topics for event-driven architecture...")
     print(f"Project ID: {settings.pubsub_project_id}")
     print(f"Emulator Host: {settings.pubsub_emulator_host}")
 
     # Set environment variable for Pub/Sub emulator
     os.environ["PUBSUB_EMULATOR_HOST"] = settings.pubsub_emulator_host
 
-    # Topics to create
+    # New data-type focused topics
     topics = [
-        "email-backfill",  # Changed from "backfill-emails"
-        "calendar-updates",  # Changed from "backfill-calendar"
-        "contact-updates",  # Changed from "backfill-contacts"
+        # Core data types
+        "emails",  # Replaces "email-backfill"
+        "calendars",  # Replaces "calendar-updates"
+        "contacts",  # Replaces "contact-updates"
+        
+        # Office document types
+        "word_documents",
+        "word_fragments",
+        "sheet_documents",
+        "sheet_fragments",
+        "presentation_documents",
+        "presentation_fragments",
+        "task_documents",
+        
+        # Todo types
+        "todos",
+        
+        # Internal tool types
+        "llm_chats",
+        "shipment_events",
+        "meeting_polls",
+        "bookings",
     ]
 
     for topic in topics:
