@@ -3,7 +3,7 @@ Contact discovery service for managing email contacts from various events.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Set, Any
 from uuid import uuid4
 
@@ -12,6 +12,7 @@ from services.common.events import (
 )
 from services.common.models.email_contact import EmailContact, EmailContactUpdate
 from services.common.pubsub_client import PubSubClient
+from services.common.events.todo_events import TodoEvent, TodoData
 
 
 logger = logging.getLogger(__name__)
@@ -164,19 +165,198 @@ class ContactDiscoveryService:
     def process_todo_event(self, event: TodoEvent) -> None:
         """Process a todo event to discover contacts."""
         try:
-            # Extract assignee information from todo
-            if hasattr(event.todo, 'assignee_email') and event.todo.assignee_email:
+            # Validate event structure first
+            if not self._validate_todo_event_structure(event):
+                logger.warning("Todo event validation failed, skipping contact discovery")
+                return
+            
+            # Extract assignee information from todo with proper field validation
+            assignee_email = self._extract_todo_assignee_email(event.todo)
+            
+            if assignee_email:
+                # Extract creator information as well for comprehensive contact discovery
+                creator_email = self._extract_todo_creator_email(event.todo)
+                
+                # Process assignee contact
                 self._process_discovered_contact(
                     user_id=event.user_id,
-                    email=event.todo.assignee_email,
-                    name=None,  # Todo assignee name not typically available
-                    event_type='todo',
-                    timestamp=event.last_updated or datetime.utcnow(),
+                    email=assignee_email,
+                    name=self._extract_todo_assignee_name(event.todo),
+                    event_type='todo_assignee',
+                    timestamp=event.last_updated or datetime.now(timezone.utc),
                     source_service='todo_sync'
                 )
                 
+                # Process creator contact if different from assignee
+                if creator_email and creator_email != assignee_email:
+                    self._process_discovered_contact(
+                        user_id=event.user_id,
+                        email=creator_email,
+                        name=self._extract_todo_creator_name(event.todo),
+                        event_type='todo_creator',
+                        timestamp=event.last_updated or datetime.now(timezone.utc),
+                        source_service='todo_sync'
+                    )
+                
+                # Process shared list contacts if available
+                self._process_todo_shared_contacts(event)
+                
+            else:
+                logger.debug(f"No assignee email found in todo event {event.todo.id}")
+                
         except Exception as e:
             logger.error(f"Error processing todo event for contact discovery: {e}")
+            # Log additional context for debugging
+            if event and event.todo:
+                logger.error(f"Todo event context: id={event.todo.id}, user_id={event.user_id}, operation={event.operation}")
+    
+    def _extract_todo_assignee_email(self, todo: TodoData) -> Optional[str]:
+        """Extract assignee email with proper field validation."""
+        try:
+            # Check if assignee_email field exists and has a valid value
+            if hasattr(todo, 'assignee_email'):
+                assignee_email = getattr(todo, 'assignee_email')
+                if assignee_email and isinstance(assignee_email, str) and '@' in assignee_email:
+                    return assignee_email.strip()
+            
+            # Fallback: check metadata for assignee information
+            if hasattr(todo, 'metadata') and todo.metadata:
+                assignee_email = todo.metadata.get('assignee_email')
+                if assignee_email and isinstance(assignee_email, str) and '@' in assignee_email:
+                    return assignee_email.strip()
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Error extracting assignee email from todo {getattr(todo, 'id', 'unknown')}: {e}")
+            return None
+    
+    def _extract_todo_creator_email(self, todo: TodoData) -> Optional[str]:
+        """Extract creator email with proper field validation."""
+        try:
+            # Check if creator_email field exists and has a valid value
+            if hasattr(todo, 'creator_email'):
+                creator_email = getattr(todo, 'creator_email')
+                if creator_email and isinstance(creator_email, str) and '@' in creator_email:
+                    return creator_email.strip()
+            
+            # Fallback: check metadata for creator information
+            if hasattr(todo, 'metadata') and todo.metadata:
+                creator_email = todo.metadata.get('creator_email')
+                if creator_email and isinstance(creator_email, str) and '@' in creator_email:
+                    return creator_email.strip()
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Error extracting creator email from todo {getattr(todo, 'id', 'unknown')}: {e}")
+            return None
+    
+    def _extract_todo_assignee_name(self, todo: TodoData) -> Optional[str]:
+        """Extract assignee name with graceful degradation."""
+        try:
+            # Check metadata for assignee name
+            if hasattr(todo, 'metadata') and todo.metadata:
+                assignee_name = todo.metadata.get('assignee_name')
+                if assignee_name and isinstance(assignee_name, str):
+                    return assignee_name.strip()
+            
+            # Fallback: try to extract from title or description
+            if hasattr(todo, 'title') and todo.title:
+                # Look for patterns like "Assigned to: John Doe" in title
+                title = todo.title
+                if 'assigned to:' in title.lower():
+                    name_part = title.split('assigned to:', 1)[1].strip()
+                    if name_part and len(name_part) < 100:  # Reasonable name length
+                        return name_part
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error extracting assignee name from todo {getattr(todo, 'id', 'unknown')}: {e}")
+            return None
+    
+    def _extract_todo_creator_name(self, todo: TodoData) -> Optional[str]:
+        """Extract creator name with graceful degradation."""
+        try:
+            # Check metadata for creator name
+            if hasattr(todo, 'metadata') and todo.metadata:
+                creator_name = todo.metadata.get('creator_name')
+                if creator_name and isinstance(creator_name, str):
+                    return creator_name.strip()
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error extracting creator name from todo {getattr(todo, 'id', 'unknown')}: {e}")
+            return None
+    
+    def _process_todo_shared_contacts(self, event: TodoEvent) -> None:
+        """Process contacts from shared todo lists."""
+        try:
+            if not event.todo or not hasattr(event.todo, 'metadata'):
+                return
+            
+            # Check for shared list information
+            shared_emails = []
+            
+            # Look for shared_with field in metadata
+            if event.todo.metadata and 'shared_with' in event.todo.metadata:
+                shared_emails.extend(event.todo.metadata['shared_with'])
+            
+            # Look for list sharing information
+            if hasattr(event, 'list_id') and event.list_id:
+                # This would typically require additional service calls to get list sharing info
+                # For now, we'll log that this capability exists
+                logger.debug(f"Todo list {event.list_id} may have shared contacts (requires list service integration)")
+            
+            # Process shared contacts
+            for email in shared_emails:
+                if email and isinstance(email, str) and '@' in email:
+                    self._process_discovered_contact(
+                        user_id=event.user_id,
+                        email=email.strip(),
+                        name=None,  # Shared contact names not typically available
+                        event_type='todo_shared',
+                        timestamp=event.last_updated or datetime.now(timezone.utc),
+                        source_service='todo_sync'
+                    )
+                    
+        except Exception as e:
+            logger.warning(f"Error processing shared contacts for todo event: {e}")
+    
+    def _validate_todo_event_structure(self, event: TodoEvent) -> bool:
+        """Validate todo event structure and required fields."""
+        try:
+            # Check required fields
+            if not event.user_id:
+                logger.warning("Todo event missing user_id")
+                return False
+            
+            if not event.todo:
+                logger.warning("Todo event missing todo data")
+                return False
+            
+            if not event.operation:
+                logger.warning("Todo event missing operation")
+                return False
+            
+            # Check todo data structure
+            if not hasattr(event.todo, 'id') or not event.todo.id:
+                logger.warning("Todo event missing todo.id")
+                return False
+            
+            # Validate operation type
+            valid_operations = ['create', 'update', 'delete']
+            if event.operation not in valid_operations:
+                logger.warning(f"Todo event has invalid operation: {event.operation}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating todo event structure: {e}")
+            return False
     
     def _process_discovered_contact(
         self,
@@ -209,8 +389,8 @@ class ContactDiscoveryService:
                     family_name=self._extract_family_name(name) if name else None,
                     first_seen=timestamp,
                     last_seen=timestamp,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
                 self._contacts_cache[contact_key] = contact
                 logger.info(f"Created new contact: {email} for user {user_id}")
