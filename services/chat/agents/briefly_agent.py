@@ -132,11 +132,7 @@ class BrieflyAgent(FunctionAgent):
             "5. Examples of MODIFICATION requests (use get_tool):\n"
             "   - 'create an email', 'update calendar event', 'delete note'\n"
             "   - 'send email', 'book meeting', 'remove appointment'\n\n"
-            "The user_data_search tool automatically chooses the best search method:\n"
-            "- General search for most queries\n"
-            "- Semantic search for conceptual queries\n"
-            "- Vespa search when source types are specified\n"
-            "- You can override with search_type parameter: 'general', 'semantic', 'vespa', or 'auto'\n\n"
+            "The user_data_search tool performs a unified hybrid search across your data.\n\n"
             "Keep responses concise, helpful, and actionable.\n"
         )
 
@@ -296,76 +292,21 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[
 
     # Create wrapper functions for the tools to make them compatible with FunctionTool
     async def combined_user_data_search_wrapper(
-        query: str,
-        max_results: int = 20,
-        search_type: Optional[str] = None,
-        source_types: Optional[List[str]] = None,
+        query: str, max_results: int = 20
     ) -> Any:
-        """
-        Intelligent user data search that combines all search methods.
-
-        Args:
-            query: Search query string
-            max_results: Maximum number of results to return
-            search_type: Optional search type ('general', 'semantic', 'vespa', 'auto')
-            source_types: Optional list of source types to filter by (for Vespa search)
-
-        Returns:
-            Search results from the appropriate search method
-        """
+        """Delegate user data search to the unified search tool (hybrid)."""
         try:
-            # If search_type is specified, use that method
-            if search_type == "semantic":
-                return await search_tools.semantic_search.semantic_search(
-                    query=query, max_results=max_results
-                )
-            elif search_type == "vespa":
-                return await search_tools.vespa_search.search(
-                    query=query, max_results=max_results, source_types=source_types
-                )
-            elif search_type == "general":
-                return await search_tools.user_data_search.search_all_data(
-                    query=query, max_results=max_results
-                )
-
-            # Auto-detect best search method based on query characteristics
-            query_lower = query.lower()
-
-            # If source types are specified, prefer Vespa search
-            if source_types:
-                return await search_tools.vespa_search.search(
-                    query=query, max_results=max_results, source_types=source_types
-                )
-
-            # If query contains specific data types, use general search
-            if any(
-                term in query_lower
-                for term in ["email", "calendar", "contact", "file", "document"]
-            ):
-                return await search_tools.user_data_search.search_all_data(
-                    query=query, max_results=max_results
-                )
-
-            # If query is conceptual/abstract, use semantic search
-            if any(
-                term in query_lower
-                for term in ["about", "related to", "similar to", "like", "concept"]
-            ):
-                return await search_tools.semantic_search.semantic_search(
-                    query=query, max_results=max_results
-                )
-
-            # Default to general search for most queries
             return await search_tools.user_data_search.search_all_data(
                 query=query, max_results=max_results
             )
-
         except Exception as e:
-            logger.error(f"Error in combined user data search: {e}")
-            # Fallback to general search
-            return await search_tools.user_data_search.search_all_data(
-                query=query, max_results=max_results
-            )
+            logger.error(f"Error in user data search: {e}")
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "grouped_results": {},
+            }
 
     async def web_search_wrapper(query: str, max_results: int = 5) -> Any:
         return await web_tools.web_search.search(query=query, max_results=max_results)
@@ -459,10 +400,8 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[
             fn=combined_user_data_search_wrapper,
             name="user_data_search",
             description=(
-                "Intelligent search across all user data types (email, calendar, contacts, files). "
-                "Automatically chooses the best search method (general, semantic, or Vespa) based on the query. "
-                "Use search_type parameter to specify: 'general', 'semantic', 'vespa', or 'auto' for automatic selection. "
-                "Use source_types parameter to filter by specific data sources when using Vespa search."
+                "Hybrid search across user emails, calendar events, contacts, and files. "
+                "Returns grouped results and a concise summary."
             ),
         ),
         FunctionTool.from_defaults(
