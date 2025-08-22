@@ -48,30 +48,30 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 
 ## Phase 2: Reorganize llm_tools.py by Category
 
-### [ ] Task 2.1: Audit Current llm_tools.py Content
-- [ ] Create inventory of all functions/classes in `services/chat/agents/llm_tools.py`:
-  - [ ] Draft management functions (lines 25-348)
-  - [ ] Document retrieval functions (lines 351-500) 
-  - [ ] Note retrieval functions (lines 503-648)
-  - [ ] Vespa search tools (lines 651-928)
-  - [ ] User data search tools (lines 930-1044)
-  - [ ] Semantic search tools (lines 1047-1137)
-  - [ ] Web search tools (lines 1140-1208)
-  - [ ] Generic tool classes (lines 1211-1242)
-  - [ ] Calendar event functions (lines 1262-1516)
-  - [ ] Email functions (lines 1520-1679)
-  - [ ] Tool registry (lines 1683-1795)
-  - [ ] Utility functions (lines 1799-1882)
+### [x] Task 2.1: Audit Current llm_tools.py Content
+- [x] Create inventory of all functions/classes in `services/chat/agents/llm_tools.py`:
+  - [x] Draft management functions (lines 25-348)
+  - [x] Document retrieval functions (lines 351-500) 
+  - [x] Note retrieval functions (lines 503-648)
+  - [x] Vespa search tools (lines 651-928)
+  - [x] User data search tools (lines 930-1044)
+  - [x] Semantic search tools (lines 1047-1137)
+  - [x] Web search tools (lines 1140-1208)
+  - [x] Generic tool classes (lines 1211-1242)
+  - [x] Calendar event functions (lines 1262-1516)
+  - [x] Email functions (lines 1520-1679)
+  - [x] Tool registry (lines 1683-1795)
+  - [x] Utility functions (lines 1799-1882)
 
-### [ ] Task 2.2: Create Draft Management Tools
-- [ ] Create `services/chat/tools/draft_tools.py` with comprehensive draft management:
-  - [ ] Move all `create_draft_*` functions from llm_tools.py
-  - [ ] Move all `get_draft_*` functions from llm_tools.py  
-  - [ ] Move all `has_draft_*` functions from llm_tools.py
-  - [ ] Move all `delete_draft_*` functions from llm_tools.py
-  - [ ] Move `clear_all_drafts` function from llm_tools.py
-  - [ ] Ensure `DraftTools` class integrates all functions properly
-  - [ ] Add proper error handling and logging
+### [x] Task 2.2: Create Draft Management Tools
+- [x] Create `services/chat/tools/draft_tools.py` with comprehensive draft management:
+  - [x] Move all `create_draft_*` functions from llm_tools.py
+  - [x] Move all `get_draft_*` functions from llm_tools.py  
+  - [x] Move all `has_draft_*` functions from llm_tools.py
+  - [x] Move all `delete_draft_*` functions from llm_tools.py
+  - [x] Move `clear_all_drafts` function from llm_tools.py
+  - [x] Ensure `DraftTools` class integrates all functions properly
+  - [x] Add proper error handling and logging
   - [ ] Register all draft tools in the tool registry
 
 ### [ ] Task 2.3: Create Data Retrieval Tools  
