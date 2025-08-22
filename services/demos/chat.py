@@ -138,7 +138,13 @@ def get_settings():
 
 
 # Set default user ID from demo settings
-DEFAULT_USER_ID = get_settings().demo_user_email
+# DEFAULT_USER_ID = get_settings().demo_user_email  # Removed to prevent import-time evaluation
+
+
+def get_default_user_id():
+    """Get default user ID lazily to prevent import-time errors during testing."""
+    return get_settings().demo_user_email
+
 
 # Configure logging
 logging.basicConfig(
