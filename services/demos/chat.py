@@ -1606,15 +1606,15 @@ async def main() -> None:
         if not use_api:
             demo.agent = await demo.create_agent()
 
-        # Show welcome
-        demo.show_welcome()
-
         # Handle single message mode
         if args.message:
             print(f"🤖 Sending message: {args.message}")
             response = await demo.send_message(args.message)
             print(f"🤖 Response: {response}")
             return
+
+        # Show welcome (only when not in single message mode)
+        demo.show_welcome()
 
         # Handle streaming mode
         if args.streaming:
