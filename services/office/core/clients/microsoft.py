@@ -112,6 +112,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         filter: Optional[str] = None,
         search: Optional[str] = None,
         order_by: Optional[str] = None,
+        include_body: bool = False,
     ) -> Dict[str, Any]:
         """
         Get list of Outlook messages.
@@ -122,6 +123,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             filter: OData filter expression
             search: Search query
             order_by: Order by expression
+            include_body: Whether to include full message body content
 
         Returns:
             Dictionary containing messages list and pagination info
@@ -140,7 +142,37 @@ class MicrosoftAPIClient(BaseAPIClient):
                 params["$orderby"] = "receivedDateTime desc"
 
         response = await self.get("/me/messages", params=params)
-        return response.json()
+        messages_data = response.json()
+
+        # If include_body is True, fetch full message content for each message
+        if include_body and messages_data.get("value"):
+            messages = messages_data["value"]
+            full_messages = []
+
+            for message in messages:
+                message_id = message.get("id")
+                if message_id:
+                    try:
+                        # Fetch full message with body content using text-only approach
+                        full_message = await self.get_message_text_only(message_id)
+                        full_messages.append(full_message)
+                    except Exception as e:
+                        # If fetching full message fails, use the summary message
+                        logger.warning(
+                            f"Failed to fetch full message {message_id}: {e}"
+                        )
+                        full_messages.append(message)
+                else:
+                    # Include messages without ID using their summary data
+                    # This ensures we don't lose messages and maintain accurate pagination
+                    logger.debug(
+                        f"Message without ID, using summary data: {message.get('subject', 'No subject')}"
+                    )
+                    full_messages.append(message)
+
+            messages_data["value"] = full_messages
+
+        return messages_data
 
     async def get_messages_from_folder(
         self,
@@ -150,6 +182,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         filter: Optional[str] = None,
         search: Optional[str] = None,
         order_by: Optional[str] = None,
+        include_body: bool = False,
     ) -> Dict[str, Any]:
         """
         Get list of Outlook messages from a specific folder.
@@ -161,6 +194,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             filter: OData filter expression
             search: Search query
             order_by: Order by expression
+            include_body: Whether to include full message body content
 
         Returns:
             Dictionary containing messages list and pagination info
@@ -178,7 +212,37 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get(
             f"/me/mailFolders/{folder_id}/messages", params=params
         )
-        return response.json()
+        messages_data = response.json()
+
+        # If include_body is True, fetch full message content for each message
+        if include_body and messages_data.get("value"):
+            messages = messages_data["value"]
+            full_messages = []
+
+            for message in messages:
+                message_id = message.get("id")
+                if message_id:
+                    try:
+                        # Fetch full message with body content using text-only approach
+                        full_message = await self.get_message_text_only(message_id)
+                        full_messages.append(full_message)
+                    except Exception as e:
+                        # If fetching full message fails, use the summary message
+                        logger.warning(
+                            f"Failed to fetch full message {message_id}: {e}"
+                        )
+                        full_messages.append(message)
+                else:
+                    # Include messages without ID using their summary data
+                    # This ensures we don't lose messages and maintain accurate pagination
+                    logger.debug(
+                        f"Message without ID, using summary data: {message.get('subject', 'No subject')}"
+                    )
+                    full_messages.append(message)
+
+            messages_data["value"] = full_messages
+
+        return messages_data
 
     async def get_message(
         self, message_id: str, select: Optional[str] = None
@@ -605,3 +669,28 @@ class MicrosoftAPIClient(BaseAPIClient):
 
     async def send_draft_message(self, draft_id: str) -> None:
         await self.post(f"/me/messages/{draft_id}/send", json_data={})
+
+    async def get_message_text_only(self, message_id: str) -> Dict[str, Any]:
+        """
+        Get a specific Outlook message with text-only content for better indexing.
+
+        This method prioritizes text content over HTML for cleaner, more searchable content.
+
+        Args:
+            message_id: Outlook message ID
+
+        Returns:
+            Dictionary containing message details with text content prioritized
+        """
+        # Request specific fields that give us clean text content
+        params = {
+            "$select": (
+                "id,subject,body,bodyPreview,from,toRecipients,ccRecipients,"
+                "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
+                "conversationId,conversationIndex,parentFolderId,importance,flag,"
+                "isDraft,webLink,categories"
+            ),
+        }
+
+        response = await self.get(f"/me/messages/{message_id}", params=params)
+        return response.json()

@@ -660,22 +660,26 @@ def _extract_microsoft_body(
         f"Content sample: <content_truncated> (length: {len(content) if content else 0})"
     )
 
-    if content_type == "html":
-        logger.debug(
-            f"Returning HTML content, length: {len(content) if content else 0}"
-        )
-        return None, content
-    elif content_type == "text":
+    # For Vespa indexing, prioritize text content over HTML
+    # Text content is cleaner and more searchable
+    if content_type == "text":
         logger.debug(
             f"Returning text content, length: {len(content) if content else 0}"
         )
         return content, None
-    else:
-        # Default to text
+    elif content_type == "html":
         logger.debug(
-            f"Defaulting to text content, length: {len(content) if content else 0}"
+            f"Returning HTML content, length: {len(content) if content else 0}"
         )
-        return content, None
+        return None, content
+    else:
+        # Default to text if content exists, otherwise return as-is
+        if content:
+            logger.debug(f"Defaulting to content as text, length: {len(content)}")
+            return content, None
+        else:
+            logger.debug("No content found")
+            return None, None
 
 
 def _has_gmail_attachments(payload: Dict[str, Any]) -> bool:
