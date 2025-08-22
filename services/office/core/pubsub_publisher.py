@@ -112,10 +112,15 @@ class PubSubPublisher:
                 correlation_id=correlation_id,
             )
 
+            # Validate required user_id parameter
+            if not user_id:
+                logger.error(f"user_id is required for publishing EmailEvent {email_data.id}")
+                return False
+
             # Create EmailEvent
             email_event = EmailEvent(
                 metadata=metadata,
-                user_id=user_id or email_data.id,  # Fallback to email ID if no user_id
+                user_id=user_id,  # user_id is required, no fallback
                 email=email_data,
                 operation=operation,
                 batch_id=batch_id,
@@ -175,11 +180,15 @@ class PubSubPublisher:
                 correlation_id=correlation_id,
             )
 
+            # Validate required user_id parameter
+            if not user_id:
+                logger.error(f"user_id is required for publishing CalendarEvent {calendar_data.id}")
+                return False
+
             # Create CalendarEvent
             calendar_event = CalendarEvent(
                 metadata=metadata,
-                user_id=user_id
-                or calendar_data.id,  # Fallback to event ID if no user_id
+                user_id=user_id,  # user_id is required, no fallback
                 event=calendar_data,
                 operation=operation,
                 batch_id=batch_id,
@@ -239,11 +248,15 @@ class PubSubPublisher:
                 correlation_id=correlation_id,
             )
 
+            # Validate required user_id parameter
+            if not user_id:
+                logger.error(f"user_id is required for publishing ContactEvent {contact_data.id}")
+                return False
+
             # Create ContactEvent
             contact_event = ContactEvent(
                 metadata=metadata,
-                user_id=user_id
-                or contact_data.id,  # Fallback to contact ID if no user_id
+                user_id=user_id,  # user_id is required, no fallback
                 contact=contact_data,
                 operation=operation,
                 batch_id=batch_id,
