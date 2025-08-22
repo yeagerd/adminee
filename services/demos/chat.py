@@ -242,7 +242,7 @@ class UserServiceClient(ServiceClient):
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations/oauth/start",
                     json={
                         "provider": provider,
                         "scopes": scopes,
@@ -280,7 +280,7 @@ class UserServiceClient(ServiceClient):
                 scopes = ["read"]
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations/oauth/start",
                     json={
                         "provider": provider,
                         "scopes": scopes,
@@ -303,7 +303,7 @@ class UserServiceClient(ServiceClient):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/callback?provider={provider}",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations/oauth/callback?provider={provider}",
                     json={"code": code, "state": state},
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
@@ -329,7 +329,7 @@ class UserServiceClient(ServiceClient):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 # Try the public endpoint first (requires Bearer token)
                 response = await client.get(
-                    f"{self.base_url}/users/{self.user_id}/integrations",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations",
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
 
