@@ -32,7 +32,6 @@ from services.common.events.email_events import EmailData, EmailEvent
 from services.common.events.todo_events import TodoData, TodoEvent
 from services.common.logging_config import get_logger
 from services.vespa_loader.document_factory import VespaDocumentFactory, parse_event_by_topic
-from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
 from services.vespa_loader.types import VespaDocumentType
 
@@ -179,7 +178,6 @@ class PubSubConsumer:
         self.error_count = 0
 
         # Initialize email content processor and document factory
-        self.email_processor = EmailContentProcessor()
         self.document_factory = VespaDocumentFactory()
 
         # Configure new data-type focused topics using shared configuration
