@@ -49,8 +49,11 @@ def get_engine() -> AsyncEngine:
         # Prepare connect_args based on database type
         connect_args = {}
         if db_url.startswith("postgresql"):
-            # PostgreSQL-specific statement timeout (covers all drivers: postgresql://, postgresql+asyncpg://, etc.)
-            connect_args["options"] = "-c statement_timeout=10000"
+            # asyncpg supports these timeout parameters directly
+            # command_timeout sets the default timeout for operations (equivalent to statement_timeout)
+            connect_args["command_timeout"] = 10.0  # 10 seconds
+            # timeout sets the connection timeout
+            connect_args["timeout"] = 30.0  # 30 seconds
 
         _engine = create_async_engine(
             get_async_database_url(db_url),

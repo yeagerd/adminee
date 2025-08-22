@@ -65,7 +65,25 @@ def get_engine() -> Any:
     if _engine is None:
         database_url = get_database_url()
         async_url = get_async_database_url(database_url)
-        _engine = create_async_engine(async_url, echo=False)
+        
+        # Configure asyncpg timeout parameters for better reliability
+        connect_args = {}
+        if async_url.startswith("postgresql"):
+            # command_timeout sets the default timeout for operations
+            connect_args["command_timeout"] = 10.0  # 10 seconds
+            # timeout sets the connection timeout
+            connect_args["timeout"] = 30.0  # 30 seconds
+        
+        _engine = create_async_engine(
+            async_url, 
+            echo=False,
+            # Add connection pool settings to prevent hangs
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=3600,
+            connect_args=connect_args,
+        )
     return _engine
 
 
