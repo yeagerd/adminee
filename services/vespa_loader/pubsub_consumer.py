@@ -3,8 +3,8 @@
 Pub/Sub Consumer for Vespa Loader Service
 
 This module handles consuming messages from Pub/Sub topics and processing them
-for Vespa indexing. It listens to the backfill topics and processes emails,
-calendar events, and contacts.
+for Vespa indexing. It listens to the new data-type focused topics and processes
+emails, calendar events, contacts, documents, and todos.
 """
 
 import asyncio
@@ -15,16 +15,22 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from services.common.events.calendar_events import (
-    CalendarBatchEvent,
+    CalendarEvent,
     CalendarEventData,
+    # Keep deprecated events for backward compatibility
+    CalendarBatchEvent,
     CalendarUpdateEvent,
 )
 from services.common.events.contact_events import (
-    ContactBatchEvent,
+    ContactEvent,
     ContactData,
+    # Keep deprecated events for backward compatibility
+    ContactBatchEvent,
     ContactUpdateEvent,
 )
-from services.common.events.email_events import EmailBackfillEvent, EmailData
+from services.common.events.email_events import EmailEvent, EmailData
+from services.common.events.document_events import DocumentEvent, DocumentData
+from services.common.events.todo_events import TodoEvent, TodoData
 from services.common.logging_config import get_logger
 from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
@@ -50,11 +56,16 @@ from services.vespa_loader.ingest_service import ingest_document_service
 
 # Define union type for all supported event types
 SupportedEventType = Union[
-    EmailBackfillEvent,
-    CalendarUpdateEvent,
+    EmailEvent,
+    CalendarEvent,
+    ContactEvent,
+    DocumentEvent,
+    TodoEvent,
+    # Keep deprecated events for backward compatibility
     CalendarBatchEvent,
-    ContactUpdateEvent,
+    CalendarUpdateEvent,
     ContactBatchEvent,
+    ContactUpdateEvent,
 ]
 
 
@@ -79,16 +90,25 @@ class TypedMessage:
     @property
     def event_type(self) -> str:
         """Get the event type name"""
-        if isinstance(self.data, EmailBackfillEvent):
-            return "email-backfill"
-        elif isinstance(self.data, CalendarUpdateEvent):
-            return "calendar-update"
+        if isinstance(self.data, EmailEvent):
+            return "email"
+        elif isinstance(self.data, CalendarEvent):
+            return "calendar"
+        elif isinstance(self.data, ContactEvent):
+            return "contact"
+        elif isinstance(self.data, DocumentEvent):
+            return "document"
+        elif isinstance(self.data, TodoEvent):
+            return "todo"
+        # Keep deprecated event types for backward compatibility
         elif isinstance(self.data, CalendarBatchEvent):
             return "calendar-batch"
-        elif isinstance(self.data, ContactUpdateEvent):
-            return "contact-update"
+        elif isinstance(self.data, CalendarUpdateEvent):
+            return "calendar-update"
         elif isinstance(self.data, ContactBatchEvent):
             return "contact-batch"
+        elif isinstance(self.data, ContactUpdateEvent):
+            return "contact-update"
         else:
             raise ValueError(f"Unknown event type: {type(self.data)}")
 
@@ -98,15 +118,23 @@ class TypedMessage:
 
     def is_email_event(self) -> bool:
         """Check if this message contains an email-related event"""
-        return isinstance(self.data, EmailBackfillEvent)
+        return isinstance(self.data, EmailEvent)
 
     def is_calendar_event(self) -> bool:
         """Check if this message contains a calendar-related event"""
-        return isinstance(self.data, (CalendarUpdateEvent, CalendarBatchEvent))
+        return isinstance(self.data, (CalendarEvent, CalendarBatchEvent, CalendarUpdateEvent))
 
     def is_contact_event(self) -> bool:
         """Check if this message contains a contact-related event"""
-        return isinstance(self.data, (ContactUpdateEvent, ContactBatchEvent))
+        return isinstance(self.data, (ContactEvent, ContactBatchEvent, ContactUpdateEvent))
+
+    def is_document_event(self) -> bool:
+        """Check if this message contains a document-related event"""
+        return isinstance(self.data, DocumentEvent)
+
+    def is_todo_event(self) -> bool:
+        """Check if this message contains a todo-related event"""
+        return isinstance(self.data, TodoEvent)
 
 
 try:
@@ -123,6 +151,188 @@ except ImportError:
     )
 
 
+class VespaDocumentFactory:
+    """Factory for creating Vespa documents from different event types"""
+    
+    @staticmethod
+    def create_email_document(event: EmailEvent) -> VespaDocumentType:
+        """Create a Vespa document from an EmailEvent"""
+        email = event.email
+        return VespaDocumentType(
+            id=email.id,
+            user_id=event.user_id,
+            type="email",
+            provider=email.provider,
+            subject=email.subject or "",
+            body=email.body or "",
+            from_address=email.from_address or "",
+            to_addresses=email.to_addresses or [],
+            thread_id=email.thread_id,
+            folder="",  # Not available in current model
+            created_at=email.received_date,
+            updated_at=email.sent_date,
+            metadata={
+                "operation": event.operation,
+                "batch_id": event.batch_id,
+                "last_updated": event.last_updated.isoformat() if event.last_updated else None,
+                "sync_timestamp": event.sync_timestamp.isoformat() if event.sync_timestamp else None,
+                "sync_type": event.sync_type,
+                "is_read": email.is_read,
+                "is_starred": email.is_starred,
+                "has_attachments": email.has_attachments,
+                "labels": email.labels,
+                "size_bytes": email.size_bytes,
+                "mime_type": email.mime_type,
+                "headers": email.headers or {},
+            },
+            content_chunks=[],
+            quoted_content="",
+            thread_summary={},
+            search_text="",
+        )
+    
+    @staticmethod
+    def create_calendar_document(event: CalendarEvent) -> VespaDocumentType:
+        """Create a Vespa document from a CalendarEvent"""
+        calendar_event = event.event
+        return VespaDocumentType(
+            id=calendar_event.id,
+            user_id=event.user_id,
+            type="calendar",
+            provider=calendar_event.provider,
+            subject=calendar_event.title,
+            body=calendar_event.description or "",
+            from_address=calendar_event.organizer,
+            to_addresses=calendar_event.attendees,
+            thread_id="",
+            folder=calendar_event.calendar_id,
+            created_at=calendar_event.start_time,
+            updated_at=calendar_event.end_time,
+            metadata={
+                "operation": event.operation,
+                "batch_id": event.batch_id,
+                "last_updated": event.last_updated.isoformat() if event.last_updated else None,
+                "sync_timestamp": event.sync_timestamp.isoformat() if event.sync_timestamp else None,
+                "event_type": "calendar",
+                "all_day": calendar_event.all_day,
+                "location": calendar_event.location,
+                "status": calendar_event.status,
+                "visibility": calendar_event.visibility,
+                "recurrence": calendar_event.recurrence,
+                "reminders": calendar_event.reminders,
+                "attachments": calendar_event.attachments,
+                "color_id": calendar_event.color_id,
+                "html_link": calendar_event.html_link,
+            },
+        )
+    
+    @staticmethod
+    def create_contact_document(event: ContactEvent) -> VespaDocumentType:
+        """Create a Vespa document from a ContactEvent"""
+        contact = event.contact
+        return VespaDocumentType(
+            id=contact.id,
+            user_id=event.user_id,
+            type="contact",
+            provider=contact.provider,
+            subject=contact.display_name,
+            body=contact.notes or "",
+            from_address="",
+            to_addresses=contact.email_addresses,
+            thread_id="",
+            folder="",
+            created_at=None,
+            updated_at=contact.last_modified,
+            metadata={
+                "operation": event.operation,
+                "batch_id": event.batch_id,
+                "last_updated": event.last_updated.isoformat() if event.last_updated else None,
+                "sync_timestamp": event.sync_timestamp.isoformat() if event.sync_timestamp else None,
+                "contact_type": "contact",
+                "given_name": contact.given_name,
+                "family_name": contact.family_name,
+                "phone_numbers": contact.phone_numbers,
+                "addresses": contact.addresses,
+                "organizations": contact.organizations,
+                "birthdays": (
+                    [bd.isoformat() for bd in contact.birthdays]
+                    if contact.birthdays
+                    else []
+                ),
+                "photos": contact.photos,
+                "groups": contact.groups,
+                "tags": contact.tags,
+            },
+        )
+    
+    @staticmethod
+    def create_document_document(event: DocumentEvent) -> VespaDocumentType:
+        """Create a Vespa document from a DocumentEvent"""
+        document = event.document
+        return VespaDocumentType(
+            id=document.id,
+            user_id=event.user_id,
+            type=document.content_type,
+            provider=document.provider,
+            subject=document.title,
+            body=document.content,
+            from_address=document.owner_email,
+            to_addresses=[],
+            thread_id="",
+            folder="",
+            created_at=None,
+            updated_at=None,
+            metadata={
+                "operation": event.operation,
+                "batch_id": event.batch_id,
+                "last_updated": event.last_updated.isoformat() if event.last_updated else None,
+                "sync_timestamp": event.sync_timestamp.isoformat() if event.sync_timestamp else None,
+                "content_type": document.content_type,
+                "provider_document_id": document.provider_document_id,
+                "permissions": document.permissions,
+                "tags": document.tags,
+                "document_metadata": document.metadata,
+            },
+        )
+    
+    @staticmethod
+    def create_todo_document(event: TodoEvent) -> VespaDocumentType:
+        """Create a Vespa document from a TodoEvent"""
+        todo = event.todo
+        return VespaDocumentType(
+            id=todo.id,
+            user_id=event.user_id,
+            type="todo",
+            provider=todo.provider,
+            subject=todo.title,
+            body=todo.description or "",
+            from_address=todo.creator_email,
+            to_addresses=[todo.assignee_email] if todo.assignee_email else [],
+            thread_id="",
+            folder=todo.list_id or "",
+            created_at=None,
+            updated_at=todo.due_date,
+            metadata={
+                "operation": event.operation,
+                "batch_id": event.batch_id,
+                "last_updated": event.last_updated.isoformat() if event.last_updated else None,
+                "sync_timestamp": event.sync_timestamp.isoformat() if event.sync_timestamp else None,
+                "todo_type": "todo",
+                "status": todo.status,
+                "priority": todo.priority,
+                "due_date": todo.due_date.isoformat() if todo.due_date else None,
+                "completed_date": todo.completed_date.isoformat() if todo.completed_date else None,
+                "assignee_email": todo.assignee_email,
+                "creator_email": todo.creator_email,
+                "parent_todo_id": todo.parent_todo_id,
+                "subtask_ids": todo.subtask_ids,
+                "list_id": todo.list_id,
+                "provider_todo_id": todo.provider_todo_id,
+                "tags": todo.tags,
+            },
+        )
+
+
 class PubSubConsumer:
     """Consumes messages from Pub/Sub topics for Vespa indexing"""
 
@@ -137,7 +347,7 @@ class PubSubConsumer:
         self.settings = settings
         self.vespa_client = vespa_client
         self.content_normalizer = content_normalizer
-        self.embedding_generator = embedding_generator
+        self.embedding_generator = document_mapper
         self.document_mapper = document_mapper
 
         self.subscriber: Optional[Any] = None
@@ -146,25 +356,66 @@ class PubSubConsumer:
         self.processed_count = 0
         self.error_count = 0
 
-        # Initialize email content processor
+        # Initialize email content processor and document factory
         self.email_processor = EmailContentProcessor()
+        self.document_factory = VespaDocumentFactory()
 
-        # Configure topics and their processors
+        # Configure new data-type focused topics
         self.topics = {
-            "email-backfill": {
-                "subscription_name": "vespa-loader-email-backfill",
-                "processor": self._process_email_message,
+            "emails": {
+                "subscription_name": "vespa-loader-emails",
+                "processor": self._process_email_event,
                 "batch_size": 50,
             },
-            "calendar-updates": {
-                "subscription_name": "vespa-loader-calendar-updates",
-                "processor": self._process_calendar_message,
+            "calendars": {
+                "subscription_name": "vespa-loader-calendars",
+                "processor": self._process_calendar_event,
                 "batch_size": 20,
             },
-            "contact-updates": {
-                "subscription_name": "vespa-loader-contact-updates",
-                "processor": self._process_contact_message,
+            "contacts": {
+                "subscription_name": "vespa-loader-contacts",
+                "processor": self._process_contact_event,
                 "batch_size": 100,
+            },
+            "word_documents": {
+                "subscription_name": "vespa-loader-word-documents",
+                "processor": self._process_document_event,
+                "batch_size": 10,
+            },
+            "word_fragments": {
+                "subscription_name": "vespa-loader-word-fragments",
+                "processor": self._process_document_event,
+                "batch_size": 20,
+            },
+            "sheet_documents": {
+                "subscription_name": "vespa-loader-sheet-documents",
+                "processor": self._process_document_event,
+                "batch_size": 10,
+            },
+            "sheet_fragments": {
+                "subscription_name": "vespa-loader-sheet-fragments",
+                "processor": self._process_document_event,
+                "batch_size": 20,
+            },
+            "presentation_documents": {
+                "subscription_name": "vespa-loader-presentation-documents",
+                "processor": self._process_document_event,
+                "batch_size": 10,
+            },
+            "presentation_fragments": {
+                "subscription_name": "vespa-loader-presentation-fragments",
+                "processor": self._process_document_event,
+                "batch_size": 20,
+            },
+            "task_documents": {
+                "subscription_name": "vespa-loader-task-documents",
+                "processor": self._process_document_event,
+                "batch_size": 10,
+            },
+            "todos": {
+                "subscription_name": "vespa-loader-todos",
+                "processor": self._process_todo_event,
+                "batch_size": 50,
             },
         }
 
@@ -183,46 +434,36 @@ class PubSubConsumer:
     ) -> SupportedEventType:
         """Parse raw data into appropriate typed event based on topic name"""
         try:
-            if topic_name == "email-backfill":
-                email_event: EmailBackfillEvent = EmailBackfillEvent(**raw_data)
+            if topic_name == "emails":
+                email_event: EmailEvent = EmailEvent(**raw_data)
                 logger.debug(
-                    f"Parsed as EmailBackfillEvent: message_id={message_id}, user_id={email_event.user_id}, emails={len(email_event.emails)}"
+                    f"Parsed as EmailEvent: message_id={message_id}, user_id={email_event.user_id}, email_id={email_event.email.id}"
                 )
                 return email_event
-            elif topic_name == "calendar-updates":
-                # Try to determine if it's a single update or batch
-                if "events" in raw_data:
-                    calendar_batch_event: CalendarBatchEvent = CalendarBatchEvent(
-                        **raw_data
-                    )
-                    logger.debug(
-                        f"Parsed as CalendarBatchEvent: message_id={message_id}, user_id={calendar_batch_event.user_id}, events={len(calendar_batch_event.events)}"
-                    )
-                    return calendar_batch_event
-                else:
-                    calendar_event: CalendarUpdateEvent = CalendarUpdateEvent(
-                        **raw_data
-                    )
-                    logger.debug(
-                        f"Parsed as CalendarUpdateEvent: message_id={message_id}, user_id={calendar_event.user_id}, event_id={calendar_event.event.id}"
-                    )
-                    return calendar_event
-            elif topic_name == "contact-updates":
-                # Try to determine if it's a single update or batch
-                if "contacts" in raw_data:
-                    contact_batch_event: ContactBatchEvent = ContactBatchEvent(
-                        **raw_data
-                    )
-                    logger.debug(
-                        f"Parsed as ContactBatchEvent: message_id={message_id}, user_id={contact_batch_event.user_id}, contacts={len(contact_batch_event.contacts)}"
-                    )
-                    return contact_batch_event
-                else:
-                    contact_event: ContactUpdateEvent = ContactUpdateEvent(**raw_data)
-                    logger.debug(
-                        f"Parsed as ContactUpdateEvent: message_id={message_id}, user_id={contact_event.user_id}, contact_id={contact_event.contact.id}"
-                    )
-                    return contact_event
+            elif topic_name == "calendars":
+                calendar_event: CalendarEvent = CalendarEvent(**raw_data)
+                logger.debug(
+                    f"Parsed as CalendarEvent: message_id={message_id}, user_id={calendar_event.user_id}, event_id={calendar_event.event.id}"
+                )
+                return calendar_event
+            elif topic_name == "contacts":
+                contact_event: ContactEvent = ContactEvent(**raw_data)
+                logger.debug(
+                    f"Parsed as ContactEvent: message_id={message_id}, user_id={contact_event.user_id}, contact_id={contact_event.contact.id}"
+                )
+                return contact_event
+            elif topic_name in ["word_documents", "word_fragments", "sheet_documents", "sheet_fragments", "presentation_documents", "presentation_fragments", "task_documents"]:
+                document_event: DocumentEvent = DocumentEvent(**raw_data)
+                logger.debug(
+                    f"Parsed as DocumentEvent: message_id={message_id}, user_id={document_event.user_id}, document_id={document_event.document.id}, content_type={document_event.content_type}"
+                )
+                return document_event
+            elif topic_name == "todos":
+                todo_event: TodoEvent = TodoEvent(**raw_data)
+                logger.debug(
+                    f"Parsed as TodoEvent: message_id={message_id}, user_id={todo_event.user_id}, todo_id={todo_event.todo.id}"
+                )
+                return todo_event
             else:
                 logger.warning(
                     f"Unknown topic {topic_name}, message_id={message_id} - skipping"
@@ -572,24 +813,6 @@ class PubSubConsumer:
                 logger.info(
                     f"Processing {typed_message.event_type} event for user {user_id}"
                 )
-                if typed_message.is_email_event():
-                    email_data = typed_message.data
-                    if isinstance(email_data, EmailBackfillEvent):
-                        logger.info(
-                            f"EmailBackfillEvent contains {len(email_data.emails)} emails"
-                        )
-                elif typed_message.is_calendar_event():
-                    calendar_data = typed_message.data
-                    if isinstance(calendar_data, CalendarBatchEvent):
-                        logger.info(
-                            f"CalendarBatchEvent contains {len(calendar_data.events)} events"
-                        )
-                elif typed_message.is_contact_event():
-                    contact_data = typed_message.data
-                    if isinstance(contact_data, ContactBatchEvent):
-                        logger.info(
-                            f"ContactBatchEvent contains {len(contact_data.contacts)} contacts"
-                        )
 
             result = await processor(typed_message.data)
             logger.info(
@@ -601,232 +824,79 @@ class PubSubConsumer:
             logger.error(f"Error processing message from {topic_name}: {e}")
             raise
 
-    async def _process_email_message(self, data: EmailBackfillEvent) -> None:
-        """Process an email message for Vespa indexing using typed EmailBackfillEvent"""
-
+    async def _process_email_event(self, data: EmailEvent) -> None:
+        """Process an email event for Vespa indexing using typed EmailEvent"""
         logger.info(
-            f"Processing EmailBackfillEvent with {len(data.emails)} emails for user {data.user_id}"
+            f"Processing EmailEvent for user {data.user_id}, email {data.email.id}, operation {data.operation}"
         )
 
-        for i, email in enumerate(data.emails):
-            try:
-                # Log email processing with key details in one line
-                logger.info(
-                    f"Processing email {i+1}/{len(data.emails)}: ID={email.id}, "
-                    f"Subject='{email.subject or 'No subject'}', Provider={email.provider}"
-                )
+        try:
+            # Create Vespa document using factory
+            document = self.document_factory.create_email_document(data)
+            
+            # Validate email data quality and log warnings for missing/empty fields
+            self._validate_email_data_quality(data.email, data.user_id)
 
-                # Validate email data quality and log warnings for missing/empty fields
-                self._validate_email_data_quality(email, data.user_id, i)
-
-                # Create typed document object
-                document = VespaDocumentType(
-                    id=email.id,
-                    user_id=data.user_id,  # Use the user_id from the event
-                    type="email",
-                    provider=email.provider,
-                    subject=email.subject or "",
-                    body=email.body or "",
-                    from_address=email.from_address or "",
-                    to_addresses=email.to_addresses or [],
-                    thread_id=email.thread_id,
-                    folder="",  # Not available in current model
-                    created_at=email.received_date,
-                    updated_at=email.sent_date,
-                    metadata={
-                        "is_read": email.is_read,
-                        "is_starred": email.is_starred,
-                        "has_attachments": email.has_attachments,
-                        "labels": email.labels,
-                        "size_bytes": email.size_bytes,
-                        "mime_type": email.mime_type,
-                        "headers": email.headers or {},
-                    },
-                    content_chunks=[],
-                    quoted_content="",
-                    thread_summary={},
-                    search_text="",
-                )
-
-                await self._ingest_document(document)
-            except Exception as e:
-                logger.error(f"Failed to process email {i+1} from batch: {e}")
-                # Continue processing other emails in the batch
-                continue
-
-    async def _process_calendar_message(
-        self, data: Union[CalendarUpdateEvent, CalendarBatchEvent]
-    ) -> None:
-        """Process a calendar message for Vespa indexing using typed events"""
-
-        if isinstance(data, CalendarUpdateEvent):
-            logger.info(f"Processing CalendarUpdateEvent for user {data.user_id}")
-            # Create typed document object
-            document = VespaDocumentType(
-                id=data.event.id,
-                user_id=data.user_id,
-                type="calendar",
-                provider=data.event.provider,
-                subject=data.event.title,
-                body=data.event.description or "",
-                from_address=data.event.organizer,
-                to_addresses=data.event.attendees,
-                thread_id="",
-                folder=data.event.calendar_id,
-                created_at=data.event.start_time,
-                updated_at=data.event.end_time,
-                metadata={
-                    "event_type": "calendar",
-                    "all_day": data.event.all_day,
-                    "location": data.event.location,
-                    "status": data.event.status,
-                    "visibility": data.event.visibility,
-                    "recurrence": data.event.recurrence,
-                    "reminders": data.event.reminders,
-                    "attachments": data.event.attachments,
-                    "color_id": data.event.color_id,
-                    "html_link": data.event.html_link,
-                },
-            )
             await self._ingest_document(document)
+        except Exception as e:
+            logger.error(f"Failed to process email event: {e}")
+            raise
 
-        elif isinstance(data, CalendarBatchEvent):
-            logger.info(
-                f"Processing CalendarBatchEvent with {len(data.events)} events for user {data.user_id}"
-            )
+    async def _process_calendar_event(self, data: CalendarEvent) -> None:
+        """Process a calendar event for Vespa indexing using typed CalendarEvent"""
+        logger.info(
+            f"Processing CalendarEvent for user {data.user_id}, event {data.event.id}, operation {data.operation}"
+        )
 
-            for i, event in enumerate(data.events):
-                try:
-                    # Log calendar event processing with key details in one line
-                    logger.info(
-                        f"Processing calendar event {i+1}/{len(data.events)}: "
-                        f"ID={event.id}, Title='{event.title or 'No title'}', "
-                        f"Provider={event.provider}"
-                    )
-
-                    document = VespaDocumentType(
-                        id=event.id,
-                        user_id=data.user_id,
-                        type="calendar",
-                        provider=event.provider,
-                        subject=event.title,
-                        body=event.description or "",
-                        from_address=event.organizer,
-                        to_addresses=event.attendees,
-                        thread_id="",
-                        folder=event.calendar_id,
-                        created_at=event.start_time,
-                        updated_at=event.end_time,
-                        metadata={
-                            "event_type": "calendar",
-                            "all_day": event.all_day,
-                            "location": event.location,
-                            "status": event.status,
-                            "visibility": event.visibility,
-                            "recurrence": event.recurrence,
-                            "reminders": event.reminders,
-                            "attachments": event.attachments,
-                            "color_id": event.color_id,
-                            "html_link": event.html_link,
-                        },
-                    )
-
-                    await self._ingest_document(document)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to process calendar event {i+1} from batch: {e}"
-                    )
-                    continue
-
-    async def _process_contact_message(
-        self, data: Union[ContactUpdateEvent, ContactBatchEvent]
-    ) -> None:
-        """Process a contact message for Vespa indexing using typed events"""
-
-        if isinstance(data, ContactUpdateEvent):
-            logger.info(f"Processing ContactUpdateEvent for user {data.user_id}")
-            # Create typed document object
-            document = VespaDocumentType(
-                id=data.contact.id,
-                user_id=data.user_id,
-                type="contact",
-                provider=data.contact.provider,
-                subject=data.contact.display_name,
-                body=data.contact.notes or "",
-                from_address="",
-                to_addresses=data.contact.email_addresses,
-                thread_id="",
-                folder="",
-                created_at=None,
-                updated_at=data.contact.last_modified,
-                metadata={
-                    "contact_type": "contact",
-                    "given_name": data.contact.given_name,
-                    "family_name": data.contact.family_name,
-                    "phone_numbers": data.contact.phone_numbers,
-                    "addresses": data.contact.addresses,
-                    "organizations": data.contact.organizations,
-                    "birthdays": (
-                        [bd.isoformat() for bd in data.contact.birthdays]
-                        if data.contact.birthdays
-                        else []
-                    ),
-                    "photos": data.contact.photos,
-                    "groups": data.contact.groups,
-                    "tags": data.contact.tags,
-                },
-            )
+        try:
+            # Create Vespa document using factory
+            document = self.document_factory.create_calendar_document(data)
             await self._ingest_document(document)
+        except Exception as e:
+            logger.error(f"Failed to process calendar event: {e}")
+            raise
 
-        elif isinstance(data, ContactBatchEvent):
-            logger.info(
-                f"Processing ContactBatchEvent with {len(data.contacts)} contacts for user {data.user_id}"
-            )
+    async def _process_contact_event(self, data: ContactEvent) -> None:
+        """Process a contact event for Vespa indexing using typed ContactEvent"""
+        logger.info(
+            f"Processing ContactEvent for user {data.user_id}, contact {data.contact.id}, operation {data.operation}"
+        )
 
-            for i, contact in enumerate(data.contacts):
-                try:
-                    # Log contact processing with key details in one line
-                    logger.info(
-                        f"Processing contact {i+1}/{len(data.contacts)}: "
-                        f"ID={contact.id}, Name='{((contact.given_name or '') + ' ' + (contact.family_name or '')).strip()}', "
-                        f"Provider={contact.provider}"
-                    )
+        try:
+            # Create Vespa document using factory
+            document = self.document_factory.create_contact_document(data)
+            await self._ingest_document(document)
+        except Exception as e:
+            logger.error(f"Failed to process contact event: {e}")
+            raise
 
-                    document = VespaDocumentType(
-                        id=contact.id,
-                        user_id=data.user_id,
-                        type="contact",
-                        provider=contact.provider,
-                        subject=contact.display_name,
-                        body=contact.notes or "",
-                        from_address="",
-                        to_addresses=contact.email_addresses,
-                        thread_id="",
-                        folder="",
-                        created_at=None,
-                        updated_at=contact.last_modified,
-                        metadata={
-                            "contact_type": "contact",
-                            "given_name": contact.given_name,
-                            "family_name": contact.family_name,
-                            "phone_numbers": contact.phone_numbers,
-                            "addresses": contact.addresses,
-                            "organizations": contact.organizations,
-                            "birthdays": (
-                                [bd.isoformat() for bd in contact.birthdays]
-                                if contact.birthdays
-                                else []
-                            ),
-                            "photos": contact.photos,
-                            "groups": contact.groups,
-                            "tags": contact.tags,
-                        },
-                    )
+    async def _process_document_event(self, data: DocumentEvent) -> None:
+        """Process a document event for Vespa indexing using typed DocumentEvent"""
+        logger.info(
+            f"Processing DocumentEvent for user {data.user_id}, document {data.document.id}, operation {data.operation}, content_type {data.content_type}"
+        )
 
-                    await self._ingest_document(document)
-                except Exception as e:
-                    logger.error(f"Failed to process contact {i+1} from batch: {e}")
-                    continue
+        try:
+            # Create Vespa document using factory
+            document = self.document_factory.create_document_document(data)
+            await self._ingest_document(document)
+        except Exception as e:
+            logger.error(f"Failed to process document event: {e}")
+            raise
+
+    async def _process_todo_event(self, data: TodoEvent) -> None:
+        """Process a todo event for Vespa indexing using typed TodoEvent"""
+        logger.info(
+            f"Processing TodoEvent for user {data.user_id}, todo {data.todo.id}, operation {data.operation}"
+        )
+
+        try:
+            # Create Vespa document using factory
+            document = self.document_factory.create_todo_document(data)
+            await self._ingest_document(document)
+        except Exception as e:
+            logger.error(f"Failed to process todo event: {e}")
+            raise
 
     async def _ingest_document(self, document: VespaDocumentType) -> Dict[str, Any]:
         """Ingest a document into Vespa
@@ -902,7 +972,7 @@ class PubSubConsumer:
             logger.error(f"Error in post-processing document {document_id}: {e}")
 
     def _validate_email_data_quality(
-        self, email: EmailData, user_id: str, email_index: int
+        self, email: EmailData, user_id: str
     ) -> None:
         """Validate email data quality and log warnings for missing/empty fields"""
 
@@ -939,7 +1009,7 @@ class PubSubConsumer:
 
             # Log the main warning message with trace_id
             logger.warning(
-                f"Email data quality issues detected for user {user_id}, email {email_index + 1}: "
+                f"Email data quality issues detected for user {user_id}: "
                 f"ID={email.id}, provider={email.provider}, trace_id={trace_id}, issues={quality_issues}"
             )
 
