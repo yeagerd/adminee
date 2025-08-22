@@ -192,3 +192,181 @@ Implementation checklist for the revised event-driven Office data architecture w
 - Internal tool events should follow same patterns as office data events
 - Contact relevance scoring thresholds need tuning based on user behavior
 - Consider contact data retention policies and GDPR compliance
+
+## Deferred Work and Incomplete Implementations
+
+During the comprehensive review of the implemented code, several areas were identified where work was deferred, marked as TODO, or potentially incomplete. These items should be addressed before considering the implementation production-ready.
+
+### 1. Idempotency Service Cleanup Implementation
+
+**File**: `services/common/idempotency/idempotency_service.py`
+**Issue**: The `cleanup_expired_keys` method is not fully implemented
+**Current Status**: Returns 0 and logs "Cleanup of expired idempotency keys not implemented"
+**Required Work**: Implement Redis key scanning and cleanup logic for expired idempotency keys
+
+```python
+def cleanup_expired_keys(self, max_age_hours: int = 24) -> int:
+    """Clean up expired idempotency keys."""
+    try:
+        # This would typically scan Redis for expired keys
+        # For now, return 0 as cleanup is not implemented
+        logger.info("Cleanup of expired idempotency keys not implemented")
+        return 0
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
+        return 0
+```
+
+### 2. Todo Event Processing Edge Cases
+
+**File**: `services/user/services/contact_discovery_service.py`
+**Issue**: Todo event processing has incomplete error handling for missing fields
+**Current Status**: Uses `hasattr()` check which may not catch all edge cases
+**Required Work**: Implement proper field validation and error handling for todo events
+
+```python
+def process_todo_event(self, event: TodoEvent) -> None:
+    """Process a todo event to discover contacts."""
+    try:
+        # Extract assignee information from todo
+        if hasattr(event.todo, 'assignee_email') and event.todo.assignee_email:
+            # ... processing logic
+    except Exception as e:
+        logger.error(f"Error processing todo event for contact discovery: {e}")
+```
+
+### 3. Missing Vespa Schema for Todo Documents
+
+**Issue**: While `TodoEvent` and `TodoData` models are implemented, there's no corresponding Vespa schema
+**Current Status**: Todo events are processed but may not be properly indexed in Vespa
+**Required Work**: Create `todo_document.sd` Vespa schema file
+
+**Files to Create**:
+- `vespa/schemas/todo_document.sd`
+
+### 4. Document Chunking Service Memory Management
+
+**File**: `services/common/services/document_chunking_service.py`
+**Issue**: Memory usage tracking is implemented but cleanup mechanisms are not fully developed
+**Current Status**: Chunks are cached but no automatic cleanup or memory pressure handling
+**Required Work**: Implement memory pressure detection and automatic cache cleanup
+
+### 5. Missing Integration Tests for Internal Tools
+
+**Issue**: While internal tool event schemas are defined, comprehensive integration tests are missing
+**Current Status**: Basic event models exist but end-to-end testing with internal tools is not implemented
+**Required Work**: Create integration tests for LLM chats, shipment events, meeting polls, and bookings
+
+**Files to Create**:
+- `services/common/tests/test_internal_tool_integration.py`
+
+### 6. Redis Reference Pattern Error Handling
+
+**File**: `services/common/idempotency/redis_reference.py`
+**Issue**: Some Redis operations lack comprehensive error handling and retry logic
+**Current Status**: Basic error handling exists but may not handle all Redis failure scenarios
+**Required Work**: Implement retry logic, circuit breaker pattern, and comprehensive error handling
+
+### 7. Subscription Configuration Validation
+
+**File**: `services/common/config/subscription_config.py`
+**Issue**: While validation methods exist, runtime validation during service startup is not implemented
+**Current Status**: Configuration is validated but services don't verify their subscriptions exist
+**Required Work**: Implement runtime subscription validation and auto-creation if missing
+
+### 8. Missing Monitoring and Alerting
+
+**Issue**: While the architecture is implemented, production monitoring and alerting are not in place
+**Current Status**: Basic logging exists but no metrics collection, dashboards, or alerting
+**Required Work**: Implement Prometheus metrics, Grafana dashboards, and alerting rules
+
+**Components to Implement**:
+- Metrics collection for event processing rates
+- Error rate monitoring and alerting
+- Subscription lag monitoring
+- Redis performance metrics
+- Vespa indexing performance metrics
+
+### 9. Backward Compatibility Layer
+
+**Issue**: While deprecated methods exist, there's no comprehensive backward compatibility layer
+**Current Status**: Old event types are marked as deprecated but may still be used in some services
+**Required Work**: Implement feature flags and gradual migration strategy
+
+**Components to Implement**:
+- Feature flag system for gradual rollout
+- Event type compatibility layer
+- Migration validation tools
+- Rollback mechanisms
+
+### 10. Performance Testing and Optimization
+
+**Issue**: While functional tests exist, performance testing under load is not implemented
+**Current Status**: Basic integration tests pass but no performance benchmarks
+**Required Work**: Implement load testing, performance profiling, and optimization
+
+**Components to Implement**:
+- Load testing scripts for event publishing
+- Consumer performance benchmarks
+- Redis performance testing
+- Vespa indexing performance testing
+- Memory usage profiling
+
+### 11. Security Hardening
+
+**Issue**: Basic security exists but production-grade security measures are not fully implemented
+**Current Status**: Basic authentication and authorization exist
+**Required Work**: Implement comprehensive security measures
+
+**Components to Implement**:
+- Event payload encryption
+- Redis connection encryption
+- Pub/Sub message encryption
+- Audit logging for all operations
+- Rate limiting and DDoS protection
+
+### 12. Disaster Recovery and Backup
+
+**Issue**: No disaster recovery procedures or backup strategies are implemented
+**Current Status**: Basic error handling exists but no recovery mechanisms
+**Required Work**: Implement comprehensive disaster recovery
+
+**Components to Implement**:
+- Event replay mechanisms
+- Data backup strategies
+- Service recovery procedures
+- Cross-region failover
+- Data consistency validation tools
+
+## Priority Order for Addressing Deferred Work
+
+1. **High Priority** (Production Blocking):
+   - Todo Vespa schema implementation
+   - Idempotency service cleanup implementation
+   - Missing integration tests for internal tools
+
+2. **Medium Priority** (Production Ready but Needs Improvement):
+   - Document chunking memory management
+   - Redis reference pattern error handling
+   - Subscription configuration validation
+
+3. **Low Priority** (Nice to Have):
+   - Performance testing and optimization
+   - Security hardening
+   - Disaster recovery and backup
+   - Backward compatibility layer
+   - Monitoring and alerting (covered in Phase 8)
+
+## Estimated Effort
+
+- **High Priority Items**: 2-3 days
+- **Medium Priority Items**: 3-5 days  
+- **Low Priority Items**: 1-2 weeks
+- **Total Additional Effort**: 2-3 weeks
+
+## Recommendations
+
+1. **Immediate**: Address high priority items before production deployment
+2. **Short Term**: Complete medium priority items within 1-2 weeks
+3. **Long Term**: Plan low priority items for future sprints
+4. **Documentation**: Update this task list as items are completed
