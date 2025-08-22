@@ -50,13 +50,13 @@ class TestTimezoneFormatting:
 
     def test_format_utc_to_eastern_time(self):
         """Test converting UTC times to Eastern Time."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         start_utc = "2025-06-20T17:00:00Z"  # 5:00 PM UTC
         end_utc = "2025-06-20T17:30:00Z"  # 5:30 PM UTC
         timezone_str = "America/New_York"
 
-        result = format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
 
         # In summer, Eastern Time is UTC-4, so 17:00 UTC = 1:00 PM EDT
         # Note: The exact format may vary based on system locale
@@ -66,13 +66,13 @@ class TestTimezoneFormatting:
 
     def test_format_utc_to_pacific_time(self):
         """Test converting UTC times to Pacific Time."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         start_utc = "2025-06-20T22:00:00Z"  # 10:00 PM UTC
         end_utc = "2025-06-20T23:00:00Z"  # 11:00 PM UTC
         timezone_str = "America/Los_Angeles"
 
-        result = format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
 
         # In summer, Pacific Time is UTC-7, so 22:00 UTC = 3:00 PM PDT
         assert "3:00 PM" in result or "15:00" in result
@@ -80,13 +80,13 @@ class TestTimezoneFormatting:
 
     def test_format_overnight_event(self):
         """Test formatting events that span midnight."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         start_utc = "2025-06-20T23:00:00Z"  # 11:00 PM UTC
         end_utc = "2025-06-21T01:00:00Z"  # 1:00 AM UTC next day
         timezone_str = "America/New_York"
 
-        result = format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
 
         # In Eastern time, this event doesn't actually span midnight
         # 23:00 UTC = 7:00 PM EDT, 01:00 UTC = 9:00 PM EDT (same day)
@@ -96,13 +96,13 @@ class TestTimezoneFormatting:
 
     def test_format_with_invalid_timezone(self):
         """Test handling of invalid timezone strings."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         start_utc = "2025-06-20T17:00:00Z"
         end_utc = "2025-06-20T17:30:00Z"
         invalid_timezone = "Invalid/Timezone"
 
-        result = format_event_time_for_display(start_utc, end_utc, invalid_timezone)
+        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, invalid_timezone)
 
         # Should fallback to system timezone and not crash
         assert "to" in result
@@ -110,12 +110,12 @@ class TestTimezoneFormatting:
 
     def test_format_without_timezone(self):
         """Test formatting without specifying timezone (should use system timezone)."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         start_utc = "2025-06-20T17:00:00Z"
         end_utc = "2025-06-20T17:30:00Z"
 
-        result = format_event_time_for_display(start_utc, end_utc)
+        result = UtilityTools().format_event_time_for_display(start_utc, end_utc)
 
         # Should use system timezone and not crash
         assert "to" in result
@@ -123,13 +123,13 @@ class TestTimezoneFormatting:
 
     def test_format_with_malformed_datetime(self):
         """Test handling of malformed datetime strings."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         start_utc = "invalid-datetime"
         end_utc = "2025-06-20T17:30:00Z"
         timezone_str = "America/New_York"
 
-        result = format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
 
         # Should fallback to original strings
         assert start_utc in result
@@ -137,7 +137,7 @@ class TestTimezoneFormatting:
 
     def test_format_with_different_datetime_formats(self):
         """Test handling different ISO datetime formats."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         # Test with different timezone formats
         test_cases = [
@@ -147,7 +147,7 @@ class TestTimezoneFormatting:
         ]
 
         for start_utc, end_utc in test_cases:
-            result = format_event_time_for_display(
+            result = UtilityTools().format_event_time_for_display(
                 start_utc, end_utc, "America/New_York"
             )
             assert "to" in result
@@ -238,7 +238,7 @@ class TestBrieflyAgentTimezone:
 class TestTimezoneIntegration:
     """Test end-to-end timezone integration."""
 
-    @patch("services.chat.agents.llm_tools.requests.get")
+    @patch("services.chat.tools.utility_tools.requests.get")
     def test_calendar_events_get_display_time_field(self, mock_requests_get):
         """Test that calendar events get a display_time field with proper timezone formatting via BrieflyAgent tools."""
         from datetime import datetime, timezone
@@ -385,9 +385,9 @@ class TestTimezoneErrorHandling:
 
     def test_format_event_time_with_none_values(self):
         """Test format_event_time_for_display with None values."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
-        result = format_event_time_for_display(None, None, "America/New_York")
+        result = UtilityTools().format_event_time_for_display(None, None, "America/New_York")
 
         # Should handle None gracefully and return fallback
         assert result is not None
@@ -395,9 +395,9 @@ class TestTimezoneErrorHandling:
 
     def test_format_event_time_with_empty_strings(self):
         """Test format_event_time_for_display with empty strings."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
-        result = format_event_time_for_display("", "", "America/New_York")
+        result = UtilityTools().format_event_time_for_display("", "", "America/New_York")
 
         # Should handle empty strings gracefully
         assert result is not None
@@ -405,7 +405,7 @@ class TestTimezoneErrorHandling:
 
     def test_format_event_time_with_pytz_exception(self):
         """Test format_event_time_for_display when pytz raises an exception."""
-        from services.chat.agents.llm_tools import format_event_time_for_display
+        from services.chat.tools.utility_tools import UtilityTools
 
         with patch("pytz.timezone") as mock_timezone:
             mock_timezone.side_effect = Exception("Timezone error")
@@ -413,7 +413,7 @@ class TestTimezoneErrorHandling:
             start_utc = "2025-06-20T17:00:00Z"
             end_utc = "2025-06-20T17:30:00Z"
 
-            result = format_event_time_for_display(
+            result = UtilityTools().format_event_time_for_display(
                 start_utc, end_utc, "America/New_York"
             )
 

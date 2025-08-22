@@ -23,15 +23,16 @@ class MockResponse:
 @pytest.fixture(autouse=True)
 def clear_drafts(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import _draft_storage
+    from services.chat.tools.draft_tools import DraftTools
 
-    _draft_storage.clear()
+    draft_tools = DraftTools("test_user_id")
+    draft_tools.clear_all_drafts()
 
 
 @pytest.fixture(autouse=True)
 def mock_requests():
     """Mock requests module for all tests to work in parallel execution."""
-    with patch("services.chat.agents.llm_tools.requests.get") as mock_get:
+    with patch("services.chat.tools.data_tools.requests.get") as mock_get:
         yield mock_get
 
 
@@ -68,7 +69,7 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
     from datetime import datetime, timezone
 
-    from services.chat.agents.llm_tools import get_calendar_events
+    from services.chat.tools.data_tools import DataTools
     from services.office.schemas import CalendarEvent, Provider
 
     def mock_get(*args, **kwargs):
@@ -139,7 +140,8 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
     # Set the side_effect on the mock
     mock_requests.side_effect = mock_get
 
-    result = get_calendar_events("user123")
+    data_tools = DataTools("user123")
+    result = data_tools.get_calendar_events()
     assert result is not None
     assert "events" in result
     assert len(result["events"]) == 2
@@ -149,7 +151,7 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
 
 def test_get_calendar_events_malformed(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_calendar_events
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -193,7 +195,8 @@ def test_get_calendar_events_malformed(mock_requests, monkeypatch):
     # Set the side_effect on the mock
     mock_requests.side_effect = mock_get
 
-    result = get_calendar_events("user123")
+    data_tools = DataTools("user123")
+    result = data_tools.get_calendar_events()
     assert result is not None
     assert "error" in result
     assert "validation" in result["error"].lower()
@@ -201,7 +204,7 @@ def test_get_calendar_events_malformed(mock_requests, monkeypatch):
 
 def test_get_calendar_events_timeout(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_calendar_events
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -227,14 +230,15 @@ def test_get_calendar_events_timeout(mock_requests, monkeypatch):
             raise requests.Timeout()
 
     mock_requests.side_effect = mock_get
-    result = get_calendar_events("user123")
+    data_tools = DataTools("user123")
+    result = data_tools.get_calendar_events()
     assert "error" in result
     assert "timed out" in result["error"]
 
 
 def test_get_calendar_events_http_error(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_calendar_events
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -260,14 +264,15 @@ def test_get_calendar_events_http_error(mock_requests, monkeypatch):
             raise requests.HTTPError()
 
     mock_requests.side_effect = mock_get
-    result = get_calendar_events("user123")
+    data_tools = DataTools("user123")
+    result = data_tools.get_calendar_events()
     assert "error" in result
     assert "HTTP error" in result["error"]
 
 
 def test_get_calendar_events_unexpected(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_calendar_events
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -293,14 +298,15 @@ def test_get_calendar_events_unexpected(mock_requests, monkeypatch):
             raise Exception("kaboom")
 
     mock_requests.side_effect = mock_get
-    result = get_calendar_events("user123")
+    data_tools = DataTools("user123")
+    result = data_tools.get_calendar_events()
     assert "error" in result
     assert "Unexpected error" in result["error"]
 
 
 def test_get_emails_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_emails
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -337,14 +343,15 @@ def test_get_emails_success(mock_requests, monkeypatch):
             )
 
     mock_requests.side_effect = mock_get
-    result = get_emails("user123")
+    data_tools = DataTools("user123")
+    result = data_tools.get_emails()
     assert "emails" in result
     assert result["emails"][0]["subject"] == "Test"
 
 
 def test_get_emails_malformed(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_emails
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -370,14 +377,14 @@ def test_get_emails_malformed(mock_requests, monkeypatch):
             return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
 
     mock_requests.side_effect = mock_get
-    result = get_emails("user123")
+    result = DataTools("user123").get_emails()
     assert "error" in result
     assert "Malformed" in result["error"]
 
 
 def test_get_emails_timeout(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_emails
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -403,14 +410,14 @@ def test_get_emails_timeout(mock_requests, monkeypatch):
             raise requests.Timeout()
 
     mock_requests.side_effect = mock_get
-    result = get_emails("user123")
+    result = DataTools("user123").get_emails()
     assert "error" in result
     assert "timed out" in result["error"]
 
 
 def test_get_emails_http_error(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_emails
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -436,14 +443,14 @@ def test_get_emails_http_error(mock_requests, monkeypatch):
             raise requests.HTTPError()
 
     mock_requests.side_effect = mock_get
-    result = get_emails("user123")
+    result = DataTools("user123").get_emails()
     assert "error" in result
     assert "HTTP error" in result["error"]
 
 
 def test_get_emails_unexpected(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_emails
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -469,14 +476,14 @@ def test_get_emails_unexpected(mock_requests, monkeypatch):
             raise Exception("kaboom")
 
     mock_requests.side_effect = mock_get
-    result = get_emails("user123")
+    result = DataTools("user123").get_emails()
     assert "error" in result
     assert "Unexpected error" in result["error"]
 
 
 def test_get_notes_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_notes
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -513,14 +520,14 @@ def test_get_notes_success(mock_requests, monkeypatch):
             )
 
     mock_requests.side_effect = mock_get
-    result = get_notes("user123")
+    result = DataTools("user123").get_notes()
     assert "notes" in result
     assert result["notes"][0]["content"] == "Note"
 
 
 def test_get_documents_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_documents
+    from services.chat.tools.data_tools import DataTools
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -557,16 +564,17 @@ def test_get_documents_success(mock_requests, monkeypatch):
             )
 
     mock_requests.side_effect = mock_get
-    result = get_documents("user123")
+    result = DataTools("user123").get_documents()
     assert "documents" in result
     assert result["documents"][0]["title"] == "Doc"
 
 
 def test_create_draft_email(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import create_draft_email
+    from services.chat.tools.draft_tools import DraftTools
 
-    result = create_draft_email(
+    draft_tools = DraftTools("user123")
+    result = draft_tools.create_draft_email(
         thread_id="thread123", to="test@example.com", subject="Test", body="Body"
     )
     assert result["success"] is True
@@ -576,19 +584,21 @@ def test_create_draft_email(monkeypatch):
 
 def test_delete_draft_email(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import create_draft_email, delete_draft_email
+    from services.chat.tools.draft_tools import DraftTools
 
-    create_draft_email(thread_id="thread123", to="test@example.com")
-    result = delete_draft_email(thread_id="thread123")
+    draft_tools = DraftTools("user123")
+    draft_tools.create_draft_email(thread_id="thread123", to="test@example.com")
+    result = draft_tools.delete_draft_email(thread_id="thread123")
     assert result["success"] is True
     assert "deleted" in result["message"]
 
 
 def test_create_draft_calendar_event(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import create_draft_calendar_event
+    from services.chat.tools.draft_tools import DraftTools
 
-    result = create_draft_calendar_event(
+    draft_tools = DraftTools("user123")
+    result = draft_tools.create_draft_calendar_event(
         thread_id="thread123",
         title="Meeting",
         start_time="2025-06-07T10:00:00Z",
@@ -601,22 +611,21 @@ def test_create_draft_calendar_event(monkeypatch):
 
 def test_delete_draft_calendar_event(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import (
-        create_draft_calendar_event,
-        delete_draft_calendar_event,
-    )
+    from services.chat.tools.draft_tools import DraftTools
 
-    create_draft_calendar_event(thread_id="thread123", title="Meeting")
-    result = delete_draft_calendar_event(thread_id="thread123")
+    draft_tools = DraftTools("user123")
+    draft_tools.create_draft_calendar_event(thread_id="thread123", title="Meeting")
+    result = draft_tools.delete_draft_calendar_event(thread_id="thread123")
     assert result["success"] is True
     assert "deleted" in result["message"]
 
 
 def test_create_draft_calendar_change(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import create_draft_calendar_change
+    from services.chat.tools.draft_tools import DraftTools
 
-    result = create_draft_calendar_change(
+    draft_tools = DraftTools("user123")
+    result = draft_tools.create_draft_calendar_change(
         thread_id="thread123",
         event_id="event456",
         change_type="reschedule",
@@ -630,47 +639,60 @@ def test_create_draft_calendar_change(monkeypatch):
 
 def test_delete_draft_calendar_change(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import (
-        create_draft_calendar_change,
-        delete_draft_calendar_edit,
-    )
+    from services.chat.tools.draft_tools import DraftTools
 
-    create_draft_calendar_change(
+    draft_tools = DraftTools("user123")
+    draft_tools.create_draft_calendar_change(
         thread_id="thread123",
         event_id="event456",
         change_type="cancel",
         new_title="Updated Meeting",
     )
-    result = delete_draft_calendar_edit(thread_id="thread123")
+    result = draft_tools.delete_draft_calendar_edit(thread_id="thread123")
     assert result["success"] is True
     assert "deleted" in result["message"]
 
 
 def test_draft_tools_thread_isolation(monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import (
-        _draft_storage,
-        create_draft_calendar_event,
-        create_draft_email,
-    )
+    from services.chat.tools.draft_tools import DraftTools
 
-    create_draft_email(thread_id="thread1", to="user1@example.com")
-    create_draft_email(thread_id="thread2", to="user2@example.com")
-    create_draft_calendar_event(thread_id="thread1", title="Meeting 1")
-    create_draft_calendar_event(thread_id="thread2", title="Meeting 2")
-    assert "thread1_email" in _draft_storage
-    assert "thread2_email" in _draft_storage
-    assert "thread1_calendar_event" in _draft_storage
-    assert "thread2_calendar_event" in _draft_storage
-    assert _draft_storage["thread1_email"]["to"] == "user1@example.com"
-    assert _draft_storage["thread2_email"]["to"] == "user2@example.com"
-    assert _draft_storage["thread1_calendar_event"]["title"] == "Meeting 1"
-    assert _draft_storage["thread2_calendar_event"]["title"] == "Meeting 2"
+    draft_tools = DraftTools("user123")
+    draft_tools.create_draft_email(thread_id="thread1", to="user1@example.com")
+    draft_tools.create_draft_email(thread_id="thread2", to="user2@example.com")
+    draft_tools.create_draft_calendar_event(thread_id="thread1", title="Meeting 1")
+    draft_tools.create_draft_calendar_event(thread_id="thread2", title="Meeting 2")
+    
+    # Get draft data to verify
+    thread1_data = draft_tools.get_draft_data("thread1")
+    thread2_data = draft_tools.get_draft_data("thread2")
+    
+    # Check that drafts were created
+    assert len(thread1_data) > 0
+    assert len(thread2_data) > 0
+    
+    # Verify email drafts
+    email_drafts = [d for d in thread1_data if d.get("type") == "email"]
+    assert len(email_drafts) > 0
+    assert email_drafts[0]["to"] == "user1@example.com"
+    
+    email_drafts2 = [d for d in thread2_data if d.get("type") == "email"]
+    assert len(email_drafts2) > 0
+    assert email_drafts2[0]["to"] == "user2@example.com"
+    
+    # Verify calendar event drafts
+    calendar_drafts = [d for d in thread1_data if d.get("type") == "calendar_event"]
+    assert len(calendar_drafts) > 0
+    assert calendar_drafts[0]["title"] == "Meeting 1"
+    
+    calendar_drafts2 = [d for d in thread2_data if d.get("type") == "calendar_event"]
+    assert len(calendar_drafts2) > 0
+    assert calendar_drafts2[0]["title"] == "Meeting 2"
 
 
 def test_tool_registry(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
     def mock_get(*args, **kwargs):
         url = args[0]
@@ -726,7 +748,7 @@ def test_tool_registry(mock_requests, monkeypatch):
             return MockResponse({"error": "Not found"}, 404)
 
     mock_requests.side_effect = mock_get
-    registry = get_tool_registry()
+    registry = GetTools().get_tool.registry
     calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert "events" in calendar_result.raw_output
     email_result = registry.execute_tool("get_emails", user_id="user123")
@@ -735,7 +757,7 @@ def test_tool_registry(mock_requests, monkeypatch):
 
 def test_tool_registry_tooloutput_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
     def mock_get(*args, **kwargs):
         url = args[0]
@@ -787,7 +809,7 @@ def test_tool_registry_tooloutput_success(mock_requests, monkeypatch):
             )
 
     mock_requests.side_effect = mock_get
-    registry = get_tool_registry()
+    registry = GetTools().get_tool.registry
     calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert hasattr(calendar_result, "raw_output")
     assert "events" in calendar_result.raw_output
@@ -795,9 +817,9 @@ def test_tool_registry_tooloutput_success(mock_requests, monkeypatch):
 
 def test_tool_registry_tooloutput_error(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
-    registry = get_tool_registry()
+    registry = GetTools().get_tool.registry
     error_result = registry.execute_tool("calendar")
     assert hasattr(error_result, "raw_output")
     assert "error" in error_result.raw_output
@@ -805,7 +827,7 @@ def test_tool_registry_tooloutput_error(mock_requests, monkeypatch):
 
 def test_tool_registry_tooloutput_for_get_tools(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
     def mock_get(*args, **kwargs):
         url = args[0]
@@ -857,7 +879,7 @@ def test_tool_registry_tooloutput_for_get_tools(mock_requests, monkeypatch):
             )
 
     mock_requests.side_effect = mock_get
-    registry = get_tool_registry()
+    registry = GetTools().get_tool.registry
     calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert "events" in calendar_result.raw_output
     email_result = registry.execute_tool("get_emails", user_id="user123")
@@ -866,7 +888,7 @@ def test_tool_registry_tooloutput_for_get_tools(mock_requests, monkeypatch):
 
 def test_tool_registry_execute_tool_returns_tooloutput(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
     def mock_get(*args, **kwargs):
         url = args[0]
@@ -918,7 +940,7 @@ def test_tool_registry_execute_tool_returns_tooloutput(mock_requests, monkeypatc
             )
 
     mock_requests.side_effect = mock_get
-    registry = get_tool_registry()
+    registry = GetTools().get_tool.registry
     email_result = registry.execute_tool("get_emails", user_id="user123")
     assert hasattr(email_result, "raw_output")
     assert "emails" in email_result.raw_output
@@ -929,9 +951,9 @@ def test_tool_registry_execute_tool_returns_tooloutput(mock_requests, monkeypatc
 
 def test_tool_registry_execute_tool_error(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
-    registry = get_tool_registry()
+    registry = GetTools().get_tool.registry
     result = registry.execute_tool("calendar")
     assert hasattr(result, "raw_output")
     assert "error" in result.raw_output
@@ -939,8 +961,8 @@ def test_tool_registry_execute_tool_error(mock_requests, monkeypatch):
 
 def test_get_tool_registry_singleton(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
-    from services.chat.agents.llm_tools import get_tool_registry
+    from services.chat.tools.get_tools import GetTools
 
-    registry1 = get_tool_registry()
-    registry2 = get_tool_registry()
+    registry1 = GetTools().get_tool.registry
+    registry2 = GetTools().get_tool.registry
     assert registry1 is registry2

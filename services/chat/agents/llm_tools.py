@@ -1709,11 +1709,11 @@ class ToolRegistry:
                         {"raw_output": {"error": "user_id is required"}},
                     )()
 
-                # Import here to avoid circular imports
-                from services.chat.agents.llm_tools import get_calendar_events
+                # Use DataTools instead of circular import
+                from services.chat.tools.data_tools import DataTools
 
-                result = get_calendar_events(
-                    user_id=user_id,
+                data_tools = DataTools(user_id)
+                result = data_tools.get_calendar_events(
                     start_date=kwargs.get("start_date"),
                     end_date=kwargs.get("end_date"),
                     time_zone=kwargs.get("time_zone", "UTC"),
@@ -1732,11 +1732,11 @@ class ToolRegistry:
                         {"raw_output": {"error": "user_id is required"}},
                     )()
 
-                # Import here to avoid circular imports
-                from services.chat.agents.llm_tools import get_emails
+                # Use DataTools instead of circular import
+                from services.chat.tools.data_tools import DataTools
 
-                result = get_emails(
-                    user_id=user_id,
+                data_tools = DataTools(user_id)
+                result = data_tools.get_emails(
                     start_date=kwargs.get("start_date"),
                     end_date=kwargs.get("end_date"),
                     folder=kwargs.get("folder"),
@@ -1756,11 +1756,11 @@ class ToolRegistry:
                         {"raw_output": {"error": "user_id is required"}},
                     )()
 
-                # Import here to avoid circular imports
-                from services.chat.agents.llm_tools import get_notes
+                # Use DataTools instead of circular import
+                from services.chat.tools.data_tools import DataTools
 
-                result = get_notes(
-                    user_id=user_id,
+                data_tools = DataTools(user_id)
+                result = data_tools.get_notes(
                     search_query=kwargs.get("search_query"),
                     max_results=kwargs.get("max_results"),
                 )
@@ -1776,11 +1776,11 @@ class ToolRegistry:
                         {"raw_output": {"error": "user_id is required"}},
                     )()
 
-                # Import here to avoid circular imports
-                from services.chat.agents.llm_tools import get_documents
+                # Use DataTools instead of circular import
+                from services.chat.tools.data_tools import DataTools
 
-                result = get_documents(
-                    user_id=user_id,
+                data_tools = DataTools(user_id)
+                result = data_tools.get_documents(
                     document_type=kwargs.get("document_type"),
                     start_date=kwargs.get("start_date"),
                     end_date=kwargs.get("end_date"),

@@ -115,15 +115,15 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 
 ## Phase 3: Integration and Testing
 
-### [ ] Task 3.1: Update Import Structure
-- [ ] Update `services/chat/tools/__init__.py` to include all new tool classes:
-  - [ ] Add `DataTools` export
-  - [ ] Add `UtilityTools` export  
-  - [ ] Add `ToolRegistry` export
-- [ ] Update all files that import from llm_tools.py:
-  - [ ] Update imports in `services/chat/agents/briefly_agent.py`
-  - [ ] Update imports in test files
-  - [ ] Search for any other references to llm_tools functions
+### [x] Task 3.1: Update Import Structure
+- [x] Update `services/chat/tools/__init__.py` to include all new tool classes:
+  - [x] Add `DataTools` export
+  - [x] Add `UtilityTools` export  
+  - [x] Add `ToolRegistry` export
+    - [x] Update all files that import from llm_tools.py:
+          - [x] Update imports in `services/chat/agents/briefly_agent.py`
+        - [x] Update imports in test files
+        - [x] Search for any other references to llm_tools functions
 
 ### [ ] Task 3.2: Clean Up llm_tools.py
 - [ ] Remove all functions that have been moved to other files
