@@ -25,22 +25,26 @@ def get_engine() -> Any:
 
         # Configure asyncpg timeout parameters for better reliability
         connect_args = {}
+        engine_kwargs = {
+            "echo": False,
+            "connect_args": connect_args,
+        }
+        
         if database_url.startswith("postgresql"):
             # command_timeout sets the default timeout for operations
             connect_args["command_timeout"] = 10.0  # 10 seconds
             # timeout sets the connection timeout
             connect_args["timeout"] = 30.0  # 30 seconds
+            
+            # Add connection pool settings only for PostgreSQL
+            engine_kwargs.update({
+                "pool_size": 10,
+                "max_overflow": 20,
+                "pool_timeout": 30,
+                "pool_recycle": 3600,
+            })
 
-        _engine = create_async_engine(
-            database_url,
-            echo=False,
-            # Add connection pool settings to prevent hangs
-            pool_size=10,
-            max_overflow=20,
-            pool_timeout=30,
-            pool_recycle=3600,
-            connect_args=connect_args,
-        )
+        _engine = create_async_engine(database_url, **engine_kwargs)
     return _engine
 
 
