@@ -31,7 +31,6 @@ def setup_pubsub_topics() -> None:
         "emails",  # Replaces "email-backfill"
         "calendars",  # Replaces "calendar-updates"
         "contacts",  # Replaces "contact-updates"
-        
         # Office document types
         "word_documents",
         "word_fragments",
@@ -40,10 +39,8 @@ def setup_pubsub_topics() -> None:
         "presentation_documents",
         "presentation_fragments",
         "task_documents",
-        
         # Todo types
         "todos",
-        
         # Internal tool types
         "llm_chats",
         "shipment_events",

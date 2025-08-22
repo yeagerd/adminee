@@ -48,9 +48,13 @@ class EmailEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the email operation")
     email: EmailData = Field(..., description="Email data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
     last_updated: datetime = Field(..., description="When the email was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
     provider: str = Field(..., description="Email provider (gmail, outlook, etc.)")
     sync_type: str = Field(default="sync", description="Type of sync operation")
 

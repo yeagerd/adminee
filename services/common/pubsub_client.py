@@ -9,21 +9,20 @@ from typing import Any, Callable, Dict, Optional, Union
 
 from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
-from services.common.events import (
+from services.common.events import (  # Keep deprecated events for backward compatibility
     BaseEvent,
-    EmailEvent,
-    CalendarEvent,
-    ContactEvent,
-    DocumentEvent,
-    TodoEvent,
-    # Keep deprecated events for backward compatibility
     CalendarBatchEvent,
+    CalendarEvent,
     CalendarUpdateEvent,
     ContactBatchEvent,
+    ContactEvent,
     ContactUpdateEvent,
+    DocumentEvent,
     EmailBackfillEvent,
     EmailBatchEvent,
+    EmailEvent,
     EmailUpdateEvent,
+    TodoEvent,
 )
 from services.common.logging_config import get_logger
 from services.common.telemetry import get_tracer
@@ -161,9 +160,7 @@ class PubSubClient:
                 raise
 
     # New event publishing methods for event-driven architecture
-    def publish_email_event(
-        self, event: EmailEvent, topic_name: str = "emails"
-    ) -> str:
+    def publish_email_event(self, event: EmailEvent, topic_name: str = "emails") -> str:
         """Publish email event with type safety."""
         logger.info(
             "Publishing email event",
@@ -225,9 +222,7 @@ class PubSubClient:
         )
         return self.publish_message(topic_name, event)
 
-    def publish_todo_event(
-        self, event: TodoEvent, topic_name: str = "todos"
-    ) -> str:
+    def publish_todo_event(self, event: TodoEvent, topic_name: str = "todos") -> str:
         """Publish todo event with type safety."""
         logger.info(
             "Publishing todo event",

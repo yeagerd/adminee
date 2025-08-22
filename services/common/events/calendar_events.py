@@ -55,9 +55,13 @@ class CalendarEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the calendar operation")
     event: CalendarEventData = Field(..., description="Calendar event data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
     last_updated: datetime = Field(..., description="When the event was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
     provider: str = Field(..., description="Calendar provider (google, outlook, etc.)")
     calendar_id: str = Field(..., description="Calendar ID where the event is stored")
 

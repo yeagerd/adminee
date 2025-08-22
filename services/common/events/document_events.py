@@ -16,9 +16,15 @@ class DocumentData(BaseModel):
     id: str = Field(..., description="Unique document ID")
     title: str = Field(..., description="Document title")
     content: str = Field(..., description="Document content")
-    content_type: str = Field(..., description="Document type (word, sheet, presentation)")
-    provider: str = Field(..., description="Document provider (google, microsoft, etc.)")
-    provider_document_id: str = Field(..., description="Provider's internal document ID")
+    content_type: str = Field(
+        ..., description="Document type (word, sheet, presentation)"
+    )
+    provider: str = Field(
+        ..., description="Document provider (google, microsoft, etc.)"
+    )
+    provider_document_id: str = Field(
+        ..., description="Provider's internal document ID"
+    )
     owner_email: str = Field(..., description="Document owner's email")
     permissions: List[str] = Field(
         default_factory=list, description="Document permissions"
@@ -46,7 +52,9 @@ class SheetDocumentData(DocumentData):
     row_count: Optional[int] = Field(None, description="Number of rows")
     column_count: Optional[int] = Field(None, description="Number of columns")
     sheet_count: Optional[int] = Field(None, description="Number of sheets")
-    formulas: List[str] = Field(default_factory=list, description="Formulas in the sheet")
+    formulas: List[str] = Field(
+        default_factory=list, description="Formulas in the sheet"
+    )
 
 
 class PresentationDocumentData(DocumentData):
@@ -66,11 +74,21 @@ class DocumentEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the document operation")
     document: DocumentData = Field(..., description="Document data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
-    last_updated: datetime = Field(..., description="When the document was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
-    provider: str = Field(..., description="Document provider (google, microsoft, etc.)")
-    content_type: str = Field(..., description="Document type (word, sheet, presentation)")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
+    last_updated: datetime = Field(
+        ..., description="When the document was last updated"
+    )
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
+    provider: str = Field(
+        ..., description="Document provider (google, microsoft, etc.)"
+    )
+    content_type: str = Field(
+        ..., description="Document type (word, sheet, presentation)"
+    )
 
     def model_post_init(self, __context: Any) -> None:
         """Set default source service if not provided."""
@@ -98,9 +116,15 @@ class DocumentFragmentEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the fragment operation")
     fragment: DocumentFragmentData = Field(..., description="Fragment data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
-    last_updated: datetime = Field(..., description="When the fragment was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
+    last_updated: datetime = Field(
+        ..., description="When the fragment was last updated"
+    )
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
     document_id: str = Field(..., description="Parent document ID")
 
     def model_post_init(self, __context: Any) -> None:

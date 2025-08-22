@@ -53,9 +53,13 @@ class ContactEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the contact operation")
     contact: ContactData = Field(..., description="Contact data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
     last_updated: datetime = Field(..., description="When the contact was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
     provider: str = Field(..., description="Contact provider (google, outlook, etc.)")
 
     def model_post_init(self, __context: Any) -> None:

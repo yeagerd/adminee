@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
-from services.common.events import EmailEvent, EmailData, EventMetadata
+from services.common.events import EmailData, EmailEvent, EventMetadata
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
 from services.office.core.auth import verify_backfill_api_key

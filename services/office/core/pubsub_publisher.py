@@ -26,11 +26,11 @@ except Exception:
         "Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub"
     )
 
-from services.common.logging_config import get_logger
-from services.common.events.email_events import EmailEvent, EmailData
-from services.common.events.calendar_events import CalendarEvent, CalendarEventData
-from services.common.events.contact_events import ContactEvent, ContactData
 from services.common.events.base_events import EventMetadata
+from services.common.events.calendar_events import CalendarEvent, CalendarEventData
+from services.common.events.contact_events import ContactData, ContactEvent
+from services.common.events.email_events import EmailData, EmailEvent
+from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -78,26 +78,26 @@ class PubSubPublisher:
             self.publisher = None
 
     def _create_event_metadata(
-        self, 
+        self,
         source_service: str = "office-service",
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> EventMetadata:
         """Create event metadata with proper tracing and context"""
         return EventMetadata(
             source_service=source_service,
             user_id=user_id,
             correlation_id=correlation_id,
-            tags={"publisher": "office-service"}
+            tags={"publisher": "office-service"},
         )
 
     async def publish_email_event(
-        self, 
-        email_data: EmailData, 
+        self,
+        email_data: EmailData,
         operation: str = "create",
         batch_id: Optional[str] = None,
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> bool:
         """Publish an EmailEvent to Pub/Sub"""
         if not self.publisher:
@@ -109,7 +109,7 @@ class PubSubPublisher:
             metadata = self._create_event_metadata(
                 source_service="office-service",
                 user_id=user_id,
-                correlation_id=correlation_id
+                correlation_id=correlation_id,
             )
 
             # Create EmailEvent
@@ -122,7 +122,7 @@ class PubSubPublisher:
                 last_updated=datetime.now(timezone.utc),
                 sync_timestamp=datetime.now(timezone.utc),
                 provider=email_data.provider,
-                sync_type="sync"
+                sync_type="sync",
             )
 
             # Convert to JSON
@@ -155,12 +155,12 @@ class PubSubPublisher:
             return False
 
     async def publish_calendar_event(
-        self, 
-        calendar_data: CalendarEventData, 
+        self,
+        calendar_data: CalendarEventData,
         operation: str = "create",
         batch_id: Optional[str] = None,
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> bool:
         """Publish a CalendarEvent to Pub/Sub"""
         if not self.publisher:
@@ -172,20 +172,21 @@ class PubSubPublisher:
             metadata = self._create_event_metadata(
                 source_service="office-service",
                 user_id=user_id,
-                correlation_id=correlation_id
+                correlation_id=correlation_id,
             )
 
             # Create CalendarEvent
             calendar_event = CalendarEvent(
                 metadata=metadata,
-                user_id=user_id or calendar_data.id,  # Fallback to event ID if no user_id
+                user_id=user_id
+                or calendar_data.id,  # Fallback to event ID if no user_id
                 event=calendar_data,
                 operation=operation,
                 batch_id=batch_id,
                 last_updated=datetime.now(timezone.utc),
                 sync_timestamp=datetime.now(timezone.utc),
                 provider=calendar_data.provider,
-                calendar_id=calendar_data.calendar_id
+                calendar_id=calendar_data.calendar_id,
             )
 
             # Convert to JSON
@@ -218,12 +219,12 @@ class PubSubPublisher:
             return False
 
     async def publish_contact_event(
-        self, 
-        contact_data: ContactData, 
+        self,
+        contact_data: ContactData,
         operation: str = "create",
         batch_id: Optional[str] = None,
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> bool:
         """Publish a ContactEvent to Pub/Sub"""
         if not self.publisher:
@@ -235,19 +236,20 @@ class PubSubPublisher:
             metadata = self._create_event_metadata(
                 source_service="office-service",
                 user_id=user_id,
-                correlation_id=correlation_id
+                correlation_id=correlation_id,
             )
 
             # Create ContactEvent
             contact_event = ContactEvent(
                 metadata=metadata,
-                user_id=user_id or contact_data.id,  # Fallback to contact ID if no user_id
+                user_id=user_id
+                or contact_data.id,  # Fallback to contact ID if no user_id
                 contact=contact_data,
                 operation=operation,
                 batch_id=batch_id,
                 last_updated=datetime.now(timezone.utc),
                 sync_timestamp=datetime.now(timezone.utc),
-                provider=contact_data.provider
+                provider=contact_data.provider,
             )
 
             # Convert to JSON
@@ -280,12 +282,12 @@ class PubSubPublisher:
             return False
 
     async def publish_batch_emails(
-        self, 
-        emails: List[EmailData], 
+        self,
+        emails: List[EmailData],
         operation: str = "create",
         batch_id: Optional[str] = None,
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> List[bool]:
         """Publish multiple EmailEvents in batch"""
         try:
@@ -319,12 +321,12 @@ class PubSubPublisher:
             raise
 
     async def publish_batch_calendar_events(
-        self, 
-        events: List[CalendarEventData], 
+        self,
+        events: List[CalendarEventData],
         operation: str = "create",
         batch_id: Optional[str] = None,
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> List[bool]:
         """Publish multiple CalendarEvents in batch"""
         try:
@@ -358,12 +360,12 @@ class PubSubPublisher:
             raise
 
     async def publish_batch_contacts(
-        self, 
-        contacts: List[ContactData], 
+        self,
+        contacts: List[ContactData],
         operation: str = "create",
         batch_id: Optional[str] = None,
         user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> List[bool]:
         """Publish multiple ContactEvents in batch"""
         try:

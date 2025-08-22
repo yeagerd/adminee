@@ -17,17 +17,22 @@ class TodoData(BaseModel):
     title: str = Field(..., description="Todo title")
     description: Optional[str] = Field(None, description="Todo description")
     status: str = Field(
-        default="pending", description="Todo status (pending, in_progress, completed, cancelled)"
+        default="pending",
+        description="Todo status (pending, in_progress, completed, cancelled)",
     )
     priority: str = Field(
         default="medium", description="Todo priority (low, medium, high, urgent)"
     )
     due_date: Optional[datetime] = Field(None, description="Due date for the todo")
-    completed_date: Optional[datetime] = Field(None, description="When the todo was completed")
+    completed_date: Optional[datetime] = Field(
+        None, description="When the todo was completed"
+    )
     assignee_email: Optional[str] = Field(None, description="Assignee's email")
     creator_email: str = Field(..., description="Creator's email")
     tags: List[str] = Field(default_factory=list, description="Todo tags")
-    parent_todo_id: Optional[str] = Field(None, description="Parent todo ID for subtasks")
+    parent_todo_id: Optional[str] = Field(
+        None, description="Parent todo ID for subtasks"
+    )
     subtask_ids: List[str] = Field(
         default_factory=list, description="List of subtask IDs"
     )
@@ -45,9 +50,13 @@ class TodoEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the todo operation")
     todo: TodoData = Field(..., description="Todo data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
     last_updated: datetime = Field(..., description="When the todo was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
     provider: str = Field(..., description="Todo provider (google, microsoft, etc.)")
     list_id: Optional[str] = Field(None, description="Todo list ID")
 
@@ -65,7 +74,9 @@ class TodoListData(BaseModel):
     name: str = Field(..., description="List name")
     description: Optional[str] = Field(None, description="List description")
     color: Optional[str] = Field(None, description="List color")
-    is_default: bool = Field(default=False, description="Whether this is the default list")
+    is_default: bool = Field(
+        default=False, description="Whether this is the default list"
+    )
     provider: str = Field(..., description="Todo provider (google, microsoft, etc.)")
     provider_list_id: str = Field(..., description="Provider's internal list ID")
     owner_email: str = Field(..., description="List owner's email")
@@ -83,9 +94,13 @@ class TodoListEvent(BaseEvent):
     user_id: str = Field(..., description="User ID for the todo list operation")
     todo_list: TodoListData = Field(..., description="Todo list data")
     operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(None, description="Batch identifier for batch operations")
+    batch_id: Optional[str] = Field(
+        None, description="Batch identifier for batch operations"
+    )
     last_updated: datetime = Field(..., description="When the list was last updated")
-    sync_timestamp: datetime = Field(..., description="When the data was last synced from provider")
+    sync_timestamp: datetime = Field(
+        ..., description="When the data was last synced from provider"
+    )
     provider: str = Field(..., description="Todo provider (google, microsoft, etc.)")
 
     def model_post_init(self, __context: Any) -> None:

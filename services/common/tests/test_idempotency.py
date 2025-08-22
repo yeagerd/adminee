@@ -3,26 +3,22 @@ Tests for idempotency functionality.
 """
 
 import json
-import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
-from services.common.events.email_events import EmailEvent, EmailData
-from services.common.events.calendar_events import CalendarEvent, CalendarEventData
-from services.common.events.contact_events import ContactEvent, ContactData
-from services.common.events.document_events import DocumentEvent, DocumentData
-from services.common.events.todo_events import TodoEvent, TodoData
 from services.common.events.base_events import EventMetadata
+from services.common.events.calendar_events import CalendarEvent, CalendarEventData
+from services.common.events.contact_events import ContactData, ContactEvent
+from services.common.events.email_events import EmailData, EmailEvent
 from services.common.idempotency.idempotency_keys import (
     IdempotencyKeyGenerator,
-    IdempotencyStrategy,
     IdempotencyKeyValidator,
+    IdempotencyStrategy,
 )
-from services.common.idempotency.redis_reference import RedisReferencePattern
 from services.common.idempotency.idempotency_service import IdempotencyService
+from services.common.idempotency.redis_reference import RedisReferencePattern
 
 
 class TestIdempotencyKeyGenerator:
@@ -35,7 +31,7 @@ class TestIdempotencyKeyGenerator:
             metadata=EventMetadata(
                 event_id="event123",
                 source_service="test-service",
-                source_version="1.0.0"
+                source_version="1.0.0",
             ),
             user_id="user123",
             email=EmailData(
@@ -48,14 +44,14 @@ class TestIdempotencyKeyGenerator:
                 cc_addresses=[],
                 received_date=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
                 provider="gmail",
-                provider_message_id="msg123"
+                provider_message_id="msg123",
             ),
             operation="create",
             batch_id="batch123",
             last_updated=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             sync_timestamp=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             provider="gmail",
-            sync_type="backfill"
+            sync_type="backfill",
         )
 
     @pytest.fixture
@@ -65,7 +61,7 @@ class TestIdempotencyKeyGenerator:
             metadata=EventMetadata(
                 event_id="event456",
                 source_service="test-service",
-                source_version="1.0.0"
+                source_version="1.0.0",
             ),
             user_id="user123",
             event=CalendarEventData(
@@ -77,14 +73,14 @@ class TestIdempotencyKeyGenerator:
                 attendees=[],
                 provider="google",
                 provider_event_id="event123",
-                calendar_id="cal1"
+                calendar_id="cal1",
             ),
             operation="create",
             batch_id="batch123",
             last_updated=datetime(2024, 1, 1, 14, 0, 0, tzinfo=timezone.utc),
             sync_timestamp=datetime(2024, 1, 1, 14, 0, 0, tzinfo=timezone.utc),
             provider="google",
-            calendar_id="cal1"
+            calendar_id="cal1",
         )
 
     @pytest.fixture
@@ -94,7 +90,7 @@ class TestIdempotencyKeyGenerator:
             metadata=EventMetadata(
                 event_id="event789",
                 source_service="test-service",
-                source_version="1.0.0"
+                source_version="1.0.0",
             ),
             user_id="user123",
             contact=ContactData(
@@ -104,13 +100,13 @@ class TestIdempotencyKeyGenerator:
                 first_name="John",
                 last_name="Doe",
                 provider="google",
-                provider_contact_id="contact123"
+                provider_contact_id="contact123",
             ),
             operation="create",
             batch_id="batch123",
             last_updated=datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
             sync_timestamp=datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
-            provider="google"
+            provider="google",
         )
 
     def test_generate_email_key(self, sample_email_event):
@@ -164,19 +160,21 @@ class TestIdempotencyStrategy:
         """Test immutable operation classification."""
         assert IdempotencyStrategy.is_immutable_operation("email", "create") is True
         assert IdempotencyStrategy.is_immutable_operation("calendar", "create") is True
-        assert not IdempotencyStrategy.is_immutable_operation("email", "update") is True
+        assert IdempotencyStrategy.is_immutable_operation("email", "update") is not True
 
     def test_mutable_operations(self):
         """Test mutable operation classification."""
         assert IdempotencyStrategy.is_mutable_operation("email", "update") is True
         assert IdempotencyStrategy.is_mutable_operation("email", "delete") is True
-        assert not IdempotencyStrategy.is_mutable_operation("email", "create") is True
+        assert IdempotencyStrategy.is_mutable_operation("email", "create") is not True
 
     def test_batch_operations(self):
         """Test batch operation classification."""
         assert IdempotencyStrategy.is_batch_operation("email", "batch_create") is True
-        assert IdempotencyStrategy.is_batch_operation("calendar", "batch_update") is True
-        assert not IdempotencyStrategy.is_batch_operation("email", "create") is True
+        assert (
+            IdempotencyStrategy.is_batch_operation("calendar", "batch_update") is True
+        )
+        assert IdempotencyStrategy.is_batch_operation("email", "create") is not True
 
     def test_get_key_strategy(self):
         """Test getting key strategy for operations."""
@@ -200,7 +198,7 @@ class TestIdempotencyKeyValidator:
         # Valid key (32 hex characters)
         valid_key = "a" * 32
         assert IdempotencyKeyValidator.validate_key_format(valid_key) is True
-        
+
         # Invalid keys
         assert IdempotencyKeyValidator.validate_key_format("") is False
         assert IdempotencyKeyValidator.validate_key_format("short") is False
@@ -209,27 +207,35 @@ class TestIdempotencyKeyValidator:
     def test_validate_key_uniqueness(self):
         """Test key uniqueness validation."""
         existing_keys = {"key1", "key2", "key3"}
-        
+
         # New key should be unique
-        assert IdempotencyKeyValidator.validate_key_uniqueness(existing_keys, "new_key") is True
-        
+        assert (
+            IdempotencyKeyValidator.validate_key_uniqueness(existing_keys, "new_key")
+            is True
+        )
+
         # Existing key should not be unique
-        assert IdempotencyKeyValidator.validate_key_uniqueness(existing_keys, "key1") is False
+        assert (
+            IdempotencyKeyValidator.validate_key_uniqueness(existing_keys, "key1")
+            is False
+        )
 
     def test_should_regenerate_key(self):
         """Test key regeneration logic."""
         now = datetime.now(timezone.utc)
-        
+
         # Immutable operations should never regenerate
-        assert IdempotencyKeyValidator.should_regenerate_key(
-            "email", "create", now
-        ) is False
-        
+        assert (
+            IdempotencyKeyValidator.should_regenerate_key("email", "create", now)
+            is False
+        )
+
         # Mutable operations should regenerate after TTL
         old_time = datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # Very old
-        assert IdempotencyKeyValidator.should_regenerate_key(
-            "email", "update", old_time
-        ) is True
+        assert (
+            IdempotencyKeyValidator.should_regenerate_key("email", "update", old_time)
+            is True
+        )
 
 
 class TestRedisReferencePattern:
@@ -248,7 +254,7 @@ class TestRedisReferencePattern:
     def test_key_patterns(self, redis_reference):
         """Test key pattern definitions."""
         patterns = redis_reference.KEY_PATTERNS
-        
+
         assert "office" in patterns
         assert "email" in patterns
         assert "calendar" in patterns
@@ -257,7 +263,7 @@ class TestRedisReferencePattern:
     def test_ttl_settings(self, redis_reference):
         """Test TTL settings."""
         ttl_settings = redis_reference.TTL_SETTINGS
-        
+
         assert ttl_settings["office"] == 86400 * 7  # 7 days
         assert ttl_settings["email"] == 86400 * 30  # 30 days
         assert ttl_settings["idempotency"] == 86400  # 24 hours
@@ -265,20 +271,20 @@ class TestRedisReferencePattern:
     def test_store_large_payload(self, redis_reference):
         """Test storing large payloads."""
         payload = {"type": "email", "content": "test content"}
-        
+
         redis_key = redis_reference.store_large_payload(
             "email", "user123", "email123", payload, "gmail"
         )
-        
+
         assert redis_key.startswith("email:user123:gmail:")
         redis_reference.redis.setex.assert_called_once()
 
     def test_store_idempotency_key(self, redis_reference):
         """Test storing idempotency keys."""
         metadata = {"user_id": "user123", "operation": "create"}
-        
+
         result = redis_reference.store_idempotency_key("key123", metadata)
-        
+
         assert result is True
         redis_reference.redis.setex.assert_called_once()
 
@@ -286,33 +292,40 @@ class TestRedisReferencePattern:
         """Test checking idempotency keys."""
         metadata = {"user_id": "user123", "operation": "create"}
         redis_reference.redis.get.return_value = json.dumps(metadata)
-        
+
         result = redis_reference.check_idempotency_key("key123")
-        
+
         assert result == metadata
         redis_reference.redis.get.assert_called_once()
 
     def test_store_batch_reference(self, redis_reference):
         """Test storing batch references."""
         batch_data = {"batch_id": "batch123", "count": 100}
-        
-        redis_key = redis_reference.store_batch_reference("batch123", "corr123", batch_data)
-        
+
+        redis_key = redis_reference.store_batch_reference(
+            "batch123", "corr123", batch_data
+        )
+
         assert redis_key.startswith("batch:batch123:corr123")
         redis_reference.redis.setex.assert_called_once()
 
     def test_validate_key_pattern(self, redis_reference):
         """Test key pattern validation."""
         # Valid pattern
-        assert redis_reference.validate_key_pattern("email", user_id="user123", provider="gmail", doc_id="msg123") is True
-        
+        assert (
+            redis_reference.validate_key_pattern(
+                "email", user_id="user123", provider="gmail", doc_id="msg123"
+            )
+            is True
+        )
+
         # Invalid pattern (missing required parameters)
         assert redis_reference.validate_key_pattern("email", user_id="user123") is False
 
     def test_generate_reference_id(self, redis_reference):
         """Test reference ID generation."""
         ref_id = redis_reference.generate_reference_id("test")
-        
+
         assert ref_id.startswith("test_")
         assert len(ref_id) == 21  # prefix + 16 hex chars + underscore
 
@@ -321,9 +334,9 @@ class TestRedisReferencePattern:
         redis_reference.redis.ttl.return_value = 3600
         redis_reference.redis.type.return_value = "string"
         redis_reference.redis.get.return_value = b"test_value"
-        
+
         info = redis_reference.get_key_info("test_key")
-        
+
         assert "ttl" in info
         assert "type" in info
         assert "size" in info
@@ -350,7 +363,7 @@ class TestIdempotencyService:
             metadata=EventMetadata(
                 event_id="event123",
                 source_service="test-service",
-                source_version="1.0.0"
+                source_version="1.0.0",
             ),
             user_id="user123",
             email=EmailData(
@@ -363,48 +376,52 @@ class TestIdempotencyService:
                 cc_addresses=[],
                 received_date=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
                 provider="gmail",
-                provider_message_id="msg123"
+                provider_message_id="msg123",
             ),
             operation="create",
             batch_id="batch123",
             last_updated=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             sync_timestamp=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             provider="gmail",
-            sync_type="backfill"
+            sync_type="backfill",
         )
 
-    def test_process_event_with_idempotency(self, idempotency_service, sample_email_event):
+    def test_process_event_with_idempotency(
+        self, idempotency_service, sample_email_event
+    ):
         """Test processing events with idempotency."""
         # Mock Redis to return no existing key
         idempotency_service.redis_reference.check_idempotency_key.return_value = None
-        
+
         def mock_processor(event):
             return {"status": "processed", "event_id": event.metadata.event_id}
-        
+
         result = idempotency_service.process_event_with_idempotency(
             sample_email_event, mock_processor
         )
-        
+
         assert result["success"] is True
         assert result["idempotent"] is False
         # store_idempotency_key is called twice: once before processing, once after
         assert idempotency_service.redis_reference.store_idempotency_key.call_count == 2
 
-    def test_process_event_already_processed(self, idempotency_service, sample_email_event):
+    def test_process_event_already_processed(
+        self, idempotency_service, sample_email_event
+    ):
         """Test processing events that were already processed."""
         # Mock Redis to return existing key
         idempotency_service.redis_reference.check_idempotency_key.return_value = {
             "status": "completed",
-            "result": {"status": "already_processed"}
+            "result": {"status": "already_processed"},
         }
-        
+
         def mock_processor(event):
             return {"status": "processed", "event_id": event.metadata.event_id}
-        
+
         result = idempotency_service.process_event_with_idempotency(
             sample_email_event, mock_processor
         )
-        
+
         assert result["success"] is True
         assert result["idempotent"] is True
         idempotency_service.redis_reference.store_idempotency_key.assert_not_called()
@@ -414,17 +431,17 @@ class TestIdempotencyService:
         batch_id = "batch123"
         correlation_id = "corr123"
         events = [Mock(), Mock(), Mock()]
-        
+
         # Mock Redis to return no existing batch
         idempotency_service.redis_reference.retrieve_batch_reference.return_value = None
-        
+
         def mock_processor(batch_id, correlation_id, events):
             return {"status": "processed", "count": len(events)}
-        
+
         result = idempotency_service.process_batch_with_idempotency(
             batch_id, correlation_id, events, mock_processor
         )
-        
+
         assert result["success"] is True
         assert result["batch_id"] == batch_id
         assert result["correlation_id"] == correlation_id
@@ -432,7 +449,7 @@ class TestIdempotencyService:
     def test_validate_idempotency_config(self, idempotency_service):
         """Test idempotency configuration validation."""
         config = idempotency_service.validate_idempotency_config("email", "create")
-        
+
         assert config["event_type"] == "email"
         assert config["operation"] == "create"
         assert config["strategy"] == "immutable"
@@ -443,7 +460,7 @@ class TestIdempotencyService:
         result = idempotency_service.simulate_event_processing(
             "email", "create", "user123", "gmail", "email123"
         )
-        
+
         assert result["simulation"] is True
         assert result["event_type"] == "email"
         assert result["operation"] == "create"
