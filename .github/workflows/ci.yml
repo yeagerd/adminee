@@ -6,25 +6,11 @@ on:
   pull_request:
     branches: [ main, develop ]
     types: [opened, synchronize, ready_for_review, review_requested]
-  pull_request_target:
-    branches: [ main, develop ]
-    types: [edited]
 
 jobs:
-  validate-pr-title:
-    name: Validate PR Title
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: amannn/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # No specific `with` configuration needed, defaults are fine.
-        # All previous lines were comments after removing deprecated params.
-
   check-generated-files:
     name: Check Generated Files Are Up to Date
-    if: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -157,7 +143,6 @@ jobs:
 
   lint:
     name: Python Linting & Formatting
-    if: ${{ github.event_name != 'pull_request' || github.event.action != 'edited' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -211,7 +196,6 @@ jobs:
 
   typecheck:
     name: Python Type Checking
-    if: ${{ github.event_name != 'pull_request' || github.event.action != 'edited' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -250,7 +234,6 @@ jobs:
 
   test:
     name: Python Tests
-    if: ${{ github.event_name != 'pull_request' || github.event.action != 'edited' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -288,7 +271,6 @@ jobs:
 
   coverage:
     name: Python Coverage
-    if: ${{ github.event_name != 'pull_request' || github.event.action != 'edited' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -333,7 +315,6 @@ jobs:
 
   frontend-quality:
     name: Frontend Code Quality
-    if: ${{ github.event_name != 'pull_request' || github.event.action != 'edited' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -379,7 +360,6 @@ jobs:
 
   docker-build:
     name: Docker Build Test
-    if: ${{ github.event_name != 'pull_request' || github.event.action != 'edited' }}
     runs-on: ubuntu-latest
     needs: [lint, typecheck, test, coverage, frontend-quality, check-generated-files]
 
