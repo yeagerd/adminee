@@ -1113,6 +1113,7 @@ class TestGlobalOAuthConfig:
             oauth_redirect_uri="https://example.com/oauth/callback",
             google_client_id="custom-google-id",
             google_client_secret="custom-google-secret",
+            pagination_secret_key="test-pagination-secret-key",
         )
         config = get_oauth_config(custom_settings)
         assert config is not None
