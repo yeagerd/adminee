@@ -6,7 +6,7 @@ This module contains the core document ingestion logic that can be used
 by both the HTTP API endpoints and the Pub/Sub consumer.
 """
 
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 from services.common.http_errors import (
     ErrorCode,
@@ -16,16 +16,14 @@ from services.common.http_errors import (
 from services.vespa_loader.types import VespaDocumentType
 from vespa_loader.content_normalizer import ContentNormalizer
 from vespa_loader.embeddings import EmbeddingGenerator
-from vespa_loader.mapper import DocumentMapper
 from vespa_loader.vespa_client import VespaClient
 
 
 async def ingest_document_service(
-    document_data: Union[VespaDocumentType, Dict[str, Any]],
+    document_data: VespaDocumentType,
     vespa_client: VespaClient,
     content_normalizer: ContentNormalizer,
     embedding_generator: EmbeddingGenerator,
-    document_mapper: DocumentMapper,
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
 
@@ -33,11 +31,10 @@ async def ingest_document_service(
     or through the HTTP API endpoints.
 
     Args:
-        document_data: The document data to ingest
+        document_data: The document data to ingest (must be VespaDocumentType)
         vespa_client: Initialized Vespa client instance
         content_normalizer: Initialized content normalizer instance
         embedding_generator: Initialized embedding generator instance
-        document_mapper: Initialized document mapper instance
 
     Returns:
         Dict containing the ingestion result
@@ -46,55 +43,28 @@ async def ingest_document_service(
         ServiceError: If the service is not properly initialized
         ValidationError: If document data is invalid
     """
-    if not all(
-        [vespa_client, content_normalizer, embedding_generator, document_mapper]
-    ):
-        raise ServiceError(
-            "Service not initialized", code=ErrorCode.SERVICE_UNAVAILABLE
-        )
+
 
     try:
         # Validate document data
-        if isinstance(document_data, VespaDocumentType):
-            if not document_data.id or not document_data.user_id:
-                raise ValidationError(
-                    "Document ID and user_id are required",
-                    field="document_data",
-                    value=document_data,
-                )
-            # Convert to dict for processing
-            document_dict = document_data.to_dict()
-        else:
-            if not document_data.get("id") or not document_data.get("user_id"):
-                raise ValidationError(
-                    "Document ID and user_id are required",
-                    field="document_data",
-                    value=document_data,
-                )
-            document_dict = document_data
-
-        # Map document to Vespa format
-        if not document_mapper:
-            raise ServiceError(
-                "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
+        if not document_data.id or not document_data.user_id:
+            raise ValidationError(
+                "Document ID and user_id are required",
+                field="document_data",
+                value=document_data,
             )
         
-        # Check if document is already in Vespa-ready format (from VespaDocumentFactory)
-        if isinstance(document_data, VespaDocumentType):
-            # Document is already in Vespa format, use it directly
-            vespa_document = document_data.to_dict()
-        else:
-            # Use DocumentMapper for legacy/HTTP ingestion path
-            vespa_document = document_mapper.map_to_vespa(document_dict)
+        # Document is already in Vespa format, use it directly
+        vespa_document = document_data.to_dict()
 
         # Normalize content
-        if vespa_document.get("content") and content_normalizer:
-            vespa_document["content"] = content_normalizer.normalize(
-                vespa_document["content"]
+        if vespa_document.get("body") and content_normalizer:
+            vespa_document["body"] = content_normalizer.normalize(
+                vespa_document["body"]
             )
 
         # Generate embeddings if content exists
-        content = vespa_document.get("content")
+        content = vespa_document.get("body")
         if content and embedding_generator:
             try:
                 embedding = await embedding_generator.generate_embedding(content)
@@ -115,7 +85,7 @@ async def ingest_document_service(
 
         return {
             "status": "success",
-            "document_id": document_dict["id"],
+            "document_id": document_data.id,
             "vespa_result": result,
         }
 
