@@ -4,7 +4,7 @@ Test refresh deduplication to ensure it doesn't cause upstream failures.
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -19,6 +19,7 @@ class TestRefreshDeduplication(BaseUserManagementIntegrationTest):
     def _setup_mock_session(self):
         """Helper to set up a properly mocked database session."""
         mock_session_instance = AsyncMock()
+        mock_session_instance.add = MagicMock()  # Mock session.add as synchronous
         mock_session_instance.__aenter__ = AsyncMock(return_value=mock_session_instance)
         mock_session_instance.__aexit__ = AsyncMock(return_value=None)
         return mock_session_instance
