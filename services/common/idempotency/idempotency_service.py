@@ -4,7 +4,7 @@ Idempotency service for ensuring event processing is idempotent.
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from threading import Event, Thread
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -17,7 +17,7 @@ from services.common.idempotency.idempotency_keys import (
     IdempotencyKeyGenerator,
     IdempotencyKeyValidator,
 )
-from services.common.idempotency.idempotency_strategy import IdempotencyStrategy
+from services.common.idempotency.idempotency_keys import IdempotencyStrategy
 from services.common.idempotency.redis_reference import RedisReferencePattern
 
 logger = logging.getLogger(__name__)
@@ -600,7 +600,7 @@ class IdempotencyService:
             "generated_key": test_key,
             "key_valid": key_valid,
             "strategy_info": strategy_info,
-            "timestamp": datetime.now(datetime.UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _start_cleanup_scheduler(self) -> None:
