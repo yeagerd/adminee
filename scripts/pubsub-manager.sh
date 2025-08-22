@@ -140,26 +140,13 @@ create_topics() {
     for topic in "${topics[@]}"; do
         log_info "Creating topic: ${topic}"
         
-        # Use gcloud to create topic (if available)
-        if command -v gcloud >/dev/null 2>&1; then
-            # Set emulator environment
-            export PUBSUB_EMULATOR_HOST=${EMULATOR_HOST}
-            
-            if gcloud pubsub topics create ${topic} --project=${PROJECT_ID} >/dev/null 2>&1; then
-                log_success "Created topic: ${topic}"
-            else
-                log_warning "Topic ${topic} may already exist or failed to create"
-            fi
+        # Use REST API for local emulator
+        local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/topics/${topic}"
+        
+        if curl -s -X PUT -H 'Content-Type: application/json' "${url}" >/dev/null 2>&1; then
+            log_success "Created topic: ${topic}"
         else
-            # Fallback to REST API if gcloud not available
-            log_info "gcloud CLI not available, using REST API for topic: ${topic}"
-            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/topics/${topic}"
-            
-            if curl -s -X PUT -H 'Content-Type: application/json' "${url}" >/dev/null 2>&1; then
-                log_success "Created topic: ${topic}"
-            else
-                log_warning "Topic ${topic} may already exist or failed to create"
-            fi
+            log_warning "Topic ${topic} may already exist or failed to create"
         fi
     done
     
@@ -181,23 +168,14 @@ create_subscriptions() {
         IFS=':' read -r sub_name topic_name <<< "${sub_info}"
         log_info "Creating subscription: ${sub_name}"
         
-        if command -v gcloud >/dev/null 2>&1; then
-            export PUBSUB_EMULATOR_HOST=${EMULATOR_HOST}
-            if gcloud pubsub subscriptions create ${sub_name} --topic=${topic_name} --project=${PROJECT_ID} >/dev/null 2>&1; then
-                log_success "Created subscription: ${sub_name}"
-            else
-                log_warning "Subscription ${sub_name} may already exist"
-            fi
+        # Use REST API for local emulator
+        local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions/${sub_name}"
+        local data="{\"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
+        
+        if curl -s -X PUT -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
+            log_success "Created subscription: ${sub_name}"
         else
-            # Fallback to REST API
-            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions/${sub_name}"
-            local data="{\"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
-            
-            if curl -s -X PUT -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
-                log_success "Created subscription: ${sub_name}"
-            else
-                log_warning "Subscription ${sub_name} may already exist"
-            fi
+            log_warning "Subscription ${sub_name} may already exist"
         fi
     done
     
@@ -213,27 +191,56 @@ create_subscriptions() {
         IFS=':' read -r sub_name topic_name <<< "${sub_info}"
         log_info "Creating subscription: ${sub_name}"
         
-        if command -v gcloud >/dev/null 2>&1; then
-            export PUBSUB_EMULATOR_HOST=${EMULATOR_HOST}
-            if gcloud pubsub subscriptions create ${sub_name} --topic=${topic_name} --project=${PROJECT_ID} >/dev/null 2>&1; then
-                log_success "Created subscription: ${sub_name}"
-            else
-                log_warning "Subscription ${sub_name} may already exist"
-            fi
+        # Use REST API for local emulator
+        local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions/${sub_name}"
+        local data="{\"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
+        
+        if curl -s -X PUT -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
+            log_success "Created subscription: ${sub_name}"
         else
-            # Fallback to REST API
-            local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions/${sub_name}"
-            local data="{\"topic\": \"projects/${PROJECT_ID}/topics/${topic_name}\"}"
-            
-            if curl -s -X PUT -H 'Content-Type: application/json' "${url}" -d "${data}" >/dev/null 2>&1; then
-                log_success "Created subscription: ${sub_name}"
-            else
-                log_warning "Subscription ${sub_name} may already exist"
-            fi
+            log_warning "Subscription ${sub_name} may already exist"
         fi
     done
     
     log_success "Pub/Sub subscriptions creation completed"
+}
+
+list_topics() {
+    local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/topics"
+    local response=$(curl -s "${url}" 2>/dev/null)
+    
+    if [ $? -eq 0 ] && [ -n "${response}" ]; then
+        # Parse and display topics from JSON response using jq
+        # The response has structure: {"topics": [{"name": "projects/PROJECT/topics/TOPIC_NAME"}, ...]}
+        if command -v jq >/dev/null 2>&1; then
+            echo "${response}" | jq -r '.topics[].name' | sed "s|projects/${PROJECT_ID}/topics/||g" | sort
+        else
+            # Fallback to grep/sed if jq not available
+            echo "${response}" | grep -o '"name":"[^"]*"' | sed 's/"name":"//g' | sed 's/"//g' | sed "s|projects/${PROJECT_ID}/topics/||g" | sort
+        fi
+    else
+        log_warning "Could not list topics"
+        return 1
+    fi
+}
+
+list_subscriptions() {
+    local url="http://${EMULATOR_HOST}/v1/projects/${PROJECT_ID}/subscriptions"
+    local response=$(curl -s "${url}" 2>/dev/null)
+    
+    if [ $? -eq 0 ] && [ -n "${response}" ]; then
+        # Parse and display subscriptions from JSON response using jq
+        # The response has structure: {"subscriptions": [{"name": "projects/PROJECT/subscriptions/SUBSCRIPTION_NAME"}, ...]}
+        if command -v jq >/dev/null 2>&1; then
+            echo "${response}" | jq -r '.subscriptions[].name' | sed "s|projects/${PROJECT_ID}/subscriptions/||g" | sort
+        else
+            # Fallback to grep/sed if jq not available
+            echo "${response}" | grep -o '"name":"[^"]*"' | sed 's/"name":"//g' | sed 's/"//g' | sed "s|projects/${PROJECT_ID}/subscriptions/||g" | sort
+        fi
+    else
+        log_warning "Could not list subscriptions"
+        return 1
+    fi
 }
 
 setup_topics_and_subscriptions() {
@@ -259,16 +266,20 @@ show_status() {
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep "^${CONTAINER_NAME}"
         fi
         
-        # Show topics if gcloud is available
-        if command -v gcloud >/dev/null 2>&1; then
-            echo ""
-            log_info "Topics:"
-            export PUBSUB_EMULATOR_HOST=${EMULATOR_HOST}
-            gcloud pubsub topics list --project=${PROJECT_ID} 2>/dev/null || log_warning "Could not list topics"
-            
-            echo ""
-            log_info "Subscriptions:"
-            gcloud pubsub subscriptions list --project=${PROJECT_ID} 2>/dev/null || log_warning "Could not list subscriptions"
+        # Show topics using REST API
+        echo ""
+        log_info "Topics:"
+        if list_topics; then
+            # Topics were listed successfully
+            :
+        fi
+        
+        # Show subscriptions using REST API
+        echo ""
+        log_info "Subscriptions:"
+        if list_subscriptions; then
+            # Subscriptions were listed successfully
+            :
         fi
     else
         log_error "Status: Not running"

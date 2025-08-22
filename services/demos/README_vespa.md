@@ -50,6 +50,27 @@ python services/demos/vespa_search.py {email} --dump
 
 **Note**: Replace `{email}` with actual email address and `{env_file}` with path to environment file containing API keys.
 
+**Pub/Sub Emulator Management**:
+```bash
+# Check status and auto-start if needed
+./scripts/pubsub-manager.sh
+
+# Start emulator and setup topics/subscriptions
+./scripts/pubsub-manager.sh start
+
+# Setup topics and subscriptions only
+./scripts/pubsub-manager.sh setup
+
+# Show current status
+./scripts/pubsub-manager.sh status
+
+# Stop emulator
+./scripts/pubsub-manager.sh stop
+
+# Clean up container
+./scripts/pubsub-manager.sh cleanup
+```
+
 ## Demo Scripts
 
 ### 1. Vespa Backfill Demo (`vespa_backfill.py`)
@@ -242,9 +263,42 @@ graph TD
 - Multi-turn conversation support
 - Actionable result presentation
 
-## Configuration
+## Pub/Sub Emulator Setup
 
-### Environment Variables
+The Pub/Sub emulator provides local development infrastructure for message queuing and event-driven workflows.
+
+### Default Topics and Subscriptions
+
+The emulator automatically creates the following structure:
+
+**Topics**:
+- `email-backfill` - For email data ingestion
+- `calendar-updates` - For calendar event updates  
+- `contact-updates` - For contact information updates
+
+**Subscriptions**:
+- **Router Subscriptions** (for message routing):
+  - `email-router-subscription` → `email-backfill`
+  - `calendar-router-subscription` → `calendar-updates`
+  - `contact-router-subscription` → `contact-updates`
+- **Vespa Loader Subscriptions** (for data indexing):
+  - `vespa-loader-email-backfill` → `email-backfill`
+  - `vespa-loader-calendar-updates` → `calendar-updates`
+  - `vespa-loader-contact-updates` → `contact-updates`
+
+### Health Check
+
+```bash
+# Check emulator status
+./scripts/pubsub-manager.sh status
+
+# Should show:
+# ✅ Status: Running
+# Topics: email-backfill, calendar-updates, contact-updates
+# Subscriptions: [6 subscriptions listed]
+```
+
+## Configuration
 
 ```bash
 # Vespa Configuration
@@ -349,7 +403,7 @@ The `vespa.sh` script manages all Vespa services in one place:
 ./scripts/vespa.sh --deploy
 ```
 
-**Note**: The Pub/Sub emulator is managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
+**Note**: The Pub/Sub emulator is managed separately by `scripts/pubsub-manager.sh` to avoid conflicts and provide better isolation.
 
 
 ### Option 3: Start Services Individually
@@ -357,16 +411,19 @@ The `vespa.sh` script manages all Vespa services in one place:
 #### Start Pub/Sub Emulator
 ```bash
 # Start Pub/Sub emulator (manages Docker container)
-./scripts/local-pubsub.sh
+./scripts/pubsub-manager.sh
 
 # Check status
-./scripts/local-pubsub.sh --status
+./scripts/pubsub-manager.sh --status
 
 # Stop emulator
-./scripts/local-pubsub.sh --stop
+./scripts/pubsub-manager.sh --stop
 
 # Clean up container
-./scripts/local-pubsub.sh --cleanup
+./scripts/pubsub-manager.sh --cleanup
+
+# Setup topics and subscriptions
+./scripts/pubsub-manager.sh --setup
 ```
 
 #### Start Vespa Engine
@@ -451,16 +508,23 @@ python services/demos/vespa_synthetic.py
    - Check Vespa application status
 
 2. **Pub/Sub publishing failed**:
-   - Verify emulator is running
-   - Check topic creation
-   - Verify message format
+   - Verify emulator is running: `./scripts/pubsub-manager.sh status`
+   - Check topic creation: Should see 3 topics listed
+   - Verify message format and project ID
+   - Restart emulator if needed: `./scripts/pubsub-manager.sh --restart`
 
-3. **Search returns no results**:
+3. **Pub/Sub emulator issues**:
+   - **"Could not list topics/subscriptions"**: Script now uses REST API instead of gcloud
+   - **Authentication errors**: Not needed for local emulator
+   - **Port conflicts**: Check if port 8085 is available
+   - **Container issues**: Use `./scripts/pubsub-manager.sh cleanup` then restart
+
+4. **Search returns no results**:
    - Check if data was indexed
    - Verify user_id filtering
    - Check query syntax
 
-4. **Performance degradation**:
+5. **Performance degradation**:
    - Monitor Vespa resource usage
    - Check query complexity
    - Verify index optimization
@@ -482,6 +546,15 @@ tail -f services/vespa_query/logs/app.log
 ```
 
 ## Development
+
+### Recent Improvements
+
+**Pub/Sub Manager Script** (`scripts/pubsub-manager.sh`):
+- ✅ **REST API Integration**: Now uses direct REST API calls instead of gcloud commands
+- ✅ **No Authentication Required**: Works seamlessly with local emulator
+- ✅ **Proper JSON Parsing**: Uses `jq` for reliable topic/subscription listing
+- ✅ **Comprehensive Status**: Shows all topics and subscriptions clearly
+- ✅ **Error Handling**: Graceful fallbacks and clear error messages
 
 ### Adding New Demo Scenarios
 
