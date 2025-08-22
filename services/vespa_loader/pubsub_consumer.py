@@ -31,7 +31,10 @@ from services.common.events.document_events import DocumentData, DocumentEvent
 from services.common.events.email_events import EmailData, EmailEvent
 from services.common.events.todo_events import TodoData, TodoEvent
 from services.common.logging_config import get_logger
-from services.vespa_loader.document_factory import VespaDocumentFactory, parse_event_by_topic
+from services.vespa_loader.document_factory import (
+    VespaDocumentFactory,
+    parse_event_by_topic,
+)
 from services.vespa_loader.settings import Settings
 from services.vespa_loader.types import VespaDocumentType
 

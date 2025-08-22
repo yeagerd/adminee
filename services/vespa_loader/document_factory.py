@@ -9,12 +9,12 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
-from services.common.events.contact_events import ContactEvent, ContactData
-from services.common.events.document_events import DocumentEvent, DocumentData
-from services.common.events.email_events import EmailEvent, EmailData
-from services.common.events.todo_events import TodoEvent, TodoData
-from services.vespa_loader.types import VespaDocumentType
+from services.common.events.contact_events import ContactData, ContactEvent
+from services.common.events.document_events import DocumentData, DocumentEvent
+from services.common.events.email_events import EmailData, EmailEvent
+from services.common.events.todo_events import TodoData, TodoEvent
 from services.common.logging_config import get_logger
+from services.vespa_loader.types import VespaDocumentType
 
 logger = get_logger(__name__)
 
@@ -252,10 +252,10 @@ class VespaDocumentFactory:
         """Get list of supported event type names."""
         return [
             "EmailEvent",
-            "CalendarEvent", 
+            "CalendarEvent",
             "ContactEvent",
             "DocumentEvent",
-            "TodoEvent"
+            "TodoEvent",
         ]
 
 

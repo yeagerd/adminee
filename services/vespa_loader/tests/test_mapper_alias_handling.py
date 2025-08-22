@@ -5,9 +5,10 @@ This module tests the DocumentMapper's ability to handle field aliases
 and align with VespaDocumentType field names.
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import Mock
+
+import pytest
 
 from services.vespa_loader.mapper import DocumentMapper
 
@@ -35,11 +36,11 @@ class TestDocumentMapperAliasHandling:
             "thread_id": "thread_001",
             "folder": "inbox",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc_primary = self.mapper.map_to_vespa(email_data_primary)
-        
+
         # Test with alias field names
         email_data_alias = {
             "user_id": self.test_user_id,
@@ -52,17 +53,17 @@ class TestDocumentMapperAliasHandling:
             "thread_id": "thread_002",
             "folder": "sent",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc_alias = self.mapper.map_to_vespa(email_data_alias)
-        
+
         # Verify both produce the same field structure
         assert vespa_doc_primary["from_address"] == "sender@example.com"
         assert vespa_doc_primary["to_addresses"] == ["recipient@example.com"]
         assert vespa_doc_alias["from_address"] == "sender2@example.com"
         assert vespa_doc_alias["to_addresses"] == ["recipient2@example.com"]
-        
+
         # Verify field names align with VespaDocumentType
         assert "from_address" in vespa_doc_primary
         assert "to_addresses" in vespa_doc_primary
@@ -84,11 +85,11 @@ class TestDocumentMapperAliasHandling:
             "end_time": self.test_timestamp,
             "location": "Room A",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc_primary = self.mapper.map_to_vespa(calendar_data_primary)
-        
+
         # Test with alias field names
         calendar_data_alias = {
             "user_id": self.test_user_id,
@@ -102,11 +103,11 @@ class TestDocumentMapperAliasHandling:
             "end_time": self.test_timestamp,
             "location": "Room B",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc_alias = self.mapper.map_to_vespa(calendar_data_alias)
-        
+
         # Verify both produce the same field structure
         assert vespa_doc_primary["from_address"] == "organizer@example.com"
         assert vespa_doc_primary["to_addresses"] == ["attendee@example.com"]
@@ -125,14 +126,16 @@ class TestDocumentMapperAliasHandling:
             "company": "Example Corp",
             "job_title": "Developer",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc = self.mapper.map_to_vespa(contact_data)
-        
+
         # Verify field mapping
         assert vespa_doc["subject"] == "John Doe"  # display_name → subject
-        assert vespa_doc["to_addresses"] == ["john@example.com"]  # email_addresses → to_addresses
+        assert vespa_doc["to_addresses"] == [
+            "john@example.com"
+        ]  # email_addresses → to_addresses
         assert vespa_doc["from_address"] == ""  # Empty for contacts
         assert vespa_doc["type"] == "contact"
 
@@ -147,11 +150,11 @@ class TestDocumentMapperAliasHandling:
             "file_type": "docx",
             "size": 1024,
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc = self.mapper.map_to_vespa(file_data)
-        
+
         # Verify field mapping
         assert vespa_doc["subject"] == "Test Document.docx"  # name → subject
         assert vespa_doc["body"] == "This is test content"  # content → body
@@ -171,11 +174,11 @@ class TestDocumentMapperAliasHandling:
             "to": ["alias@example.com"],  # Alias field
             "thread_id": "thread_001",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc = self.mapper.map_to_vespa(email_data)
-        
+
         # Primary fields should take priority
         assert vespa_doc["from_address"] == "primary@example.com"
         assert vespa_doc["to_addresses"] == ["primary@example.com"]
@@ -185,11 +188,11 @@ class TestDocumentMapperAliasHandling:
         minimal_data = {
             "user_id": self.test_user_id,
             "id": "minimal_001",
-            "provider": "test"
+            "provider": "test",
         }
-        
+
         vespa_doc = self.mapper.map_to_vespa(minimal_data)
-        
+
         # Should handle missing fields gracefully
         assert vespa_doc["id"] == "minimal_001"
         assert vespa_doc["user_id"] == self.test_user_id
@@ -211,11 +214,11 @@ class TestDocumentMapperAliasHandling:
             "thread_id": "thread_001",
             "folder": "inbox",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc = self.mapper.map_to_vespa(email_data)
-        
+
         # Verify field types match VespaDocumentType expectations
         assert isinstance(vespa_doc["id"], str)
         assert isinstance(vespa_doc["user_id"], str)
@@ -240,12 +243,12 @@ class TestDocumentMapperAliasHandling:
             "to_addresses": ["recipient@example.com"],
             "thread_id": "thread_001",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc_primary = self.mapper.map_to_vespa(email_data_primary)
         search_text_primary = vespa_doc_primary["search_text"]
-        
+
         # Test with alias fields
         email_data_alias = {
             "user_id": self.test_user_id,
@@ -257,17 +260,17 @@ class TestDocumentMapperAliasHandling:
             "to": ["recipient2@example.com"],
             "thread_id": "thread_002",
             "created_at": self.test_timestamp,
-            "updated_at": self.test_timestamp
+            "updated_at": self.test_timestamp,
         }
-        
+
         vespa_doc_alias = self.mapper.map_to_vespa(email_data_alias)
         search_text_alias = vespa_doc_alias["search_text"]
-        
+
         # Both should generate searchable text
         assert "Test Email" in search_text_primary
         assert "sender@example.com" in search_text_primary
         assert "recipient@example.com" in search_text_primary
-        
+
         assert "Test Email 2" in search_text_alias
         assert "sender2@example.com" in search_text_alias
         assert "recipient2@example.com" in search_text_alias

@@ -8,15 +8,16 @@ by both the HTTP API endpoints and the Pub/Sub consumer.
 
 from typing import Any, Dict
 
+from vespa_loader.content_normalizer import ContentNormalizer
+from vespa_loader.embeddings import EmbeddingGenerator
+from vespa_loader.vespa_client import VespaClient
+
 from services.common.http_errors import (
     ErrorCode,
     ServiceError,
     ValidationError,
 )
-from services.vespa_loader.types import VespaDocumentType, DocumentIngestionResult
-from vespa_loader.content_normalizer import ContentNormalizer
-from vespa_loader.embeddings import EmbeddingGenerator
-from vespa_loader.vespa_client import VespaClient
+from services.vespa_loader.types import DocumentIngestionResult, VespaDocumentType
 
 
 async def ingest_document_service(
@@ -52,7 +53,7 @@ async def ingest_document_service(
                 field="document_data",
                 value=document_data,
             )
-        
+
         # Document is already in Vespa format, use it directly
         vespa_document = document_data.to_dict()
 

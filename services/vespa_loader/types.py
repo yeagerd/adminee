@@ -11,12 +11,16 @@ from pydantic import BaseModel, Field
 
 class DocumentIngestionResult(BaseModel):
     """Result of document ingestion operation"""
-    
+
     status: str = Field(..., description="Ingestion status (success/failure)")
     document_id: str = Field(..., description="ID of the ingested document")
-    vespa_result: Any = Field(..., description="Raw result from Vespa indexing operation")
-    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), 
-                          description="Timestamp of ingestion completion")
+    vespa_result: Any = Field(
+        ..., description="Raw result from Vespa indexing operation"
+    )
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Timestamp of ingestion completion",
+    )
 
 
 @dataclass

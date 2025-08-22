@@ -23,9 +23,9 @@ class DocumentMapper:
                 "subject": "subject",
                 "body": "body",
                 "from_address": "from_address",  # Primary field name
-                "from": "from_address",          # Alias for compatibility
+                "from": "from_address",  # Alias for compatibility
                 "to_addresses": "to_addresses",  # Primary field name
-                "to": "to_addresses",            # Alias for compatibility
+                "to": "to_addresses",  # Alias for compatibility
                 "thread_id": "thread_id",
                 "folder": "folder",
                 "created_at": "created_at",
@@ -39,9 +39,9 @@ class DocumentMapper:
                 "subject": "subject",
                 "body": "body",
                 "from_address": "from_address",  # Primary field name
-                "from": "from_address",          # Alias for compatibility
+                "from": "from_address",  # Alias for compatibility
                 "to_addresses": "to_addresses",  # Primary field name
-                "to": "to_addresses",            # Alias for compatibility
+                "to": "to_addresses",  # Alias for compatibility
                 "start_time": "start_time",
                 "end_time": "end_time",
                 "attendees": "attendees",
@@ -62,7 +62,7 @@ class DocumentMapper:
             "file": {
                 "id": "id",
                 "name": "subject",  # Map to subject field
-                "content": "body",   # Map to body field
+                "content": "body",  # Map to body field
                 "file_type": "file_type",
                 "size": "size",
                 "created_at": "created_at",

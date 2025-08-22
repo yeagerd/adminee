@@ -5,17 +5,21 @@ This module tests the VespaDocumentFactory class and parse_event_by_topic functi
 that were moved from pubsub_consumer.py to improve modularity.
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import Mock
 
-from services.vespa_loader.document_factory import VespaDocumentFactory, parse_event_by_topic
-from services.vespa_loader.types import VespaDocumentType
-from services.common.events.email_events import EmailEvent, EmailData
+import pytest
+
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
-from services.common.events.contact_events import ContactEvent, ContactData
-from services.common.events.document_events import DocumentEvent, DocumentData
-from services.common.events.todo_events import TodoEvent, TodoData
+from services.common.events.contact_events import ContactData, ContactEvent
+from services.common.events.document_events import DocumentData, DocumentEvent
+from services.common.events.email_events import EmailData, EmailEvent
+from services.common.events.todo_events import TodoData, TodoEvent
+from services.vespa_loader.document_factory import (
+    VespaDocumentFactory,
+    parse_event_by_topic,
+)
+from services.vespa_loader.types import VespaDocumentType
 
 
 class TestVespaDocumentFactory:
@@ -47,9 +51,9 @@ class TestVespaDocumentFactory:
             labels=["inbox"],
             size_bytes=1024,
             mime_type="text/plain",
-            headers={}
+            headers={},
         )
-        
+
         email_event = EmailEvent(
             user_id=self.test_user_id,
             email=email_data,
@@ -57,12 +61,12 @@ class TestVespaDocumentFactory:
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
-            sync_type="backfill"
+            sync_type="backfill",
         )
-        
+
         # Create document
         doc = self.factory.create_email_document(email_event)
-        
+
         # Verify document structure
         assert isinstance(doc, VespaDocumentType)
         assert doc.id == "email_001"
@@ -98,21 +102,21 @@ class TestVespaDocumentFactory:
             reminders=[],
             attachments=[],
             color_id="1",
-            html_link="https://calendar.google.com/event/001"
+            html_link="https://calendar.google.com/event/001",
         )
-        
+
         calendar_event = CalendarEvent(
             user_id=self.test_user_id,
             event=calendar_data,
             operation="create",
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
-            sync_timestamp=self.test_timestamp
+            sync_timestamp=self.test_timestamp,
         )
-        
+
         # Create document
         doc = self.factory.create_calendar_document(calendar_event)
-        
+
         # Verify document structure
         assert isinstance(doc, VespaDocumentType)
         assert doc.id == "calendar_001"
@@ -146,21 +150,21 @@ class TestVespaDocumentFactory:
             birthdays=[],
             photos=[],
             groups=[],
-            tags=["work"]
+            tags=["work"],
         )
-        
+
         contact_event = ContactEvent(
             user_id=self.test_user_id,
             contact=contact_data,
             operation="create",
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
-            sync_timestamp=self.test_timestamp
+            sync_timestamp=self.test_timestamp,
         )
-        
+
         # Create document
         doc = self.factory.create_contact_document(contact_event)
-        
+
         # Verify document structure
         assert isinstance(doc, VespaDocumentType)
         assert doc.id == "contact_001"
@@ -187,21 +191,21 @@ class TestVespaDocumentFactory:
             provider_document_id="ms_doc_001",
             permissions=["read", "write"],
             tags=["work", "important"],
-            metadata={"version": "1.0"}
+            metadata={"version": "1.0"},
         )
-        
+
         document_event = DocumentEvent(
             user_id=self.test_user_id,
             document=document_data,
             operation="create",
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
-            sync_timestamp=self.test_timestamp
+            sync_timestamp=self.test_timestamp,
         )
-        
+
         # Create document
         doc = self.factory.create_document_document(document_event)
-        
+
         # Verify document structure
         assert isinstance(doc, VespaDocumentType)
         assert doc.id == "doc_001"
@@ -233,21 +237,21 @@ class TestVespaDocumentFactory:
             subtask_ids=[],
             list_id="list_001",
             provider_todo_id="ms_todo_001",
-            tags=["work", "urgent"]
+            tags=["work", "urgent"],
         )
-        
+
         todo_event = TodoEvent(
             user_id=self.test_user_id,
             todo=todo_data,
             operation="create",
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
-            sync_timestamp=self.test_timestamp
+            sync_timestamp=self.test_timestamp,
         )
-        
+
         # Create document
         doc = self.factory.create_todo_document(todo_event)
-        
+
         # Verify document structure
         assert isinstance(doc, VespaDocumentType)
         assert doc.id == "todo_001"
@@ -281,9 +285,9 @@ class TestVespaDocumentFactory:
             labels=[],
             size_bytes=512,
             mime_type="text/plain",
-            headers={}
+            headers={},
         )
-        
+
         email_event = EmailEvent(
             user_id=self.test_user_id,
             email=email_data,
@@ -291,9 +295,9 @@ class TestVespaDocumentFactory:
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
-            sync_type="backfill"
+            sync_type="backfill",
         )
-        
+
         # Use generic method
         doc = self.factory.create_document_from_event(email_event)
         assert isinstance(doc, VespaDocumentType)
@@ -304,10 +308,10 @@ class TestVespaDocumentFactory:
         supported_types = self.factory.get_supported_event_types()
         expected_types = [
             "EmailEvent",
-            "CalendarEvent", 
+            "CalendarEvent",
             "ContactEvent",
             "DocumentEvent",
-            "TodoEvent"
+            "TodoEvent",
         ]
         assert supported_types == expected_types
 
@@ -339,15 +343,15 @@ class TestParseEventByTopic:
                 "labels": [],
                 "size_bytes": 512,
                 "mime_type": "text/plain",
-                "headers": {}
+                "headers": {},
             },
             "operation": "create",
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
-            "sync_type": "backfill"
+            "sync_type": "backfill",
         }
-        
+
         event = parse_event_by_topic("emails", raw_data, self.test_message_id)
         assert isinstance(event, EmailEvent)
         assert event.user_id == "test_user"
@@ -375,14 +379,14 @@ class TestParseEventByTopic:
                 "reminders": [],
                 "attachments": [],
                 "color_id": "1",
-                "html_link": "https://calendar.google.com/event/001"
+                "html_link": "https://calendar.google.com/event/001",
             },
             "operation": "create",
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
-            "sync_timestamp": "2023-01-01T00:00:00Z"
+            "sync_timestamp": "2023-01-01T00:00:00Z",
         }
-        
+
         event = parse_event_by_topic("calendars", raw_data, self.test_message_id)
         assert isinstance(event, CalendarEvent)
         assert event.user_id == "test_user"
@@ -408,14 +412,14 @@ class TestParseEventByTopic:
                 "birthdays": [],
                 "photos": [],
                 "groups": [],
-                "tags": ["work"]
+                "tags": ["work"],
             },
             "operation": "create",
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
-            "sync_timestamp": "2023-01-01T00:00:00Z"
+            "sync_timestamp": "2023-01-01T00:00:00Z",
         }
-        
+
         event = parse_event_by_topic("contacts", raw_data, self.test_message_id)
         assert isinstance(event, ContactEvent)
         assert event.user_id == "test_user"
@@ -435,14 +439,14 @@ class TestParseEventByTopic:
                 "provider_document_id": "ms_doc_001",
                 "permissions": ["read"],
                 "tags": ["work"],
-                "metadata": {}
+                "metadata": {},
             },
             "operation": "create",
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
-            "sync_timestamp": "2023-01-01T00:00:00Z"
+            "sync_timestamp": "2023-01-01T00:00:00Z",
         }
-        
+
         event = parse_event_by_topic("word_documents", raw_data, self.test_message_id)
         assert isinstance(event, DocumentEvent)
         assert event.user_id == "test_user"
@@ -467,14 +471,14 @@ class TestParseEventByTopic:
                 "subtask_ids": [],
                 "list_id": "list_001",
                 "provider_todo_id": "ms_todo_001",
-                "tags": ["work"]
+                "tags": ["work"],
             },
             "operation": "create",
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
-            "sync_timestamp": "2023-01-01T00:00:00Z"
+            "sync_timestamp": "2023-01-01T00:00:00Z",
         }
-        
+
         event = parse_event_by_topic("todos", raw_data, self.test_message_id)
         assert isinstance(event, TodoEvent)
         assert event.user_id == "test_user"
@@ -483,13 +487,13 @@ class TestParseEventByTopic:
     def test_parse_unknown_topic(self):
         """Test parsing with unknown topic raises error"""
         raw_data = {"user_id": "test_user", "data": "test"}
-        
+
         with pytest.raises(ValueError, match="Unsupported topic: unknown_topic"):
             parse_event_by_topic("unknown_topic", raw_data, self.test_message_id)
 
     def test_parse_invalid_data(self):
         """Test parsing with invalid data raises error"""
         raw_data = {"invalid": "data"}
-        
+
         with pytest.raises(Exception):
             parse_event_by_topic("emails", raw_data, self.test_message_id)
