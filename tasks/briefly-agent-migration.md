@@ -125,11 +125,11 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
         - [x] Update imports in test files
         - [x] Search for any other references to llm_tools functions
 
-### [ ] Task 3.2: Clean Up llm_tools.py
-- [ ] Remove all functions that have been moved to other files
-- [ ] Add deprecation warnings for any remaining functions
-- [ ] Update docstring to indicate the file is being phased out
-- [ ] Consider renaming to `legacy_tools.py` or removing entirely
+### [x] Task 3.2: Clean Up llm_tools.py
+- [x] Remove all functions that have been moved to other files
+- [x] Add deprecation warnings for any remaining functions
+- [x] Update docstring to indicate the file is being phased out
+- [x] Consider renaming to `legacy_tools.py` or removing entirely
 
 ### [ ] Task 3.3: Update Agent Registration
 - [ ] Modify `create_briefly_agent_tools()` in `services/chat/agents/briefly_agent.py`:
