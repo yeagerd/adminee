@@ -3,8 +3,20 @@ Type definitions for the Vespa Loader service
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
+
+class DocumentIngestionResult(BaseModel):
+    """Result of document ingestion operation"""
+    
+    status: str = Field(..., description="Ingestion status (success/failure)")
+    document_id: str = Field(..., description="ID of the ingested document")
+    vespa_result: Any = Field(..., description="Raw result from Vespa indexing operation")
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), 
+                          description="Timestamp of ingestion completion")
 
 
 @dataclass

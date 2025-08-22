@@ -13,7 +13,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.vespa_loader.types import VespaDocumentType
+from services.vespa_loader.types import VespaDocumentType, DocumentIngestionResult
 from vespa_loader.content_normalizer import ContentNormalizer
 from vespa_loader.embeddings import EmbeddingGenerator
 from vespa_loader.vespa_client import VespaClient
@@ -24,7 +24,7 @@ async def ingest_document_service(
     vespa_client: VespaClient,
     content_normalizer: ContentNormalizer,
     embedding_generator: EmbeddingGenerator,
-) -> Dict[str, Any]:
+) -> DocumentIngestionResult:
     """Shared service function to ingest a document into Vespa
 
     This function can be called directly by other parts of the service
@@ -37,7 +37,7 @@ async def ingest_document_service(
         embedding_generator: Initialized embedding generator instance
 
     Returns:
-        Dict containing the ingestion result
+        DocumentIngestionResult containing the ingestion result details
 
     Raises:
         ServiceError: If the service is not properly initialized
@@ -82,11 +82,11 @@ async def ingest_document_service(
             )
         result = await vespa_client.index_document(vespa_document)
 
-        return {
-            "status": "success",
-            "document_id": document_data.id,
-            "vespa_result": result,
-        }
+        return DocumentIngestionResult(
+            status="success",
+            document_id=document_data.id,
+            vespa_result=result,
+        )
 
     except ValidationError:
         # Re-raise ValidationError to preserve the specific error details
