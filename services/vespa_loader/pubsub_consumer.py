@@ -9,7 +9,6 @@ emails, calendar events, contacts, documents, and todos.
 
 import asyncio
 import json
-import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -39,33 +38,7 @@ logger = get_logger(__name__)
 
 
 
-# Typed message structure
-class TypedMessage:
-    """A message container that holds a VespaDocumentType ready for indexing"""
 
-    def __init__(self, message: Any, document: VespaDocumentType):
-        self.message = message
-        self.document = document
-        self.timestamp = time.time()
-
-    @property
-    def message_id(self) -> str:
-        return self.message.message_id
-
-    @property
-    def user_id(self) -> str:
-        """Extract user_id from the Vespa document"""
-        return self.document.user_id
-
-    @property
-    def document_type(self) -> str:
-        """Get the document type"""
-        return self.document.type
-
-    @property
-    def document_id(self) -> str:
-        """Get the document ID"""
-        return self.document.id
 
 
 try:
@@ -113,15 +86,7 @@ class PubSubConsumer:
             )
             self.topics[topic_name] = {
                 "subscription_name": config["subscription_name"],
-                "batch_size": config["batch_size"],
-        }
-
-        # Batch processing
-        self.message_batches: Dict[str, List[TypedMessage]] = {
-            topic: [] for topic in self.topics
-        }
-        self.batch_timers: Dict[str, Optional[asyncio.Task[Any]]] = {}
-        self.batch_timeout = 5.0  # seconds
+            }
 
         # Event loop reference for cross-thread communication
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -291,7 +256,7 @@ class PubSubConsumer:
                 subscription_path,
                 callback=self._create_message_callback(topic_name, config),
                 flow_control=pubsub_v1.types.FlowControl(
-                    max_messages=config["batch_size"], max_bytes=1024 * 1024  # 1MB
+                    max_messages=100, max_bytes=1024 * 1024  # 1MB, process up to 100 messages concurrently
                 ),
             )
 
@@ -332,45 +297,24 @@ class PubSubConsumer:
                         f"Processed message data: message_id={message.message_id}, user_id={vespa_document.user_id}, doc_id={vespa_document.id}"
                     )
 
-                    # Create typed message and add to batch - now with VespaDocumentType
-                    typed_message = TypedMessage(message, vespa_document)
-                    self.message_batches[topic_name].append(typed_message)
+                    # Process message immediately - no batching needed
+                    if self.loop:
+                        # Schedule immediate processing in the event loop
+                        asyncio.run_coroutine_threadsafe(
+                            self._process_message_immediate(vespa_document, message), 
+                            self.loop
+                        )
+                    else:
+                        logger.error("No event loop available for message processing")
+                        message.nack()
+                        self.error_count += 1
+
                 except Exception as parse_error:
                     logger.error(
                         f"Failed to parse message from {topic_name}: {parse_error}"
                     )
                     message.nack()
                     self.error_count += 1
-                    return
-                logger.debug(
-                    f"Added message to batch for {topic_name}. Batch size: {len(self.message_batches[topic_name])}"
-                )
-
-                # Process batch if it's full
-                if len(self.message_batches[topic_name]) >= config["batch_size"]:
-                    logger.info(f"Batch full for {topic_name}, processing immediately")
-                    # Schedule async processing
-                    if self.loop:
-                        asyncio.run_coroutine_threadsafe(
-                            self._process_batch(topic_name, config), self.loop
-                        )
-                else:
-                    # Only start timer if one doesn't already exist
-                    timer = self.batch_timers.get(topic_name)
-                    if (
-                        topic_name not in self.batch_timers
-                        or not timer
-                        or (timer is not None and timer.done())
-                    ):
-                        logger.debug(
-                            f"Starting timer for partial batch in {topic_name}"
-                        )
-                        # Start timer for partial batch
-                        if self.loop:
-                            asyncio.run_coroutine_threadsafe(
-                                self._schedule_batch_processing(topic_name, config),
-                                self.loop,
-                            )
 
             except Exception as e:
                 logger.error(f"Error handling message from {topic_name}: {e}")
@@ -379,104 +323,36 @@ class PubSubConsumer:
 
         return message_callback
 
-    async def _schedule_batch_processing(
-        self, topic_name: str, config: Dict[str, Any]
+    async def _process_message_immediate(
+        self, vespa_document: VespaDocumentType, message: Any
     ) -> None:
-        """Schedule batch processing for a topic"""
-        # Only create timer if one doesn't exist or is done
-        if topic_name in self.batch_timers and self.batch_timers[topic_name]:
-            timer = self.batch_timers[topic_name]
-            if timer is not None and not timer.done():
-                logger.info(f"Timer already exists for {topic_name}, skipping")
-                return
-
-        # Create new timer
-        logger.info(f"Creating timer for {topic_name} with {self.batch_timeout}s delay")
-        self.batch_timers[topic_name] = asyncio.create_task(
-            self._delayed_batch_processing(topic_name, config)
-        )
-
-    async def _delayed_batch_processing(
-        self, topic_name: str, config: Dict[str, Any]
-    ) -> None:
-        """Process batch after timeout delay"""
-        logger.info(f"Timer expired for {topic_name}, processing batch")
-        await asyncio.sleep(self.batch_timeout)
-
-        if self.message_batches[topic_name]:
-            await self._process_batch(topic_name, config)
-        else:
-            logger.info(f"No messages in batch for {topic_name} after timer")
-
-    async def _process_batch(self, topic_name: str, config: Dict[str, Any]) -> None:
-        """Process a batch of messages"""
-        if not self.message_batches[topic_name]:
-            logger.info(f"No messages to process for {topic_name}")
-            return
-
-        batch = self.message_batches[topic_name]
-        self.message_batches[topic_name] = []
-
-        logger.info(f"Processing batch of {len(batch)} messages from {topic_name}")
-        logger.info(f"Message IDs: {[item.message_id for item in batch]}")
-
-        # Process messages in parallel
-        tasks = []
-        for item in batch:
-            task = asyncio.create_task(
-                self._process_single_message(topic_name, item, config)
-            )
-            tasks.append(task)
-
-        # Wait for all processing to complete
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Acknowledge or nack messages based on results
-        for i, (typed_message, result) in enumerate(zip(batch, results)):
-            if isinstance(result, Exception):
-                logger.error(
-                    f"Failed to process message {i} from {topic_name}: {result}"
-                )
-                typed_message.message.nack()
-                self.error_count += 1
-            else:
-                typed_message.message.ack()
-                self.processed_count += 1
-
-        logger.info(
-            f"Completed processing batch from {topic_name}: {len(batch)} messages"
-        )
-
-    async def _process_single_message(
-        self, topic_name: str, typed_message: TypedMessage, config: Dict[str, Any]
-    ) -> Any:
-        """Process a single message - document is already ready for indexing"""
+        """Process a single message immediately"""
         try:
-            message_id = typed_message.message_id
-            user_id = typed_message.user_id
-            document = typed_message.document
-
             logger.info(
-                f"Processing document {document.id} (type: {document.type}) "
-                f"from {topic_name} message {message_id} for user {user_id}"
+                f"Processing document {vespa_document.id} (type: {vespa_document.type}) "
+                f"from message {message.message_id} for user {vespa_document.user_id}"
             )
 
             # Document is already processed, just ingest it
             result = await ingest_document_service(
-                document,
+                vespa_document,
                 self.vespa_client,
                 self.content_normalizer,
                 self.embedding_generator,
             )
             
             logger.info(
-                f"Successfully ingested document {document.id} from {topic_name}: {message_id}"
+                f"Successfully ingested document {vespa_document.id} from message {message.message_id}"
             )
-            return result
+            
+            # Acknowledge the message on success
+            message.ack()
+            self.processed_count += 1
 
         except Exception as e:
-            logger.error(f"Error processing message from {topic_name}: {e}")
-            raise
+            logger.error(f"Error processing message {message.message_id}: {e}")
+            message.nack()
+            self.error_count += 1
 
 
 
@@ -486,9 +362,6 @@ class PubSubConsumer:
             "running": self.running,
             "processed_count": self.processed_count,
             "error_count": self.error_count,
-            "active_batches": {
-                topic: len(batch) for topic, batch in self.message_batches.items()
-            },
             "subscriptions": list(self.subscriptions.keys()),
             "subscription_details": {
                 topic: {
