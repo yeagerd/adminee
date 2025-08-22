@@ -1,0 +1,94 @@
+schema presentation_document {
+    document presentation_document inherits base_document {
+        # Presentation document specific fields
+        field slide_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field theme type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field transition_effects type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field owner_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field permissions type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field provider_document_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Presentation structure
+        field slides type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field slide_notes type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field slide_transitions type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field animations type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field speaker_notes type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field master_slides type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field embedded_objects type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        # Override content_type for Presentation documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "presentation"
+        }
+    }
+    
+    fieldset presentation_search {
+        fields: title, content, search_text, slides, slide_notes, speaker_notes
+    }
+    
+    rank-profile presentation_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text) + 0.65 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding) freshness(updated_at)
+    }
+    
+    rank-profile presentation_content inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, slides, slide_notes, speaker_notes)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text, slides, slide_notes, speaker_notes) + 0.6 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text, slides, slide_notes, speaker_notes) closeness(field, embedding) freshness(updated_at)
+    }
+}

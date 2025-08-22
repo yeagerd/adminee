@@ -1,0 +1,91 @@
+schema word_document {
+    document word_document inherits base_document {
+        # Word document specific fields
+        field word_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field page_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field language type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field template type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field owner_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field permissions type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field provider_document_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Document structure
+        field sections type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field headers type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field footers type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field comments type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field track_changes type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        # Override content_type for Word documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "word"
+        }
+    }
+    
+    fieldset word_search {
+        fields: title, content, search_text, sections, headers, footers, comments
+    }
+    
+    rank-profile word_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text) + 0.65 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding) freshness(updated_at)
+    }
+    
+    rank-profile word_content inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, sections, headers, footers, comments)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text, sections, headers, footers, comments) + 0.6 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text, sections, headers, footers, comments) closeness(field, embedding) freshness(updated_at)
+    }
+}

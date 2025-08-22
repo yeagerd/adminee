@@ -1,0 +1,114 @@
+schema email_document {
+    document email_document inherits base_document {
+        # Email-specific fields
+        field from_address type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field to_addresses type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field cc_addresses type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field bcc_addresses type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field thread_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field received_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field sent_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field folder type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field labels type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field is_read type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field is_starred type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field has_attachments type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field size_bytes type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field mime_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field quoted_content type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field thread_summary type map<string, string> {
+            indexing: summary
+        }
+        
+        # Override content_type for emails
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "email"
+        }
+    }
+    
+    fieldset email_search {
+        fields: title, content, search_text, quoted_content, from_address, to_addresses
+    }
+    
+    rank-profile email_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, quoted_content)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, quoted_content) + 0.65 * closeness(field, embedding) + 0.1 * freshness(received_date)
+        }
+        match-features: nativeRank(title, content, search_text, quoted_content) closeness(field, embedding) freshness(received_date)
+    }
+    
+    rank-profile email_recency inherits recency {
+        first-phase {
+            expression: nativeRank(title, content, search_text, quoted_content)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text, quoted_content) + 0.5 * closeness(field, embedding) + 0.2 * freshness(received_date)
+        }
+        match-features: nativeRank(title, content, search_text, quoted_content) closeness(field, embedding) freshness(received_date)
+    }
+}

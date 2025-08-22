@@ -1,0 +1,95 @@
+schema sheet_document {
+    document sheet_document inherits base_document {
+        # Sheet document specific fields
+        field row_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field column_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field sheet_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field formulas type array<string> {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field owner_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field permissions type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field provider_document_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Sheet structure
+        field sheets type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field named_ranges type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field data_validation type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field conditional_formatting type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field charts type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field pivot_tables type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        # Override content_type for Sheet documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "sheet"
+        }
+    }
+    
+    fieldset sheet_search {
+        fields: title, content, search_text, formulas, sheets, named_ranges
+    }
+    
+    rank-profile sheet_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, formulas)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, formulas) + 0.65 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text, formulas) closeness(field, embedding) freshness(updated_at)
+    }
+    
+    rank-profile sheet_formula inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, formulas, named_ranges)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text, formulas, named_ranges) + 0.6 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text, formulas, named_ranges) closeness(field, embedding) freshness(updated_at)
+    }
+}

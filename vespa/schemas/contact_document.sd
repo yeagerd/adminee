@@ -1,0 +1,108 @@
+schema contact_document {
+    document contact_document inherits base_document {
+        # Contact-specific fields
+        field given_name type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field family_name type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field email_addresses type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field phone_numbers type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field addresses type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field organizations type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field birthdays type array<long> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field notes type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field photos type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field groups type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field last_modified type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Contact relevance scoring
+        field relevance_score type float {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field last_seen type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field event_count type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Override content_type for contacts
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "contact"
+        }
+        
+        # Override title to use display_name
+        field display_name type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+    }
+    
+    fieldset contact_search {
+        fields: display_name, given_name, family_name, content, search_text, notes, email_addresses
+    }
+    
+    rank-profile contact_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(display_name, given_name, family_name, content, search_text, notes)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(display_name, given_name, family_name, content, search_text, notes) + 0.5 * closeness(field, embedding) + 0.2 * relevance_score
+        }
+        match-features: nativeRank(display_name, given_name, family_name, content, search_text, notes) closeness(field, embedding) relevance_score
+    }
+    
+    rank-profile contact_relevance inherits hybrid {
+        first-phase {
+            expression: nativeRank(display_name, given_name, family_name, content, search_text, notes)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(display_name, given_name, family_name, content, search_text, notes) + 0.4 * closeness(field, embedding) + 0.4 * relevance_score
+        }
+        match-features: nativeRank(display_name, given_name, family_name, content, search_text, notes) closeness(field, embedding) relevance_score
+    }
+}

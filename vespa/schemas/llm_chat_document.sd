@@ -1,0 +1,97 @@
+schema llm_chat_document {
+    document llm_chat_document inherits base_document {
+        # LLM chat specific fields
+        field chat_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field session_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field model_name type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field role type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field message_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field tokens_used type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field response_time_ms type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field cost_usd type float {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field tools_used type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field tool_results type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field conversation_context type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field user_feedback type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field metadata type map<string, string> {
+            indexing: summary
+        }
+        
+        # Override content_type for LLM chat documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "llm_chat"
+        }
+    }
+    
+    fieldset llm_chat_search {
+        fields: title, content, search_text, tools_used, user_feedback, conversation_context
+    }
+    
+    rank-profile llm_chat_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, user_feedback)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, user_feedback) + 0.65 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text, user_feedback) closeness(field, embedding) freshness(updated_at)
+    }
+    
+    rank-profile llm_chat_tools inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, tools_used)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text, tools_used) + 0.6 * closeness(field, embedding) + 0.1 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text, tools_used) closeness(field, embedding) freshness(updated_at)
+    }
+}
