@@ -11,7 +11,7 @@ Part of the single-agent workflow system.
 """
 
 import logging
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -96,6 +96,7 @@ class BrieflyAgent(FunctionAgent):
         user_id: str,
         vespa_endpoint: str,
         tools: List[FunctionTool],
+        tool_catalog: str,
         llm_model: str = "gpt-5-nano",
         llm_provider: str = "openai",
         **llm_kwargs: Any,
@@ -114,14 +115,11 @@ class BrieflyAgent(FunctionAgent):
             "- user_data_search: INTELLIGENT search across all your personal data (emails, calendar, contacts, files) - USE THIS FOR ALL SEARCHING EXISTING DATA\n"
             "- web_search: Search the public web for current information - USE THIS FOR EXTERNAL KNOWLEDGE\n"
             "- create_draft_*: Create and manage drafts for emails and calendar events\n\n"
-            "DISCOVERABLE TOOLS (use tool discovery workflow):\n"
-            "- list_get_tools: Discover available service API tools\n"
-            "- get_tool_info: Get complete API specification for any tool\n"
-            "- get_tool: Execute discovered tools with proper parameters\n\n"
-            "TOOL DISCOVERY WORKFLOW:\n"
-            "1. Use list_get_tools to see what tools are available\n"
-            "2. Use get_tool_info(tool_id) to get complete API documentation\n"
-            "3. Use get_tool(tool_id, params) to execute with proper parameters\n\n"
+            "SERVICE API TOOLS (invoked via get_tool):\n"
+            "- Use get_tool(tool_id, params) to execute.\n"
+            "- Use get_tool_info(tool_id) if you need parameter details.\n\n"
+            "AVAILABLE get_tool IDS AND DESCRIPTIONS:\n"
+            f"{tool_catalog}\n\n"
             "CRITICAL TOOL SELECTION RULES - FOLLOW THESE EXACTLY:\n"
             "1. ANY request to FIND, SEARCH, or GET existing data MUST use user_data_search\n"
             "2. NEVER use get_tool('get_emails') or get_tool('get_calendar_events') for searching\n"
@@ -160,6 +158,7 @@ class BrieflyAgent(FunctionAgent):
         self._thread_id = str(thread_id)
         self._user_id = user_id
         self._vespa_endpoint = vespa_endpoint
+        self._tool_catalog = tool_catalog
 
         # Initialize context for conversation history
         self._context = Context(self)
@@ -287,8 +286,8 @@ class BrieflyAgent(FunctionAgent):
             return []
 
 
-def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[FunctionTool]:
-    """Create and return all tools for the BrieflyAgent."""
+def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[FunctionTool], str]:
+    """Create and return all tools for the BrieflyAgent along with a tool catalog string."""
     # Initialize pre-authenticated tools with user context
     search_tools = SearchTools(vespa_endpoint, user_id)
     web_tools = WebTools()
@@ -371,10 +370,6 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
     async def web_search_wrapper(query: str, max_results: int = 5) -> Any:
         return await web_tools.web_search.search(query=query, max_results=max_results)
 
-    def get_tool_list_wrapper() -> Any:
-        """List available tools for discovery."""
-        return get_tools.get_tool.list_tools()
-
     def get_tool_info_wrapper(tool_id: str) -> Any:
         """Get complete API specification for a tool."""
         return get_tools.get_tool.get_tool_info(tool_id)
@@ -440,6 +435,15 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
             **kwargs,
         )
 
+    # Build tool catalog (only categories intended for get_tool execution)
+    catalog_entries: List[tuple[str, str]] = []
+    for cat in ["data_retrieval", "draft_management", "utility"]:
+        try:
+            catalog_entries.extend(get_tools.registry.list_tools_by_category(cat))
+        except Exception:
+            continue
+    tool_catalog = "\n".join([f"- {tool_id}: {desc}" for tool_id, desc in catalog_entries])
+
     tools: List[FunctionTool] = [
         FunctionTool.from_defaults(
             fn=analyze_user_request,
@@ -467,16 +471,6 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
             description="Search the public web for general information and current events.",
         ),
         FunctionTool.from_defaults(
-            fn=get_tool_list_wrapper,
-            name="list_get_tools",
-            description="List available tools that can be executed via get_tool.",
-        ),
-        FunctionTool.from_defaults(
-            fn=get_tool_list_wrapper,
-            name="list_get_tools",
-            description="List available tools that can be executed via get_tool.",
-        ),
-        FunctionTool.from_defaults(
             fn=get_tool_info_wrapper,
             name="get_tool_info",
             description="Get complete API specification for a named tool including parameters, examples, and return format.",
@@ -485,7 +479,10 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
             fn=get_tool_execute_wrapper,
             name="get_tool",
             description=(
-                "Execute a named tool (e.g., get_calendar_events, get_emails, get_notes, get_documents) with parameters."
+                "Execute a named tool (e.g., get_calendar_events, get_notes, get_documents) with parameters.\n"
+                "Available tool_ids (via get_tool):\n"
+                f"{tool_catalog}\n\n"
+                "Do NOT use for searching. For any find/search/get queries over existing data, use user_data_search."
             ),
         ),
         FunctionTool.from_defaults(
@@ -505,7 +502,7 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
         ),
     ]
 
-    return tools
+    return tools, tool_catalog
 
 
 def create_briefly_agent(
@@ -517,13 +514,15 @@ def create_briefly_agent(
     **llm_kwargs: Any,
 ) -> BrieflyAgent:
     """Create a new BrieflyAgent instance with pre-authenticated tools."""
-    tools = create_briefly_agent_tools(vespa_endpoint, user_id)
-    return BrieflyAgent(
+    tools, tool_catalog = create_briefly_agent_tools(vespa_endpoint, user_id)
+    agent = BrieflyAgent(
         thread_id=thread_id,
         user_id=user_id,
         vespa_endpoint=vespa_endpoint,
         tools=tools,
+        tool_catalog=tool_catalog,
         llm_model=llm_model,
         llm_provider=llm_provider,
         **llm_kwargs,
     )
+    return agent
