@@ -138,15 +138,15 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
   - [x] Provide discoverable tools list to the agent
   - [x] Update tool wrapper functions to use new classes
 
-### [ ] Task 3.4: Update Tests
-- [ ] Update existing tests to use new tool structure:
-  - [ ] Update imports in test files
-  - [ ] Modify test setup to use new tool classes
-  - [ ] Update mocking to work with tool registry
-- [ ] Create new tests for tool discovery functionality:
-  - [ ] Test `get_tool()` returns proper API specifications
-  - [ ] Test `list_tools()` returns correct tool metadata
-  - [ ] Test dynamic tool execution through registry
+### [x] Task 3.4: Update Tests
+- [x] Update existing tests to use new tool structure:
+  - [x] Update imports in test files
+  - [x] Modify test setup to use new tool classes
+  - [x] Update mocking to work with tool registry
+- [x] Create new tests for tool discovery functionality:
+  - [x] Test `get_tool()` returns proper API specifications
+  - [x] Test `list_tools()` returns correct tool metadata
+  - [x] Test dynamic tool execution through registry
 
 ### [ ] Task 3.5: Documentation Updates
 - [ ] Update README files to reflect new tool organization

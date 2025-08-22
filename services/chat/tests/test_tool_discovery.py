@@ -89,10 +89,9 @@ class TestToolDiscovery:
         assert tool_info["requires_auth"] is True
         assert tool_info["service_dependency"] == "office_service"
         
-        # Check parameters
+        # Check parameters (user_id should NOT be present as tools are pre-bound)
         params = tool_info["parameters"]
-        assert "user_id" in params
-        assert params["user_id"]["required"] is True
+        assert "user_id" not in params  # user_id is pre-bound, not a parameter
         assert "start_date" in params
         assert params["start_date"]["required"] is False
         

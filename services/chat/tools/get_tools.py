@@ -65,9 +65,8 @@ class GetTool:
         """Execute a tool by name with parameters."""
         try:
             kwargs = params.copy() if params else {}
-            if "user_id" not in kwargs:
-                kwargs["user_id"] = self.default_user_id
             
+            # All tools are pre-bound with user context, no user_id injection needed
             result = self.registry.execute_tool(tool_name, **kwargs)
             return {"status": "success", "tool": tool_name, "result": result}
         except Exception as e:
@@ -101,7 +100,6 @@ class GetTools:
             description="Get calendar events for a user from the office service",
             category="data_retrieval",
             parameters={
-                "user_id": {"type": "str", "description": "User ID to get calendar events for", "required": True},
                 "start_date": {"type": "str", "description": "Start date in YYYY-MM-DD format", "required": False},
                 "end_date": {"type": "str", "description": "End date in YYYY-MM-DD format", "required": False},
                 "time_zone": {"type": "str", "description": "Timezone for date filtering", "required": False, "default": "UTC"},
@@ -129,7 +127,6 @@ class GetTools:
             description="Get emails from the office service",
             category="data_retrieval",
             parameters={
-                "user_id": {"type": "str", "description": "User ID to get emails for", "required": True},
                 "start_date": {"type": "str", "description": "Start date in YYYY-MM-DD format", "required": False},
                 "end_date": {"type": "str", "description": "End date in YYYY-MM-DD format", "required": False},
                 "folder": {"type": "str", "description": "Folder to filter by", "required": False},
@@ -158,7 +155,6 @@ class GetTools:
             description="Get notes from the office service",
             category="data_retrieval",
             parameters={
-                "user_id": {"type": "str", "description": "User ID to get notes for", "required": True},
                 "notebook": {"type": "str", "description": "Notebook to filter by", "required": False},
                 "tags": {"type": "str", "description": "Tags to filter by", "required": False},
                 "search_query": {"type": "str", "description": "Search query to filter notes", "required": False},
@@ -185,7 +181,6 @@ class GetTools:
             description="Get documents from the office service",
             category="data_retrieval",
             parameters={
-                "user_id": {"type": "str", "description": "User ID to get documents for", "required": True},
                 "document_type": {"type": "str", "description": "Type of document to filter by", "required": False},
                 "start_date": {"type": "str", "description": "Start date in YYYY-MM-DD format", "required": False},
                 "end_date": {"type": "str", "description": "End date in YYYY-MM-DD format", "required": False},
