@@ -14,14 +14,18 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.vespa_loader.types import VespaDocumentType
+from vespa_loader.content_normalizer import ContentNormalizer
+from vespa_loader.embeddings import EmbeddingGenerator
+from vespa_loader.mapper import DocumentMapper
+from vespa_loader.vespa_client import VespaClient
 
 
 async def ingest_document_service(
     document_data: Union[VespaDocumentType, Dict[str, Any]],
-    vespa_client: Any,
-    content_normalizer: Any,
-    embedding_generator: Any,
-    document_mapper: Any,
+    vespa_client: VespaClient,
+    content_normalizer: ContentNormalizer,
+    embedding_generator: EmbeddingGenerator,
+    document_mapper: DocumentMapper,
 ) -> Dict[str, Any]:
     """Shared service function to ingest a document into Vespa
 
