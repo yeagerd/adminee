@@ -30,7 +30,11 @@ import requests
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.common.logging_config import get_logger
-from services.common.settings import BaseSettings, SettingsConfigDict
+
+# from services.demos.settings_demos import get_demo_settings # Removed to prevent import-time errors during testing
+from services.demos.settings_demos import (  # Import for type annotation only
+    DemoSettings,
+)
 
 # Try to import OAuth utilities
 try:
@@ -125,23 +129,25 @@ class FastAPICallbackServer:
         pass
 
 
-class DemoSettings(BaseSettings):
-    """Demo settings loaded from environment variables."""
-
-    model_config = SettingsConfigDict(extra="ignore")  # type: ignore[assignment]
-    API_FRONTEND_USER_KEY: str = "test-FRONTEND_USER_KEY"
-    API_FRONTEND_OFFICE_KEY: str = "test-FRONTEND_OFFICE_KEY"
-    API_FRONTEND_CHAT_KEY: str = "test-FRONTEND_CHAT_KEY"
-    API_CHAT_USER_KEY: str = "test-CHAT_USER_KEY"
-    API_CHAT_OFFICE_KEY: str = "test-OFFICE_USER_KEY"
-    API_OFFICE_USER_KEY: str = "test-OFFICE_USER_KEY"
+# Load demo settings
+# settings = get_demo_settings()  # Removed to prevent import-time errors during testing
 
 
-# Load settings
-settings = DemoSettings()
+def get_settings() -> DemoSettings:
+    """Get demo settings lazily to prevent import-time errors during testing."""
+    from services.demos.settings_demos import DemoSettings, get_demo_settings
 
-# Set default user ID
-DEFAULT_USER_ID = "trybriefly@outlook.com"
+    return get_demo_settings()
+
+
+# Set default user ID from demo settings
+# DEFAULT_USER_ID = get_settings().demo_user_email  # Removed to prevent import-time evaluation
+
+
+def get_default_user_id() -> str:
+    """Get default user ID lazily to prevent import-time errors during testing."""
+    return get_settings().demo_user_email
+
 
 # Configure logging
 logging.basicConfig(
@@ -339,7 +345,7 @@ class UserServiceClient(ServiceClient):
                 # Fallback to internal endpoint
                 response = await client.get(
                     f"{self.base_url}/v1/internal/users/{self.user_id}/integrations",
-                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                    headers={"X-API-Key": get_settings().api_frontend_user_key},
                 )
 
                 if response.status_code == 200:
@@ -385,7 +391,7 @@ class UserServiceClient(ServiceClient):
                 # This endpoint properly checks the database for user existence
                 response = await client.get(
                     f"{self.base_url}/v1/internal/users/{user_id}/preferences",
-                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                    headers={"X-API-Key": get_settings().api_frontend_user_key},
                 )
                 if response.status_code == 200:
                     # Check if response is None (user doesn't exist) or has data
@@ -420,7 +426,7 @@ class UserServiceClient(ServiceClient):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
                     f"{self.base_url}/v1/internal/users/{self.user_id}/preferences",
-                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                    headers={"X-API-Key": get_settings().api_frontend_user_key},
                 )
 
                 if response.status_code == 200:
@@ -476,7 +482,7 @@ class ChatServiceClient(ServiceClient):
                     "thread_id": thread_id,
                 },
                 headers={
-                    "X-API-Key": settings.API_FRONTEND_CHAT_KEY,
+                    "X-API-Key": get_settings().api_frontend_chat_key,
                     "X-User-Id": user_id,
                 },
                 timeout=self.timeout,
@@ -501,7 +507,7 @@ class ChatServiceClient(ServiceClient):
             response = requests.delete(
                 f"{self.base_url}/drafts",
                 json={"user_id": user_id, "thread_id": thread_id},
-                headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
+                headers={"X-API-Key": get_settings().api_frontend_chat_key},
                 timeout=self.timeout,
             )
             return response.status_code == 200
@@ -515,7 +521,7 @@ class ChatServiceClient(ServiceClient):
             response = requests.get(
                 f"{self.base_url}/threads",
                 params={"user_id": user_id},
-                headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
+                headers={"X-API-Key": get_settings().api_frontend_chat_key},
                 timeout=self.timeout,
             )
             if response.status_code == 200:
@@ -538,7 +544,7 @@ class OfficeServiceClient(ServiceClient):
                 response = await client.post(
                     f"{self.base_url}/email/send",
                     json={"user_id": user_id, **email_data},
-                    headers={"X-API-Key": settings.API_FRONTEND_OFFICE_KEY},
+                    headers={"X-API-Key": get_settings().api_frontend_office_key},
                 )
                 return response.status_code == 200
         except Exception as e:
@@ -566,7 +572,7 @@ class FullDemo:
         self.skip_auth = skip_auth
         self.user_timezone = "UTC"
         self.timeout = 30.0  # Default timeout for HTTP requests
-        self.settings = settings  # Add access to global settings
+        self.settings = get_settings()  # Add access to global settings
 
         # Service clients for API calls (through gateway)
         self.chat_client = ChatServiceClient(chat_url)
@@ -739,7 +745,7 @@ class FullDemo:
                 exists_response = await client.get(
                     f"{self.user_client.base_url}/v1/internal/users/exists",
                     params=params,
-                    headers={"X-API-Key": self.settings.API_FRONTEND_USER_KEY},
+                    headers={"X-API-Key": self.settings.api_frontend_user_key},
                 )
 
                 if exists_response.status_code == 200:
@@ -752,7 +758,7 @@ class FullDemo:
                         response = await client.get(
                             f"{self.user_client.base_url}/v1/internal/users/id",
                             params=params,
-                            headers={"X-API-Key": self.settings.API_FRONTEND_USER_KEY},
+                            headers={"X-API-Key": self.settings.api_frontend_user_key},
                         )
 
                         if response.status_code == 200:
@@ -857,7 +863,7 @@ class FullDemo:
                     json=user_create_payload,
                     headers={
                         "Content-Type": "application/json",
-                        "X-API-Key": self.settings.API_FRONTEND_USER_KEY,
+                        "X-API-Key": self.settings.api_frontend_user_key,
                     },
                 )
 
@@ -932,7 +938,7 @@ class FullDemo:
                         json=user_create_payload,
                         headers={
                             "Content-Type": "application/json",
-                            "X-API-Key": self.settings.API_FRONTEND_USER_KEY,
+                            "X-API-Key": self.settings.api_frontend_user_key,
                         },
                     )
                     if response.status_code in [200, 201]:
@@ -1510,17 +1516,17 @@ async def main() -> None:
 
     # Set up demo
     use_api = not args.local
-    # Use direct service URLs for now (bypassing gateway authentication issues)
-    chat_url = "http://localhost:8002/v1/chat"
-    office_url = "http://localhost:8003"
-    user_url = "http://localhost:8001"
+    # Use service URLs from demo settings
+    chat_url = f"{get_settings().chat_service_url}/v1/chat"
+    office_url = get_settings().office_service_url
+    user_url = get_settings().user_service_url
 
-    # Direct service URLs for health checks
-    chat_health_url = "http://localhost:8002"
-    office_health_url = "http://localhost:8003"
-    user_health_url = "http://localhost:8001"
+    # Direct service URLs for health checks (using base URLs from settings)
+    chat_health_url = get_settings().chat_service_url
+    office_health_url = get_settings().office_service_url
+    user_health_url = get_settings().user_service_url
 
-    user_id = args.email or DEFAULT_USER_ID
+    user_id = args.email or get_settings().demo_user_email
 
     demo = FullDemo(
         use_api=use_api,

@@ -15,7 +15,7 @@ from services.demos.settings_demos import get_demo_settings
 
 
 def setup_pubsub_topics() -> None:
-    """Set up Pub/Sub topics for the event-driven architecture"""
+    """Set up Pub/Sub topics for the Vespa backfill demo"""
     settings = get_demo_settings()
 
     print("Setting up Pub/Sub topics for event-driven architecture...")

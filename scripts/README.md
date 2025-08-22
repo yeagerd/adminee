@@ -2,6 +2,116 @@
 
 This directory contains utility scripts for managing the Briefly platform.
 
+## Redis Management Scripts
+
+### Redis Management: `redis.sh`
+
+A unified script for managing the Redis container for local development.
+
+**Features:**
+- Start/stop/restart Redis container
+- Health checking and status reporting
+- Connection testing
+- **Single invocation** - automatically starts container if needed and shows status
+
+**Usage:**
+```bash
+# Start container and show status (default - recommended)
+./scripts/redis.sh
+
+# Same as above (explicit auto mode)
+./scripts/redis.sh --auto
+
+# Start Redis container only
+./scripts/redis.sh --start
+
+# Stop Redis container
+./scripts/redis.sh --stop
+
+# Restart Redis container
+./scripts/redis.sh --restart
+
+# Clean up container
+./scripts/redis.sh --cleanup
+
+# Test Redis connection
+./scripts/redis.sh --test
+
+# Show current status
+./scripts/redis.sh --status
+
+# Show help
+./scripts/redis.sh --help
+```
+
+**Key Benefits:**
+- 🚀 **Single command setup** - Automatically starts Redis if not running
+- 🔍 **Smart health checks** - Detects container and connection status
+- 📊 **Comprehensive status** - Shows container and Redis connection status
+- 🧪 **Connection testing** - Built-in Redis ping test functionality
+
+**Prerequisites:**
+- Docker running
+
+## Vespa Management Scripts
+
+### Vespa Management: `vespa.sh`
+
+A unified script for managing the Vespa search engine container and deploying the Briefly application.
+
+**Features:**
+- Start/stop/restart Vespa container
+- Deploy Briefly application to Vespa
+- Health checking and status reporting
+- Data clearing operations
+- **Single invocation** - automatically starts container and deploys app if needed
+
+**Usage:**
+```bash
+# Start container, deploy app, and show status (default - recommended)
+./scripts/vespa.sh
+
+# Same as above (explicit auto mode)
+./scripts/vespa.sh --auto
+
+# Start Vespa container only
+./scripts/vespa.sh --start
+
+# Deploy Briefly application only
+./scripts/vespa.sh --deploy
+
+# Show current status
+./scripts/vespa.sh --status
+
+# Stop Vespa container
+./scripts/vespa.sh --stop
+
+# Restart Vespa container
+./scripts/vespa.sh --restart
+
+# Clean up container
+./scripts/vespa.sh --cleanup
+
+# Clear data for specific user
+./scripts/vespa.sh --clear-data --email {email} --env-file {env_file} [--force]
+
+# Clear all data for all users
+./scripts/vespa.sh --clear-data-all-users
+
+# Show help
+./scripts/vespa.sh --help
+```
+
+**Key Benefits:**
+- 🚀 **Single command setup** - No more separate `--start` and `--deploy` calls
+- 🔍 **Smart health checks** - Automatically detects what needs to be done
+- 📦 **Automatic deployment** - Deploys Briefly app if not already deployed
+- 📊 **Comprehensive status** - Shows container and application status
+
+**Prerequisites:**
+- Docker running
+- Vespa configuration files in `vespa/` directory
+
 ## PubSub Management Scripts
 
 ### Local Development: `pubsub-manager.sh`
@@ -12,7 +122,9 @@ A unified script for managing the local Pub/Sub emulator during development.
 - Start/stop/cleanup Pub/Sub emulator container
 - Create topics and subscriptions automatically
 - Health checking and status reporting
-- Fallback to REST API if gcloud CLI unavailable
+- REST API integration (no gcloud authentication required)
+- Comprehensive topic and subscription listing
+- Automatic Docker container management
 
 **Usage:**
 ```bash
@@ -42,9 +154,15 @@ A unified script for managing the local Pub/Sub emulator during development.
 - `PUBSUB_PROJECT_ID` - Project ID (default: briefly-dev)
 - `PUBSUB_EMULATOR_HOST` - Emulator host (default: localhost:8085)
 
+**Implementation Details:**
+- Uses Docker container with Google Cloud CLI image
+- REST API endpoints for topic/subscription management
+- Automatic health checking and container lifecycle management
+- JSON parsing with jq for reliable data extraction
+
 **Prerequisites:**
 - Docker running
-- Optional: gcloud CLI for enhanced functionality
+- jq (for JSON parsing) - usually pre-installed on macOS/Linux
 
 ### Production GCP: `gcp-pubsub-setup.sh`
 
@@ -109,6 +227,20 @@ The following scripts have been consolidated and removed:
 - `fix-pubsub-topics.sh` → `gcp-pubsub-setup.sh`
 - `create-vespa-subscriptions.sh` → `pubsub-manager.sh`
 
+## Recent Improvements
+
+**Version 2.0 Changes** (Current):
+- ✅ **REST API Integration**: Replaced gcloud commands with direct REST API calls
+- ✅ **No Authentication Required**: Works seamlessly with local emulator
+- ✅ **Improved JSON Parsing**: Uses jq for reliable topic/subscription listing
+- ✅ **Better Error Handling**: Clear error messages and graceful fallbacks
+- ✅ **Comprehensive Status**: Shows all topics and subscriptions clearly
+
+**Previous Version Issues Resolved**:
+- ❌ "Could not list topics/subscriptions" errors
+- ❌ gcloud authentication requirements
+- ❌ Unreliable JSON parsing with grep/sed
+
 ## Quick Start for Development
 
 1. **Start the emulator:**
@@ -125,6 +257,28 @@ The following scripts have been consolidated and removed:
    ```bash
    ./scripts/pubsub-manager.sh stop
    ```
+
+## Troubleshooting
+
+### Common Issues
+
+**"Could not list topics/subscriptions"**:
+- This was a previous issue with gcloud authentication
+- Now resolved with REST API integration
+- Ensure emulator is running: `./scripts/pubsub-manager.sh status`
+
+**Port conflicts**:
+- Default port is 8085
+- Check if port is available: `lsof -i :8085`
+- Use `./scripts/pubsub-manager.sh cleanup` to remove container
+
+**Container issues**:
+- If container is in bad state: `./scripts/pubsub-manager.sh cleanup`
+- Then restart: `./scripts/pubsub-manager.sh start`
+
+**Missing jq**:
+- Install jq: `brew install jq` (macOS) or `apt-get install jq` (Ubuntu)
+- Script will fall back to grep/sed if jq unavailable
 
 ## Quick Start for Production
 
