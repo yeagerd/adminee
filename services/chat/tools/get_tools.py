@@ -89,7 +89,7 @@ class GetTools:
         # Register all tools with the enhanced registry
         self._register_all_tools()
 
-    def _register_all_tools(self):
+    def _register_all_tools(self) -> None:
         """Register all tools with the enhanced registry."""
         # Register get_calendar_events
         calendar_metadata = ToolMetadata(
@@ -320,7 +320,7 @@ class GetTools:
             f"Registered {self.registry.get_tool_count()} tools in enhanced registry"
         )
 
-    def _register_draft_tools(self):
+    def _register_draft_tools(self) -> None:
         """Register draft management tools."""
         # Register create_draft_email
         create_email_metadata = ToolMetadata(
@@ -639,7 +639,7 @@ class GetTools:
             clear_drafts_metadata, self.draft_tools.clear_all_drafts
         )
 
-    def _register_search_tools(self):
+    def _register_search_tools(self) -> None:
         """Register search tools."""
         # Register vespa_search
         vespa_search_metadata = ToolMetadata(
@@ -776,7 +776,7 @@ class GetTools:
             semantic_search_metadata, self.search_tools.semantic_search.semantic_search
         )
 
-    def _register_web_tools(self):
+    def _register_web_tools(self) -> None:
         """Register web search tools."""
         # Register web_search
         web_search_metadata = ToolMetadata(
@@ -818,7 +818,7 @@ class GetTools:
             web_search_metadata, self.web_tools.web_search.search
         )
 
-    def _register_utility_tools(self):
+    def _register_utility_tools(self) -> None:
         """Register utility tools."""
         # Register format_event_time_for_display
         time_format_metadata = ToolMetadata(

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class UtilityTools:
     """Collection of utility tools for common operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def format_event_time_for_display(

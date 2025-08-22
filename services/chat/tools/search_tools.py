@@ -38,11 +38,11 @@ class UserDataSearchTool:
         if hasattr(self, 'search_engine') and self.search_engine:
             await self.search_engine.close()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "UserDataSearchTool":
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit - ensure cleanup."""
         await self.cleanup()
 
@@ -331,12 +331,15 @@ class UserDataSearchTool:
                 ]
             }
 
-        summary = {
+        summary: Dict[str, Any] = {
             "total_results": total_results,
             "data_types_found": list(grouped_results.keys()),
             "top_matches": [],
             "insights": []
         }
+        
+        # Type assertion to help mypy understand the structure
+        insights: List[str] = summary["insights"]
 
         # Collect top matches across all types
         all_results = []
@@ -357,18 +360,18 @@ class UserDataSearchTool:
 
         # Generate insights
         if grouped_results.get("emails"):
-            summary["insights"].append(f"Found {len(grouped_results['emails'])} relevant emails")
+            insights.append(f"Found {len(grouped_results['emails'])} relevant emails")
         if grouped_results.get("calendar"):
-            summary["insights"].append(f"Found {len(grouped_results['calendar'])} calendar events")
+            insights.append(f"Found {len(grouped_results['calendar'])} calendar events")
         if grouped_results.get("contacts"):
-            summary["insights"].append(f"Found {len(grouped_results['contacts'])} matching contacts")
+            insights.append(f"Found {len(grouped_results['contacts'])} matching contacts")
         if grouped_results.get("files"):
-            summary["insights"].append(f"Found {len(grouped_results['files'])} relevant files")
+            insights.append(f"Found {len(grouped_results['files'])} relevant files")
 
         # Add search quality insights
         high_confidence = sum(1 for r in all_results if r.get("match_confidence") in ["Very High", "High"])
         if high_confidence > 0:
-            summary["insights"].append(f"{high_confidence} high-confidence matches found")
+            insights.append(f"{high_confidence} high-confidence matches found")
 
         return summary
 
@@ -418,11 +421,11 @@ class SearchTools:
         self._vespa_search = None
         self._semantic_search = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "SearchTools":
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit - ensure cleanup."""
         await self.cleanup()
 

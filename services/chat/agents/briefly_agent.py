@@ -99,6 +99,7 @@ class BrieflyAgent(FunctionAgent):
         tool_catalog: str,
         llm_model: str = "gpt-5-nano",
         llm_provider: str = "openai",
+        search_tools: Optional[SearchTools] = None,
         **llm_kwargs: Any,
     ) -> None:
         # Ensure we have max_tokens set to handle large tool outputs
@@ -151,13 +152,16 @@ class BrieflyAgent(FunctionAgent):
 
         # Store additional components we need
         self._system_prompt = system_prompt
+
+        # Keep a reference to tools that manage external resources
+        self._search_tools: Optional[SearchTools] = search_tools
         self._thread_id = str(thread_id)
         self._user_id = user_id
         self._vespa_endpoint = vespa_endpoint
         self._tool_catalog = tool_catalog
 
         # Initialize simple state management instead of problematic Context
-        self._state = {}
+        self._state: dict[str, Any] = {}
 
         # Store tools and system prompt for the worker functions
         self._tools = tools
@@ -166,6 +170,15 @@ class BrieflyAgent(FunctionAgent):
         logger.debug(
             f"BrieflyAgent initialized with thread_id={self._thread_id}, user_id={self._user_id}"
         )
+
+    async def cleanup(self) -> None:
+        """Release any external resources held by the agent/tools."""
+        try:
+            if self._search_tools is not None:
+                await self._search_tools.cleanup()
+                self._search_tools = None
+        except Exception as e:
+            logger.warning(f"Cleanup warning: {e}")
 
     @property
     def thread_id(self) -> str:
@@ -232,7 +245,7 @@ class BrieflyAgent(FunctionAgent):
             logger.error(f"Error in BrieflyAgent chat: {e}")
             return f"I apologize, but I encountered an error: {str(e)}"
 
-    async def astream_chat(self, message: str):
+    async def astream_chat(self, message: str) -> Any:
         """Async streaming chat method for compatibility with API usage."""
         try:
             # Load conversation history before streaming chat
@@ -279,8 +292,8 @@ class BrieflyAgent(FunctionAgent):
             return []
 
 
-def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[FunctionTool], str]:
-    """Create and return all tools for the BrieflyAgent along with a tool catalog string."""
+def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[FunctionTool], str, SearchTools]:
+    """Create and return tools, tool catalog string, and the SearchTools instance."""
     # Initialize pre-authenticated tools with user context
     search_tools = SearchTools(vespa_endpoint, user_id)
     web_tools = WebTools()
@@ -438,7 +451,7 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> Tuple[List[
         ),
     ]
 
-    return tools, tool_catalog
+    return tools, tool_catalog, search_tools
 
 
 def create_briefly_agent(
@@ -450,7 +463,7 @@ def create_briefly_agent(
     **llm_kwargs: Any,
 ) -> BrieflyAgent:
     """Create a new BrieflyAgent instance with pre-authenticated tools."""
-    tools, tool_catalog = create_briefly_agent_tools(vespa_endpoint, user_id)
+    tools, tool_catalog, search_tools = create_briefly_agent_tools(vespa_endpoint, user_id)
     agent = BrieflyAgent(
         thread_id=thread_id,
         user_id=user_id,
@@ -459,6 +472,7 @@ def create_briefly_agent(
         tool_catalog=tool_catalog,
         llm_model=llm_model,
         llm_provider=llm_provider,
+        search_tools=search_tools,
         **llm_kwargs,
     )
     return agent

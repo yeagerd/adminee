@@ -83,5 +83,5 @@ class WebSearchTool:
 class WebTools:
     """Collection of web search tools."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.web_search = WebSearchTool()
