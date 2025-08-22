@@ -76,7 +76,7 @@ def get_async_engine() -> "AsyncEngine":
                     connect_args["command_timeout"] = 10.0  # 10 seconds
                     # timeout sets the connection timeout
                     connect_args["timeout"] = 30.0  # 30 seconds
-                
+
                 _async_engine = create_async_engine(
                     async_db_url,
                     echo=False,
@@ -146,7 +146,7 @@ def get_async_sessionmaker() -> async_sessionmaker:
                             connect_args["command_timeout"] = 10.0  # 10 seconds
                             # timeout sets the connection timeout
                             connect_args["timeout"] = 30.0  # 30 seconds
-                        
+
                         _async_engine = create_async_engine(
                             async_db_url,
                             echo=False,

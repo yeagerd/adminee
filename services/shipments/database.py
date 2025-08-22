@@ -15,7 +15,7 @@ def get_engine():
     """Get database engine with lazy settings loading."""
     settings = get_settings()
     database_url = get_async_database_url(settings.db_url_shipments)
-    
+
     # Configure asyncpg timeout parameters for better reliability
     connect_args = {}
     if database_url.startswith("postgresql"):
@@ -23,7 +23,7 @@ def get_engine():
         connect_args["command_timeout"] = 10.0  # 10 seconds
         # timeout sets the connection timeout
         connect_args["timeout"] = 30.0  # 30 seconds
-    
+
     return create_async_engine(
         database_url,
         echo=settings.debug,
