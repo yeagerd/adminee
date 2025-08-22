@@ -76,10 +76,6 @@ async def ingest_document_service(
                 logger.warning(f"Failed to generate embedding: {e}")
 
         # Index document in Vespa
-        if not vespa_client:
-            raise ServiceError(
-                "Vespa client not initialized", code=ErrorCode.SERVICE_ERROR
-            )
         result = await vespa_client.index_document(vespa_document)
 
         return DocumentIngestionResult(
