@@ -73,7 +73,18 @@ def test(session: nox.Session) -> None:
     session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     # Run tests
-    session.run("python", "-m", "pytest", "services/", "-v", "-n", "auto")
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/",
+        "-q",
+        "-n",
+        "auto",
+        "-r",
+        "fE",
+        "--disable-warnings",
+    )
 
 
 @nox.session(python="3.12")
@@ -87,13 +98,40 @@ def test_fast(session: nox.Session) -> None:
     session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     session.run(
-        "python", "-m", "pytest", "services/user/tests/", "-v", "-k", "not slow"
+        "python",
+        "-m",
+        "pytest",
+        "services/user/tests/",
+        "-q",
+        "-k",
+        "not slow",
+        "-r",
+        "fE",
+        "--disable-warnings",
     )
     session.run(
-        "python", "-m", "pytest", "services/chat/tests/", "-v", "-k", "not slow"
+        "python",
+        "-m",
+        "pytest",
+        "services/chat/tests/",
+        "-q",
+        "-k",
+        "not slow",
+        "-r",
+        "fE",
+        "--disable-warnings",
     )
     session.run(
-        "python", "-m", "pytest", "services/office/tests/", "-v", "-k", "not slow"
+        "python",
+        "-m",
+        "pytest",
+        "services/office/tests/",
+        "-q",
+        "-k",
+        "not slow",
+        "-r",
+        "fE",
+        "--disable-warnings",
     )
 
 
@@ -114,7 +152,10 @@ def test_cov(session: nox.Session) -> None:
         "services/user/tests/",
         "--cov=services/user",
         "--cov-report=xml:coverage-user.xml",
-        "-v",
+        "-q",
+        "-r",
+        "fE",
+        "--disable-warnings",
     )
     session.run(
         "python",
@@ -123,7 +164,10 @@ def test_cov(session: nox.Session) -> None:
         "services/chat/tests/",
         "--cov=services/chat",
         "--cov-report=xml:coverage-chat-service.xml",
-        "-v",
+        "-q",
+        "-r",
+        "fE",
+        "--disable-warnings",
     )
     session.run(
         "python",
@@ -132,7 +176,10 @@ def test_cov(session: nox.Session) -> None:
         "services/office/tests/",
         "--cov=services/office",
         "--cov-report=xml:coverage-office-service.xml",
-        "-v",
+        "-q",
+        "-r",
+        "fE",
+        "--disable-warnings",
     )
 
 
@@ -146,6 +193,36 @@ def test_serial(session: nox.Session) -> None:
     # Use UV to sync workspace packages
     session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
-    session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
-    session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
-    session.run("python", "-m", "pytest", "services/office/tests/", "-v", "--tb=short")
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/user/tests/",
+        "-q",
+        "--tb=short",
+        "-r",
+        "fE",
+        "--disable-warnings",
+    )
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/chat/tests/",
+        "-q",
+        "--tb=short",
+        "-r",
+        "fE",
+        "--disable-warnings",
+    )
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/office/tests/",
+        "-q",
+        "--tb=short",
+        "-r",
+        "fE",
+        "--disable-warnings",
+    )
