@@ -74,14 +74,14 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
   - [x] Add proper error handling and logging
   - [ ] Register all draft tools in the tool registry
 
-### [ ] Task 2.3: Create Data Retrieval Tools  
-- [ ] Create `services/chat/tools/data_tools.py` for data access:
-  - [ ] Move `get_documents` function from llm_tools.py
-  - [ ] Move `get_notes` function from llm_tools.py
-  - [ ] Move `get_calendar_events` function from llm_tools.py  
-  - [ ] Move `get_emails` function from llm_tools.py
-  - [ ] Create `DataTools` class to organize these functions
-  - [ ] Add integration checking logic for user permissions
+### [x] Task 2.3: Create Data Retrieval Tools  
+- [x] Create `services/chat/tools/data_tools.py` for data access:
+  - [x] Move `get_documents` function from llm_tools.py
+  - [x] Move `get_notes` function from llm_tools.py
+  - [x] Move `get_calendar_events` function from llm_tools.py  
+  - [x] Move `get_emails` function from llm_tools.py
+  - [x] Create `DataTools` class to organize these functions
+  - [x] Add integration checking logic for user permissions
   - [ ] Register all data tools in the tool registry
   - [ ] Update imports in existing files
 
