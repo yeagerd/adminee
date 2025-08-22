@@ -131,12 +131,12 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 - [x] Update docstring to indicate the file is being phased out
 - [x] Consider renaming to `legacy_tools.py` or removing entirely
 
-### [ ] Task 3.3: Update Agent Registration
-- [ ] Modify `create_briefly_agent_tools()` in `services/chat/agents/briefly_agent.py`:
-  - [ ] Initialize all new tool classes (`DataTools`, `UtilityTools`, etc.)
-  - [ ] Register all tools in the central registry
-  - [ ] Provide discoverable tools list to the agent
-  - [ ] Update tool wrapper functions to use new classes
+### [x] Task 3.3: Update Agent Registration
+- [x] Modify `create_briefly_agent_tools()` in `services/chat/agents/briefly_agent.py`:
+  - [x] Initialize all new tool classes (`DataTools`, `UtilityTools`, etc.)
+  - [x] Register all tools in the central registry
+  - [x] Provide discoverable tools list to the agent
+  - [x] Update tool wrapper functions to use new classes
 
 ### [ ] Task 3.4: Update Tests
 - [ ] Update existing tests to use new tool structure:

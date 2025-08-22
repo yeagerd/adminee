@@ -275,6 +275,120 @@ class GetTools:
             service_dependency="none"
         )
         self.registry.register_tool(create_calendar_metadata, self.draft_tools.create_draft_calendar_event)
+        
+        # Register create_draft_calendar_change
+        create_calendar_change_metadata = ToolMetadata(
+            tool_id="create_draft_calendar_change",
+            description="Create or update a calendar change draft for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the draft", "required": True},
+                "event_id": {"type": "str", "description": "Event ID to modify", "required": True},
+                "change_type": {"type": "str", "description": "Type of change (reschedule, cancel, update)", "required": False},
+                "new_title": {"type": "str", "description": "New event title", "required": False},
+                "new_start_time": {"type": "str", "description": "New start time (ISO format)", "required": False},
+                "new_end_time": {"type": "str", "description": "New end time (ISO format)", "required": False},
+                "new_attendees": {"type": "str", "description": "New comma-separated attendee emails", "required": False},
+                "new_location": {"type": "str", "description": "New event location", "required": False},
+                "new_description": {"type": "str", "description": "New event description", "required": False}
+            },
+            examples=[
+                {"description": "Reschedule event", "params": {"change_type": "reschedule", "new_start_time": "2024-01-15T11:00:00Z"}},
+                {"description": "Update event details", "params": {"new_title": "Updated Meeting", "new_location": "New Room"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "draft": "Draft data object",
+                "error": "Error message if failed"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(create_calendar_change_metadata, self.draft_tools.create_draft_calendar_change)
+        
+        # Register delete_draft_email
+        delete_email_metadata = ToolMetadata(
+            tool_id="delete_draft_email",
+            description="Delete an email draft for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the draft", "required": True}
+            },
+            examples=[
+                {"description": "Delete email draft", "params": {"thread_id": "thread123"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "deleted": "true/false",
+                "message": "Status message"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(delete_email_metadata, self.draft_tools.delete_draft_email)
+        
+        # Register delete_draft_calendar_event
+        delete_calendar_metadata = ToolMetadata(
+            tool_id="delete_draft_calendar_event",
+            description="Delete a calendar event draft for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the draft", "required": True}
+            },
+            examples=[
+                {"description": "Delete calendar event draft", "params": {"thread_id": "thread123"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "deleted": "true/false",
+                "message": "Status message"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(delete_calendar_metadata, self.draft_tools.delete_draft_calendar_event)
+        
+        # Register delete_draft_calendar_edit
+        delete_calendar_edit_metadata = ToolMetadata(
+            tool_id="delete_draft_calendar_edit",
+            description="Delete a calendar edit draft for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the draft", "required": True}
+            },
+            examples=[
+                {"description": "Delete calendar edit draft", "params": {"thread_id": "thread123"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "deleted": "true/false",
+                "message": "Status message"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(delete_calendar_edit_metadata, self.draft_tools.delete_draft_calendar_edit)
+        
+        # Register clear_all_drafts
+        clear_drafts_metadata = ToolMetadata(
+            tool_id="clear_all_drafts",
+            description="Clear all drafts for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the drafts", "required": True}
+            },
+            examples=[
+                {"description": "Clear all drafts", "params": {"thread_id": "thread123"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "cleared_count": "Number of drafts cleared",
+                "cleared_drafts": "List of draft types cleared"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(clear_drafts_metadata, self.draft_tools.clear_all_drafts)
     
     def _register_search_tools(self):
         """Register search tools."""
@@ -303,6 +417,54 @@ class GetTools:
             service_dependency="vespa"
         )
         self.registry.register_tool(vespa_search_metadata, self.search_tools.vespa_search.search)
+        
+        # Register user_data_search
+        user_data_search_metadata = ToolMetadata(
+            tool_id="user_data_search",
+            description="Search across all user data types (email, calendar, contacts, files) using intelligent method selection",
+            category="search",
+            parameters={
+                "query": {"type": "str", "description": "Search query string", "required": True},
+                "max_results": {"type": "int", "description": "Maximum number of results", "required": False, "default": 20}
+            },
+            examples=[
+                {"description": "Search for meeting-related data", "params": {"query": "meeting", "max_results": 15}},
+                {"description": "Search for project updates", "params": {"query": "project update", "max_results": 10}}
+            ],
+            return_format={
+                "status": "success/error",
+                "results": "List of search results",
+                "total_found": "Total number of results",
+                "search_method": "Method used for search"
+            },
+            requires_auth=True,
+            service_dependency="office_service"
+        )
+        self.registry.register_tool(user_data_search_metadata, self.search_tools.user_data_search.search_all_data)
+        
+        # Register semantic_search
+        semantic_search_metadata = ToolMetadata(
+            tool_id="semantic_search",
+            description="Perform semantic search through user data using vector embeddings",
+            category="search",
+            parameters={
+                "query": {"type": "str", "description": "Search query string", "required": True},
+                "max_results": {"type": "int", "description": "Maximum number of results", "required": False, "default": 10}
+            },
+            examples=[
+                {"description": "Semantic search for similar concepts", "params": {"query": "about project planning", "max_results": 8}},
+                {"description": "Find related documents", "params": {"query": "similar to budget report", "max_results": 12}}
+            ],
+            return_format={
+                "status": "success/error",
+                "results": "List of semantically similar results",
+                "total_found": "Total number of results",
+                "similarity_scores": "Relevance scores for results"
+            },
+            requires_auth=True,
+            service_dependency="vespa"
+        )
+        self.registry.register_tool(semantic_search_metadata, self.search_tools.semantic_search.semantic_search)
     
     def _register_web_tools(self):
         """Register web search tools."""
@@ -352,6 +514,124 @@ class GetTools:
             service_dependency="none"
         )
         self.registry.register_tool(time_format_metadata, self.utility_tools.format_event_time_for_display)
+        
+        # Register validate_email_format
+        validate_email_metadata = ToolMetadata(
+            tool_id="validate_email_format",
+            description="Validate if a string is a properly formatted email address",
+            category="utility",
+            parameters={
+                "email": {"type": "str", "description": "Email address to validate", "required": True}
+            },
+            examples=[
+                {"description": "Validate email format", "params": {"email": "user@example.com"}}
+            ],
+            return_format={
+                "is_valid": "true/false"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(validate_email_metadata, self.utility_tools.validate_email_format)
+        
+        # Register sanitize_string
+        sanitize_metadata = ToolMetadata(
+            tool_id="sanitize_string",
+            description="Sanitize and clean a text string, optionally truncating to specified length",
+            category="utility",
+            parameters={
+                "text": {"type": "str", "description": "Text to sanitize", "required": True},
+                "max_length": {"type": "int", "description": "Maximum length for truncation", "required": False}
+            },
+            examples=[
+                {"description": "Sanitize text", "params": {"text": "Raw text with special chars", "max_length": 100}}
+            ],
+            return_format={
+                "sanitized_text": "Cleaned and optionally truncated text"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(sanitize_metadata, self.utility_tools.sanitize_string)
+        
+        # Register parse_date_range
+        parse_date_metadata = ToolMetadata(
+            tool_id="parse_date_range",
+            description="Parse a date range string and extract start and end dates",
+            category="utility",
+            parameters={
+                "date_string": {"type": "str", "description": "Date range string to parse", "required": True}
+            },
+            examples=[
+                {"description": "Parse date range", "params": {"date_string": "last week"}},
+                {"description": "Parse specific dates", "params": {"date_string": "2024-01-01 to 2024-01-31"}}
+            ],
+            return_format={
+                "start_date": "Start date in YYYY-MM-DD format",
+                "end_date": "End date in YYYY-MM-DD format"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(parse_date_metadata, self.utility_tools.parse_date_range)
+        
+        # Register format_file_size
+        format_size_metadata = ToolMetadata(
+            tool_id="format_file_size",
+            description="Format file size in bytes to human-readable format",
+            category="utility",
+            parameters={
+                "size_bytes": {"type": "int", "description": "File size in bytes", "required": True}
+            },
+            examples=[
+                {"description": "Format file size", "params": {"size_bytes": 1048576}}
+            ],
+            return_format={
+                "formatted_size": "Human-readable file size (e.g., '1.0 MB')"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(format_size_metadata, self.utility_tools.format_file_size)
+        
+        # Register extract_phone_number
+        extract_phone_metadata = ToolMetadata(
+            tool_id="extract_phone_number",
+            description="Extract phone number from text using pattern matching",
+            category="utility",
+            parameters={
+                "text": {"type": "str", "description": "Text to extract phone number from", "required": True}
+            },
+            examples=[
+                {"description": "Extract phone number", "params": {"text": "Call me at 555-123-4567 tomorrow"}}
+            ],
+            return_format={
+                "phone_number": "Extracted phone number or null if not found"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(extract_phone_metadata, self.utility_tools.extract_phone_number)
+        
+        # Register generate_summary
+        generate_summary_metadata = ToolMetadata(
+            tool_id="generate_summary",
+            description="Generate a concise summary of text content",
+            category="utility",
+            parameters={
+                "text": {"type": "str", "description": "Text to summarize", "required": True},
+                "max_length": {"type": "int", "description": "Maximum length of summary", "required": False, "default": 200}
+            },
+            examples=[
+                {"description": "Generate summary", "params": {"text": "Long text content", "max_length": 150}}
+            ],
+            return_format={
+                "summary": "Concise summary of the input text"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(generate_summary_metadata, self.utility_tools.generate_summary)
 
 
 # Note: Legacy get_* functions have been moved to DataTools class
