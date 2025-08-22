@@ -13,12 +13,12 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 - [x] Understand the difference between immediate tools vs discoverable tools
 - [x] Document the current `GetTools` class implementation in `services/chat/tools/get_tools.py`
 
-### [ ] Task 1.2: Design New Tool Discovery System
-- [ ] Create a design document for the new tool discovery architecture
-- [ ] Define the interface for tool metadata: `(tool_id, tool_description)`
-- [ ] Design the `get_tool` function that returns API instructions for a named tool
-- [ ] Design how tools will be registered in a discoverable registry
-- [ ] Plan backward compatibility during migration
+### [x] Task 1.2: Design New Tool Discovery System
+- [x] Create a design document for the new tool discovery architecture
+- [x] Define the interface for tool metadata: `(tool_id, tool_description)`
+- [x] Design the `get_tool` function that returns API instructions for a named tool
+- [x] Design how tools will be registered in a discoverable registry
+- [x] Plan backward compatibility during migration
 
 ### [ ] Task 1.3: Create Tool Registry Infrastructure
 - [ ] Create `services/chat/tools/tool_registry.py` with:
