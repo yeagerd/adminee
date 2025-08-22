@@ -97,7 +97,7 @@ class TestSubscriptionConfig:
         assert "word_documents" in vespa_topics
         assert "todos" in vespa_topics
         assert (
-            len(vespa_topics) == 12
+            len(vespa_topics) == 11
         )  # All document types + emails, calendars, contacts, todos
 
         # Test contact_discovery service
