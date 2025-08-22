@@ -143,7 +143,14 @@ async def chat_endpoint(
         # Continue without saving - conversation can still proceed
 
     # Actually run the chat and get the agent's response
-    agent_response = await agent.achat(user_input)
+    try:
+        agent_response = await agent.achat(user_input)
+    finally:
+        # Ensure any underlying client sessions are closed
+        try:
+            await agent.cleanup()
+        except Exception:
+            pass
 
     # Save assistant response to database
     try:
@@ -416,6 +423,12 @@ async def chat_stream_endpoint(
             # Send error event
             error_data = {"error": str(e), "status": "error"}
             yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+        finally:
+            # Ensure cleanup of agent resources regardless of outcome
+            try:
+                await agent.cleanup()
+            except Exception:
+                pass
 
     return StreamingResponse(
         generate_streaming_response(),
