@@ -7,11 +7,11 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 
 ## Phase 1: Fix Tool Discovery Architecture
 
-### [ ] Task 1.1: Understand Current Architecture
-- [ ] Read and document how `BrieflyAgent` currently works in `services/chat/agents/briefly_agent.py`
-- [ ] Document how tools are currently registered and used (lines 269-389)
-- [ ] Understand the difference between immediate tools vs discoverable tools
-- [ ] Document the current `GetTools` class implementation in `services/chat/tools/get_tools.py`
+### [x] Task 1.1: Understand Current Architecture
+- [x] Read and document how `BrieflyAgent` currently works in `services/chat/agents/briefly_agent.py`
+- [x] Document how tools are currently registered and used (lines 269-389)
+- [x] Understand the difference between immediate tools vs discoverable tools
+- [x] Document the current `GetTools` class implementation in `services/chat/tools/get_tools.py`
 
 ### [ ] Task 1.2: Design New Tool Discovery System
 - [ ] Create a design document for the new tool discovery architecture
