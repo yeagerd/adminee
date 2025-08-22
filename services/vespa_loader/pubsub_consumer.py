@@ -372,7 +372,7 @@ class PubSubConsumer:
         self.settings = settings
         self.vespa_client = vespa_client
         self.content_normalizer = content_normalizer
-        self.embedding_generator = document_mapper
+        self.embedding_generator = embedding_generator
         self.document_mapper = document_mapper
 
         self.subscriber: Optional[Any] = None

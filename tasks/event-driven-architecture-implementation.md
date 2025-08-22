@@ -306,7 +306,7 @@ As each item is completed:
 
 ## 🧹 Vespa Loader Refactor and Dead Code Cleanup
 
-- [ ] Fix PubSubConsumer bug: set `self.embedding_generator = embedding_generator` (not `document_mapper`).
+- [x] Fix PubSubConsumer bug: set `self.embedding_generator = embedding_generator` (not `document_mapper`).
 - [ ] Move `VespaDocumentFactory` out of `services/vespa_loader/pubsub_consumer.py` into a dedicated module (e.g., `services/vespa_loader/document_factory.py`) or `mapper.py`.
 - [ ] Move `_parse_event_by_topic()` from `pubsub_consumer.py` into the new `document_factory.py` (or the chosen module) as a top-level function.
 - [ ] Update `pubsub_consumer.py` to import and use `VespaDocumentFactory` and `parse_event_by_topic()` from the new module; remove in-file definitions.
