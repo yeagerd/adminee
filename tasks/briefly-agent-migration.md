@@ -44,7 +44,7 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 - [x] Modify `create_briefly_agent_tools()` to provide initial core tools
 - [x] Add discoverable tools list to agent initialization
 - [x] Update agent system prompt to explain tool discovery workflow
-- [ ] Test that agent can discover and use tools dynamically
+- [x] Test that agent can discover and use tools dynamically
 
 ## Phase 2: Reorganize llm_tools.py by Category
 
