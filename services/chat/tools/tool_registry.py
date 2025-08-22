@@ -47,7 +47,7 @@ class ToolRegistry:
         self._tools: Dict[str, ToolMetadata] = {}
         self._categories: Dict[str, List[str]] = {}
         self._executors: Dict[str, Any] = {}
-        logger.info("ToolRegistry initialized")
+        logger.debug("ToolRegistry initialized")
 
     def register_tool(
         self, tool_metadata: ToolMetadata, executor: Optional[Any] = None
@@ -76,7 +76,7 @@ class ToolRegistry:
         if executor is not None:
             self._executors[tool_id] = executor
 
-        logger.info(f"Registered tool: {tool_id} in category: {category}")
+        logger.debug(f"Registered tool: {tool_id} in category: {category}")
 
     def list_tools(self) -> List[Tuple[str, str]]:
         """Return list of available tools as (tool_id, description) tuples.
@@ -186,7 +186,7 @@ class ToolRegistry:
         if tool_id in self._executors:
             del self._executors[tool_id]
 
-        logger.info(f"Unregistered tool: {tool_id}")
+        logger.debug(f"Unregistered tool: {tool_id}")
         return True
 
     def get_tool_count(self) -> int:
@@ -264,7 +264,7 @@ class ToolRegistry:
         # Import categories
         self._categories = registry_data.get("categories", {})
 
-        logger.info(f"Imported registry with {self.get_tool_count()} tools")
+        logger.debug(f"Imported registry with {self.get_tool_count()} tools")
 
 
 # Global registry instance

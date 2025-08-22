@@ -316,7 +316,7 @@ class GetTools:
         # Register utility tools
         self._register_utility_tools()
 
-        logger.info(
+        logger.debug(
             f"Registered {self.registry.get_tool_count()} tools in enhanced registry"
         )
 
