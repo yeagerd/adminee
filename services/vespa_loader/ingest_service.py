@@ -44,7 +44,6 @@ async def ingest_document_service(
         ValidationError: If document data is invalid
     """
 
-
     try:
         # Validate document data
         if not document_data.id or not document_data.user_id:
