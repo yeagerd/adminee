@@ -69,6 +69,14 @@ def get_async_engine() -> "AsyncEngine":
             if _async_engine is None:
                 db_url = get_settings().db_url_meetings
                 async_db_url = get_async_database_url(db_url)
+                # Configure asyncpg timeout parameters for better reliability
+                connect_args = {}
+                if async_db_url.startswith("postgresql"):
+                    # command_timeout sets the default timeout for operations
+                    connect_args["command_timeout"] = 10.0  # 10 seconds
+                    # timeout sets the connection timeout
+                    connect_args["timeout"] = 30.0  # 30 seconds
+
                 _async_engine = create_async_engine(
                     async_db_url,
                     echo=False,
@@ -79,6 +87,8 @@ def get_async_engine() -> "AsyncEngine":
                     pool_timeout=30,
                     pool_recycle=3600,
                     pool_pre_ping=True,
+                    # Apply database-specific connect_args
+                    connect_args=connect_args,
                 )
     return _async_engine
 
@@ -129,6 +139,14 @@ def get_async_sessionmaker() -> async_sessionmaker:
                     if _async_engine is None:
                         db_url = get_settings().db_url_meetings
                         async_db_url = get_async_database_url(db_url)
+                        # Configure asyncpg timeout parameters for better reliability
+                        connect_args = {}
+                        if async_db_url.startswith("postgresql"):
+                            # command_timeout sets the default timeout for operations
+                            connect_args["command_timeout"] = 10.0  # 10 seconds
+                            # timeout sets the connection timeout
+                            connect_args["timeout"] = 30.0  # 30 seconds
+
                         _async_engine = create_async_engine(
                             async_db_url,
                             echo=False,
@@ -138,6 +156,8 @@ def get_async_sessionmaker() -> async_sessionmaker:
                             pool_timeout=30,
                             pool_recycle=3600,
                             pool_pre_ping=True,
+                            # Apply database-specific connect_args
+                            connect_args=connect_args,
                         )
                     current_async_engine = _async_engine
                 _async_session_maker = async_sessionmaker(
