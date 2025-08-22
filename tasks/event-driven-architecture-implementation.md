@@ -6,10 +6,11 @@ Implementation checklist for the revised event-driven Office data architecture w
 ## Phase 1: Event Model Refactoring
 
 ### [ ] Update Event Models
-- [ ] Refactor `EmailBackfillEvent` to `EmailEvent` with `sync_type` field
-- [ ] Add `sync_type` enum: `["batch_sync", "incremental_sync", "real_time"]`
+- [ ] Refactor `EmailBackfillEvent` to `EmailEvent`
 - [ ] Add `operation` field to distinguish create/update/delete for mutable data
 - [ ] Add `batch_id` field for batch operations
+- [ ] Add `last_updated` field for content age tracking
+- [ ] Add `sync_timestamp` field for data freshness tracking
 - [ ] Update `services/common/events/email_events.py`
 - [ ] Update `services/common/events/calendar_events.py`
 - [ ] Update `services/common/events/contact_events.py`
@@ -55,6 +56,7 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Replace `publish_email_backfill` with `publish_email_event`
 - [ ] Add new helper methods for other data types
 - [ ] Update method signatures to include new event fields
+- [ ] Ensure `last_updated` and `sync_timestamp` are properly set in events
 
 ## Phase 4: Consumer Updates
 
@@ -71,6 +73,8 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Create type-specific document classes with appropriate fields
 - [ ] Update Vespa indexing logic to use new document types
 - [ ] Ensure unified search works across all document types
+- [ ] Implement timestamp handling for `last_updated` and `sync_timestamp`
+- [ ] Ensure proper timestamp conversion and validation
 
 ### [ ] Internal Tool Integration
 - [ ] Design event schemas for internal tools (LLM chats, shipment events, meeting polls, bookings)
@@ -138,6 +142,8 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Test contact relevance scoring and Vespa updates
 - [ ] Test document chunking algorithms and fragment generation
 - [ ] Test parent-child relationships between documents and fragments
+- [ ] Test timestamp field validation and conversion
+- [ ] Test data freshness tracking with `last_updated` and `sync_timestamp`
 
 ### [ ] Integration Testing
 - [ ] Test end-to-end flow with new architecture
@@ -179,6 +185,8 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Monitor contact discovery and update rates
 - [ ] Track internal tool event processing performance
 - [ ] Monitor contact relevance scoring accuracy
+- [ ] Track data freshness metrics using `last_updated` and `sync_timestamp`
+- [ ] Monitor sync latency and data staleness
 
 ## Dependencies and Order
 

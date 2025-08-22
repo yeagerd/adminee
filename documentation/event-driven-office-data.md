@@ -68,26 +68,28 @@ todos           # All todo events (batch sync, incremental sync, real-time)
 ```
 
 #### Event Types
-Each topic carries events that distinguish between sync strategies and operations:
+Each topic carries events that distinguish between operations and provide tracking information:
 
 **Immutable data (emails, calendar events):**
 ```python
 class EmailEvent(BaseEvent):
     data: EmailData
-    sync_type: Literal["batch_sync", "incremental_sync", "real_time"]
     operation: Literal["create"]  # emails can't be updated
     batch_id: Optional[str]      # for batch operations
     correlation_id: Optional[str] # for job tracking
+    last_updated: datetime       # when the content was last modified
+    sync_timestamp: datetime     # when we last synced this data
 ```
 
 **Mutable data (contacts, documents, drafts):**
 ```python
 class ContactEvent(BaseEvent):
     data: ContactData  
-    sync_type: Literal["batch_sync", "incremental_sync", "real_time"]
     operation: Literal["create", "update", "delete"]
     batch_id: Optional[str]      # for batch operations
     correlation_id: Optional[str] # for job tracking
+    last_updated: datetime       # when the content was last modified
+    sync_timestamp: datetime     # when we last synced this data
 ```
 
 All events extend `BaseEvent` and include `metadata` (trace_id/span_id, correlation_id, user_id, source_service, source_version). Use typed events from `services.common.events.*` to ensure schema consistency.
@@ -130,6 +132,8 @@ class BaseVespaDocument(BaseEvent):
     provider: str
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
+    last_updated: datetime       # when the content was last modified
+    sync_timestamp: datetime     # when we last synced this data
     metadata: Dict[str, Any]
     content_chunks: List[str]
     search_text: str
@@ -264,6 +268,7 @@ class PresentationFragmentDocument(BaseVespaDocument):
 - **Clean event handling**: Vespa consumer uses factory pattern to create appropriate document types
 - **Future extensibility**: Easy to add new document types (sheets, presentations, etc.)
 - **Internal tool integration**: LLM chats, shipment events, meeting polls, and bookings become searchable
+- **Practical tracking**: `last_updated` and `sync_timestamp` provide useful data freshness information
 
 #### Implementation Details
 - Vespa consumer processes events from unified topics (`emails`, `calendars`, `contacts`)
