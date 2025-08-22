@@ -135,7 +135,9 @@ class GetTool:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def execute(self, tool_name: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def execute(
+        self, tool_name: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         try:
             kwargs = params.copy() if params else {}
             if "user_id" not in kwargs:

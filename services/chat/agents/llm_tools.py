@@ -7,12 +7,12 @@ import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import unquote
 
 import requests
 
 from services.chat.service_client import ServiceClient
 from services.vespa_query.search_engine import SearchEngine
-from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
 
@@ -1181,15 +1181,15 @@ class WebSearchTool:
             # Very lightweight parsing: look for links shaped like /l/?uddg=...
             # and extract adjacent title text. This is intentionally simple.
             # We avoid heavy dependencies for now.
-            anchor_marker = "href=\"/l/?uddg="
+            anchor_marker = 'href="/l/?uddg='
             pos = 0
             while len(results) < max_results:
                 idx = html.find(anchor_marker, pos)
                 if idx == -1:
                     break
                 # Extract URL
-                start = idx + len("href=\"/l/?uddg=")
-                end = html.find("\"", start)
+                start = idx + len('href="/l/?uddg=')
+                end = html.find('"', start)
                 if end == -1:
                     break
                 raw = html[start:end]
@@ -1228,7 +1228,9 @@ class GetTool:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def execute(self, tool_name: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def execute(
+        self, tool_name: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         try:
             kwargs = params.copy() if params else {}
             if self.default_user_id and "user_id" not in kwargs:
@@ -1240,6 +1242,7 @@ class GetTool:
         except Exception as e:
             logger.error(f"GetTool execute failed for {tool_name}: {e}")
             return {"status": "error", "tool": tool_name, "error": str(e)}
+
 
 # Register tools with the chat service
 def register_vespa_tools(
@@ -1440,7 +1443,9 @@ def get_calendar_events(
                                     f"Failed to format display_time for event {getattr(event, 'id', 'unknown')}: {e}"
                                 )
                                 event_dict.update(
-                                    {"display_time": f"{start_time_str} to {end_time_str}"}
+                                    {
+                                        "display_time": f"{start_time_str} to {end_time_str}"
+                                    }
                                 )
 
                         events_list.append(event_dict)
@@ -1471,7 +1476,9 @@ def get_calendar_events(
                                     f"Failed to format display_time for event {event.get('id', 'unknown')}: {e}"
                                 )
                                 event_dict.update(
-                                    {"display_time": f"{start_time_str} to {end_time_str}"}
+                                    {
+                                        "display_time": f"{start_time_str} to {end_time_str}"
+                                    }
                                 )
 
                         events_list.append(event_dict)

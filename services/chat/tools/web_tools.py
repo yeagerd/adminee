@@ -53,15 +53,15 @@ class WebSearchTool:
             # Very lightweight parsing: look for links shaped like /l/?uddg=...
             # and extract adjacent title text. This is intentionally simple.
             # We avoid heavy dependencies for now.
-            anchor_marker = "href=\"/l/?uddg="
+            anchor_marker = 'href="/l/?uddg='
             pos = 0
             while len(results) < max_results:
                 idx = html.find(anchor_marker, pos)
                 if idx == -1:
                     break
                 # Extract URL
-                start = idx + len("href=\"/l/?uddg=")
-                end = html.find("\"", start)
+                start = idx + len('href="/l/?uddg=')
+                end = html.find('"', start)
                 if end == -1:
                     break
                 raw = html[start:end]

@@ -325,7 +325,7 @@ class TestTimezoneIntegration:
         event = result["events"][0]
         assert "start_time" in event
         assert "end_time" in event
-        
+
         # Verify that the timezone parameter was included in the query
         assert "query_params" in result
         assert "timezone" in result["query_params"]
@@ -341,15 +341,18 @@ class TestTimezoneIntegration:
         """Test that BrieflyAgent properly handles timezone parameters in chat requests."""
         # This test verifies that BrieflyAgent can handle timezone-aware requests
         # by testing the tool creation and timezone parameter passing
-        
+
         from services.chat.agents.briefly_agent import create_briefly_agent
-        
+
         # Mock the LLM manager to avoid validation issues
-        with patch("services.chat.agents.briefly_agent.get_llm_manager") as mock_llm_manager:
+        with patch(
+            "services.chat.agents.briefly_agent.get_llm_manager"
+        ) as mock_llm_manager:
             from llama_index.core.llms.mock import MockLLM
+
             mock_llm = MockLLM()
             mock_llm_manager.return_value.get_llm.return_value = mock_llm
-            
+
             # Create a BrieflyAgent instance
             agent = create_briefly_agent(
                 thread_id=999,
@@ -358,20 +361,20 @@ class TestTimezoneIntegration:
                 llm_model="gpt-4",
                 llm_provider="openai",
             )
-            
+
             # Verify agent was created successfully
             assert agent.name == "BrieflyAgent"
-            
+
             # Verify that tools were created (indirectly tests timezone capability)
             assert len(agent.tools) > 0
-            
+
             # Check that the GetTool exists for calendar access
             tool_names = [tool.metadata.name for tool in agent.tools]
             assert "get_tool" in tool_names  # The GetTool that provides calendar access
-            
+
             # Verify that the agent has the user_id for timezone-aware operations
             assert agent._user_id == "test_timezone_user"
-            
+
             # The timezone functionality is tested through the individual tool tests
             # This test verifies that BrieflyAgent is properly configured to handle
             # timezone-aware requests via its tools

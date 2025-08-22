@@ -121,14 +121,14 @@ async def chat_endpoint(
     # Initialize the BrieflyAgent with user timezone and vespa endpoint
     if thread.id is None:
         raise ValidationError(message="thread.id cannot be None", field="thread.id")
-    
+
     agent = create_briefly_agent(
         thread_id=int(thread.id),
         user_id=user_id,
         vespa_endpoint=get_settings().vespa_endpoint,
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
-        **get_settings().llm_kwargs if hasattr(get_settings(), 'llm_kwargs') else {},
+        **get_settings().llm_kwargs if hasattr(get_settings(), "llm_kwargs") else {},
     )
 
     # Save user message to database first
@@ -279,7 +279,11 @@ async def chat_stream_endpoint(
                 vespa_endpoint=get_settings().vespa_endpoint,
                 llm_model=get_settings().llm_model,
                 llm_provider=get_settings().llm_provider,
-                **get_settings().llm_kwargs if hasattr(get_settings(), 'llm_kwargs') else {},
+                **(
+                    get_settings().llm_kwargs
+                    if hasattr(get_settings(), "llm_kwargs")
+                    else {}
+                ),
             )
 
             # Save user message to database first
