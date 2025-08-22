@@ -3,7 +3,7 @@ Data retrieval tools for accessing user data from various services.
 
 This module provides tools for retrieving:
 - Documents from the office service
-- Notes from the office service  
+- Notes from the office service
 - Calendar events from the office service
 - Emails from the office service
 """
@@ -149,7 +149,11 @@ class DataTools:
 
             except requests.Timeout:
                 logger.error("Document request timed out")
-                return {"status": "error", "error": "Request timed out", "user_id": self.user_id}
+                return {
+                    "status": "error",
+                    "error": "Request timed out",
+                    "user_id": self.user_id,
+                }
             except requests.HTTPError:
                 logger.error("Document request failed with HTTP error")
                 return {
@@ -290,7 +294,11 @@ class DataTools:
 
             except requests.Timeout:
                 logger.error("Note request timed out")
-                return {"status": "error", "error": "Request timed out", "user_id": self.user_id}
+                return {
+                    "status": "error",
+                    "error": "Request timed out",
+                    "user_id": self.user_id,
+                }
             except requests.HTTPError:
                 logger.error("Note request failed with HTTP error")
                 return {
@@ -445,7 +453,11 @@ class DataTools:
 
             except requests.Timeout:
                 logger.error("Calendar request timed out")
-                return {"status": "error", "error": "Request timed out", "user_id": self.user_id}
+                return {
+                    "status": "error",
+                    "error": "Request timed out",
+                    "user_id": self.user_id,
+                }
             except requests.HTTPError:
                 logger.error("Calendar request failed with HTTP error")
                 return {
@@ -600,7 +612,11 @@ class DataTools:
 
             except requests.Timeout:
                 logger.error("Email request timed out")
-                return {"status": "error", "error": "Request timed out", "user_id": self.user_id}
+                return {
+                    "status": "error",
+                    "error": "Request timed out",
+                    "user_id": self.user_id,
+                }
             except requests.HTTPError:
                 logger.error("Email request failed with HTTP error")
                 return {

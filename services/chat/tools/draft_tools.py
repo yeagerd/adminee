@@ -3,7 +3,7 @@ Draft management tools for email and calendar content creation.
 """
 
 import logging
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class DraftTools:
         try:
             key = f"{thread_id}_email"
             email_data = {
+                "type": "email",
                 "to": to or "",
                 "subject": subject or "",
                 "body": body or "",
@@ -103,7 +104,9 @@ class DraftTools:
             event_data.update(kwargs)
 
             _draft_storage[key] = event_data
-            logger.info(f"📅 Created/updated calendar event draft for thread {thread_id}")
+            logger.info(
+                f"📅 Created/updated calendar event draft for thread {thread_id}"
+            )
             return {"success": True, "draft": event_data}
         except Exception as e:
             logger.error(f"Failed to create calendar event draft: {e}")
@@ -157,12 +160,17 @@ class DraftTools:
 
             if new_start_time is not None:
                 changes["start_time"] = new_start_time
-            elif "changes" in existing_draft and "start_time" in existing_draft["changes"]:
+            elif (
+                "changes" in existing_draft
+                and "start_time" in existing_draft["changes"]
+            ):
                 changes["start_time"] = existing_draft["changes"]["start_time"]
 
             if new_end_time is not None:
                 changes["end_time"] = new_end_time
-            elif "changes" in existing_draft and "end_time" in existing_draft["changes"]:
+            elif (
+                "changes" in existing_draft and "end_time" in existing_draft["changes"]
+            ):
                 changes["end_time"] = existing_draft["changes"]["end_time"]
 
             if new_attendees is not None:
@@ -170,19 +178,28 @@ class DraftTools:
                 for email in new_attendees.split(","):
                     email = email.strip()
                     if email:
-                        attendee_list.append({"email": email, "name": email.split("@")[0]})
+                        attendee_list.append(
+                            {"email": email, "name": email.split("@")[0]}
+                        )
                 changes["attendees"] = attendee_list
-            elif "changes" in existing_draft and "attendees" in existing_draft["changes"]:
+            elif (
+                "changes" in existing_draft and "attendees" in existing_draft["changes"]
+            ):
                 changes["attendees"] = existing_draft["changes"]["attendees"]
 
             if new_location is not None:
                 changes["location"] = new_location
-            elif "changes" in existing_draft and "location" in existing_draft["changes"]:
+            elif (
+                "changes" in existing_draft and "location" in existing_draft["changes"]
+            ):
                 changes["location"] = existing_draft["changes"]["location"]
 
             if new_description is not None:
                 changes["description"] = new_description
-            elif "changes" in existing_draft and "description" in existing_draft["changes"]:
+            elif (
+                "changes" in existing_draft
+                and "description" in existing_draft["changes"]
+            ):
                 changes["description"] = existing_draft["changes"]["description"]
 
             # Add any additional kwargs to changes if they're not already handled
@@ -257,7 +274,11 @@ class DraftTools:
                     "deleted": True,
                     "message": "Email draft deleted successfully",
                 }
-            return {"success": True, "deleted": False, "message": "No email draft found"}
+            return {
+                "success": True,
+                "deleted": False,
+                "message": "No email draft found",
+            }
         except Exception as e:
             logger.error(f"Failed to delete email draft: {e}")
             return {"success": False, "error": str(e)}
@@ -325,7 +346,9 @@ class DraftTools:
             for key in keys_to_remove:
                 del _draft_storage[key]
 
-            logger.info(f"🗑️ Cleared {len(keys_to_remove)} drafts for thread {thread_id}")
+            logger.info(
+                f"🗑️ Cleared {len(keys_to_remove)} drafts for thread {thread_id}"
+            )
             return {
                 "success": True,
                 "cleared_count": len(keys_to_remove),
@@ -340,7 +363,7 @@ class DraftTools:
         try:
             thread_prefix = f"{thread_id}_"
             drafts = []
-            
+
             for draft_key, draft_data in _draft_storage.items():
                 if draft_key.startswith(thread_prefix):
                     draft_copy = draft_data.copy()

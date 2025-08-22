@@ -35,6 +35,7 @@ class UtilityTools:
         """
         try:
             from datetime import datetime
+
             import pytz
 
             def format_single_time(dt_str: str) -> Union[datetime, str]:
@@ -87,77 +88,77 @@ class UtilityTools:
                 return f"{start_date} {start_formatted} to {end_date} {end_formatted}"
 
         except Exception as e:
-            logger.error(f"Error formatting datetime range {start_time} to {end_time}: {e}")
-            return (
-                f"{start_time} to {end_time}"  # Return original format if formatting fails
+            logger.error(
+                f"Error formatting datetime range {start_time} to {end_time}: {e}"
             )
+            return f"{start_time} to {end_time}"  # Return original format if formatting fails
 
     def validate_email_format(self, email: str) -> bool:
         """
         Validate email format using basic regex pattern.
-        
+
         Args:
             email: Email string to validate
-            
+
         Returns:
             True if email format is valid, False otherwise
         """
         import re
-        
+
         # Basic email validation pattern
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return bool(re.match(pattern, email))
 
     def sanitize_string(self, text: str, max_length: Optional[int] = None) -> str:
         """
         Sanitize a string by removing potentially harmful characters.
-        
+
         Args:
             text: Text to sanitize
             max_length: Maximum length to truncate to (optional)
-            
+
         Returns:
             Sanitized string
         """
         if not text:
             return ""
-        
+
         # Remove control characters and normalize whitespace
         sanitized = "".join(char for char in text if ord(char) >= 32)
         sanitized = " ".join(sanitized.split())
-        
+
         # Truncate if max_length specified
         if max_length and len(sanitized) > max_length:
             sanitized = sanitized[:max_length].rstrip() + "..."
-            
+
         return sanitized
 
     def parse_date_range(self, date_string: str) -> Dict[str, Optional[str]]:
         """
         Parse a date range string into start and end dates.
-        
+
         Args:
             date_string: String like "today", "this week", "2024-01-01 to 2024-01-31"
-            
+
         Returns:
             Dict with 'start_date' and 'end_date' keys
         """
         try:
             from datetime import datetime, timedelta
-            
+
             date_string = date_string.lower().strip()
-            
+
             if date_string == "today":
                 today = datetime.now().date()
                 return {
                     "start_date": today.strftime("%Y-%m-%d"),
-                    "end_date": today.strftime("%Y-%m-%d")
+                    "end_date": today.strftime("%Y-%m-%d"),
                 }
             elif date_string == "yesterday":
-                yesterday = (datetime.now().date() - timedelta(days=1))
+                yesterday = datetime.now().date() - timedelta(days=1)
                 return {
                     "start_date": yesterday.strftime("%Y-%m-%d"),
-                    "end_date": yesterday.strftime("%Y-%m-%d")
+                    "end_date": yesterday.strftime("%Y-%m-%d"),
                 }
             elif date_string == "this week":
                 today = datetime.now().date()
@@ -165,7 +166,7 @@ class UtilityTools:
                 end_of_week = start_of_week + timedelta(days=6)
                 return {
                     "start_date": start_of_week.strftime("%Y-%m-%d"),
-                    "end_date": end_of_week.strftime("%Y-%m-%d")
+                    "end_date": end_of_week.strftime("%Y-%m-%d"),
                 }
             elif " to " in date_string:
                 # Parse explicit date range
@@ -177,16 +178,13 @@ class UtilityTools:
                     try:
                         datetime.strptime(start_date, "%Y-%m-%d")
                         datetime.strptime(end_date, "%Y-%m-%d")
-                        return {
-                            "start_date": start_date,
-                            "end_date": end_date
-                        }
+                        return {"start_date": start_date, "end_date": end_date}
                     except ValueError:
                         pass
-            
+
             # If no pattern matches, return None for both
             return {"start_date": None, "end_date": None}
-            
+
         except Exception as e:
             logger.error(f"Error parsing date range '{date_string}': {e}")
             return {"start_date": None, "end_date": None}
@@ -194,42 +192,42 @@ class UtilityTools:
     def format_file_size(self, size_bytes: int) -> str:
         """
         Format file size in bytes to human-readable format.
-        
+
         Args:
             size_bytes: Size in bytes
-            
+
         Returns:
             Formatted size string (e.g., "1.5 MB")
         """
         if size_bytes == 0:
             return "0 B"
-        
+
         size_names = ["B", "KB", "MB", "GB", "TB"]
         i = 0
         while size_bytes >= 1024 and i < len(size_names) - 1:
-            size_bytes /= 1024.0
+            size_bytes = int(float(size_bytes) / 1024.0)
             i += 1
-            
+
         return f"{size_bytes:.1f} {size_names[i]}"
 
     def extract_phone_number(self, text: str) -> Optional[str]:
         """
         Extract phone number from text using regex pattern.
-        
+
         Args:
             text: Text to search for phone numbers
-            
+
         Returns:
             Extracted phone number or None if not found
         """
         import re
-        
+
         # Pattern for various phone number formats
         patterns = [
-            r'\+?1?\s*\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})',  # US format
-            r'\+?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}',  # International
+            r"\+?1?\s*\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})",  # US format
+            r"\+?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}",  # International
         ]
-        
+
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
@@ -239,31 +237,33 @@ class UtilityTools:
                 else:
                     # International format
                     return match.group(0)
-        
+
         return None
 
     def generate_summary(self, text: str, max_length: int = 200) -> str:
         """
         Generate a summary of text by truncating and adding ellipsis.
-        
+
         Args:
             text: Text to summarize
             max_length: Maximum length of summary
-            
+
         Returns:
             Summarized text
         """
         if not text:
             return ""
-        
+
         if len(text) <= max_length:
             return text
-        
+
         # Try to break at word boundary
         truncated = text[:max_length]
         last_space = truncated.rfind(" ")
-        
-        if last_space > max_length * 0.8:  # If we can break at a reasonable word boundary
+
+        if (
+            last_space > max_length * 0.8
+        ):  # If we can break at a reasonable word boundary
             return truncated[:last_space] + "..."
         else:
             return truncated + "..."
