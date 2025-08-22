@@ -107,11 +107,11 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
   - [x] Create `UtilityTools` class to organize utilities
   - [ ] Register utility tools in the tool registry
 
-### [ ] Task 2.7: Update Tool Registry in get_tools.py
-- [ ] Move the enhanced `ToolRegistry` class from llm_tools.py to `services/chat/tools/get_tools.py`
-- [ ] Remove duplicate `ToolRegistry` implementation
-- [ ] Ensure all tool categories are properly registered
-- [ ] Update `GetTools` class to use the consolidated registry
+### [x] Task 2.7: Update Tool Registry in get_tools.py
+- [x] Move the enhanced `ToolRegistry` class from llm_tools.py to `services/chat/tools/get_tools.py`
+- [x] Remove duplicate `ToolRegistry` implementation
+- [x] Ensure all tool categories are properly registered
+- [x] Update `GetTools` class to use the consolidated registry
 
 ## Phase 3: Integration and Testing
 

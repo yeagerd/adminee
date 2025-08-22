@@ -11,111 +11,13 @@ import requests
 
 from services.chat.settings import get_settings
 from services.chat.tools.tool_registry import ToolMetadata, ToolRegistry as EnhancedToolRegistry
+from services.chat.tools.data_tools import DataTools
+from services.chat.tools.draft_tools import DraftTools
+from services.chat.tools.search_tools import SearchTools
+from services.chat.tools.web_tools import WebTools
+from services.chat.tools.utility_tools import UtilityTools
 
 logger = logging.getLogger(__name__)
-
-
-class ToolRegistry:
-    """Registry for executing various tools and functions."""
-
-    def __init__(self) -> None:
-        pass
-
-    def list_tools(self) -> List[str]:
-        """Return a list of available tool names."""
-        return ["get_calendar_events", "get_emails", "get_notes", "get_documents"]
-
-    def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
-        """Execute a tool by name with the given arguments."""
-        try:
-            if tool_name == "get_calendar_events":
-                user_id = kwargs.get("user_id")
-                if not user_id:
-                    return type(
-                        "ToolOutput",
-                        (),
-                        {"raw_output": {"error": "user_id is required"}},
-                    )()
-
-                result = get_calendar_events(
-                    user_id=user_id,
-                    start_date=kwargs.get("start_date"),
-                    end_date=kwargs.get("end_date"),
-                    time_zone=kwargs.get("time_zone", "UTC"),
-                    providers=kwargs.get("providers"),
-                    limit=kwargs.get("limit", 50),
-                )
-
-                return type("ToolOutput", (), {"raw_output": result})()
-
-            elif tool_name == "get_emails":
-                user_id = kwargs.get("user_id")
-                if not user_id:
-                    return type(
-                        "ToolOutput",
-                        (),
-                        {"raw_output": {"error": "user_id is required"}},
-                    )()
-
-                result = get_emails(
-                    user_id=user_id,
-                    start_date=kwargs.get("start_date"),
-                    end_date=kwargs.get("end_date"),
-                    folder=kwargs.get("folder"),
-                    unread_only=kwargs.get("unread_only"),
-                    search_query=kwargs.get("search_query"),
-                    max_results=kwargs.get("max_results"),
-                )
-
-                return type("ToolOutput", (), {"raw_output": result})()
-
-            elif tool_name == "get_notes":
-                user_id = kwargs.get("user_id")
-                if not user_id:
-                    return type(
-                        "ToolOutput",
-                        (),
-                        {"raw_output": {"error": "user_id is required"}},
-                    )()
-
-                result = get_notes(
-                    user_id=user_id,
-                    search_query=kwargs.get("search_query"),
-                    max_results=kwargs.get("max_results"),
-                )
-
-                return type("ToolOutput", (), {"raw_output": result})()
-
-            elif tool_name == "get_documents":
-                user_id = kwargs.get("user_id")
-                if not user_id:
-                    return type(
-                        "ToolOutput",
-                        (),
-                        {"raw_output": {"error": "user_id is required"}},
-                    )()
-
-                result = get_documents(
-                    user_id=user_id,
-                    document_type=kwargs.get("document_type"),
-                    start_date=kwargs.get("start_date"),
-                    end_date=kwargs.get("end_date"),
-                    search_query=kwargs.get("search_query"),
-                    max_results=kwargs.get("max_results"),
-                )
-
-                return type("ToolOutput", (), {"raw_output": result})()
-
-            else:
-                return type(
-                    "ToolOutput",
-                    (),
-                    {"raw_output": {"error": f"Unknown tool: {tool_name}"}},
-                )()
-
-        except Exception as e:
-            logger.error(f"Error executing tool {tool_name}: {e}")
-            return type("ToolOutput", (), {"raw_output": {"error": str(e)}})()
 
 
 class GetTool:
@@ -181,11 +83,18 @@ class GetTools:
         self.registry = EnhancedToolRegistry()
         self.get_tool = GetTool(registry=self.registry, default_user_id=user_id)
         
-        # Register the existing get_* functions with the enhanced registry
-        self._register_existing_tools()
+        # Initialize tool classes
+        self.data_tools = DataTools(user_id)
+        self.draft_tools = DraftTools(user_id)
+        self.search_tools = SearchTools("", user_id)  # Empty vespa_endpoint for now
+        self.web_tools = WebTools()
+        self.utility_tools = UtilityTools()
+        
+        # Register all tools with the enhanced registry
+        self._register_all_tools()
     
-    def _register_existing_tools(self):
-        """Register existing get_* functions with the enhanced registry."""
+    def _register_all_tools(self):
+        """Register all tools with the enhanced registry."""
         # Register get_calendar_events
         calendar_metadata = ToolMetadata(
             tool_id="get_calendar_events",
@@ -212,7 +121,7 @@ class GetTools:
             requires_auth=True,
             service_dependency="office_service"
         )
-        self.registry.register_tool(calendar_metadata, get_calendar_events)
+        self.registry.register_tool(calendar_metadata, self.data_tools.get_calendar_events)
         
         # Register get_emails
         emails_metadata = ToolMetadata(
@@ -241,7 +150,7 @@ class GetTools:
             requires_auth=True,
             service_dependency="office_service"
         )
-        self.registry.register_tool(emails_metadata, get_emails)
+        self.registry.register_tool(emails_metadata, self.data_tools.get_emails)
         
         # Register get_notes
         notes_metadata = ToolMetadata(
@@ -268,7 +177,7 @@ class GetTools:
             requires_auth=True,
             service_dependency="office_service"
         )
-        self.registry.register_tool(notes_metadata, get_notes)
+        self.registry.register_tool(notes_metadata, self.data_tools.get_notes)
         
         # Register get_documents
         documents_metadata = ToolMetadata(
@@ -296,574 +205,160 @@ class GetTools:
             requires_auth=True,
             service_dependency="office_service"
         )
-        self.registry.register_tool(documents_metadata, get_documents)
+        self.registry.register_tool(documents_metadata, self.data_tools.get_documents)
+        
+        # Register draft management tools
+        self._register_draft_tools()
+        
+        # Register search tools
+        self._register_search_tools()
+        
+        # Register web tools
+        self._register_web_tools()
+        
+        # Register utility tools
+        self._register_utility_tools()
+        
+        logger.info(f"Registered {self.registry.get_tool_count()} tools in enhanced registry")
+    
+    def _register_draft_tools(self):
+        """Register draft management tools."""
+        # Register create_draft_email
+        create_email_metadata = ToolMetadata(
+            tool_id="create_draft_email",
+            description="Create or update an email draft for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the draft", "required": True},
+                "to": {"type": "str", "description": "Recipient email address", "required": False},
+                "subject": {"type": "str", "description": "Email subject", "required": False},
+                "body": {"type": "str", "description": "Email body content", "required": False}
+            },
+            examples=[
+                {"description": "Create email draft", "params": {"to": "user@example.com", "subject": "Meeting reminder"}},
+                {"description": "Update existing draft", "params": {"body": "Updated meeting details"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "draft": "Draft data object",
+                "error": "Error message if failed"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(create_email_metadata, self.draft_tools.create_draft_email)
+        
+        # Register create_draft_calendar_event
+        create_calendar_metadata = ToolMetadata(
+            tool_id="create_draft_calendar_event",
+            description="Create or update a calendar event draft for the current thread",
+            category="draft_management",
+            parameters={
+                "thread_id": {"type": "str", "description": "Thread ID for the draft", "required": True},
+                "title": {"type": "str", "description": "Event title", "required": False},
+                "start_time": {"type": "str", "description": "Start time (ISO format)", "required": False},
+                "end_time": {"type": "str", "description": "End time (ISO format)", "required": False},
+                "attendees": {"type": "str", "description": "Comma-separated attendee emails", "required": False},
+                "location": {"type": "str", "description": "Event location", "required": False},
+                "description": {"type": "str", "description": "Event description", "required": False}
+            },
+            examples=[
+                {"description": "Create calendar event draft", "params": {"title": "Team Meeting", "start_time": "2024-01-15T10:00:00Z"}},
+                {"description": "Update existing draft", "params": {"location": "Conference Room A"}}
+            ],
+            return_format={
+                "success": "true/false",
+                "draft": "Draft data object",
+                "error": "Error message if failed"
+            },
+            requires_auth=True,
+            service_dependency="none"
+        )
+        self.registry.register_tool(create_calendar_metadata, self.draft_tools.create_draft_calendar_event)
+    
+    def _register_search_tools(self):
+        """Register search tools."""
+        # Register vespa_search
+        vespa_search_metadata = ToolMetadata(
+            tool_id="vespa_search",
+            description="Search through user's emails, calendar events, contacts, and files using semantic and keyword search",
+            category="search",
+            parameters={
+                "query": {"type": "str", "description": "Search query string", "required": True},
+                "max_results": {"type": "int", "description": "Maximum number of results", "required": False, "default": 10},
+                "source_types": {"type": "list", "description": "Types of sources to search", "required": False},
+                "ranking_profile": {"type": "str", "description": "Search ranking profile", "required": False, "default": "hybrid"}
+            },
+            examples=[
+                {"description": "Search for emails about meetings", "params": {"query": "meeting", "source_types": ["email"]}},
+                {"description": "General search across all data", "params": {"query": "project update"}}
+            ],
+            return_format={
+                "status": "success/error",
+                "results": "List of search results",
+                "total_found": "Total number of results",
+                "search_time_ms": "Search execution time"
+            },
+            requires_auth=True,
+            service_dependency="vespa"
+        )
+        self.registry.register_tool(vespa_search_metadata, self.search_tools.vespa_search.search)
+    
+    def _register_web_tools(self):
+        """Register web search tools."""
+        # Register web_search
+        web_search_metadata = ToolMetadata(
+            tool_id="web_search",
+            description="Search the public web for information and return a concise list of results",
+            category="web_search",
+            parameters={
+                "query": {"type": "str", "description": "Search query string", "required": True},
+                "max_results": {"type": "int", "description": "Maximum number of results", "required": False, "default": 5}
+            },
+            examples=[
+                {"description": "Search for current news", "params": {"query": "latest technology news"}},
+                {"description": "Search for specific information", "params": {"query": "Python async programming"}}
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "results": "List of web search results with title and URL"
+            },
+            requires_auth=False,
+            service_dependency="duckduckgo"
+        )
+        self.registry.register_tool(web_search_metadata, self.web_tools.web_search.search)
+    
+    def _register_utility_tools(self):
+        """Register utility tools."""
+        # Register format_event_time_for_display
+        time_format_metadata = ToolMetadata(
+            tool_id="format_event_time_for_display",
+            description="Format a datetime range for display in the specified timezone",
+            category="utility",
+            parameters={
+                "start_time": {"type": "str", "description": "Start time in ISO format", "required": True},
+                "end_time": {"type": "str", "description": "End time in ISO format", "required": True},
+                "timezone_str": {"type": "str", "description": "Timezone string", "required": False, "default": "UTC"}
+            },
+            examples=[
+                {"description": "Format UTC times", "params": {"start_time": "2024-01-15T10:00:00Z", "end_time": "2024-01-15T11:00:00Z"}},
+                {"description": "Format with specific timezone", "params": {"start_time": "2024-01-15T10:00:00Z", "end_time": "2024-01-15T11:00:00Z", "timezone_str": "US/Eastern"}}
+            ],
+            return_format={
+                "formatted_time": "Human-readable time range string"
+            },
+            requires_auth=False,
+            service_dependency="none"
+        )
+        self.registry.register_tool(time_format_metadata, self.utility_tools.format_event_time_for_display)
+
+
+# Note: Legacy get_* functions have been moved to DataTools class
+# Use self.data_tools.get_calendar_events(), self.data_tools.get_emails(), etc.
+
+
+# Note: Global tool registry is now handled by the enhanced registry system
+# Use get_global_registry() from tool_registry.py instead
 
 
-# Global tool registry instance
-_tool_registry = ToolRegistry()
-
-
-def get_tool_registry() -> ToolRegistry:
-    """Get the global tool registry instance."""
-    return _tool_registry
-
-
-# Legacy get_* functions moved from llm_tools.py
-def get_calendar_events(
-    user_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    time_zone: str = "UTC",
-    providers: Optional[List[str]] = None,
-    limit: int = 50,
-) -> Dict[str, Any]:
-    """
-    Get calendar events for a user from the office service.
-    """
-    try:
-        # Get settings
-        settings = get_settings()
-
-        # First, check if user has calendar integrations
-        try:
-            integrations_response = requests.get(
-                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
-                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
-                timeout=10,
-            )
-
-            if integrations_response.status_code != 200:
-                return {
-                    "status": "error",
-                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
-                    "user_id": user_id,
-                }
-
-            integrations_data = integrations_response.json()
-            calendar_integrations = [
-                integration
-                for integration in integrations_data.get("integrations", [])
-                if "calendar" in integration.get("scopes", [])
-            ]
-
-            if not calendar_integrations:
-                return {
-                    "status": "error",
-                    "error": "No calendar integrations found for user",
-                    "user_id": user_id,
-                }
-
-        except Exception as e:
-            logger.error(f"Error checking user integrations: {e}")
-            return {
-                "status": "error",
-                "error": f"Failed to check user integrations: {str(e)}",
-                "user_id": user_id,
-            }
-
-        # Build query parameters
-        params: Dict[str, Any] = {"user_id": user_id, "limit": limit}
-
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
-        if time_zone and time_zone != "UTC":
-            params["timezone"] = time_zone
-        if providers:
-            params["providers"] = ",".join(providers)
-
-        # Make request to office service
-        try:
-            response = requests.get(
-                f"{settings.office_service_url}/v1/calendar/events",
-                params=params,
-                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
-                timeout=10,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-
-                # Validate response structure
-                if "data" not in data:
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: missing 'data' field",
-                        "user_id": user_id,
-                    }
-
-                events = data.get("data", {}).get("events", [])
-                if not isinstance(events, list):
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: 'events' field is not a list",
-                        "user_id": user_id,
-                    }
-
-                # Convert events to list format
-                events_list = []
-                for event in events:
-                    if hasattr(event, "__dict__"):
-                        # Convert object to dictionary
-                        event_dict = {}
-                        for key, value in event.__dict__.items():
-                            if not key.startswith("_"):
-                                event_dict[key] = value
-                        events_list.append(event_dict)
-                    else:
-                        # Handle dictionary events
-                        events_list.append(event.copy())
-
-                return {
-                    "status": "success",
-                    "events": events_list,
-                    "total_count": len(events_list),
-                    "user_id": user_id,
-                    "query_params": params,
-                }
-            else:
-                logger.error(
-                    f"Failed to get calendar events: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}",
-                    "user_id": user_id,
-                }
-
-        except requests.Timeout:
-            logger.error("Calendar request timed out")
-            return {"status": "error", "error": "Request timed out", "user_id": user_id}
-        except requests.HTTPError:
-            logger.error("Calendar request failed with HTTP error")
-            return {
-                "status": "error",
-                "error": "HTTP error occurred",
-                "user_id": user_id,
-            }
-        except Exception as e:
-            logger.error(f"Error making calendar request: {e}")
-            return {
-                "status": "error",
-                "error": f"Unexpected error: {str(e)}",
-                "user_id": user_id,
-            }
-
-    except Exception as e:
-        logger.error(f"Error getting calendar events for user {user_id}: {e}")
-        return {"status": "error", "error": str(e), "user_id": user_id}
-
-
-def get_emails(
-    user_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    folder: Optional[str] = None,
-    unread_only: Optional[bool] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
-) -> Dict[str, Any]:
-    """
-    Get emails from the office service.
-    """
-    try:
-        # Get settings
-        settings = get_settings()
-
-        # First, check if user has email integrations
-        try:
-            integrations_response = requests.get(
-                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
-                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
-                timeout=10,
-            )
-
-            if integrations_response.status_code != 200:
-                return {
-                    "status": "error",
-                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
-                    "user_id": user_id,
-                }
-
-            integrations_data = integrations_response.json()
-            email_integrations = [
-                integration
-                for integration in integrations_data.get("integrations", [])
-                if "email" in integration.get("scopes", [])
-            ]
-
-            if not email_integrations:
-                return {
-                    "status": "error",
-                    "error": "No email integrations found for user",
-                    "user_id": user_id,
-                }
-
-        except Exception as e:
-            logger.error(f"Error checking user integrations: {e}")
-            return {
-                "status": "error",
-                "error": f"Failed to check user integrations: {str(e)}",
-                "user_id": user_id,
-            }
-
-        # Build query parameters
-        params: Dict[str, Any] = {
-            "user_id": user_id,
-        }
-
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
-        if folder:
-            params["folder"] = folder
-        if unread_only is not None:
-            params["unread_only"] = str(unread_only).lower()
-        if search_query:
-            params["search_query"] = search_query
-        if max_results:
-            params["limit"] = str(max_results)
-
-        # Make request to office service
-        try:
-            response = requests.get(
-                f"{settings.office_service_url}/v1/emails",
-                params=params,
-                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
-                timeout=10,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-
-                # Validate response structure
-                if "data" not in data:
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: missing 'data' field",
-                        "user_id": user_id,
-                    }
-
-                emails = data.get("data", {}).get("emails", [])
-                if "emails" not in data.get("data", {}):
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: missing 'emails' field",
-                        "user_id": user_id,
-                    }
-                if not isinstance(emails, list):
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: 'emails' field is not a list",
-                        "user_id": user_id,
-                    }
-
-                return {
-                    "status": "success",
-                    "emails": emails,
-                    "total_count": len(emails),
-                    "user_id": user_id,
-                    "query_params": params,
-                }
-            else:
-                logger.error(
-                    f"Failed to get emails: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}",
-                    "user_id": user_id,
-                }
-
-        except requests.Timeout:
-            logger.error("Email request timed out")
-            return {"status": "error", "error": "Request timed out", "user_id": user_id}
-        except requests.HTTPError:
-            logger.error("Email request failed with HTTP error")
-            return {
-                "status": "error",
-                "error": "HTTP error occurred",
-                "user_id": user_id,
-            }
-        except Exception as e:
-            logger.error(f"Error making email request: {e}")
-            return {
-                "status": "error",
-                "error": f"Unexpected error: {str(e)}",
-                "user_id": user_id,
-            }
-
-    except Exception as e:
-        logger.error(f"Error getting emails for user {user_id}: {e}")
-        return {"status": "error", "error": str(e), "user_id": user_id}
-
-
-def get_notes(
-    user_id: str,
-    notebook: Optional[str] = None,
-    tags: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
-) -> Dict[str, Any]:
-    """
-    Get notes from the office service.
-    """
-    try:
-        # Get settings
-        settings = get_settings()
-
-        # First, check if user has note integrations
-        try:
-            integrations_response = requests.get(
-                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
-                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
-                timeout=10,
-            )
-
-            if integrations_response.status_code != 200:
-                return {
-                    "status": "error",
-                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
-                    "user_id": user_id,
-                }
-
-            integrations_data = integrations_response.json()
-            note_integrations = [
-                integration
-                for integration in integrations_data.get("integrations", [])
-                if "notes" in integration.get("scopes", [])
-            ]
-
-            if not note_integrations:
-                return {
-                    "status": "error",
-                    "error": "No note integrations found for user",
-                    "user_id": user_id,
-                }
-
-        except Exception as e:
-            logger.error(f"Error checking user integrations: {e}")
-            return {
-                "status": "error",
-                "error": f"Failed to check user integrations: {str(e)}",
-                "user_id": user_id,
-            }
-
-        # Build query parameters
-        params: Dict[str, Any] = {
-            "user_id": user_id,
-        }
-
-        if notebook:
-            params["notebook"] = notebook
-        if tags:
-            params["tags"] = tags
-        if search_query:
-            params["search_query"] = search_query
-        if max_results:
-            params["limit"] = str(max_results)
-
-        # Make request to office service
-        try:
-            response = requests.get(
-                f"{settings.office_service_url}/v1/notes",
-                params=params,
-                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
-                timeout=10,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-
-                # Validate response structure
-                if "data" not in data:
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: missing 'data' field",
-                        "user_id": user_id,
-                    }
-
-                notes = data.get("data", {}).get("notes", [])
-                if not isinstance(notes, list):
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: 'notes' field is not a list",
-                        "user_id": user_id,
-                    }
-
-                return {
-                    "status": "success",
-                    "notes": notes,
-                    "total_count": len(notes),
-                    "user_id": user_id,
-                    "query_params": params,
-                }
-            else:
-                logger.error(
-                    f"Failed to get notes: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}",
-                    "user_id": user_id,
-                }
-
-        except requests.Timeout:
-            logger.error("Note request timed out")
-            return {"status": "error", "error": "Request timed out", "user_id": user_id}
-        except requests.HTTPError:
-            logger.error("Note request failed with HTTP error")
-            return {
-                "status": "error",
-                "error": "HTTP error occurred",
-                "user_id": user_id,
-            }
-        except Exception as e:
-            logger.error(f"Error making note request: {e}")
-            return {
-                "status": "error",
-                "error": f"Unexpected error: {str(e)}",
-                "user_id": user_id,
-            }
-
-    except Exception as e:
-        logger.error(f"Error getting notes for user {user_id}: {e}")
-        return {"status": "error", "error": str(e), "user_id": user_id}
-
-
-def get_documents(
-    user_id: str,
-    document_type: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
-) -> Dict[str, Any]:
-    """
-    Get documents from the office service.
-    """
-    try:
-        # Get settings
-        settings = get_settings()
-
-        # First, check if user has document integrations
-        try:
-            integrations_response = requests.get(
-                f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations",
-                headers={"Authorization": f"Bearer {settings.api_chat_user_key}"},
-                timeout=10,
-            )
-
-            if integrations_response.status_code != 200:
-                return {
-                    "status": "error",
-                    "error": f"Failed to get user integrations: {integrations_response.status_code}",
-                    "user_id": user_id,
-                }
-
-            integrations_data = integrations_response.json()
-            document_integrations = [
-                integration
-                for integration in integrations_data.get("integrations", [])
-                if "documents" in integration.get("scopes", [])
-            ]
-
-            if not document_integrations:
-                return {
-                    "status": "error",
-                    "error": "No document integrations found for user",
-                    "user_id": user_id,
-                }
-
-        except Exception as e:
-            logger.error(f"Error checking user integrations: {e}")
-            return {
-                "status": "error",
-                "error": f"Failed to check user integrations: {str(e)}",
-                "user_id": user_id,
-            }
-
-        # Build query parameters
-        params: Dict[str, Any] = {
-            "user_id": user_id,
-        }
-
-        if document_type:
-            params["document_type"] = document_type
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
-        if search_query:
-            params["search_query"] = search_query
-        if max_results:
-            params["limit"] = str(max_results)
-
-        # Make request to office service
-        try:
-            response = requests.get(
-                f"{settings.office_service_url}/v1/documents",
-                params=params,
-                headers={"Authorization": f"Bearer {settings.api_chat_office_key}"},
-                timeout=10,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-
-                # Validate response structure
-                if "data" not in data:
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: missing 'data' field",
-                        "user_id": user_id,
-                    }
-
-                documents = data.get("data", {}).get("files", [])
-                if not isinstance(documents, list):
-                    return {
-                        "status": "error",
-                        "error": "Malformed response: 'files' field is not a list",
-                        "user_id": user_id,
-                    }
-
-                return {
-                    "status": "success",
-                    "documents": documents,
-                    "total_count": len(documents),
-                    "user_id": user_id,
-                    "query_params": params,
-                }
-            else:
-                logger.error(
-                    f"Failed to get documents: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}",
-                    "user_id": user_id,
-                }
-
-        except requests.Timeout:
-            logger.error("Document request timed out")
-            return {"status": "error", "error": "Request timed out", "user_id": user_id}
-        except requests.HTTPError:
-            logger.error("Document request failed with HTTP error")
-            return {
-                "status": "error",
-                "error": "HTTP error occurred",
-                "user_id": user_id,
-            }
-        except Exception as e:
-            logger.error(f"Error making document request: {e}")
-            return {
-                "status": "error",
-                "error": f"Unexpected error: {str(e)}",
-                "user_id": user_id,
-            }
-
-    except Exception as e:
-        logger.error(f"Error getting documents for user {user_id}: {e}")
-        return {"status": "error", "error": str(e), "user_id": user_id}
