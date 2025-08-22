@@ -105,10 +105,10 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [x] Ensure fragment metadata includes parent document references
 - [x] Test chunking performance and search relevance
 
-### [ ] Consumer Subscription Management
-- [ ] Update subscription naming convention across all services
-- [ ] Ensure each consumer only subscribes to needed topics
-- [ ] Update consumer configuration and settings
+### [x] Consumer Subscription Management
+- [x] Update subscription naming convention across all services
+- [x] Ensure each consumer only subscribes to needed topics
+- [x] Update consumer configuration and settings
 
 ## Phase 5: Idempotency Implementation
 

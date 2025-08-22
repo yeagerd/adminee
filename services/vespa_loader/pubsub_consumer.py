@@ -32,6 +32,7 @@ from services.common.events.email_events import EmailEvent, EmailData
 from services.common.events.document_events import DocumentEvent, DocumentData
 from services.common.events.todo_events import TodoEvent, TodoData
 from services.common.logging_config import get_logger
+from services.common.config.subscription_config import SubscriptionConfig
 from services.vespa_loader.email_processor import EmailContentProcessor
 from services.vespa_loader.settings import Settings
 from services.vespa_loader.types import VespaDocumentType
@@ -360,64 +361,17 @@ class PubSubConsumer:
         self.email_processor = EmailContentProcessor()
         self.document_factory = VespaDocumentFactory()
 
-        # Configure new data-type focused topics
-        self.topics = {
-            "emails": {
-                "subscription_name": "vespa-loader-emails",
-                "processor": self._process_email_event,
-                "batch_size": 50,
-            },
-            "calendars": {
-                "subscription_name": "vespa-loader-calendars",
-                "processor": self._process_calendar_event,
-                "batch_size": 20,
-            },
-            "contacts": {
-                "subscription_name": "vespa-loader-contacts",
-                "processor": self._process_contact_event,
-                "batch_size": 100,
-            },
-            "word_documents": {
-                "subscription_name": "vespa-loader-word-documents",
-                "processor": self._process_document_event,
-                "batch_size": 10,
-            },
-            "word_fragments": {
-                "subscription_name": "vespa-loader-word-fragments",
-                "processor": self._process_document_event,
-                "batch_size": 20,
-            },
-            "sheet_documents": {
-                "subscription_name": "vespa-loader-sheet-documents",
-                "processor": self._process_document_event,
-                "batch_size": 10,
-            },
-            "sheet_fragments": {
-                "subscription_name": "vespa-loader-sheet-fragments",
-                "processor": self._process_document_event,
-                "batch_size": 20,
-            },
-            "presentation_documents": {
-                "subscription_name": "vespa-loader-presentation-documents",
-                "processor": self._process_document_event,
-                "batch_size": 10,
-            },
-            "presentation_fragments": {
-                "subscription_name": "vespa-loader-presentation-fragments",
-                "processor": self._process_document_event,
-                "batch_size": 20,
-            },
-            "task_documents": {
-                "subscription_name": "vespa-loader-task-documents",
-                "processor": self._process_document_event,
-                "batch_size": 10,
-            },
-            "todos": {
-                "subscription_name": "vespa-loader-todos",
-                "processor": self._process_todo_event,
-                "batch_size": 50,
-            },
-        }
+        # Configure new data-type focused topics using shared configuration
+        self.topics = {}
+        for topic_name in SubscriptionConfig.get_service_topics("vespa_loader"):
+            config = SubscriptionConfig.get_subscription_config("vespa_loader", topic_name)
+            self.topics[topic_name] = {
+                "subscription_name": config["subscription_name"],
+                "processor": self._get_processor_for_topic(topic_name),
+                "batch_size": config["batch_size"],
+            }
+
+
 
         # Batch processing
         self.message_batches: Dict[str, List[TypedMessage]] = {
@@ -428,6 +382,24 @@ class PubSubConsumer:
 
         # Event loop reference for cross-thread communication
         self.loop: Optional[asyncio.AbstractEventLoop] = None
+
+    def _get_processor_for_topic(self, topic_name: str):
+        """Get the appropriate processor method for a topic."""
+        if topic_name == "emails":
+            return self._process_email_event
+        elif topic_name == "calendars":
+            return self._process_calendar_event
+        elif topic_name == "contacts":
+            return self._process_contact_event
+        elif topic_name in ["word_documents", "word_fragments", "sheet_documents", 
+                           "sheet_fragments", "presentation_documents", "presentation_fragments", 
+                           "task_documents"]:
+            return self._process_document_event
+        elif topic_name == "todos":
+            return self._process_todo_event
+        else:
+            # Default to document processing for unknown topics
+            return self._process_document_event
 
     def _parse_event_by_topic(
         self, topic_name: str, raw_data: Dict[str, Any], message_id: str

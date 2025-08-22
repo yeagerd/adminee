@@ -12,6 +12,7 @@ from google.cloud.pubsub_v1.types import ReceivedMessage
 from services.common.events import (
     EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent
 )
+from services.common.config.subscription_config import SubscriptionConfig
 from services.common.pubsub_client import PubSubClient
 from services.user.services.contact_discovery_service import ContactDiscoveryService
 
@@ -26,20 +27,30 @@ class ContactDiscoveryConsumer:
         self.pubsub_client = pubsub_client
         self.contact_discovery_service = ContactDiscoveryService(pubsub_client)
         
-        # Topics to subscribe to for contact discovery
-        self.topics = {
-            "emails": self._process_email_event,
-            "calendars": self._process_calendar_event,
-            "contacts": self._process_contact_event,
-            "word_documents": self._process_document_event,
-            "sheet_documents": self._process_document_event,
-            "presentation_documents": self._process_document_event,
-            "todos": self._process_todo_event,
-        }
+        # Topics to subscribe to for contact discovery using shared configuration
+        self.topics = {}
+        for topic_name in SubscriptionConfig.get_service_topics("contact_discovery"):
+            self.topics[topic_name] = self._get_processor_for_topic(topic_name)
         
         # Subscriber client
         self.subscriber = None
         self.subscription_paths = {}
+    
+    def _get_processor_for_topic(self, topic_name: str):
+        """Get the appropriate processor method for a topic."""
+        if topic_name == "emails":
+            return self._process_email_event
+        elif topic_name == "calendars":
+            return self._process_calendar_event
+        elif topic_name == "contacts":
+            return self._process_contact_event
+        elif topic_name in ["word_documents", "sheet_documents", "presentation_documents"]:
+            return self._process_document_event
+        elif topic_name == "todos":
+            return self._process_todo_event
+        else:
+            # Default to document processing for unknown topics
+            return self._process_document_event
     
     def start_consuming(self, project_id: str, subscription_prefix: str = "contact-discovery") -> None:
         """Start consuming events from all subscribed topics."""
@@ -47,7 +58,8 @@ class ContactDiscoveryConsumer:
             self.subscriber = pubsub_v1.SubscriberClient()
             
             for topic_name, process_func in self.topics.items():
-                subscription_name = f"{subscription_prefix}-{topic_name}"
+                config = SubscriptionConfig.get_subscription_config("contact_discovery", topic_name)
+                subscription_name = config["subscription_name"]
                 subscription_path = self.subscriber.subscription_path(project_id, subscription_name)
                 
                 # Create subscription if it doesn't exist
@@ -61,8 +73,8 @@ class ContactDiscoveryConsumer:
                         request={
                             "name": subscription_path,
                             "topic": topic_path,
-                            "ack_deadline_seconds": 60,
-                            "retain_acked_messages": False,
+                            "ack_deadline_seconds": config["ack_deadline_seconds"],
+                            "retain_acked_messages": config["retain_acked_messages"],
                         }
                     )
                     logger.info(f"Created subscription {subscription_name} for topic {topic_name}")
