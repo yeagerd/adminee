@@ -35,15 +35,15 @@ class TestDocumentChunkingService:
         return """
 # Introduction
 
-This is the introduction section of the document. It contains an overview of the topic and sets the context for the rest of the content.
+This is the introduction section of the document. It contains an overview and context.
 
 ## Background
 
-The background section provides historical context and explains why this topic is important. It includes several paragraphs with detailed information about the subject matter.
+The background section provides context and explains why this topic is important.
 
 ### Key Concepts
 
-Here we introduce the key concepts that will be discussed throughout the document. These concepts form the foundation of our analysis and recommendations.
+Here we introduce the key concepts that will be discussed. These form our base.
 
 ## Methodology
 
@@ -56,15 +56,15 @@ Our methodology involves several steps:
 
 ## Results
 
-The results section presents our findings in detail. We found significant correlations between the variables we studied.
+The results section presents our findings in detail. We found significant correlations.
 
 ### Statistical Analysis
 
-Our statistical analysis revealed several interesting patterns. The data shows clear trends that support our initial hypotheses.
+Our statistical analysis revealed several patterns. The data shows clear trends.
 
 ## Conclusion
 
-In conclusion, our research has provided valuable insights into the topic. We recommend further study in this area.
+In conclusion, our research has provided valuable insights. We recommend further study.
 
 ## References
 

@@ -85,7 +85,10 @@ class ContactUpdateEvent(BaseEvent):
 
 
 class ContactBatchEvent(BaseEvent):
-    """Event for batch contact operations (deprecated - use ContactEvent with batch_id)."""
+    """Event for batch contact operations.
+
+    Deprecated - use ContactEvent with batch_id instead.
+    """
 
     user_id: str = Field(..., description="User ID for the batch operation")
     provider: str = Field(..., description="Contact provider")

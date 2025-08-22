@@ -2,7 +2,7 @@
 Integration Tests for Event-Driven Architecture
 
 This module tests the complete end-to-end flow of the new event-driven architecture,
-including event publishing, consumer processing, Vespa indexing, and search functionality.
+including event publishing, consumer processing, Vespa indexing, and search.
 """
 
 import logging
@@ -217,7 +217,7 @@ class TestEventDrivenArchitectureIntegration:
             expected_types = set(scenario["expected_types"])
             assert result_types.intersection(
                 expected_types
-            ), f"Missing expected types for query '{scenario['query']}': expected {expected_types}, got {result_types}"
+            ), f"Missing types for '{scenario['query']}': expected {expected_types}"
 
         logger.info("Unified search test passed")
 
@@ -544,7 +544,7 @@ class TestEventDrivenArchitectureIntegration:
                 "user_id": self.config["test_user_id"],
                 "content": result.get(
                     "content",
-                    f"Content for {result.get('event_id', result.get('id', 'unknown'))}",
+                    f"Content for {result.get('event_id', 'unknown')}",
                 ),
                 "metadata": {
                     "processed_at": result.get(
@@ -586,7 +586,7 @@ class TestEventDrivenArchitectureIntegration:
         if missing_events or extra_vespa_docs:
             return {
                 "passed": False,
-                "error": f"Data inconsistency: missing events {missing_events}, extra Vespa docs {extra_vespa_docs}",
+                "error": f"Missing {len(missing_events)} extra {len(extra_vespa_docs)}",
             }
 
         return {"passed": True}
@@ -759,21 +759,21 @@ class TestEventDrivenArchitectureIntegration:
             "word_document": {
                 "id": "word_doc_1",
                 "type": "word_document",
-                "content": "This is a very long word document with important information. "
+                "content": "This is a very long word document with important info. "
                 * 100,  # 100 sentences
                 "title": "Test Word Document",
             },
             "sheet_document": {
                 "id": "sheet_doc_1",
                 "type": "sheet_document",
-                "content": "This is a spreadsheet with lots of data and important metrics. "
+                "content": "This is a spreadsheet with lots of data and metrics. "
                 * 50,  # 50 sentences
                 "title": "Test Spreadsheet",
             },
             "presentation_document": {
                 "id": "presentation_doc_1",
                 "type": "presentation_document",
-                "content": "This is a presentation with many slides containing important content. "
+                "content": "This is a presentation with many slides with content. "
                 * 75,  # 75 sentences
                 "title": "Test Presentation",
             },

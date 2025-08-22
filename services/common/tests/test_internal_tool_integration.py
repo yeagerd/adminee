@@ -343,7 +343,7 @@ class TestInternalToolEventIntegration:
             ]
 
     def test_internal_tool_event_subscription_configuration(self):
-        """Test that internal tool events are properly configured in subscription config."""
+        """Test that internal tool events are configured in subscription config."""
         # Check that internal tool topics are configured
         vespa_topics = SubscriptionConfig.get_service_topics("vespa_loader")
 

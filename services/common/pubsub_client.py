@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Optional, Union
 
 from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
-from services.common.events import (  # Keep deprecated events for backward compatibility
+from services.common.events import (  # Keep deprecated events for compatibility
     BaseEvent,
     CalendarBatchEvent,
     CalendarEvent,
@@ -240,9 +240,12 @@ class PubSubClient:
     def publish_email_backfill(
         self, event: EmailBackfillEvent, topic_name: str = "emails"
     ) -> str:
-        """Publish email backfill event with type safety (deprecated - use publish_email_event)."""
+        """Publish email backfill event with type safety.
+
+        Deprecated - use publish_email_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_email_backfill method. Use publish_email_event instead.",
+            "Using deprecated publish_email_backfill method. Use publish_email_event.",
             extra={
                 "user_id": event.user_id,
                 "provider": event.provider,
@@ -256,9 +259,12 @@ class PubSubClient:
     def publish_email_update(
         self, event: EmailUpdateEvent, topic_name: str = "emails"
     ) -> str:
-        """Publish email update event with type safety (deprecated - use publish_email_event)."""
+        """Publish email update event with type safety.
+
+        Deprecated - use publish_email_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_email_update method. Use publish_email_event instead.",
+            "Using deprecated publish_email_update method. Use publish_email_event.",
             extra={
                 "user_id": event.user_id,
                 "email_id": event.email.id,
@@ -271,9 +277,12 @@ class PubSubClient:
     def publish_email_batch(
         self, event: EmailBatchEvent, topic_name: str = "emails"
     ) -> str:
-        """Publish email batch event with type safety (deprecated - use publish_email_event)."""
+        """Publish email batch event with type safety.
+
+        Deprecated - use publish_email_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_email_batch method. Use publish_email_event instead.",
+            "Using deprecated publish_email_batch method. Use publish_email_event.",
             extra={
                 "user_id": event.user_id,
                 "provider": event.provider,
@@ -287,9 +296,12 @@ class PubSubClient:
     def publish_calendar_update(
         self, event: CalendarUpdateEvent, topic_name: str = "calendars"
     ) -> str:
-        """Publish calendar update event with type safety (deprecated - use publish_calendar_event)."""
+        """Publish calendar update event with type safety.
+
+        Deprecated - use publish_calendar_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_calendar_update method. Use publish_calendar_event instead.",
+            "Deprecated method: use publish_calendar_event instead.",
             extra={
                 "user_id": event.user_id,
                 "event_id": event.event.id,
@@ -302,9 +314,12 @@ class PubSubClient:
     def publish_calendar_batch(
         self, event: CalendarBatchEvent, topic_name: str = "calendars"
     ) -> str:
-        """Publish calendar batch event with type safety (deprecated - use publish_calendar_event)."""
+        """Publish calendar batch event with type safety.
+
+        Deprecated - use publish_calendar_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_calendar_batch method. Use publish_calendar_event instead.",
+            "Deprecated method: use publish_calendar_event instead.",
             extra={
                 "user_id": event.user_id,
                 "provider": event.provider,
@@ -318,9 +333,12 @@ class PubSubClient:
     def publish_contact_update(
         self, event: ContactUpdateEvent, topic_name: str = "contacts"
     ) -> str:
-        """Publish contact update event with type safety (deprecated - use publish_contact_event)."""
+        """Publish contact update event with type safety.
+
+        Deprecated - use publish_contact_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_contact_update method. Use publish_contact_event instead.",
+            "Deprecated method: use publish_contact_event instead.",
             extra={
                 "user_id": event.user_id,
                 "contact_id": event.contact.id,
@@ -333,9 +351,12 @@ class PubSubClient:
     def publish_contact_batch(
         self, event: ContactBatchEvent, topic_name: str = "contacts"
     ) -> str:
-        """Publish contact batch event with type safety (deprecated - use publish_contact_event)."""
+        """Publish contact batch event with type safety.
+
+        Deprecated - use publish_contact_event instead.
+        """
         logger.warning(
-            "Using deprecated publish_contact_batch method. Use publish_contact_event instead.",
+            "Using deprecated publish_contact_batch method. Use publish_contact_event.",
             extra={
                 "user_id": event.user_id,
                 "provider": event.provider,

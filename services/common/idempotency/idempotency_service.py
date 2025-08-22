@@ -233,7 +233,8 @@ class IdempotencyService:
             )
 
             logger.info(
-                f"Successfully processed batch: {batch_id} ({len(results)} events, {len(errors)} errors)"
+                f"Successfully processed batch: {batch_id} "
+                f"({len(results)} events, {len(errors)} errors)"
             )
 
             return {
@@ -245,7 +246,9 @@ class IdempotencyService:
                 "errors": errors,
                 "success_count": len(results),
                 "error_count": len(errors),
-                "message": f"Batch processed with {len(results)} successes and {len(errors)} errors",
+                "message": (
+                    f"Batch processed: {len(results)} successes, {len(errors)} errors"
+                ),
             }
 
         except Exception as e:
@@ -340,7 +343,8 @@ class IdempotencyService:
         """Clean up expired idempotency keys."""
         try:
             logger.info(
-                f"Starting cleanup of expired idempotency keys (max age: {max_age_hours} hours)"
+                f"Starting cleanup of expired idempotency keys "
+                f"(max age: {max_age_hours} hours)"
             )
 
             # Calculate the cutoff timestamp
@@ -364,7 +368,8 @@ class IdempotencyService:
                         ttl = self.redis_reference.redis.ttl(key)
 
                         if ttl == -1:  # Key has no TTL set
-                            # Check if it's an old key by looking at the stored timestamp
+                            # Check if it's an old key by looking at the stored
+                            # timestamp
                             key_data = self.redis_reference.redis.get(key)
                             if key_data:
                                 try:
@@ -381,14 +386,13 @@ class IdempotencyService:
                                             # Key is old, delete it
                                             self.redis_reference.redis.delete(key)
                                             cleaned_count += 1
-                                            logger.debug(
-                                                f"Deleted expired idempotency key: {key}"
-                                            )
+                                            logger.debug(f"Deleted expired key: {key}")
                                 except (json.JSONDecodeError, ValueError) as e:
                                     logger.warning(
                                         f"Could not parse timestamp for key {key}: {e}"
                                     )
-                                    # If we can't parse the timestamp, delete the key as it's likely corrupted
+                                    # If we can't parse the timestamp, delete the key as
+                                    # it's likely corrupted
                                     self.redis_reference.redis.delete(key)
                                     cleaned_count += 1
                                     logger.debug(
@@ -435,7 +439,8 @@ class IdempotencyService:
         """Clean up expired idempotency keys in batches for better performance."""
         try:
             logger.info(
-                f"Starting batch cleanup of expired idempotency keys (max age: {max_age_hours} hours, batch size: {batch_size})"
+                f"Starting batch cleanup of expired idempotency keys "
+                f"(max age: {max_age_hours} hours, batch size: {batch_size})"
             )
 
             # Calculate the cutoff timestamp
@@ -462,7 +467,8 @@ class IdempotencyService:
                         ttl = self.redis_reference.redis.ttl(key)
 
                         if ttl == -1:  # Key has no TTL set
-                            # Check if it's an old key by looking at the stored timestamp
+                            # Check if it's an old key by looking at the stored
+                            # timestamp
                             key_data = self.redis_reference.redis.get(key)
                             if key_data:
                                 try:
@@ -481,7 +487,8 @@ class IdempotencyService:
                                     logger.warning(
                                         f"Could not parse timestamp for key {key}: {e}"
                                     )
-                                    # If we can't parse the timestamp, delete the key as it's likely corrupted
+                                    # If we can't parse the timestamp, delete the key as
+                                    # it's likely corrupted
                                     keys_to_delete.append(key)
 
                         elif ttl == 0:  # Key has expired TTL
@@ -524,7 +531,7 @@ class IdempotencyService:
                     break
 
             logger.info(
-                f"Batch cleanup completed. Deleted {cleaned_count} expired idempotency keys"
+                f"Batch cleanup completed. Deleted {cleaned_count} expired keys"
             )
 
             # Update monitoring statistics
@@ -610,7 +617,8 @@ class IdempotencyService:
         )
         self._cleanup_thread.start()
         logger.info(
-            f"Started idempotency cleanup scheduler (interval: {self.cleanup_interval_hours} hours)"
+            f"Started idempotency cleanup scheduler "
+            f"(interval: {self.cleanup_interval_hours} hours)"
         )
 
     def _cleanup_scheduler_loop(self) -> None:

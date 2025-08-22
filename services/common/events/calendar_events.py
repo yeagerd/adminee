@@ -88,7 +88,10 @@ class CalendarUpdateEvent(BaseEvent):
 
 
 class CalendarBatchEvent(BaseEvent):
-    """Event for batch calendar operations (deprecated - use CalendarEvent with batch_id)."""
+    """Event for batch calendar operations.
+
+    Deprecated - use CalendarEvent with batch_id instead.
+    """
 
     user_id: str = Field(..., description="User ID for the batch operation")
     provider: str = Field(..., description="Calendar provider")
