@@ -19,11 +19,20 @@ import pytest
 # Add the project root to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.demos.chat import FullDemo
 
 
-class TestDemoAuthentication:
+class TestDemoAuthentication(BaseSelectiveHTTPIntegrationTest):
     """Test suite for demo authentication flow."""
+
+    def setup_method(self, method):
+        """Set up test environment with HTTP call prevention."""
+        super().setup_method(method)
+
+    def teardown_method(self, method):
+        """Clean up test environment."""
+        super().teardown_method(method)
 
     @pytest.fixture
     def demo_instance(self):

@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from services.meetings.services.security import SecurityUtils, check_rate_limit
-from services.meetings.tests.test_base import BaseMeetingsTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsTest
 
 
 class TestSecurityService(BaseMeetingsTest):

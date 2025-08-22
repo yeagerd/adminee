@@ -15,7 +15,7 @@ import httpx
 import pytest
 
 from services.meetings.services.calendar_integration import get_user_availability
-from services.meetings.tests.test_base import BaseMeetingsTest
+from services.meetings.tests.meetings_test_base import BaseMeetingsTest
 
 
 class TestCalendarIntegration(BaseMeetingsTest):

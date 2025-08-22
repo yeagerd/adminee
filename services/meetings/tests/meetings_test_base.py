@@ -25,6 +25,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Call parent setup to enable HTTP call detection
         super().setup_method(method)
 
+        # Disable rate limiting for tests
+        from services.meetings.services.security import set_test_mode
+
+        set_test_mode(True)
+
         # Reset any existing database connections to ensure clean state
         from services.meetings.models import reset_db
 
@@ -59,6 +64,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Import API modules to ensure they're loaded with the test session
         from services.meetings.api import (
+            bookings_router,
             email_router,
             invitations_router,
             polls_router,
@@ -68,13 +74,13 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Create a new FastAPI app instance to avoid reloading the main module
         # This ensures the app uses the updated settings without breaking mocks
-        app = FastAPI(
+        self.app = FastAPI(
             title="Briefly Meetings Service Test",
             version="0.1.0",
             description="Meeting scheduling and polling microservice for Briefly (Test).",
         )
 
-        app.add_middleware(
+        self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
             allow_credentials=True,
@@ -83,36 +89,41 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         )
 
         # Add request logging middleware
-        app.middleware("http")(create_request_logging_middleware())
+        self.app.middleware("http")(create_request_logging_middleware())
 
         # Register standardized exception handlers
-        register_briefly_exception_handlers(app)
+        register_briefly_exception_handlers(self.app)
 
-        app.include_router(
+        self.app.include_router(
             polls_router, prefix="/api/v1/meetings/polls", tags=["polls"]
         )
-        app.include_router(
+        self.app.include_router(
             slots_router,
             prefix="/api/v1/meetings/polls/{poll_id}/slots",
             tags=["slots"],
         )
-        app.include_router(
+        self.app.include_router(
             invitations_router,
             prefix="/api/v1/meetings/polls/{poll_id}/send-invitations",
             tags=["invitations"],
         )
-        app.include_router(
+        self.app.include_router(
             public_router, prefix="/api/v1/public/polls", tags=["public"]
         )
-        app.include_router(
+        self.app.include_router(
             email_router,
             prefix="/api/v1/meetings/process-email-response",
             tags=["email"],
         )
 
+        # Include booking endpoints router
+        self.app.include_router(
+            bookings_router, prefix="/api/v1/bookings", tags=["bookings"]
+        )
+
         from fastapi.testclient import TestClient
 
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
 
     def teardown_method(self, method):
         """Clean up test environment."""
@@ -160,4 +171,29 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             os.close(self._db_fd)
         if hasattr(self, "_db_path") and os.path.exists(self._db_path):
             os.unlink(self._db_path)
+
+        # Call parent teardown to clean up HTTP patches
         super().teardown_method(method)
+
+
+class BaseMeetingsIntegrationTest(BaseMeetingsTest):
+    """Base class for Meetings Service integration tests with full app setup."""
+
+    def setup_method(self, method):
+        """Set up Meetings Service integration test environment."""
+        # Call parent setup for environment variables and database
+        super().setup_method(method)
+
+        # Create test client using app from base class
+        from fastapi.testclient import TestClient
+
+        self.client = TestClient(self.app)
+
+        # Set up authentication overrides if needed
+        self._override_auth()
+
+    def _override_auth(self):
+        """Override authentication for testing."""
+        # Override authentication dependencies if needed for testing
+        # This can be customized based on specific test requirements
+        pass
