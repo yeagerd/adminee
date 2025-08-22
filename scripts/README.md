@@ -2,6 +2,57 @@
 
 This directory contains utility scripts for managing the Briefly platform.
 
+## Redis Management Scripts
+
+### Redis Management: `redis.sh`
+
+A unified script for managing the Redis container for local development.
+
+**Features:**
+- Start/stop/restart Redis container
+- Health checking and status reporting
+- Connection testing
+- **Single invocation** - automatically starts container if needed and shows status
+
+**Usage:**
+```bash
+# Start container and show status (default - recommended)
+./scripts/redis.sh
+
+# Same as above (explicit auto mode)
+./scripts/redis.sh --auto
+
+# Start Redis container only
+./scripts/redis.sh --start
+
+# Stop Redis container
+./scripts/redis.sh --stop
+
+# Restart Redis container
+./scripts/redis.sh --restart
+
+# Clean up container
+./scripts/redis.sh --cleanup
+
+# Test Redis connection
+./scripts/redis.sh --test
+
+# Show current status
+./scripts/redis.sh --status
+
+# Show help
+./scripts/redis.sh --help
+```
+
+**Key Benefits:**
+- 🚀 **Single command setup** - Automatically starts Redis if not running
+- 🔍 **Smart health checks** - Detects container and connection status
+- 📊 **Comprehensive status** - Shows container and Redis connection status
+- 🧪 **Connection testing** - Built-in Redis ping test functionality
+
+**Prerequisites:**
+- Docker running
+
 ## Vespa Management Scripts
 
 ### Vespa Management: `vespa.sh`
