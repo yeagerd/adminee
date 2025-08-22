@@ -85,26 +85,26 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
   - [ ] Register all data tools in the tool registry
   - [ ] Update imports in existing files
 
-### [ ] Task 2.4: Consolidate Search Tools
-- [ ] Move remaining search classes from llm_tools.py to `services/chat/tools/search_tools.py`:
-  - [ ] Move `VespaSearchTool` class (if not already moved)
-  - [ ] Move `UserDataSearchTool` class (if not already moved) 
-  - [ ] Move `SemanticSearchTool` class (if not already moved)
-  - [ ] Ensure all search tools are integrated in `SearchTools` class
+### [x] Task 2.4: Consolidate Search Tools
+- [x] Move remaining search classes from llm_tools.py to `services/chat/tools/search_tools.py`:
+  - [x] Move `VespaSearchTool` class (if not already moved)
+  - [x] Move `UserDataSearchTool` class (if not already moved) 
+  - [x] Move `SemanticSearchTool` class (if not already moved)
+  - [x] Ensure all search tools are integrated in `SearchTools` class
   - [ ] Register all search variants in the tool registry
-  - [ ] Add comprehensive search documentation
+  - [x] Add comprehensive search documentation
 
-### [ ] Task 2.5: Enhance Web Tools
-- [ ] Move `WebSearchTool` from llm_tools.py to `services/chat/tools/web_tools.py` (if not already moved)
-- [ ] Enhance `WebTools` class with additional web capabilities
+### [x] Task 2.5: Enhance Web Tools
+- [x] Move `WebSearchTool` from llm_tools.py to `services/chat/tools/web_tools.py` (if not already moved)
+- [x] Enhance `WebTools` class with additional web capabilities
 - [ ] Register web tools in the tool registry
-- [ ] Add error handling for network issues
+- [x] Add error handling for network issues
 
-### [ ] Task 2.6: Create Utility Tools
-- [ ] Create `services/chat/tools/utility_tools.py` for helper functions:
-  - [ ] Move `format_event_time_for_display` function from llm_tools.py
-  - [ ] Move any other utility/formatting functions
-  - [ ] Create `UtilityTools` class to organize utilities
+### [x] Task 2.6: Create Utility Tools
+- [x] Create `services/chat/tools/utility_tools.py` for helper functions:
+  - [x] Move `format_event_time_for_display` function from llm_tools.py
+  - [x] Move any other utility/formatting functions
+  - [x] Create `UtilityTools` class to organize utilities
   - [ ] Register utility tools in the tool registry
 
 ### [ ] Task 2.7: Update Tool Registry in get_tools.py
