@@ -185,11 +185,11 @@ Based on the comprehensive review findings, here's the complete checklist of rem
 - [x] Add cleanup scheduling and monitoring
 
 #### 3. **Create Missing Internal Tool Integration Tests**
-- [ ] Create `services/common/tests/test_internal_tool_integration.py`
-- [ ] Test LLM chat event integration end-to-end
-- [ ] Test shipment event integration end-to-end
-- [ ] Test meeting poll event integration end-to-end
-- [ ] Test booking event integration end-to-end
+- [x] Create `services/common/tests/test_internal_tool_integration.py`
+- [x] Test LLM chat event integration end-to-end
+- [x] Test shipment event integration end-to-end
+- [x] Test meeting poll event integration end-to-end
+- [x] Test booking event integration end-to-end
 
 ### ⚠️ **Medium Priority (Production Ready but Needs Improvement) - 3-5 days**
 
