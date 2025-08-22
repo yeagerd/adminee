@@ -7,29 +7,38 @@ This directory contains comprehensive demonstration services for the Vespa-power
 **Complete end-to-end demo in 4 steps:**
 
 ```bash
-# 1. Start all services with human-readable logging
+# 1. Start foundation services
+colima start
+./scripts/pubsub-manager.sh
+./scripts/vespa.sh
+./scripts/postgres-start.sh
+
+# 2. Start Briefly services with human-readable logging
 ./scripts/start-dev-logs.sh
 
-# 2. Clear existing data from Vespa
+# 3. Clear existing data from Vespa
 ./scripts/vespa.sh --clear-data --email {email} --env-file {env_file} --force
 
-# 3. Backfill with fresh data
-python services/demos/vespa_backfill.py
+# 4. Backfill with fresh data
+python services/demos/vespa_backfill.py {email}
 
-# 4. Search and dump results
+# 5. Search and dump results
 python services/demos/vespa_search.py {email} --dump
 ```
 
 
 **Quick Reference:**
 ```bash
-# Check status and auto-start if needed
+# Start container, deploy app, and show status (recommended - does everything!)
 ./scripts/vespa.sh
 
-# Start all services
+# Same as above (explicit auto mode)
+./scripts/vespa.sh --auto
+
+# Start container only
 ./scripts/vespa.sh --start
 
-# Deploy Briefly application
+# Deploy application only
 ./scripts/vespa.sh --deploy
 
 # Show status
@@ -380,31 +389,58 @@ The new `./scripts/vespa.sh` script consolidates all Vespa management functional
 - 📦 **Briefly deployment**: Properly deploys your `vespa/services.xml`, `vespa/hosts.xml`, and `vespa/schemas/` configuration
 - 📊 **Real-time monitoring**: Live log monitoring during deployment
 - 🛠️ **Comprehensive management**: Start, stop, deploy, status, restart, cleanup operations
+- ⚡ **One-invocation setup**: No more separate `--start` and `--deploy` calls!
 
 The `vespa.sh` script manages all Vespa services in one place:
 
 ```bash
-# Start all Vespa services (Vespa Engine, Loader Service, Query Service)
-./scripts/vespa.sh --start
+# 🚀 NEW: Start container, deploy app, and show status (single command!)
+./scripts/vespa.sh
 
-# Check status
-./scripts/vespa.sh --status
+# Same as above (explicit auto mode)
+./scripts/vespa.sh --auto
 
-# Stop all services
-./scripts/vespa.sh --stop
+# Individual operations (for specific needs)
+./scripts/vespa.sh --start      # Start container only
+./scripts/vespa.sh --deploy     # Deploy application only
+./scripts/vespa.sh --status     # Show status
+./scripts/vespa.sh --stop       # Stop all services
+./scripts/vespa.sh --restart    # Restart all services
+./scripts/vespa.sh --cleanup    # Clean up container
+```
 
-# Clean up container
-./scripts/vespa.sh --cleanup
+**🚀 Major Improvement**: The script now automatically detects what needs to be done and handles it in the correct order. If you run it without arguments, it will:
+1. Start the Vespa container if it's not running
+2. Deploy the Briefly application if it's not deployed
+3. Show the final status
 
-# Restart all services
-./scripts/vespa.sh --restart
+This eliminates the previous two-step process where you had to run `--start` first, then `--deploy` separately.
 
-# Deploy Briefly application to Vespa
-./scripts/vespa.sh --deploy
+**Note**: The Pub/Sub emulator is managed separately by `scripts/local-pubsub.sh` to avoid conflicts and provide better isolation.
+
+### Migration from Old Two-Step Process
+
+**Before (required 2 invocations):**
+```bash
+./scripts/vespa.sh --start    # First: start container
+./scripts/vespa.sh --deploy   # Second: deploy application
+```
+
+**Now (single invocation):**
+```bash
+./scripts/vespa.sh            # Does everything automatically
+# or
+./scripts/vespa.sh --auto     # Same as above
 ```
 
 **Note**: The Pub/Sub emulator is managed separately by `scripts/pubsub-manager.sh` to avoid conflicts and provide better isolation.
 
+**What Changed:**
+- ✅ **Single command setup** - No more separate `--start` and `--deploy` calls
+- ✅ **Smart detection** - Automatically detects what needs to be done
+- ✅ **Proper sequencing** - Ensures container is ready before deploying
+- ✅ **Status confirmation** - Always shows final status for verification
+- ✅ **Backward compatibility** - All existing flags still work for specific operations
 
 ### Option 3: Start Services Individually
 
@@ -452,9 +488,12 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8006 --reload
 The full Vespa demo workflow involves both infrastructure management and data operations:
 
 1. **Start Services**: `./scripts/start-dev-logs.sh` - Start all services with human-readable logging
-2. **Clear Data**: `./scripts/vespa.sh --clear-data --email {email} --env-file {env_file}` - Clear existing data from Vespa
-3. **Backfill Data**: `python services/demos/vespa_backfill.py` - Populate Vespa with fresh data
-4. **Search & Dump**: `python services/demos/vespa_search.py {email} --dump` - Search and dump all content for the user
+2. **🚀 Setup Vespa**: `./scripts/vespa.sh` - **Single command** that starts container, deploys app, and shows status
+3. **Clear Data**: `./scripts/vespa.sh --clear-data --email {email} --env-file {env_file}` - Clear existing data from Vespa
+4. **Backfill Data**: `python services/demos/vespa_backfill.py` - Populate Vespa with fresh data
+5. **Search & Dump**: `python services/demos/vespa_search.py {email} --dump` - Search and dump all content for the user
+
+**🚀 Key Improvement**: Step 2 now requires only **one command** instead of the previous two-step process!
 
 ### Individual Demo Scripts
 1. **First time setup**: Run `vespa_backfill.py` once to populate Vespa with data
@@ -649,17 +688,3 @@ python -m pytest tests/test_vespa_full.py -v
 # Run with coverage
 python -m pytest tests/ --cov=. --cov-report=html
 ```
-
-## Support
-
-For questions or issues with the Vespa demo services:
-
-1. **Check logs** for error details
-2. **Review configuration** for common issues
-3. **Test individual components** to isolate problems
-4. **Consult Vespa documentation** for advanced topics
-5. **Create issue** in project repository
-
----
-
-*This README is maintained as part of the Vespa demo implementation. For updates or corrections, please submit a pull request.*
