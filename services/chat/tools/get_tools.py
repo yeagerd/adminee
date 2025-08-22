@@ -1,5 +1,7 @@
 """
 Get tools for service API access with pre-authenticated user context.
+
+This module provides dynamic tool discovery and execution capabilities.
 """
 
 import logging
@@ -8,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from services.chat.settings import get_settings
+from services.chat.tools.tool_registry import ToolMetadata, ToolRegistry as EnhancedToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -116,12 +119,12 @@ class ToolRegistry:
 
 
 class GetTool:
-    """Generic tool gateway backed by ToolRegistry.
+    """Generic tool gateway backed by Enhanced ToolRegistry.
 
-    Allows the LLM to discover and invoke available "get_*" tools dynamically.
+    Allows the LLM to discover and invoke available tools dynamically.
     """
 
-    def __init__(self, registry: ToolRegistry, default_user_id: str):
+    def __init__(self, registry: EnhancedToolRegistry, default_user_id: str):
         self.registry = registry
         self.default_user_id = default_user_id
         self.tool_name = "get_tool"
@@ -130,22 +133,41 @@ class GetTool:
         )
 
     def list_tools(self) -> Dict[str, Any]:
+        """List available tools for discovery."""
         try:
-            return {"status": "success", "tools": self.registry.list_tools()}
+            tools_list = self.registry.list_tools()
+            return {"status": "success", "tools": tools_list}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    def get_tool_info(self, tool_id: str) -> Dict[str, Any]:
+        """Get complete API specification for a tool."""
+        try:
+            tool_info = self.registry.get_tool_info(tool_id)
+            if tool_info:
+                return {
+                    "status": "success",
+                    "tool_info": tool_info.to_dict()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": f"Tool not found: {tool_id}"
+                }
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
     def execute(
         self, tool_name: str, params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        """Execute a tool by name with parameters."""
         try:
             kwargs = params.copy() if params else {}
             if "user_id" not in kwargs:
                 kwargs["user_id"] = self.default_user_id
+            
             result = self.registry.execute_tool(tool_name, **kwargs)
-            # Unwrap ToolOutput-like object
-            raw = getattr(result, "raw_output", result)
-            return {"status": "success", "tool": tool_name, "result": raw}
+            return {"status": "success", "tool": tool_name, "result": result}
         except Exception as e:
             logger.error(f"GetTool execute failed for {tool_name}: {e}")
             return {"status": "error", "tool": tool_name, "error": str(e)}
@@ -156,8 +178,125 @@ class GetTools:
 
     def __init__(self, user_id: str):
         self.user_id = user_id
-        self.registry = ToolRegistry()
+        self.registry = EnhancedToolRegistry()
         self.get_tool = GetTool(registry=self.registry, default_user_id=user_id)
+        
+        # Register the existing get_* functions with the enhanced registry
+        self._register_existing_tools()
+    
+    def _register_existing_tools(self):
+        """Register existing get_* functions with the enhanced registry."""
+        # Register get_calendar_events
+        calendar_metadata = ToolMetadata(
+            tool_id="get_calendar_events",
+            description="Get calendar events for a user from the office service",
+            category="data_retrieval",
+            parameters={
+                "user_id": {"type": "str", "description": "User ID to get calendar events for", "required": True},
+                "start_date": {"type": "str", "description": "Start date in YYYY-MM-DD format", "required": False},
+                "end_date": {"type": "str", "description": "End date in YYYY-MM-DD format", "required": False},
+                "time_zone": {"type": "str", "description": "Timezone for date filtering", "required": False, "default": "UTC"},
+                "providers": {"type": "list", "description": "List of calendar providers to query", "required": False},
+                "limit": {"type": "int", "description": "Maximum number of events to return", "required": False, "default": 50}
+            },
+            examples=[
+                {"description": "Get today's events", "params": {"start_date": "2024-01-15", "end_date": "2024-01-15"}},
+                {"description": "Get events from specific providers", "params": {"providers": ["google", "outlook"]}}
+            ],
+            return_format={
+                "status": "success/error",
+                "events": "List of calendar events",
+                "total_count": "Number of events returned",
+                "user_id": "User ID queried"
+            },
+            requires_auth=True,
+            service_dependency="office_service"
+        )
+        self.registry.register_tool(calendar_metadata, get_calendar_events)
+        
+        # Register get_emails
+        emails_metadata = ToolMetadata(
+            tool_id="get_emails",
+            description="Get emails from the office service",
+            category="data_retrieval",
+            parameters={
+                "user_id": {"type": "str", "description": "User ID to get emails for", "required": True},
+                "start_date": {"type": "str", "description": "Start date in YYYY-MM-DD format", "required": False},
+                "end_date": {"type": "str", "description": "End date in YYYY-MM-DD format", "required": False},
+                "folder": {"type": "str", "description": "Folder to filter by", "required": False},
+                "unread_only": {"type": "bool", "description": "Whether to return only unread emails", "required": False},
+                "search_query": {"type": "str", "description": "Search query to filter emails", "required": False},
+                "max_results": {"type": "int", "description": "Maximum number of results to return", "required": False}
+            },
+            examples=[
+                {"description": "Get unread emails", "params": {"unread_only": True}},
+                {"description": "Search emails with query", "params": {"search_query": "meeting"}}
+            ],
+            return_format={
+                "status": "success/error",
+                "emails": "List of emails",
+                "total_count": "Number of emails returned",
+                "user_id": "User ID queried"
+            },
+            requires_auth=True,
+            service_dependency="office_service"
+        )
+        self.registry.register_tool(emails_metadata, get_emails)
+        
+        # Register get_notes
+        notes_metadata = ToolMetadata(
+            tool_id="get_notes",
+            description="Get notes from the office service",
+            category="data_retrieval",
+            parameters={
+                "user_id": {"type": "str", "description": "User ID to get notes for", "required": True},
+                "notebook": {"type": "str", "description": "Notebook to filter by", "required": False},
+                "tags": {"type": "str", "description": "Tags to filter by", "required": False},
+                "search_query": {"type": "str", "description": "Search query to filter notes", "required": False},
+                "max_results": {"type": "int", "description": "Maximum number of results to return", "required": False}
+            },
+            examples=[
+                {"description": "Get notes with specific tags", "params": {"tags": "work,important"}},
+                {"description": "Search notes by query", "params": {"search_query": "project update"}}
+            ],
+            return_format={
+                "status": "success/error",
+                "notes": "List of notes",
+                "total_count": "Number of notes returned",
+                "user_id": "User ID queried"
+            },
+            requires_auth=True,
+            service_dependency="office_service"
+        )
+        self.registry.register_tool(notes_metadata, get_notes)
+        
+        # Register get_documents
+        documents_metadata = ToolMetadata(
+            tool_id="get_documents",
+            description="Get documents from the office service",
+            category="data_retrieval",
+            parameters={
+                "user_id": {"type": "str", "description": "User ID to get documents for", "required": True},
+                "document_type": {"type": "str", "description": "Type of document to filter by", "required": False},
+                "start_date": {"type": "str", "description": "Start date in YYYY-MM-DD format", "required": False},
+                "end_date": {"type": "str", "description": "End date in YYYY-MM-DD format", "required": False},
+                "search_query": {"type": "str", "description": "Search query to filter documents", "required": False},
+                "max_results": {"type": "int", "description": "Maximum number of results to return", "required": False}
+            },
+            examples=[
+                {"description": "Get documents by type", "params": {"document_type": "pdf"}},
+                {"description": "Search documents by query", "params": {"search_query": "contract"}}
+            ],
+            return_format={
+                "status": "success/error",
+                "documents": "List of documents",
+                "total_count": "Number of documents returned",
+                "user_id": "User ID queried"
+            },
+            requires_auth=True,
+            service_dependency="office_service"
+        )
+        self.registry.register_tool(documents_metadata, get_documents)
 
 
 # Global tool registry instance

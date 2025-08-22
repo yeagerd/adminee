@@ -30,15 +30,15 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 - [x] Add JSON schema generation for tool parameters
 - [x] Add example usage generation for each tool
 
-### [ ] Task 1.4: Implement Dynamic Tool Discovery
-- [ ] Modify `GetTools` class to use the new registry system
-- [ ] Implement `get_tool(tool_id: str)` that returns:
-  - [ ] Tool description and purpose
-  - [ ] Parameter specifications with types and descriptions
-  - [ ] Example usage patterns
-  - [ ] Return value format
-- [ ] Update `list_tools()` to return `[(tool_id, description)]` format
-- [ ] Ensure `execute_tool()` works with the registry
+### [x] Task 1.4: Implement Dynamic Tool Discovery
+- [x] Modify `GetTools` class to use the new registry system
+- [x] Implement `get_tool(tool_id: str)` that returns:
+  - [x] Tool description and purpose
+  - [x] Parameter specifications with types and descriptions
+  - [x] Example usage patterns
+  - [x] Return value format
+- [x] Update `list_tools()` to return `[(tool_id, description)]` format
+- [x] Ensure `execute_tool()` works with the registry
 
 ### [ ] Task 1.5: Update BrieflyAgent Integration
 - [ ] Modify `create_briefly_agent_tools()` to provide initial core tools
