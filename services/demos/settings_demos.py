@@ -15,7 +15,7 @@ class DemoSettings(BaseSettings):
     """Settings for demo scripts with sensible defaults."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file="../../.env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -53,7 +53,6 @@ class DemoSettings(BaseSettings):
     api_backfill_office_key: str = Field(
         ...,
         description="Backfill API key for internal service communication",
-        validation_alias="API_BACKFILL_OFFICE_KEY",
     )
 
     # Demo configuration
