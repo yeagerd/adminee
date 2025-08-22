@@ -1,0 +1,128 @@
+schema todo_document {
+    document todo_document inherits base_document {
+        # Todo-specific fields
+        field status type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field priority type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field due_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field completed_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field assignee_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field creator_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field parent_todo_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field subtask_ids type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field list_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field provider_todo_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Override content_type for todos
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "todo"
+        }
+        
+        # Override title field to use todo title
+        field title type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        # Override content field to use todo description
+        field content type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        # Override search_text to include todo-specific searchable content
+        field search_text type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        # Override from_address to use creator_email
+        field from_address type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Override to_addresses to use assignee_email
+        field to_addresses type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Override folder to use list_id
+        field folder type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+    }
+    
+    fieldset todo_search {
+        fields: title, content, search_text, status, priority, assignee_email, creator_email, tags
+    }
+    
+    rank-profile todo_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text) + 0.65 * closeness(field, embedding) + 0.1 * freshness(due_date)
+        }
+    }
+    
+    rank-profile todo_relevance inherits relevance {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text) + 0.4 * closeness(field, embedding) + 0.2 * freshness(due_date) + 0.1 * attribute(status)
+        }
+    }
+    
+    rank-profile todo_freshness inherits freshness {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(title, content, search_text) + 0.8 * freshness(due_date)
+        }
+    }
+}
