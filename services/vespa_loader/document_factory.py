@@ -6,7 +6,7 @@ into Vespa-ready document structures for indexing.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
 from services.common.events.contact_events import ContactEvent, ContactData
@@ -14,6 +14,18 @@ from services.common.events.document_events import DocumentEvent, DocumentData
 from services.common.events.email_events import EmailEvent, EmailData
 from services.common.events.todo_events import TodoEvent, TodoData
 from services.vespa_loader.types import VespaDocumentType
+from services.common.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+# Define union type for all supported event types
+SupportedEventType = Union[
+    EmailEvent,
+    CalendarEvent,
+    ContactEvent,
+    DocumentEvent,
+    TodoEvent,
+]
 
 
 class VespaDocumentFactory:
@@ -245,3 +257,58 @@ class VespaDocumentFactory:
             "DocumentEvent",
             "TodoEvent"
         ]
+
+
+def parse_event_by_topic(
+    topic_name: str, raw_data: Dict[str, Any], message_id: str
+) -> SupportedEventType:
+    """Parse raw data into appropriate typed event based on topic name"""
+    try:
+        if topic_name == "emails":
+            email_event: EmailEvent = EmailEvent(**raw_data)
+            logger.debug(
+                f"Parsed as EmailEvent: message_id={message_id}, user_id={email_event.user_id}, email_id={email_event.email.id}"
+            )
+            return email_event
+        elif topic_name == "calendars":
+            calendar_event: CalendarEvent = CalendarEvent(**raw_data)
+            logger.debug(
+                f"Parsed as CalendarEvent: message_id={message_id}, user_id={calendar_event.user_id}, event_id={calendar_event.event.id}"
+            )
+            return calendar_event
+        elif topic_name == "contacts":
+            contact_event: ContactEvent = ContactEvent(**raw_data)
+            logger.debug(
+                f"Parsed as ContactEvent: message_id={message_id}, user_id={contact_event.user_id}, contact_id={contact_event.contact.id}"
+            )
+            return contact_event
+        elif topic_name in [
+            "word_documents",
+            "word_fragments",
+            "sheet_documents",
+            "sheet_fragments",
+            "presentation_documents",
+            "presentation_fragments",
+            "task_documents",
+        ]:
+            document_event: DocumentEvent = DocumentEvent(**raw_data)
+            logger.debug(
+                f"Parsed as DocumentEvent: message_id={message_id}, user_id={document_event.user_id}, document_id={document_event.document.id}, content_type={document_event.content_type}"
+            )
+            return document_event
+        elif topic_name == "todos":
+            todo_event: TodoEvent = TodoEvent(**raw_data)
+            logger.debug(
+                f"Parsed as TodoEvent: message_id={message_id}, user_id={todo_event.user_id}, todo_id={todo_event.todo.id}"
+            )
+            return todo_event
+        else:
+            logger.warning(
+                f"Unknown topic {topic_name}, message_id={message_id} - skipping"
+            )
+            raise ValueError(f"Unsupported topic: {topic_name}")
+    except Exception as e:
+        logger.error(
+            f"Failed to parse event for topic {topic_name}, message_id={message_id}: {e}"
+        )
+        raise
