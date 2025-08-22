@@ -41,7 +41,7 @@ class ContactDiscoveryService:
                         "email": event.email.from_address,
                         "name": event.email.from_name,
                         "event_type": "email",
-                        "timestamp": event.last_updated or datetime.utcnow(),
+                        "timestamp": event.last_updated or datetime.now(timezone.utc),
                     }
                 )
 
@@ -61,7 +61,7 @@ class ContactDiscoveryService:
                                 "email": email,
                                 "name": name,
                                 "event_type": "email",
-                                "timestamp": event.last_updated or datetime.utcnow(),
+                                "timestamp": event.last_updated or datetime.now(timezone.utc),
                             }
                         )
 
@@ -81,7 +81,7 @@ class ContactDiscoveryService:
                                 "email": email,
                                 "name": name,
                                 "event_type": "email",
-                                "timestamp": event.last_updated or datetime.utcnow(),
+                                "timestamp": event.last_updated or datetime.now(timezone.utc),
                             }
                         )
 
@@ -120,7 +120,7 @@ class ContactDiscoveryService:
                             "email": email,
                             "name": name,
                             "event_type": "calendar",
-                            "timestamp": event.last_updated or datetime.utcnow(),
+                            "timestamp": event.last_updated or datetime.now(timezone.utc),
                         }
                     )
 
@@ -140,7 +140,7 @@ class ContactDiscoveryService:
                                 "email": email,
                                 "name": name,
                                 "event_type": "calendar",
-                                "timestamp": event.last_updated or datetime.utcnow(),
+                                "timestamp": event.last_updated or datetime.now(timezone.utc),
                             }
                         )
 
@@ -168,7 +168,7 @@ class ContactDiscoveryService:
                     email=event.document.owner_email,
                     name=None,  # Document owner name not typically available
                     event_type="document",
-                    timestamp=event.last_updated or datetime.utcnow(),
+                    timestamp=event.last_updated or datetime.now(timezone.utc),
                     source_service="document_sync",
                 )
 
@@ -577,7 +577,7 @@ class ContactDiscoveryService:
             contact.notes = update_data.notes
 
         # Update timestamps
-        contact.updated_at = datetime.utcnow()
+        contact.updated_at = datetime.now(timezone.utc)
 
         # Recalculate relevance score
         contact.calculate_relevance_score()
