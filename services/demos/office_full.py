@@ -120,7 +120,9 @@ class OfficeServiceClient:
     ) -> ApiResponse:
         """Get unified calendar events from all providers."""
         headers = {"X-User-Id": user_id}
-        params: Dict[str, Union[str, int, None]] = {"limit": limit}  # user_id is passed via header
+        params: Dict[str, Union[str, int, None]] = {
+            "limit": limit
+        }  # user_id is passed via header
         if start_date:
             params["start_date"] = start_date
         if end_date:
