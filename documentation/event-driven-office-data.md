@@ -126,7 +126,7 @@ All events extend `BaseEvent` and include `metadata` (trace_id/span_id, correlat
 class BaseVespaDocument(BaseEvent):
     id: str
     user_id: str
-    type: Literal["email", "calendar", "contact", "document", "todo", "llm_chat", "shipment_event", "meeting_poll", "booking"]
+    type: Literal["email", "calendar", "contact", "document", "todo", "llm_chat", "shipment_event", "meeting_poll", "booking", "word_document", "word_fragment", "sheet_document", "sheet_fragment", "presentation_document", "presentation_fragment", "task_document"]
     provider: str
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
@@ -185,6 +185,75 @@ class BookingDocument(BaseVespaDocument):
     attendee_email: str
     # booking-specific fields
 
+class ContactDocument(BaseVespaDocument):
+    type: Literal["contact"]
+    display_name: str
+    email_addresses: List[str]
+    phone_numbers: List[str]
+    company: Optional[str]
+    job_title: Optional[str]
+    # contact-specific fields
+
+class TaskDocument(BaseVespaDocument):
+    type: Literal["task_document"]
+    title: str
+    description: str
+    due_date: Optional[datetime]
+    priority: str
+    status: str
+    assignee: Optional[str]
+    # task-specific fields
+
+class WordDocument(BaseVespaDocument):
+    type: Literal["word_document"]
+    title: str
+    content: str
+    author: str
+    last_modified_by: str
+    word_count: int
+    # word document-specific fields
+
+class WordFragmentDocument(BaseVespaDocument):
+    type: Literal["word_fragment"]
+    parent_document_id: str
+    fragment_index: int
+    fragment_content: str
+    page_range: Optional[Tuple[int, int]]
+    section_heading: Optional[str]
+    # fragment-specific fields for large documents
+
+class SheetDocument(BaseVespaDocument):
+    type: Literal["sheet_document"]
+    title: str
+    sheet_names: List[str]
+    cell_data: Dict[str, Any]
+    formulas: Dict[str, str]
+    # spreadsheet-specific fields
+
+class SheetFragmentDocument(BaseVespaDocument):
+    type: Literal["sheet_fragment"]
+    parent_document_id: str
+    sheet_name: str
+    fragment_range: str  # e.g., "A1:Z100"
+    fragment_content: str
+    # fragment-specific fields for large spreadsheets
+
+class PresentationDocument(BaseVespaDocument):
+    type: Literal["presentation_document"]
+    title: str
+    slide_count: int
+    slide_content: List[str]
+    presenter_notes: List[str]
+    # presentation-specific fields
+
+class PresentationFragmentDocument(BaseVespaDocument):
+    type: Literal["presentation_fragment"]
+    parent_document_id: str
+    slide_number: int
+    slide_content: str
+    presenter_notes: Optional[str]
+    # fragment-specific fields for individual slides
+
 ...
 ```
 
@@ -202,6 +271,48 @@ class BookingDocument(BaseVespaDocument):
 - All document types share common base fields for unified search
 - Type-specific fields enable optimized search within each category
 - Internal tools emit events that get converted to appropriate Vespa document types
+
+### Document Chunking Strategy
+
+**Strategy**: Large Office documents are chunked into searchable fragments while maintaining parent-child relationships.
+
+#### Chunking Benefits
+- **Search Relevance**: Smaller chunks enable more precise search results
+- **Performance**: Faster indexing and search with manageable fragment sizes
+- **Context Preservation**: Parent document metadata maintained across fragments
+- **Scalability**: Handle documents of any size without Vespa document limits
+
+#### Fragment Types and Relationships
+```python
+# Parent documents contain metadata and overview
+class WordDocument(BaseVespaDocument):
+    type: Literal["word_document"]
+    title: str
+    author: str
+    total_pages: int
+    # ... other metadata
+
+# Fragments contain searchable content with parent reference
+class WordFragmentDocument(BaseVespaDocument):
+    type: Literal["word_fragment"]
+    parent_document_id: str  # Links to parent WordDocument
+    fragment_index: int      # Order within document
+    fragment_content: str    # Searchable text chunk
+    page_range: Optional[Tuple[int, int]]
+    section_heading: Optional[str]
+```
+
+#### Chunking Rules
+- **Word Documents**: Chunk by sections, pages, or semantic boundaries (e.g., 1000 words)
+- **Spreadsheets**: Chunk by sheet or logical ranges (e.g., data tables, formula sections)
+- **Presentations**: Chunk by individual slides for granular search
+- **Fragment Size**: Target 500-2000 words per fragment for optimal search performance
+
+#### Search and Navigation
+- **Fragment Search**: Users search within specific document sections
+- **Parent Context**: Search results show fragment content with parent document title/author
+- **Navigation**: Click-through from fragment to full document view
+- **Aggregation**: Search can aggregate results across fragments of the same parent
 
 ### Email Contacts Management
 
@@ -222,12 +333,12 @@ class EmailContact(BaseModel):
 #### Contact Discovery Flow
 1. **Email Processing**: Extract sender/recipient emails from email events
 2. **Calendar Processing**: Extract attendee emails from calendar events  
-3. **Document Processing**: Extract author/contributor emails from document events
+3. **Document Processing**: Extract author/contributor emails from Word, Sheet, and Presentation documents
 4. **Contact Service**: Maintains contact list with event type counters and last_seen timestamps
 
 #### Contact Service Responsibilities
 - **Location**: Can be in `services/user` (user data) or `services/office` (office data)
-- **Event Processing**: Subscribes to `emails`, `calendars`, `documents` topics
+- **Event Processing**: Subscribes to `emails`, `calendars`, `word_documents`, `sheet_documents`, `presentation_documents` topics
 - **Contact Updates**: Emits contact update events when new contacts discovered or existing ones updated
 - **Vespa Integration**: Triggers Vespa updates when contact relevance changes significantly
 
@@ -280,10 +391,10 @@ class EmailContact(BaseModel):
 - **Batch operations**: Include `batch_id` + `correlation_id` for job tracking
 
 ### Consumer filtering and selective consumption
-- **Vespa Loader**: Subscribes to all data types (`emails`, `calendars`, `contacts`, `documents`, `todos`) for comprehensive indexing
+- **Vespa Loader**: Subscribes to all data types (`emails`, `calendars`, `contacts`, `word_documents`, `word_fragments`, `sheet_documents`, `sheet_fragments`, `presentation_documents`, `presentation_fragments`, `task_documents`, `todos`) for comprehensive indexing
 - **Meetings**: Subscribes to `calendars` only - no need for emails, contacts, or other data types
 - **Shipments**: Subscribes to `emails` only - parses shipping events from email content
-- **Contact Service**: Subscribes to `emails`, `calendars`, `documents` to maintain email contact lists
+- **Contact Service**: Subscribes to `emails`, `calendars`, `word_documents`, `sheet_documents`, `presentation_documents` to maintain email contact lists
 - **FE SSE**: Subscribes to relevant data types based on user preferences and notification settings
 
 This selective consumption model:

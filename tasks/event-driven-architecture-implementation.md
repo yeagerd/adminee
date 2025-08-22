@@ -19,7 +19,7 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Design `BaseVespaDocument` with common fields for unified search
 - [ ] Create type-specific document classes: `EmailDocument`, `CalendarDocument`, `ContactDocument`
 - [ ] Ensure type-appropriate fields (no `from_address` for contacts, etc.)
-- [ ] Plan for future document types: `DocumentDocument`, `TodoDocument`, `SheetDocument`, `PresentationDocument`
+- [ ] Create Office document types: `WordDocument`, `SheetDocument`, `PresentationDocument`, `TaskDocument`
 - [ ] Add internal tool document types: `LLMChatDocument`, `ShipmentEventDocument`, `MeetingPollDocument`, `BookingDocument`
 
 ## Phase 2: Topic Restructuring
@@ -28,7 +28,13 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Create `emails` topic (replaces `email-backfill`)
 - [ ] Create `calendars` topic (replaces `calendar-updates`)
 - [ ] Create `contacts` topic (replaces `contact-updates`)
-- [ ] Create `documents` topic (new)
+- [ ] Create `word_documents` topic (new)
+- [ ] Create `word_fragments` topic (new)
+- [ ] Create `sheet_documents` topic (new)
+- [ ] Create `sheet_fragments` topic (new)
+- [ ] Create `presentation_documents` topic (new)
+- [ ] Create `presentation_fragments` topic (new)
+- [ ] Create `task_documents` topic (new)
 - [ ] Create `todos` topic (new)
 
 ### [ ] Update Topic Setup Scripts
@@ -54,9 +60,10 @@ Implementation checklist for the revised event-driven Office data architecture w
 
 ### [ ] Update Vespa Loader Consumer
 - [ ] Modify `services/vespa_loader/pubsub_consumer.py` to subscribe to new topics
-- [ ] Update subscription names: `vespa-loader-emails`, `vespa-loader-calendars`, etc.
+- [ ] Update subscription names: `vespa-loader-emails`, `vespa-loader-calendars`, `vespa-loader-word-documents`, `vespa-loader-word-fragments`, `vespa-loader-sheet-documents`, `vespa-loader-sheet-fragments`, `vespa-loader-presentation-documents`, `vespa-loader-presentation-fragments`, `vespa-loader-task-documents`, etc.
 - [ ] Update event parsing to handle new event structure
 - [ ] Ensure idempotency keys use new field structure
+- [ ] Handle parent-child relationships between documents and fragments
 
 ### [ ] Implement Vespa Document Factory
 - [ ] Create factory pattern to instantiate correct document type based on event data
@@ -85,6 +92,14 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Create contact update events for Vespa integration
 - [ ] Implement contact relevance scoring (last_seen + event counts)
 - [ ] Add Vespa update triggers for significant contact changes
+
+### [ ] Implement Document Chunking Strategy
+- [ ] Design chunking algorithms for different document types (Word, Sheet, Presentation)
+- [ ] Implement parent-child relationship tracking between documents and fragments
+- [ ] Create fragment generation service that processes large documents
+- [ ] Implement chunking rules (section boundaries, page limits, semantic breaks)
+- [ ] Ensure fragment metadata includes parent document references
+- [ ] Test chunking performance and search relevance
 
 ### [ ] Consumer Subscription Management
 - [ ] Update subscription naming convention across all services
@@ -121,6 +136,8 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Test email contact discovery and management
 - [ ] Test internal tool event integration
 - [ ] Test contact relevance scoring and Vespa updates
+- [ ] Test document chunking algorithms and fragment generation
+- [ ] Test parent-child relationships between documents and fragments
 
 ### [ ] Integration Testing
 - [ ] Test end-to-end flow with new architecture
@@ -130,6 +147,8 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Test contact discovery flow from multiple event sources
 - [ ] Test internal tool integration end-to-end
 - [ ] Test contact relevance ranking in search results
+- [ ] Test document chunking and fragment search end-to-end
+- [ ] Test parent-child navigation in search results
 
 ## Phase 7: Migration and Deployment
 
