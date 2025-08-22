@@ -30,6 +30,7 @@ import requests
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.common.logging_config import get_logger
+
 # from services.demos.settings_demos import get_demo_settings # Removed to prevent import-time errors during testing
 
 # Try to import OAuth utilities
@@ -128,10 +129,13 @@ class FastAPICallbackServer:
 # Load demo settings
 # settings = get_demo_settings()  # Removed to prevent import-time errors during testing
 
+
 def get_settings():
     """Get demo settings lazily to prevent import-time errors during testing."""
     from services.demos.settings_demos import get_demo_settings
+
     return get_demo_settings()
+
 
 # Set default user ID from demo settings
 DEFAULT_USER_ID = get_settings().demo_user_email
