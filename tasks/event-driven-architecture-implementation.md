@@ -315,5 +315,5 @@ As each item is completed:
 - [x] Decide fate of `services/vespa_loader/models.py` (Pydantic router models). If unused, deprecate or delete and adjust any references.
 - [x] Ensure `ingest_document_service()` path remains stable after refactor; keep `DocumentMapper` in the event path for now.
 - [x] Add/adjust tests to cover: event parsing by topic, factory output, mapper alias handling, and end-to-end ingest after refactor.
-- [ ] Skip `DocumentMapper` for event-driven path when the factory returns Vespa-ready dicts; keep `DocumentMapper` only for HTTP/legacy ingestion.
-- [ ] Update `ingest_document_service()` to detect Vespa-ready payloads and bypass mapping accordingly.
+- [x] Skip `DocumentMapper` for event-driven path when the factory returns Vespa-ready dicts; keep `DocumentMapper` only for HTTP/legacy ingestion.
+- [x] Update `ingest_document_service()` to detect Vespa-ready payloads and bypass mapping accordingly.
