@@ -11,11 +11,13 @@ from pathlib import Path
 # Add the services directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from services.demos.settings_demos import get_demo_settings
+# from services.demos.settings_demos import get_demo_settings  # Removed to prevent import-time errors
 
 
 def setup_pubsub_topics() -> None:
     """Set up Pub/Sub topics for the Vespa backfill demo"""
+    from services.demos.settings_demos import get_demo_settings  # Lazy import
+
     settings = get_demo_settings()
 
     print("Setting up Pub/Sub topics for Vespa backfill demo...")

@@ -46,7 +46,8 @@ def validate_environment() -> None:
 validate_environment()
 
 from services.common.logging_config import get_logger
-from services.demos.settings_demos import get_demo_settings
+
+# from services.demos.settings_demos import get_demo_settings  # Removed to prevent import-time errors
 from services.office.api.backfill import BackfillRequest
 from services.office.core.email_crawler import EmailCrawler
 from services.office.core.pubsub_publisher import PubSubPublisher
@@ -60,6 +61,8 @@ class VespaBackfillDemo:
     """Real backfill demo using office service infrastructure"""
 
     def __init__(self, config: Dict[str, Any]):
+        from services.demos.settings_demos import get_demo_settings  # Lazy import
+
         self.config = config
         self.settings = get_demo_settings()
 
