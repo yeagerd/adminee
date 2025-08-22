@@ -1,10 +1,11 @@
-import pytest
 from unittest.mock import Mock, patch
 
-from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
+import pytest
+
 from services.chat.tools.draft_tools import DraftTools
 from services.chat.tools.get_tools import GetTools
 from services.chat.tools.tool_registry import ToolRegistry
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
 
 class MockResponse:
@@ -32,10 +33,10 @@ class TestLLMTools(BaseSelectiveHTTPIntegrationTest):
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
-        
+
         # Create a mock for requests.get that will be used by DataTools
         self.mock_requests_get = patch("requests.get").start()
-        
+
         # Configure the mock to return appropriate responses
         def mock_get(*args, **kwargs):
             url = args[0] if args else ""
@@ -136,7 +137,7 @@ class TestLLMTools(BaseSelectiveHTTPIntegrationTest):
             else:
                 # Default response for unknown URLs
                 return MockResponse({"error": "Not found"}, 404)
-        
+
         self.mock_requests_get.side_effect = mock_get
 
     def teardown_method(self, method):
@@ -336,7 +337,7 @@ class TestLLMTools(BaseSelectiveHTTPIntegrationTest):
             "to": ["recipient@example.com"],
             "subject": "Test Email",
             "body": "This is a test email",
-            "type": "email"  # Add type field
+            "type": "email",  # Add type field
         }
 
         result = draft_tools.create_draft_email(

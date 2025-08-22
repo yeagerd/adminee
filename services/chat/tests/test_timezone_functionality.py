@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.chat.models import ChatRequest
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
 
 @pytest.fixture(autouse=True)
@@ -57,7 +57,9 @@ class TestTimezoneFormatting:
         end_utc = "2025-06-20T17:30:00Z"  # 5:30 PM UTC
         timezone_str = "America/New_York"
 
-        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(
+            start_utc, end_utc, timezone_str
+        )
 
         # In summer, Eastern Time is UTC-4, so 17:00 UTC = 1:00 PM EDT
         # Note: The exact format may vary based on system locale
@@ -73,7 +75,9 @@ class TestTimezoneFormatting:
         end_utc = "2025-06-20T23:00:00Z"  # 11:00 PM UTC
         timezone_str = "America/Los_Angeles"
 
-        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(
+            start_utc, end_utc, timezone_str
+        )
 
         # In summer, Pacific Time is UTC-7, so 22:00 UTC = 3:00 PM PDT
         assert "3:00 PM" in result or "15:00" in result
@@ -87,7 +91,9 @@ class TestTimezoneFormatting:
         end_utc = "2025-06-21T01:00:00Z"  # 1:00 AM UTC next day
         timezone_str = "America/New_York"
 
-        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(
+            start_utc, end_utc, timezone_str
+        )
 
         # In Eastern time, this event doesn't actually span midnight
         # 23:00 UTC = 7:00 PM EDT, 01:00 UTC = 9:00 PM EDT (same day)
@@ -103,7 +109,9 @@ class TestTimezoneFormatting:
         end_utc = "2025-06-20T17:30:00Z"
         invalid_timezone = "Invalid/Timezone"
 
-        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, invalid_timezone)
+        result = UtilityTools().format_event_time_for_display(
+            start_utc, end_utc, invalid_timezone
+        )
 
         # Should fallback to system timezone and not crash
         assert "to" in result
@@ -130,7 +138,9 @@ class TestTimezoneFormatting:
         end_utc = "2025-06-20T17:30:00Z"
         timezone_str = "America/New_York"
 
-        result = UtilityTools().format_event_time_for_display(start_utc, end_utc, timezone_str)
+        result = UtilityTools().format_event_time_for_display(
+            start_utc, end_utc, timezone_str
+        )
 
         # Should fallback to original strings
         assert start_utc in result
@@ -242,10 +252,10 @@ class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
-        
+
         # Create a mock for requests.get that will be used by DataTools
         self.mock_requests_get = patch("requests.get").start()
-        
+
         # Configure the mock to return appropriate responses
         def mock_get(*args, **kwargs):
             url = args[0]
@@ -270,8 +280,9 @@ class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
             elif "calendar/events" in url:
                 # Create proper CalendarEvent object
                 from datetime import datetime, timezone
+
                 from services.office.schemas import CalendarEvent, Provider
-                
+
                 event = CalendarEvent(
                     id="google_event_1",
                     calendar_id="google_primary",
@@ -306,7 +317,7 @@ class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
                 }
 
             return mock_response
-        
+
         self.mock_requests_get.side_effect = mock_get
 
     def teardown_method(self, method):
@@ -403,7 +414,9 @@ class TestTimezoneErrorHandling:
         """Test format_event_time_for_display with None values."""
         from services.chat.tools.utility_tools import UtilityTools
 
-        result = UtilityTools().format_event_time_for_display(None, None, "America/New_York")
+        result = UtilityTools().format_event_time_for_display(
+            None, None, "America/New_York"
+        )
 
         # Should handle None gracefully and return fallback
         assert result is not None
@@ -413,7 +426,9 @@ class TestTimezoneErrorHandling:
         """Test format_event_time_for_display with empty strings."""
         from services.chat.tools.utility_tools import UtilityTools
 
-        result = UtilityTools().format_event_time_for_display("", "", "America/New_York")
+        result = UtilityTools().format_event_time_for_display(
+            "", "", "America/New_York"
+        )
 
         # Should handle empty strings gracefully
         assert result is not None
