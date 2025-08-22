@@ -112,17 +112,17 @@ Implementation checklist for the revised event-driven Office data architecture w
 
 ## Phase 5: Idempotency Implementation
 
-### [ ] Implement Idempotency Strategies
-- [ ] **Immutable data**: `provider_message_id` + `user_id` keys
-- [ ] **Mutable data**: `provider_message_id` + `user_id` + `updated_at` keys
-- [ ] **Batch operations**: `batch_id` + `correlation_id` keys
-- [ ] Update consumer logic to use appropriate idempotency keys
+### [x] Implement Idempotency Strategies
+- [x] **Immutable data**: `provider_message_id` + `user_id` keys
+- [x] **Mutable data**: `provider_message_id` + `user_id` + `updated_at` keys
+- [x] **Batch operations**: `batch_id` + `correlation_id` keys
+- [x] Update consumer logic to use appropriate idempotency keys
 
-### [ ] Redis Reference Pattern
-- [ ] Create shared library for Redis key generation
-- [ ] Implement `office:{user_id}:{doc_type}:{doc_id}` key pattern
-- [ ] Add TTL management for different data types
-- [ ] Update producers to optionally use Redis references for large payloads
+### [x] Redis Reference Pattern
+- [x] Create shared library for Redis key generation
+- [x] Implement `office:{user_id}:{doc_type}:{doc_id}` key pattern
+- [x] Add TTL management for different data types
+- [x] Update producers to optionally use Redis references for large payloads
 
 ## Phase 6: Testing and Validation
 
