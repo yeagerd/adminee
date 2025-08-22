@@ -7,27 +7,30 @@ to a running Office Service instance. It shows the full request/response cycle
 including unified API responses from multiple providers.
 
 Prerequisites:
-1. Office Service must be running (cd services/office && uvicorn app.main:app --port 8000 --host 0.0.0.0)
+1. Office Service must be running (cd services/office && uvicorn app.main:app --port 8003 --host 0.0.0.0)
 2. Set demo tokens in environment variables
 3. Set DEMO_MODE=true in the Office Service environment
 
 Setup:
 1. Start the Office Service in demo mode:
    cd services/office
-       DEMO_MODE=true DEMO_GOOGLE_TOKEN=your-token DEMO_MICROSOFT_TOKEN=your-token uvicorn app.main:app --port 8000 --host 0.0.0.0
+       DEMO_MODE=true DEMO_GOOGLE_TOKEN=your-token DEMO_MICROSOFT_TOKEN=your-token uvicorn app.main:app --port 8003 --host 0.0.0.0
 
 2. Run this demo:
    python services/demos/office_full.py user@example.com
 
 This demonstrates the Office Service as it would be used in production,
 with HTTP API calls and unified response formats.
+
+Note: The Office Service requires the X-User-Id header for authentication.
+This demo passes the user_id via header instead of query parameters.
 """
 
 import argparse
 import asyncio
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 
@@ -54,20 +57,22 @@ class OfficeServiceClient:
 
     async def health_check_integrations(self, user_id: str) -> Dict[str, Any]:
         """Check health of provider integrations for a user."""
-        async with httpx.AsyncClient(
-            timeout=self.timeout, follow_redirects=True
-        ) as client:
-            response = await client.get(
-                f"{self.base_url}/health/integrations/{user_id}"
-            )
-            response.raise_for_status()
-            return response.json()
+        # Note: The office service doesn't have this endpoint
+        # Integration health is handled by the user service
+        return {
+            "message": "Integration health endpoint not implemented in office service",
+            "note": "Use user service /users/{user_id}/integrations/{provider}/health instead",
+            "user_id": user_id,
+        }
 
     async def get_emails(
         self, user_id: str, limit: int = 10, offset: int = 0
     ) -> ApiResponse:
         """Get unified email messages from all providers."""
-        params = {"user_id": user_id, "limit": limit, "offset": offset}
+        # Note: Office service requires X-User-Id header for authentication
+        # This demo shows the API structure but won't work without proper auth
+        headers = {"X-User-Id": user_id}
+        params = {"limit": limit, "offset": offset}  # user_id is passed via header
         async with httpx.AsyncClient(
             timeout=self.timeout, follow_redirects=True
         ) as client:
@@ -76,34 +81,33 @@ class OfficeServiceClient:
                 k: str(v) if v is not None else None for k, v in params.items()
             }
             response = await client.get(
-                f"{self.base_url}/email/messages", params=params_str
+                f"{self.base_url}/v1/email/messages", params=params_str, headers=headers
             )
             response.raise_for_status()
             return ApiResponse(**response.json())
 
     async def get_email_by_id(self, message_id: str, user_id: str) -> ApiResponse:
         """Get a specific email message by ID."""
-        params = {"user_id": user_id}
+        headers = {"X-User-Id": user_id}
         async with httpx.AsyncClient(
             timeout=self.timeout, follow_redirects=True
         ) as client:
-            # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {
-                k: str(v) if v is not None else None for k, v in params.items()
-            }
             response = await client.get(
-                f"{self.base_url}/email/messages/{message_id}", params=params_str
+                f"{self.base_url}/v1/email/messages/{message_id}", headers=headers
             )
             response.raise_for_status()
             return ApiResponse(**response.json())
 
     async def send_email(self, user_id: str, email_data: Dict[str, Any]) -> ApiResponse:
         """Send an email through the unified API."""
-        payload = {"user_id": user_id, **email_data}
+        headers = {"X-User-Id": user_id}
+        payload = email_data  # user_id is passed via header
         async with httpx.AsyncClient(
             timeout=self.timeout, follow_redirects=True
         ) as client:
-            response = await client.post(f"{self.base_url}/email/send", json=payload)
+            response = await client.post(
+                f"{self.base_url}/v1/email/send", json=payload, headers=headers
+            )
             response.raise_for_status()
             return ApiResponse(**response.json())
 
@@ -115,7 +119,10 @@ class OfficeServiceClient:
         end_date: Optional[str] = None,
     ) -> ApiResponse:
         """Get unified calendar events from all providers."""
-        params = {"user_id": user_id, "limit": limit}
+        headers = {"X-User-Id": user_id}
+        params: Dict[str, Union[str, int, None]] = {
+            "limit": limit
+        }  # user_id is passed via header
         if start_date:
             params["start_date"] = start_date
         if end_date:
@@ -129,7 +136,9 @@ class OfficeServiceClient:
                 k: str(v) if v is not None else None for k, v in params.items()
             }
             response = await client.get(
-                f"{self.base_url}/calendar/events", params=params_str
+                f"{self.base_url}/v1/calendar/events",
+                params=params_str,
+                headers=headers,
             )
             response.raise_for_status()
             return ApiResponse(**response.json())
@@ -138,12 +147,13 @@ class OfficeServiceClient:
         self, user_id: str, event_data: Dict[str, Any]
     ) -> ApiResponse:
         """Create a calendar event through the unified API."""
-        payload = {"user_id": user_id, **event_data}
+        headers = {"X-User-Id": user_id}
+        payload = event_data  # user_id is passed via header
         async with httpx.AsyncClient(
             timeout=self.timeout, follow_redirects=True
         ) as client:
             response = await client.post(
-                f"{self.base_url}/calendar/events", json=payload
+                f"{self.base_url}/v1/calendar/events", json=payload, headers=headers
             )
             response.raise_for_status()
             return ApiResponse(**response.json())
@@ -152,23 +162,8 @@ class OfficeServiceClient:
         self, user_id: str, limit: int = 10, offset: int = 0
     ) -> ApiResponse:
         """Get unified files from all providers."""
-        params = {"user_id": user_id, "limit": limit, "offset": offset}
-        async with httpx.AsyncClient(
-            timeout=self.timeout, follow_redirects=True
-        ) as client:
-            # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {
-                k: str(v) if v is not None else None for k, v in params.items()
-            }
-            response = await client.get(f"{self.base_url}/files/", params=params_str)
-            response.raise_for_status()
-            return ApiResponse(**response.json())
-
-    async def search_files(
-        self, user_id: str, query: str, limit: int = 10
-    ) -> ApiResponse:
-        """Search for files across all providers."""
-        params = {"user_id": user_id, "q": query, "limit": limit}
+        headers = {"X-User-Id": user_id}
+        params = {"limit": limit, "offset": offset}  # user_id is passed via header
         async with httpx.AsyncClient(
             timeout=self.timeout, follow_redirects=True
         ) as client:
@@ -177,7 +172,26 @@ class OfficeServiceClient:
                 k: str(v) if v is not None else None for k, v in params.items()
             }
             response = await client.get(
-                f"{self.base_url}/files/search", params=params_str
+                f"{self.base_url}/v1/files/", params=params_str, headers=headers
+            )
+            response.raise_for_status()
+            return ApiResponse(**response.json())
+
+    async def search_files(
+        self, user_id: str, query: str, limit: int = 10
+    ) -> ApiResponse:
+        """Search for files across all providers."""
+        headers = {"X-User-Id": user_id}
+        params = {"q": query, "limit": limit}  # user_id is passed via header
+        async with httpx.AsyncClient(
+            timeout=self.timeout, follow_redirects=True
+        ) as client:
+            # Ensure params is a Mapping[str, str | int | float | bool | None]
+            params_str = {
+                k: str(v) if v is not None else None for k, v in params.items()
+            }
+            response = await client.get(
+                f"{self.base_url}/v1/files/search", params=params_str, headers=headers
             )
             response.raise_for_status()
             return ApiResponse(**response.json())
@@ -680,7 +694,7 @@ def parse_arguments() -> argparse.Namespace:
 Prerequisites:
 1. Start Office Service in demo mode:
    cd services/office
-       DEMO_MODE=true DEMO_GOOGLE_TOKEN=your-token uvicorn app.main:app --port 8000 --host 0.0.0.0
+       DEMO_MODE=true DEMO_GOOGLE_TOKEN=your-token uvicorn app.main:app --port 8003 --host 0.0.0.0
 
 2. Run this demo:
    python services/demos/office_full.py user@example.com
@@ -689,6 +703,9 @@ Environment Variables for Office Service:
   DEMO_MODE=true               Enable demo mode (bypasses user service)
   DEMO_GOOGLE_TOKEN           Your Google OAuth2 access token
   DEMO_MICROSOFT_TOKEN        Your Microsoft Graph access token
+
+Note: The Office Service requires the X-User-Id header for authentication.
+This demo passes the user_id via header instead of query parameters.
         """,
     )
 

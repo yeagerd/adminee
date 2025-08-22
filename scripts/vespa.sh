@@ -996,11 +996,44 @@ case "${1:-}" in
         sleep 2
         start_all
         ;;
+    --auto)
+        # Explicit auto mode: start container if needed, deploy if needed, then show status
+        log_info "🚀 Vespa Management: Starting container, deploying application, and checking status..."
+        
+        # Step 1: Start Vespa container if not running
+        if ! check_vespa_container_health; then
+            log_info "Vespa container is not running, starting it..."
+            if ! start_vespa_container; then
+                log_error "Failed to start Vespa container"
+                exit 1
+            fi
+            log_success "Vespa container started successfully!"
+        else
+            log_success "Vespa container is already running and healthy!"
+        fi
+        
+        # Step 2: Deploy application if not deployed
+        if ! curl -s "$VESPA_ENDPOINT/" > /dev/null 2>&1; then
+            log_info "Briefly application is not deployed, deploying it..."
+            if ! deploy_briefly; then
+                log_error "Failed to deploy Briefly application"
+                exit 1
+            fi
+        else
+            log_success "Briefly application is already deployed!"
+        fi
+        
+        # Step 3: Show final status
+        echo
+        log_info "📊 Final Status Check:"
+        show_status
+        ;;
     --help|-h)
         echo "Usage: $0 [OPTION]"
         echo ""
         echo "Options:"
-        echo "  (no args)  Start Vespa container if not running, health check"
+        echo "  (no args)  Start Vespa container if not running, deploy if not deployed, then show status"
+        echo "  --auto     Same as no args: start container, deploy app, then show status"
         echo "  --start    Start Vespa container only"
         echo "  --deploy   Deploy the Briefly application to Vespa"
         echo "  --stop     Stop Vespa container only"
@@ -1017,11 +1050,12 @@ case "${1:-}" in
         echo "  Briefly Application: ${VESPA_ENDPOINT}"
         ;;
     *)
-        # Default behavior: health check and start container if needed
-        log_info "Checking Vespa container health..."
+        # Default behavior: start container if needed, deploy if needed, then show status
+        log_info "🚀 Vespa Management: Starting container, deploying application, and checking status..."
         
+        # Step 1: Start Vespa container if not running
         if ! check_vespa_container_health; then
-            log_info "Vespa container is not running"
+            log_info "Vespa container is not running, starting it..."
             if ! start_vespa_container; then
                 log_error "Failed to start Vespa container"
                 exit 1
@@ -1031,6 +1065,20 @@ case "${1:-}" in
             log_success "Vespa container is already running and healthy!"
         fi
         
+        # Step 2: Deploy application if not deployed
+        if ! curl -s "$VESPA_ENDPOINT/" > /dev/null 2>&1; then
+            log_info "Briefly application is not deployed, deploying it..."
+            if ! deploy_briefly; then
+                log_error "Failed to deploy Briefly application"
+                exit 1
+            fi
+        else
+            log_success "Briefly application is already deployed!"
+        fi
+        
+        # Step 3: Show final status
+        echo
+        log_info "📊 Final Status Check:"
         show_status
         ;;
 esac
