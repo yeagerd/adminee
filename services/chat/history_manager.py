@@ -67,7 +67,7 @@ def get_engine() -> Any:
         async_url = get_async_database_url(database_url)
 
         # Configure asyncpg timeout parameters for better reliability
-        connect_args = {}
+        connect_args: dict[str, Any] = {}
         engine_kwargs = {
             "echo": False,
             "connect_args": connect_args,
