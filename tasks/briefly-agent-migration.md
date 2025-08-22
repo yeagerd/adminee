@@ -1,84 +1,191 @@
 # Briefly Agent Migration Tasks
 
-This document tracks the migration from the multi-agent `CoordinatorAgent` system to a single `BrieflyAgent` design.
+## Overview
+The current implementation has a misunderstanding about the purpose of `get_tools.py`. It was implemented to return only get* tools when the goal was to create a dynamic tool discovery system. The FunctionAgent should be provided with some tools initially, plus a list of more tools [(tool_id, tool_description)] and can request the API for how to call a tool via `get_tool`, which will return the instructions for how to invoke that tool to the Agent.
 
-## Core Agent Changes
+Additionally, `llm_tools.py` has become a monolithic file that needs to be broken down into organized tool categories.
 
-- [x] Rename `CoordinatorAgent` to `BrieflyAgent` in `services/chat/agents/coordinator_agent.py`
-- [x] Remove multi-agent handoff logic and subagent coordination
-- [x] Update agent description and system prompt for single-agent design
-- [x] Move `BrieflyAgent` to its own file `services/chat/agents/briefly_agent.py`
-- [x] Update agent to use new organized tools with pre-authenticated user context
-- [x] Fix conversation context persistence between API calls
+## Phase 1: Fix Tool Discovery Architecture
 
-## Tooling Changes
+### [ ] Task 1.1: Understand Current Architecture
+- [ ] Read and document how `BrieflyAgent` currently works in `services/chat/agents/briefly_agent.py`
+- [ ] Document how tools are currently registered and used (lines 269-389)
+- [ ] Understand the difference between immediate tools vs discoverable tools
+- [ ] Document the current `GetTools` class implementation in `services/chat/tools/get_tools.py`
 
-- [x] Create `services/chat/tools/` package structure
-- [x] Move web search tools to `services/chat/tools/web_tools.py`
-- [x] Move Vespa-based search tools to `services/chat/tools/search_tools.py`
-- [x] Move get tools and tool registry to `services/chat/tools/get_tools.py`
-- [x] Move draft management tools to `services/chat/tools/draft_tools.py`
-- [x] Create wrapper classes (`WebTools`, `SearchTools`, `GetTools`, `DraftTools`) with pre-authenticated user context
-- [x] Update `BrieflyAgent` to use organized tools instead of importing from `llm_tools.py`
-- [x] Ensure all tools have user_id injected at initialization for security
+### [ ] Task 1.2: Design New Tool Discovery System
+- [ ] Create a design document for the new tool discovery architecture
+- [ ] Define the interface for tool metadata: `(tool_id, tool_description)`
+- [ ] Design the `get_tool` function that returns API instructions for a named tool
+- [ ] Design how tools will be registered in a discoverable registry
+- [ ] Plan backward compatibility during migration
 
-## Documentation Updates
+### [ ] Task 1.3: Create Tool Registry Infrastructure
+- [ ] Create `services/chat/tools/tool_registry.py` with:
+  - [ ] `ToolMetadata` dataclass for (id, description, parameters, examples)
+  - [ ] `ToolRegistry` class to store and manage tool metadata
+  - [ ] `register_tool()` method to add tools to registry
+  - [ ] `list_tools()` method to return available tools list
+  - [ ] `get_tool_info(tool_id)` method to return full API specification
+- [ ] Add JSON schema generation for tool parameters
+- [ ] Add example usage generation for each tool
 
-- [x] Update `documentation/agent-design.md` to reflect single-agent architecture
-- [x] Remove multi-agent coordination principles
-- [x] Update architectural diagrams and flow descriptions
-- [x] Document new tool organization and pre-authenticated context
+### [ ] Task 1.4: Implement Dynamic Tool Discovery
+- [ ] Modify `GetTools` class to use the new registry system
+- [ ] Implement `get_tool(tool_id: str)` that returns:
+  - [ ] Tool description and purpose
+  - [ ] Parameter specifications with types and descriptions
+  - [ ] Example usage patterns
+  - [ ] Return value format
+- [ ] Update `list_tools()` to return `[(tool_id, description)]` format
+- [ ] Ensure `execute_tool()` works with the registry
 
-## API Integration
+### [ ] Task 1.5: Update BrieflyAgent Integration
+- [ ] Modify `create_briefly_agent_tools()` to provide initial core tools
+- [ ] Add discoverable tools list to agent initialization
+- [ ] Update agent system prompt to explain tool discovery workflow
+- [ ] Test that agent can discover and use tools dynamically
 
-- [x] Update `services/chat/agents/workflow_agent.py` to work with `BrieflyAgent` instead of multi-agent system
-- [x] Update `services/chat/api.py` to instantiate `BrieflyAgent` instead of `WorkflowAgent`
-- [x] Pass `vespa_endpoint` and `user_id` from `get_settings()` to the `BrieflyAgent` instantiation
-- [x] Ensure streaming functionality works with the new `BrieflyAgent`
-- [x] Update any remaining references to `CoordinatorAgent` or `WorkflowAgent`
-- [x] Remove `services/chat/agents/workflow_agent.py` file
-- [x] Restore critical database saving functionality (user messages and assistant responses)
+## Phase 2: Reorganize llm_tools.py by Category
 
-## Testing
+### [ ] Task 2.1: Audit Current llm_tools.py Content
+- [ ] Create inventory of all functions/classes in `services/chat/agents/llm_tools.py`:
+  - [ ] Draft management functions (lines 25-348)
+  - [ ] Document retrieval functions (lines 351-500) 
+  - [ ] Note retrieval functions (lines 503-648)
+  - [ ] Vespa search tools (lines 651-928)
+  - [ ] User data search tools (lines 930-1044)
+  - [ ] Semantic search tools (lines 1047-1137)
+  - [ ] Web search tools (lines 1140-1208)
+  - [ ] Generic tool classes (lines 1211-1242)
+  - [ ] Calendar event functions (lines 1262-1516)
+  - [ ] Email functions (lines 1520-1679)
+  - [ ] Tool registry (lines 1683-1795)
+  - [ ] Utility functions (lines 1799-1882)
 
-- [ ] Add/adjust unit tests for `BrieflyAgent` to cover its new tool calls
-- [ ] Test tool initialization with pre-authenticated user context
-- [ ] Verify streaming functionality with the new `BrieflyAgent`
-- [ ] Update existing tests that directly instantiate `CoordinatorAgent` or rely on the multi-agent structure
+### [ ] Task 2.2: Create Draft Management Tools
+- [ ] Create `services/chat/tools/draft_tools.py` with comprehensive draft management:
+  - [ ] Move all `create_draft_*` functions from llm_tools.py
+  - [ ] Move all `get_draft_*` functions from llm_tools.py  
+  - [ ] Move all `has_draft_*` functions from llm_tools.py
+  - [ ] Move all `delete_draft_*` functions from llm_tools.py
+  - [ ] Move `clear_all_drafts` function from llm_tools.py
+  - [ ] Ensure `DraftTools` class integrates all functions properly
+  - [ ] Add proper error handling and logging
+  - [ ] Register all draft tools in the tool registry
 
-## Cleanup
+### [ ] Task 2.3: Create Data Retrieval Tools  
+- [ ] Create `services/chat/tools/data_tools.py` for data access:
+  - [ ] Move `get_documents` function from llm_tools.py
+  - [ ] Move `get_notes` function from llm_tools.py
+  - [ ] Move `get_calendar_events` function from llm_tools.py  
+  - [ ] Move `get_emails` function from llm_tools.py
+  - [ ] Create `DataTools` class to organize these functions
+  - [ ] Add integration checking logic for user permissions
+  - [ ] Register all data tools in the tool registry
+  - [ ] Update imports in existing files
 
-- [x] Remove `WorkflowAgent` and its related imports/logic from `services/chat/api.py`
-- [x] Delete `services/chat/agents/workflow_agent.py`
-- [x] Delete `services/demos/multi_agent_demo.py`
-- [x] Delete `services/demos/workflow_agent_demo.py`
-- [x] Delete `services/demos/README_chat_simple.md`
-- [x] Delete `services/demos/README_workflow_agent.md`
-- [x] Delete `services/chat/tests/test_workflow_agent.py`
-- [x] Delete `services/chat/tests/test_multi_agent.py`
-- [x] Update `services/demos/chat.py` to use `BrieflyAgent`
-- [x] Delete `services/chat/agents/README_multi_agent.md`
-- [x] Delete `services/chat/agents/calendar_agent.py`, `email_agent.py`, `document_agent.py`, `draft_agent.py`
-- [x] Clean up any remaining multi-agent imports and references
+### [ ] Task 2.4: Consolidate Search Tools
+- [ ] Move remaining search classes from llm_tools.py to `services/chat/tools/search_tools.py`:
+  - [ ] Move `VespaSearchTool` class (if not already moved)
+  - [ ] Move `UserDataSearchTool` class (if not already moved) 
+  - [ ] Move `SemanticSearchTool` class (if not already moved)
+  - [ ] Ensure all search tools are integrated in `SearchTools` class
+  - [ ] Register all search variants in the tool registry
+  - [ ] Add comprehensive search documentation
 
-## Code Quality
+### [ ] Task 2.5: Enhance Web Tools
+- [ ] Move `WebSearchTool` from llm_tools.py to `services/chat/tools/web_tools.py` (if not already moved)
+- [ ] Enhance `WebTools` class with additional web capabilities
+- [ ] Register web tools in the tool registry
+- [ ] Add error handling for network issues
 
-- [ ] Run `pytest`, `mypy services/`, `./fix`, and `tox` before commit
-- [ ] Ensure all linter errors are resolved
-- [ ] Verify type annotations are correct for new tool classes
-- [ ] Test tool initialization and execution paths
+### [ ] Task 2.6: Create Utility Tools
+- [ ] Create `services/chat/tools/utility_tools.py` for helper functions:
+  - [ ] Move `format_event_time_for_display` function from llm_tools.py
+  - [ ] Move any other utility/formatting functions
+  - [ ] Create `UtilityTools` class to organize utilities
+  - [ ] Register utility tools in the tool registry
 
-## Current Status
+### [ ] Task 2.7: Update Tool Registry in get_tools.py
+- [ ] Move the enhanced `ToolRegistry` class from llm_tools.py to `services/chat/tools/get_tools.py`
+- [ ] Remove duplicate `ToolRegistry` implementation
+- [ ] Ensure all tool categories are properly registered
+- [ ] Update `GetTools` class to use the consolidated registry
 
-✅ **Completed**: Tool organization, pre-authenticated user context, `BrieflyAgent` refactoring, `workflow_agent.py` update, API integration refactoring, demo and test file cleanup, multi-agent file cleanup
-🔄 **In Progress**: Final validation and testing
-⏳ **Pending**: Code quality checks and testing
+## Phase 3: Integration and Testing
 
-## Notes
+### [ ] Task 3.1: Update Import Structure
+- [ ] Update `services/chat/tools/__init__.py` to include all new tool classes:
+  - [ ] Add `DataTools` export
+  - [ ] Add `UtilityTools` export  
+  - [ ] Add `ToolRegistry` export
+- [ ] Update all files that import from llm_tools.py:
+  - [ ] Update imports in `services/chat/agents/briefly_agent.py`
+  - [ ] Update imports in test files
+  - [ ] Search for any other references to llm_tools functions
 
-- Tools are now organized by functionality with pre-authenticated user context
-- `BrieflyAgent` uses wrapper classes that inject user_id at initialization
-- All legacy functions are maintained for backward compatibility
-- The new design eliminates the need for subagents and handoffs
-- `workflow_agent.py` has been completely removed
-- The refactoring maintains the same functionality while providing a much cleaner, more secure, and better-organized architecture
+### [ ] Task 3.2: Clean Up llm_tools.py
+- [ ] Remove all functions that have been moved to other files
+- [ ] Add deprecation warnings for any remaining functions
+- [ ] Update docstring to indicate the file is being phased out
+- [ ] Consider renaming to `legacy_tools.py` or removing entirely
+
+### [ ] Task 3.3: Update Agent Registration
+- [ ] Modify `create_briefly_agent_tools()` in `services/chat/agents/briefly_agent.py`:
+  - [ ] Initialize all new tool classes (`DataTools`, `UtilityTools`, etc.)
+  - [ ] Register all tools in the central registry
+  - [ ] Provide discoverable tools list to the agent
+  - [ ] Update tool wrapper functions to use new classes
+
+### [ ] Task 3.4: Update Tests
+- [ ] Update existing tests to use new tool structure:
+  - [ ] Update imports in test files
+  - [ ] Modify test setup to use new tool classes
+  - [ ] Update mocking to work with tool registry
+- [ ] Create new tests for tool discovery functionality:
+  - [ ] Test `get_tool()` returns proper API specifications
+  - [ ] Test `list_tools()` returns correct tool metadata
+  - [ ] Test dynamic tool execution through registry
+
+### [ ] Task 3.5: Documentation Updates
+- [ ] Update README files to reflect new tool organization
+- [ ] Create documentation for the tool discovery system
+- [ ] Document each tool category and its purpose
+- [ ] Add examples of how to register new tools
+- [ ] Update API documentation
+
+## Phase 4: Validation and Deployment
+
+### [ ] Task 4.1: End-to-End Testing
+- [ ] Test agent can discover tools using `list_tools()`
+- [ ] Test agent can get tool specifications using `get_tool(tool_id)`
+- [ ] Test agent can execute discovered tools successfully
+- [ ] Test all existing workflows still function correctly
+- [ ] Test error handling for unknown/invalid tools
+
+### [ ] Task 4.2: Performance Validation
+- [ ] Ensure tool discovery doesn't add significant latency
+- [ ] Verify memory usage is reasonable with tool registry
+- [ ] Test with multiple concurrent agent instances
+
+### [ ] Task 4.3: Backward Compatibility
+- [ ] Ensure existing API calls continue to work
+- [ ] Test that current agent workflows are unaffected
+- [ ] Verify all tests pass with new architecture
+
+### [ ] Task 4.4: Code Review and Refinement
+- [ ] Review all new code for quality and consistency
+- [ ] Ensure proper error handling throughout
+- [ ] Verify logging is comprehensive and useful
+- [ ] Check that type hints are complete and correct
+
+## Notes for Implementation
+
+- **Priority**: Phase 1 is highest priority as it fixes the core architectural misunderstanding
+- **Testing**: Each phase should include unit tests and integration tests
+- **Documentation**: Update docstrings and type hints as you go
+- **Error Handling**: Ensure robust error handling throughout the migration
+- **Logging**: Add appropriate logging for debugging and monitoring
+- **Type Safety**: Maintain strong typing throughout the new architecture
+
