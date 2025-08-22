@@ -74,7 +74,7 @@ def test(session: nox.Session) -> None:
     session.run(
         "bash",
         "-c",
-        "python -m pytest services/ -n auto -r fE --disable-warnings | grep -v -E '^[[:space:]]*[.]*[[:space:]]*$'",
+        "set -o pipefail && python -m pytest services/ -n auto -r fE --disable-warnings | tee >(grep -v -E '^[[:space:]]*[.]*[[:space:]]*$')",
         external=True,
     )
 
@@ -91,7 +91,7 @@ def test_cov(session: nox.Session) -> None:
     session.run(
         "bash",
         "-c",
-        "python -m pytest services --cov=services --cov-report=xml:coverage.xml -r fE --disable-warnings | grep -v -E '^[[:space:]]*[.]*[[:space:]]*$'",
+        "set -o pipefail && python -m pytest services --cov=services --cov-report=xml:coverage.xml -r fE --disable-warnings | tee >(grep -v -E '^[[:space:]]*[.]*[[:space:]]*$')",
         external=True,
     )
 
