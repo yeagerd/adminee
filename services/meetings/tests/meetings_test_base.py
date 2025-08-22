@@ -25,6 +25,10 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Call parent setup to enable HTTP call detection
         super().setup_method(method)
 
+        # Disable rate limiting for tests
+        from services.meetings.services.security import set_test_mode
+        set_test_mode(True)
+
         # Reset any existing database connections to ensure clean state
         from services.meetings.models import reset_db
 
@@ -59,6 +63,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         # Import API modules to ensure they're loaded with the test session
         from services.meetings.api import (
+            bookings_router,
             email_router,
             invitations_router,
             polls_router,
@@ -108,6 +113,11 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
             email_router,
             prefix="/api/v1/meetings/process-email-response",
             tags=["email"],
+        )
+        
+        # Include booking endpoints router
+        self.app.include_router(
+            bookings_router, prefix="/api/v1/bookings", tags=["bookings"]
         )
 
         from fastapi.testclient import TestClient

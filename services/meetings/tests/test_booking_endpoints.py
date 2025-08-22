@@ -91,12 +91,15 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
             "status": "active",
         }
 
-    def create_test_booking_link(self, session):
+    def create_test_booking_link(self, session, slug_suffix=None):
         """Helper method to create a test booking link."""
+        if slug_suffix is None:
+            slug_suffix = str(uuid.uuid4())[:8]
+        
         booking_link = BookingLink(
-            id=self.test_booking_link_id,
+            id=uuid.uuid4(),  # Use unique ID for each test
             owner_user_id=self.test_user_id,
-            slug="test-slug",
+            slug=f"test-slug-{slug_suffix}",
             is_active=True,
             settings={
                 "buffer_before": 0,
@@ -110,11 +113,14 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         session.commit()
         return booking_link
 
-    def create_test_one_time_link(self, session, booking_link_id):
+    def create_test_one_time_link(self, session, booking_link_id, token_suffix=None):
         """Helper method to create a test one-time link."""
+        if token_suffix is None:
+            token_suffix = str(uuid.uuid4())[:8]
+        
         one_time_link = OneTimeLink(
             id=uuid.uuid4(),
-            token=self.test_token,
+            token=f"{self.test_token}-{token_suffix}",
             booking_link_id=booking_link_id,
             recipient_email="test@example.com",
             recipient_name="Test User",
@@ -139,14 +145,15 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
             one_time_link = self.create_test_one_time_link(session, booking_link.id)
 
             # Make request
-            response = self.client.get(f"/api/v1/bookings/public/{self.test_token}")
+            response = self.client.get(f"/api/v1/bookings/public/{one_time_link.token}")
 
             # Verify response
             assert response.status_code == 200
             data = response.json()
             assert data["data"]["is_active"] is True
             assert "title" in data["data"]
-            assert data["data"]["title"] == "test-slug"  # Should match the slug
+            # The title should match the slug we created
+            assert data["data"]["title"] == booking_link.slug
 
     def test_get_public_link_not_found(self):
         """Test retrieval of a non-existent public booking link."""
@@ -168,7 +175,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
 
             # Make request
             response = self.client.get(
-                f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
+                f"/api/v1/bookings/public/{one_time_link.token}/availability?duration=30"
             )
 
             # Verify response
@@ -206,7 +213,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
             # Test different durations
             for duration in [15, 30, 60, 120]:
                 response = self.client.get(
-                    f"/api/v1/bookings/public/{self.test_token}/availability?duration={duration}"
+                    f"/api/v1/bookings/public/{one_time_link.token}/availability?duration={duration}"
                 )
 
                 assert response.status_code == 200
@@ -235,7 +242,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
 
             # Make request
             response = self.client.get(
-                f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
+                f"/api/v1/bookings/public/{one_time_link.token}/availability?duration=30"
             )
 
             # Verify response
@@ -313,10 +320,11 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
 
         with get_session() as session:
             # Create booking link with custom settings
+            custom_slug = f"custom-settings-{str(uuid.uuid4())[:8]}"
             booking_link = BookingLink(
                 id=uuid.uuid4(),
                 owner_user_id=self.test_user_id,
-                slug="custom-settings",
+                slug=custom_slug,
                 is_active=True,
                 settings=self.sample_booking_link_data["settings"],
             )
@@ -362,7 +370,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
 
             # Make request
             response = self.client.get(
-                f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
+                f"/api/v1/bookings/public/{one_time_link.token}/availability?duration=30"
             )
 
             # Should still return 200 but with empty slots
@@ -383,13 +391,13 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
             # Start with a few normal requests
             for i in range(5):
                 response = self.client.get(
-                    f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
+                    f"/api/v1/bookings/public/{one_time_link.token}/availability?duration=30"
                 )
                 assert response.status_code in [200, 404]  # Normal responses
 
             # Test that we can still make requests without hitting rate limits
             response = self.client.get(
-                f"/api/v1/bookings/public/{self.test_token}/availability?duration=30"
+                f"/api/v1/bookings/public/{one_time_link.token}/availability?duration=30"
             )
             assert response.status_code in [200, 404]  # Should still work
 
