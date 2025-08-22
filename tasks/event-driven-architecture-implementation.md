@@ -156,18 +156,6 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Test document chunking and fragment search end-to-end
 - [ ] Test parent-child navigation in search results
 
-## Phase 7: Migration and Deployment
-
-### [ ] Migration Strategy
-- [ ] Plan gradual migration from old topics to new ones
-- [ ] Ensure no data loss during transition
-- [ ] Create rollback plan if issues arise
-
-### [ ] Deployment
-- [ ] Deploy new event models and publishers
-- [ ] Deploy updated consumers
-- [ ] Deploy new Vespa document types
-- [ ] Monitor for any issues or performance impacts
 
 ## Phase 8: Documentation and Monitoring
 
@@ -176,17 +164,6 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Document new topic names and subscription patterns
 - [ ] Document Vespa document type design and factory pattern
 - [ ] Update deployment guides
-
-### [ ] Monitoring and Observability
-- [ ] Update metrics to track new topic usage
-- [ ] Add monitoring for selective consumption patterns
-- [ ] Ensure correlation_id tracking works for batch operations
-- [ ] Monitor Vespa indexing performance with new document types
-- [ ] Monitor contact discovery and update rates
-- [ ] Track internal tool event processing performance
-- [ ] Monitor contact relevance scoring accuracy
-- [ ] Track data freshness metrics using `last_updated` and `sync_timestamp`
-- [ ] Monitor sync latency and data staleness
 
 ## Dependencies and Order
 
