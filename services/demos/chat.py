@@ -430,7 +430,6 @@ class UserServiceClient(ServiceClient):
                 )
 
                 if response.status_code == 200:
-                if response.status_code == 200:
                     return response.json()
                 elif response.status_code == 404:
                     # User preferences don't exist yet, return defaults

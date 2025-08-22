@@ -96,29 +96,39 @@ class BrieflyAgent(FunctionAgent):
         user_id: str,
         vespa_endpoint: str,
         tools: List[FunctionTool],
-        llm_model: str = "gpt-4.1-nano",
+        llm_model: str = "gpt-5-nano",
         llm_provider: str = "openai",
         **llm_kwargs: Any,
     ) -> None:
+        # Ensure we have max_tokens set to handle large tool outputs
+        if 'max_tokens' not in llm_kwargs:
+            llm_kwargs['max_tokens'] = 10000  # Increased from default 2000
+        
         llm = get_llm_manager().get_llm(model=llm_model, provider=llm_provider, **llm_kwargs)
 
         system_prompt = (
             "You are Briefly, a single-agent assistant with comprehensive tools.\n\n"
             "Available tools:\n"
-            "- user_data_search: Search across all your personal data (emails, calendar, contacts, files)\n"
-            "- vespa_search: Advanced search with source type filtering and ranking\n"
-            "- semantic_search: Find conceptually similar content using AI embeddings\n"
-            "- web_search: Search the public web for current information\n"
-            "- get_tool: Access service APIs (calendar, email, notes, documents)\n"
+            "- user_data_search: Search across all your personal data (emails, calendar, contacts, files) - USE THIS FOR SEARCHING EXISTING DATA\n"
+            "- vespa_search: Advanced search with source type filtering and ranking - USE THIS FOR FILTERED SEARCHES\n"
+            "- semantic_search: Find conceptually similar content using AI embeddings - USE THIS FOR CONCEPTUAL SEARCHES\n"
+            "- web_search: Search the public web for current information - USE THIS FOR EXTERNAL KNOWLEDGE\n"
+            "- get_tool: Access service APIs to CREATE, UPDATE, or DELETE data - USE THIS FOR MODIFYING DATA, NOT SEARCHING\n"
             "- create_draft_*: Create and manage drafts for emails and calendar events\n\n"
-            "Guidelines:\n"
-            "- Use user_data_search for personal information needs\n"
-            "- Use web_search for general knowledge and current events\n"
-            "- Use get_tool for specific data retrieval from your services\n"
-            "- Create drafts when users want to compose emails or calendar events\n"
-            "- Keep responses concise, helpful, and actionable\n"
+            "CRITICAL TOOL SELECTION RULES - FOLLOW THESE EXACTLY:\n"
+            "1. ANY request to FIND, SEARCH, or GET existing data MUST use user_data_search, vespa_search, or semantic_search\n"
+            "2. NEVER use get_tool for searching - it's ONLY for data modification\n"
+            "3. Examples of SEARCH requests (use user_data_search):\n"
+            "   - 'find my emails', 'search my calendar', 'get my documents'\n"
+            "   - 'what emails do I have', 'show my meetings', 'find my notes'\n"
+            "   - 'search for emails from today', 'look for calendar events'\n"
+            "4. Examples of MODIFICATION requests (use get_tool):\n"
+            "   - 'create an email', 'update calendar event', 'delete note'\n"
+            "   - 'send email', 'book meeting', 'remove appointment'\n\n"
+            "Keep responses concise, helpful, and actionable.\n"
         )
 
+        # Call parent constructor with FunctionAgent pattern
         super().__init__(
             name="BrieflyAgent",
             description=(
@@ -128,8 +138,11 @@ class BrieflyAgent(FunctionAgent):
             system_prompt=system_prompt,
             llm=llm,
             tools=tools,  # type: ignore[arg-type]
-            can_handoff_to=[],
+            can_handoff_to=[],  # No handoffs in single-agent design
         )
+        
+        # Store additional components we need
+        self._system_prompt = system_prompt
         self._thread_id = str(thread_id)
         self._user_id = user_id
         self._vespa_endpoint = vespa_endpoint
@@ -137,9 +150,14 @@ class BrieflyAgent(FunctionAgent):
         # Initialize context for conversation history
         self._context = Context(self)
         
+        # Store tools and system prompt for the worker functions
+        self._tools = tools
+        self._system_prompt = system_prompt
+        
         logger.debug(
             f"BrieflyAgent initialized with thread_id={self._thread_id}, user_id={self._user_id}"
         )
+
 
     @property
     def thread_id(self) -> str:
@@ -184,12 +202,16 @@ class BrieflyAgent(FunctionAgent):
     async def achat(self, message: str) -> str:
         """Async chat method for compatibility with API usage."""
         try:
-            # Load conversation history before chat
-            await self._load_conversation_history()
+            # Collect all streaming chunks and combine them
+            response_chunks = []
+            async for chunk in self.astream_chat(message):
+                if isinstance(chunk, dict) and "error" in chunk:
+                    return chunk["message"]
+                response_chunks.append(str(chunk))
             
-            # Use the FunctionAgent's chat method
-            response = await super().chat(message)
-            return str(response)
+            # Combine all chunks into a single response
+            full_response = "".join(response_chunks)
+            return full_response if full_response else "I'm sorry, I couldn't process that request."
         except Exception as e:
             logger.error(f"Error in BrieflyAgent chat: {e}")
             return f"I apologize, but I encountered an error: {str(e)}"
@@ -200,9 +222,23 @@ class BrieflyAgent(FunctionAgent):
             # Load conversation history before streaming chat
             await self._load_conversation_history()
             
-            # Use the FunctionAgent's streaming method
-            async for chunk in super().astream_chat(message):
-                yield chunk
+            # Use the FunctionAgent's run method with streaming following the correct pattern
+            logger.info(f"BrieflyAgent: Starting streaming chat for message: {message}")
+            
+            # Create a context for the agent to maintain state
+            ctx = Context(self)
+            
+            # Get the handler (don't await yet)
+            handler = self.run(user_msg=message, ctx=ctx)
+            
+            # Import the event types we need to check
+            from llama_index.core.agent.workflow import AgentStream, ToolCallResult
+            
+            async for event in handler.stream_events():
+                if isinstance(event, AgentStream) and event.delta:
+                    yield event.delta
+            
+            # The final response will be streamed through AgentStream events
         except Exception as e:
             logger.error(f"Error in BrieflyAgent streaming chat: {e}")
             yield {"error": str(e), "message": f"I apologize, but I encountered an error: {str(e)}"}
@@ -235,17 +271,17 @@ def create_briefly_agent_tools(vespa_endpoint: str, user_id: str) -> List[Functi
     draft_tools = DraftTools(user_id)
 
     # Create wrapper functions for the tools to make them compatible with FunctionTool
-    def search_user_data_wrapper(query: str, max_results: int = 20) -> Any:
-        return search_tools.user_data_search.search_all_data(query=query, max_results=max_results)
+    async def search_user_data_wrapper(query: str, max_results: int = 20) -> Any:
+        return await search_tools.user_data_search.search_all_data(query=query, max_results=max_results)
 
-    def vespa_search_wrapper(query: str, max_results: int = 10, source_types: Optional[List[str]] = None) -> Any:
-        return search_tools.vespa_search.search(query=query, max_results=max_results, source_types=source_types)
+    async def vespa_search_wrapper(query: str, max_results: int = 10, source_types: Optional[List[str]] = None) -> Any:
+        return await search_tools.vespa_search.search(query=query, max_results=max_results, source_types=source_types)
 
-    def semantic_search_wrapper(query: str, max_results: int = 10) -> Any:
-        return search_tools.semantic_search.semantic_search(query=query, max_results=max_results)
+    async def semantic_search_wrapper(query: str, max_results: int = 10) -> Any:
+        return await search_tools.semantic_search.semantic_search(query=query, max_results=max_results)
 
-    def web_search_wrapper(query: str, max_results: int = 5) -> Any:
-        return web_tools.web_search.search(query=query, max_results=max_results)
+    async def web_search_wrapper(query: str, max_results: int = 5) -> Any:
+        return await web_tools.web_search.search(query=query, max_results=max_results)
 
     def get_tool_list_wrapper() -> Any:
         return get_tools.get_tool.list_tools()
