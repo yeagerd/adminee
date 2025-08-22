@@ -385,9 +385,46 @@ class SearchTools:
     def __init__(self, vespa_endpoint: str, user_id: str):
         self.vespa_endpoint = vespa_endpoint
         self.user_id = user_id
-        self.user_data_search = UserDataSearchTool(vespa_endpoint, user_id)
-        self.vespa_search = _VespaSearchCompat(self.user_data_search)
-        self.semantic_search = _SemanticSearchCompat(self.user_data_search)
+        self._user_data_search: Optional[UserDataSearchTool] = None
+        self._vespa_search: Optional[_VespaSearchCompat] = None
+        self._semantic_search: Optional[_SemanticSearchCompat] = None
+
+    @property
+    def user_data_search(self) -> UserDataSearchTool:
+        """Lazy initialization of UserDataSearchTool."""
+        if self._user_data_search is None:
+            self._user_data_search = UserDataSearchTool(self.vespa_endpoint, self.user_id)
+        return self._user_data_search
+
+    @property
+    def vespa_search(self) -> "_VespaSearchCompat":
+        """Lazy initialization of VespaSearchCompat."""
+        if self._vespa_search is None:
+            self._vespa_search = _VespaSearchCompat(self.user_data_search)
+        return self._vespa_search
+
+    @property
+    def semantic_search(self) -> "_SemanticSearchCompat":
+        """Lazy initialization of SemanticSearchCompat."""
+        if self._semantic_search is None:
+            self._semantic_search = _SemanticSearchCompat(self.user_data_search)
+        return self._semantic_search
+
+    async def cleanup(self) -> None:
+        """Clean up all search tool resources."""
+        if self._user_data_search:
+            await self._user_data_search.cleanup()
+            self._user_data_search = None
+        self._vespa_search = None
+        self._semantic_search = None
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - ensure cleanup."""
+        await self.cleanup()
 
 
 class _VespaSearchCompat:
