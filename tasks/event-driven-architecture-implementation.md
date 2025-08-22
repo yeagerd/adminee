@@ -20,6 +20,7 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Create type-specific document classes: `EmailDocument`, `CalendarDocument`, `ContactDocument`
 - [ ] Ensure type-appropriate fields (no `from_address` for contacts, etc.)
 - [ ] Plan for future document types: `DocumentDocument`, `TodoDocument`, `SheetDocument`, `PresentationDocument`
+- [ ] Add internal tool document types: `LLMChatDocument`, `ShipmentEventDocument`, `MeetingPollDocument`, `BookingDocument`
 
 ## Phase 2: Topic Restructuring
 
@@ -64,10 +65,26 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Update Vespa indexing logic to use new document types
 - [ ] Ensure unified search works across all document types
 
+### [ ] Internal Tool Integration
+- [ ] Design event schemas for internal tools (LLM chats, shipment events, meeting polls, bookings)
+- [ ] Implement event publishing from internal tools to appropriate topics
+- [ ] Create Vespa document types for internal tool data
+- [ ] Ensure internal tool events follow the same event architecture patterns
+- [ ] Test end-to-end flow from internal tools to Vespa search
+
 ### [ ] Update Domain-Specific Consumers
 - [ ] **Meetings Service**: Update to subscribe to `calendars` topic only
 - [ ] **Shipments Service**: Update to subscribe to `emails` topic only
+- [ ] **Contact Service**: Create/update to subscribe to `emails`, `calendars`, `documents` for contact discovery
 - [ ] **FE SSE Notifier**: Create/update to subscribe to relevant data types
+
+### [ ] Implement Email Contacts Management
+- [ ] Design `EmailContact` data model with event type counters and last_seen tracking
+- [ ] Decide on service location (user service vs office service)
+- [ ] Implement contact discovery from email, calendar, and document events
+- [ ] Create contact update events for Vespa integration
+- [ ] Implement contact relevance scoring (last_seen + event counts)
+- [ ] Add Vespa update triggers for significant contact changes
 
 ### [ ] Consumer Subscription Management
 - [ ] Update subscription naming convention across all services
@@ -101,12 +118,18 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Test idempotency strategies for different data types
 - [ ] Test Redis reference pattern
 - [ ] Test Vespa document factory and type-specific indexing
+- [ ] Test email contact discovery and management
+- [ ] Test internal tool event integration
+- [ ] Test contact relevance scoring and Vespa updates
 
 ### [ ] Integration Testing
 - [ ] Test end-to-end flow with new architecture
 - [ ] Verify consumer scaling and isolation
 - [ ] Test error handling and retry mechanisms
 - [ ] Test unified search across different document types
+- [ ] Test contact discovery flow from multiple event sources
+- [ ] Test internal tool integration end-to-end
+- [ ] Test contact relevance ranking in search results
 
 ## Phase 7: Migration and Deployment
 
@@ -134,6 +157,9 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [ ] Add monitoring for selective consumption patterns
 - [ ] Ensure correlation_id tracking works for batch operations
 - [ ] Monitor Vespa indexing performance with new document types
+- [ ] Monitor contact discovery and update rates
+- [ ] Track internal tool event processing performance
+- [ ] Monitor contact relevance scoring accuracy
 
 ## Dependencies and Order
 
@@ -153,3 +179,7 @@ Implementation checklist for the revised event-driven Office data architecture w
 - Ensure backward compatibility where possible
 - Vespa document factory should gracefully handle unknown event types
 - Test unified search performance with new document type structure
+- Email contacts service location decision affects data ownership and scaling
+- Internal tool events should follow same patterns as office data events
+- Contact relevance scoring thresholds need tuning based on user behavior
+- Consider contact data retention policies and GDPR compliance

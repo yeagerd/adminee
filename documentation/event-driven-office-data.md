@@ -126,7 +126,7 @@ All events extend `BaseEvent` and include `metadata` (trace_id/span_id, correlat
 class BaseVespaDocument(BaseEvent):
     id: str
     user_id: str
-    type: Literal["email", "calendar", "contact", "document", "todo"]
+    type: Literal["email", "calendar", "contact", "document", "todo", "llm_chat", "shipment_event", "meeting_poll", "booking"]
     provider: str
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
@@ -152,6 +152,39 @@ class CalendarDocument(BaseVespaDocument):
     attendees: List[str]
     # calendar-specific fields
 
+class LLMChatDocument(BaseVespaDocument):
+    type: Literal["llm_chat"]
+    conversation_id: str
+    user_message: str
+    assistant_response: str
+    context: Dict[str, Any]
+    # chat-specific fields
+
+class ShipmentEventDocument(BaseVespaDocument):
+    type: Literal["shipment_event"]
+    package_id: str
+    event_type: str
+    location: str
+    description: str
+    # shipment-specific fields
+
+class MeetingPollDocument(BaseVespaDocument):
+    type: Literal["meeting_poll"]
+    meeting_id: str
+    poll_question: str
+    poll_options: List[str]
+    responses: Dict[str, str]
+    # poll-specific fields
+
+class BookingDocument(BaseVespaDocument):
+    type: Literal["booking"]
+    booking_id: str
+    meeting_id: str
+    slot_start: datetime
+    slot_end: datetime
+    attendee_email: str
+    # booking-specific fields
+
 ...
 ```
 
@@ -161,12 +194,57 @@ class CalendarDocument(BaseVespaDocument):
 - **Flexible indexing**: Can optimize per document type while maintaining unified pipeline
 - **Clean event handling**: Vespa consumer uses factory pattern to create appropriate document types
 - **Future extensibility**: Easy to add new document types (sheets, presentations, etc.)
+- **Internal tool integration**: LLM chats, shipment events, meeting polls, and bookings become searchable
 
 #### Implementation Details
 - Vespa consumer processes events from unified topics (`emails`, `calendars`, `contacts`)
 - Factory pattern determines document type based on event data
 - All document types share common base fields for unified search
 - Type-specific fields enable optimized search within each category
+- Internal tools emit events that get converted to appropriate Vespa document types
+
+### Email Contacts Management
+
+**Strategy**: Maintain user-specific email contact lists for enhanced search relevance and contact discovery.
+
+#### Contact Data Structure
+```python
+class EmailContact(BaseModel):
+    user_id: str
+    email_address: str
+    display_name: str
+    last_seen: datetime
+    event_counts: Dict[str, int]  # {"email": 5, "calendar": 2, "document": 1}
+    first_seen: datetime
+    metadata: Dict[str, Any]
+```
+
+#### Contact Discovery Flow
+1. **Email Processing**: Extract sender/recipient emails from email events
+2. **Calendar Processing**: Extract attendee emails from calendar events  
+3. **Document Processing**: Extract author/contributor emails from document events
+4. **Contact Service**: Maintains contact list with event type counters and last_seen timestamps
+
+#### Contact Service Responsibilities
+- **Location**: Can be in `services/user` (user data) or `services/office` (office data)
+- **Event Processing**: Subscribes to `emails`, `calendars`, `documents` topics
+- **Contact Updates**: Emits contact update events when new contacts discovered or existing ones updated
+- **Vespa Integration**: Triggers Vespa updates when contact relevance changes significantly
+
+#### Vespa Integration Strategy
+- **Contact Documents**: Create `ContactDocument` in Vespa for each email contact
+- **Search Relevance**: Use `last_seen` and event counts for ranking
+- **Update Triggers**: Update Vespa when:
+  - New contact discovered
+  - `last_seen` changes significantly (e.g., >7 days)
+  - Event counts change substantially
+  - Contact metadata updates
+
+#### Benefits
+- **Enhanced Search**: "John" searches rank by recency and interaction frequency
+- **Contact Discovery**: Users discover contacts they interact with across all tools
+- **Unified Contact View**: Single source of truth for email contacts across services
+- **Search Optimization**: Vespa can optimize for contact-specific queries
 
 ### Sequence of operations
 1. Integration connected
@@ -205,6 +283,7 @@ class CalendarDocument(BaseVespaDocument):
 - **Vespa Loader**: Subscribes to all data types (`emails`, `calendars`, `contacts`, `documents`, `todos`) for comprehensive indexing
 - **Meetings**: Subscribes to `calendars` only - no need for emails, contacts, or other data types
 - **Shipments**: Subscribes to `emails` only - parses shipping events from email content
+- **Contact Service**: Subscribes to `emails`, `calendars`, `documents` to maintain email contact lists
 - **FE SSE**: Subscribes to relevant data types based on user preferences and notification settings
 
 This selective consumption model:
