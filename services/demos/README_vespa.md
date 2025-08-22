@@ -7,17 +7,20 @@ This directory contains comprehensive demonstration services for the Vespa-power
 **Complete end-to-end demo in 4 steps:**
 
 ```bash
-# 1. Start all services with human-readable logging
-./scripts/start-dev-logs.sh
-
-# 2. Start Vespa, deploy app, and show status (single command!)
+# 1. Start foundation services
+colima start
+./scripts/pubsub-manager.sh
 ./scripts/vespa.sh
+./scripts/postgres-start.sh
+
+# 2. Start Briefly services with human-readable logging
+./scripts/start-dev-logs.sh
 
 # 3. Clear existing data from Vespa
 ./scripts/vespa.sh --clear-data --email {email} --env-file {env_file} --force
 
 # 4. Backfill with fresh data
-python services/demos/vespa_backfill.py
+python services/demos/vespa_backfill.py {email}
 
 # 5. Search and dump results
 python services/demos/vespa_search.py {email} --dump
@@ -56,7 +59,26 @@ python services/demos/vespa_search.py {email} --dump
 
 **Note**: Replace `{email}` with actual email address and `{env_file}` with path to environment file containing API keys.
 
-**🚀 Key Improvement**: The `vespa.sh` script now requires only **one invocation** instead of the previous two-step process. It automatically starts the container and deploys the application if needed!
+**Pub/Sub Emulator Management**:
+```bash
+# Check status and auto-start if needed
+./scripts/pubsub-manager.sh
+
+# Start emulator and setup topics/subscriptions
+./scripts/pubsub-manager.sh start
+
+# Setup topics and subscriptions only
+./scripts/pubsub-manager.sh setup
+
+# Show current status
+./scripts/pubsub-manager.sh status
+
+# Stop emulator
+./scripts/pubsub-manager.sh stop
+
+# Clean up container
+./scripts/pubsub-manager.sh cleanup
+```
 
 ## Demo Scripts
 
@@ -250,9 +272,42 @@ graph TD
 - Multi-turn conversation support
 - Actionable result presentation
 
-## Configuration
+## Pub/Sub Emulator Setup
 
-### Environment Variables
+The Pub/Sub emulator provides local development infrastructure for message queuing and event-driven workflows.
+
+### Default Topics and Subscriptions
+
+The emulator automatically creates the following structure:
+
+**Topics**:
+- `email-backfill` - For email data ingestion
+- `calendar-updates` - For calendar event updates  
+- `contact-updates` - For contact information updates
+
+**Subscriptions**:
+- **Router Subscriptions** (for message routing):
+  - `email-router-subscription` → `email-backfill`
+  - `calendar-router-subscription` → `calendar-updates`
+  - `contact-router-subscription` → `contact-updates`
+- **Vespa Loader Subscriptions** (for data indexing):
+  - `vespa-loader-email-backfill` → `email-backfill`
+  - `vespa-loader-calendar-updates` → `calendar-updates`
+  - `vespa-loader-contact-updates` → `contact-updates`
+
+### Health Check
+
+```bash
+# Check emulator status
+./scripts/pubsub-manager.sh status
+
+# Should show:
+# ✅ Status: Running
+# Topics: email-backfill, calendar-updates, contact-updates
+# Subscriptions: [6 subscriptions listed]
+```
+
+## Configuration
 
 ```bash
 # Vespa Configuration
@@ -378,6 +433,8 @@ This eliminates the previous two-step process where you had to run `--start` fir
 ./scripts/vespa.sh --auto     # Same as above
 ```
 
+**Note**: The Pub/Sub emulator is managed separately by `scripts/pubsub-manager.sh` to avoid conflicts and provide better isolation.
+
 **What Changed:**
 - ✅ **Single command setup** - No more separate `--start` and `--deploy` calls
 - ✅ **Smart detection** - Automatically detects what needs to be done
@@ -390,16 +447,19 @@ This eliminates the previous two-step process where you had to run `--start` fir
 #### Start Pub/Sub Emulator
 ```bash
 # Start Pub/Sub emulator (manages Docker container)
-./scripts/local-pubsub.sh
+./scripts/pubsub-manager.sh
 
 # Check status
-./scripts/local-pubsub.sh --status
+./scripts/pubsub-manager.sh --status
 
 # Stop emulator
-./scripts/local-pubsub.sh --stop
+./scripts/pubsub-manager.sh --stop
 
 # Clean up container
-./scripts/local-pubsub.sh --cleanup
+./scripts/pubsub-manager.sh --cleanup
+
+# Setup topics and subscriptions
+./scripts/pubsub-manager.sh --setup
 ```
 
 #### Start Vespa Engine
@@ -487,16 +547,23 @@ python services/demos/vespa_synthetic.py
    - Check Vespa application status
 
 2. **Pub/Sub publishing failed**:
-   - Verify emulator is running
-   - Check topic creation
-   - Verify message format
+   - Verify emulator is running: `./scripts/pubsub-manager.sh status`
+   - Check topic creation: Should see 3 topics listed
+   - Verify message format and project ID
+   - Restart emulator if needed: `./scripts/pubsub-manager.sh --restart`
 
-3. **Search returns no results**:
+3. **Pub/Sub emulator issues**:
+   - **"Could not list topics/subscriptions"**: Script now uses REST API instead of gcloud
+   - **Authentication errors**: Not needed for local emulator
+   - **Port conflicts**: Check if port 8085 is available
+   - **Container issues**: Use `./scripts/pubsub-manager.sh cleanup` then restart
+
+4. **Search returns no results**:
    - Check if data was indexed
    - Verify user_id filtering
    - Check query syntax
 
-4. **Performance degradation**:
+5. **Performance degradation**:
    - Monitor Vespa resource usage
    - Check query complexity
    - Verify index optimization
@@ -518,6 +585,15 @@ tail -f services/vespa_query/logs/app.log
 ```
 
 ## Development
+
+### Recent Improvements
+
+**Pub/Sub Manager Script** (`scripts/pubsub-manager.sh`):
+- ✅ **REST API Integration**: Now uses direct REST API calls instead of gcloud commands
+- ✅ **No Authentication Required**: Works seamlessly with local emulator
+- ✅ **Proper JSON Parsing**: Uses `jq` for reliable topic/subscription listing
+- ✅ **Comprehensive Status**: Shows all topics and subscriptions clearly
+- ✅ **Error Handling**: Graceful fallbacks and clear error messages
 
 ### Adding New Demo Scenarios
 
@@ -612,17 +688,3 @@ python -m pytest tests/test_vespa_full.py -v
 # Run with coverage
 python -m pytest tests/ --cov=. --cov-report=html
 ```
-
-## Support
-
-For questions or issues with the Vespa demo services:
-
-1. **Check logs** for error details
-2. **Review configuration** for common issues
-3. **Test individual components** to isolate problems
-4. **Consult Vespa documentation** for advanced topics
-5. **Create issue** in project repository
-
----
-
-*This README is maintained as part of the Vespa demo implementation. For updates or corrections, please submit a pull request.*

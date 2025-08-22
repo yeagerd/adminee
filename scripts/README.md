@@ -71,7 +71,9 @@ A unified script for managing the local Pub/Sub emulator during development.
 - Start/stop/cleanup Pub/Sub emulator container
 - Create topics and subscriptions automatically
 - Health checking and status reporting
-- Fallback to REST API if gcloud CLI unavailable
+- REST API integration (no gcloud authentication required)
+- Comprehensive topic and subscription listing
+- Automatic Docker container management
 
 **Usage:**
 ```bash
@@ -101,9 +103,15 @@ A unified script for managing the local Pub/Sub emulator during development.
 - `PUBSUB_PROJECT_ID` - Project ID (default: briefly-dev)
 - `PUBSUB_EMULATOR_HOST` - Emulator host (default: localhost:8085)
 
+**Implementation Details:**
+- Uses Docker container with Google Cloud CLI image
+- REST API endpoints for topic/subscription management
+- Automatic health checking and container lifecycle management
+- JSON parsing with jq for reliable data extraction
+
 **Prerequisites:**
 - Docker running
-- Optional: gcloud CLI for enhanced functionality
+- jq (for JSON parsing) - usually pre-installed on macOS/Linux
 
 ### Production GCP: `gcp-pubsub-setup.sh`
 
@@ -168,6 +176,20 @@ The following scripts have been consolidated and removed:
 - `fix-pubsub-topics.sh` → `gcp-pubsub-setup.sh`
 - `create-vespa-subscriptions.sh` → `pubsub-manager.sh`
 
+## Recent Improvements
+
+**Version 2.0 Changes** (Current):
+- ✅ **REST API Integration**: Replaced gcloud commands with direct REST API calls
+- ✅ **No Authentication Required**: Works seamlessly with local emulator
+- ✅ **Improved JSON Parsing**: Uses jq for reliable topic/subscription listing
+- ✅ **Better Error Handling**: Clear error messages and graceful fallbacks
+- ✅ **Comprehensive Status**: Shows all topics and subscriptions clearly
+
+**Previous Version Issues Resolved**:
+- ❌ "Could not list topics/subscriptions" errors
+- ❌ gcloud authentication requirements
+- ❌ Unreliable JSON parsing with grep/sed
+
 ## Quick Start for Development
 
 1. **Start the emulator:**
@@ -184,6 +206,28 @@ The following scripts have been consolidated and removed:
    ```bash
    ./scripts/pubsub-manager.sh stop
    ```
+
+## Troubleshooting
+
+### Common Issues
+
+**"Could not list topics/subscriptions"**:
+- This was a previous issue with gcloud authentication
+- Now resolved with REST API integration
+- Ensure emulator is running: `./scripts/pubsub-manager.sh status`
+
+**Port conflicts**:
+- Default port is 8085
+- Check if port is available: `lsof -i :8085`
+- Use `./scripts/pubsub-manager.sh cleanup` to remove container
+
+**Container issues**:
+- If container is in bad state: `./scripts/pubsub-manager.sh cleanup`
+- Then restart: `./scripts/pubsub-manager.sh start`
+
+**Missing jq**:
+- Install jq: `brew install jq` (macOS) or `apt-get install jq` (Ubuntu)
+- Script will fall back to grep/sed if jq unavailable
 
 ## Quick Start for Production
 
