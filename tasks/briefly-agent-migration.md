@@ -20,15 +20,15 @@ Additionally, `llm_tools.py` has become a monolithic file that needs to be broke
 - [x] Design how tools will be registered in a discoverable registry
 - [x] Plan backward compatibility during migration
 
-### [ ] Task 1.3: Create Tool Registry Infrastructure
-- [ ] Create `services/chat/tools/tool_registry.py` with:
-  - [ ] `ToolMetadata` dataclass for (id, description, parameters, examples)
-  - [ ] `ToolRegistry` class to store and manage tool metadata
-  - [ ] `register_tool()` method to add tools to registry
-  - [ ] `list_tools()` method to return available tools list
-  - [ ] `get_tool_info(tool_id)` method to return full API specification
-- [ ] Add JSON schema generation for tool parameters
-- [ ] Add example usage generation for each tool
+### [x] Task 1.3: Create Tool Registry Infrastructure
+- [x] Create `services/chat/tools/tool_registry.py` with:
+  - [x] `ToolMetadata` dataclass for (id, description, parameters, examples)
+  - [x] `ToolRegistry` class to store and manage tool metadata
+  - [x] `register_tool()` method to add tools to registry
+  - [x] `list_tools()` method to return available tools list
+  - [x] `get_tool_info(tool_id)` method to return full API specification
+- [x] Add JSON schema generation for tool parameters
+- [x] Add example usage generation for each tool
 
 ### [ ] Task 1.4: Implement Dynamic Tool Discovery
 - [ ] Modify `GetTools` class to use the new registry system
