@@ -174,15 +174,15 @@ Based on the comprehensive review findings, here's the complete checklist of rem
 
 #### 1. **Implement Missing Todo Vespa Schema**
 - [x] Create `vespa/schemas/todo_document.sd` file
-- [ ] Define todo-specific fields (status, priority, due_date, assignee_email, etc.)
-- [ ] Extend base document schema with todo-specific attributes
+- [x] Define todo-specific fields (status, priority, due_date, assignee_email, etc.)
+- [x] Extend base document schema with todo-specific attributes
 - [ ] Test schema validation and Vespa indexing
 
 #### 2. **Complete Idempotency Service Cleanup Implementation**
-- [ ] Implement Redis key scanning logic in `cleanup_expired_keys` method
-- [ ] Add TTL-based cleanup for expired idempotency keys
-- [ ] Implement batch cleanup operations for performance
-- [ ] Add cleanup scheduling and monitoring
+- [x] Implement Redis key scanning logic in `cleanup_expired_keys` method
+- [x] Add TTL-based cleanup for expired idempotency keys
+- [x] Implement batch cleanup operations for performance
+- [x] Add cleanup scheduling and monitoring
 
 #### 3. **Create Missing Internal Tool Integration Tests**
 - [ ] Create `services/common/tests/test_internal_tool_integration.py`

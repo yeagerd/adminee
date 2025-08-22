@@ -3,29 +3,57 @@ Idempotency service for ensuring event processing is idempotent.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Union, Callable
+import json
+import asyncio
+from threading import Thread, Event
 
 from services.common.idempotency.idempotency_keys import (
-    IdempotencyKeyGenerator, IdempotencyStrategy, IdempotencyKeyValidator
+    IdempotencyKeyGenerator, IdempotencyKeyValidator
 )
 from services.common.idempotency.redis_reference import RedisReferencePattern
-from services.common.events import (
-    EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent
-)
-
+from services.common.idempotency.idempotency_strategy import IdempotencyStrategy
+from services.common.events.email_events import EmailEvent
+from services.common.events.calendar_events import CalendarEvent
+from services.common.events.contact_events import ContactEvent
+from services.common.events.document_events import DocumentEvent
+from services.common.events.todo_events import TodoEvent
 
 logger = logging.getLogger(__name__)
 
 
 class IdempotencyService:
-    """Service for ensuring idempotent event processing."""
+    """Service for managing idempotency in event processing."""
     
-    def __init__(self, redis_reference: RedisReferencePattern):
+    def __init__(
+        self,
+        redis_reference: RedisReferencePattern,
+        key_generator: Optional[IdempotencyKeyGenerator] = None,
+        key_validator: Optional[IdempotencyKeyValidator] = None,
+        strategy: Optional[IdempotencyStrategy] = None,
+        cleanup_interval_hours: int = 24,
+        enable_auto_cleanup: bool = True
+    ):
         self.redis_reference = redis_reference
-        self.key_generator = IdempotencyKeyGenerator()
-        self.key_validator = IdempotencyKeyValidator()
-        self.strategy = IdempotencyStrategy()
+        self.key_generator = key_generator or IdempotencyKeyGenerator()
+        self.key_validator = key_validator or IdempotencyKeyValidator()
+        self.strategy = strategy or IdempotencyStrategy()
+        
+        # Cleanup configuration
+        self.cleanup_interval_hours = cleanup_interval_hours
+        self.enable_auto_cleanup = enable_auto_cleanup
+        self._cleanup_thread: Optional[Thread] = None
+        self._stop_cleanup = Event()
+        
+        # Cleanup monitoring
+        self._last_cleanup_time: Optional[datetime] = None
+        self._total_cleanups = 0
+        self._total_keys_cleaned = 0
+        
+        # Start auto-cleanup if enabled
+        if self.enable_auto_cleanup:
+            self._start_cleanup_scheduler()
     
     def process_event_with_idempotency(
         self,
@@ -283,12 +311,179 @@ class IdempotencyService:
     def cleanup_expired_keys(self, max_age_hours: int = 24) -> int:
         """Clean up expired idempotency keys."""
         try:
-            # This would typically scan Redis for expired keys
-            # For now, return 0 as cleanup is not implemented
-            logger.info("Cleanup of expired idempotency keys not implemented")
-            return 0
+            logger.info(f"Starting cleanup of expired idempotency keys (max age: {max_age_hours} hours)")
+            
+            # Calculate the cutoff timestamp
+            cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=max_age_hours)
+            cutoff_timestamp = int(cutoff_time.timestamp())
+            
+            # Use Redis SCAN to iterate through keys efficiently
+            cleaned_count = 0
+            cursor = 0
+            pattern = "idempotency:*"
+            
+            while True:
+                # Scan for keys matching the pattern
+                cursor, keys = self.redis_reference.redis.scan(
+                    cursor=cursor, 
+                    match=pattern, 
+                    count=100
+                )
+                
+                for key in keys:
+                    try:
+                        # Check if key exists and get its TTL
+                        ttl = self.redis_reference.redis.ttl(key)
+                        
+                        if ttl == -1:  # Key has no TTL set
+                            # Check if it's an old key by looking at the stored timestamp
+                            key_data = self.redis_reference.redis.get(key)
+                            if key_data:
+                                try:
+                                    data = json.loads(key_data)
+                                    stored_timestamp = data.get('timestamp')
+                                    if stored_timestamp:
+                                        # Convert to timestamp if it's a string
+                                        if isinstance(stored_timestamp, str):
+                                            stored_timestamp = datetime.fromisoformat(stored_timestamp.replace('Z', '+00:00')).timestamp()
+                                        
+                                        if stored_timestamp < cutoff_timestamp:
+                                            # Key is old, delete it
+                                            self.redis_reference.redis.delete(key)
+                                            cleaned_count += 1
+                                            logger.debug(f"Deleted expired idempotency key: {key}")
+                                except (json.JSONDecodeError, ValueError) as e:
+                                    logger.warning(f"Could not parse timestamp for key {key}: {e}")
+                                    # If we can't parse the timestamp, delete the key as it's likely corrupted
+                                    self.redis_reference.redis.delete(key)
+                                    cleaned_count += 1
+                                    logger.debug(f"Deleted corrupted idempotency key: {key}")
+                        
+                        elif ttl == -2:  # Key doesn't exist (was deleted)
+                            continue
+                        
+                        elif ttl == 0:  # Key has expired TTL
+                            # Delete the expired key
+                            self.redis_reference.redis.delete(key)
+                            cleaned_count += 1
+                            logger.debug(f"Deleted expired idempotency key: {key}")
+                            
+                    except Exception as e:
+                        logger.warning(f"Error processing key {key} during cleanup: {e}")
+                        continue
+                
+                # If cursor is 0, we've completed the scan
+                if cursor == 0:
+                    break
+            
+            logger.info(f"Cleanup completed. Deleted {cleaned_count} expired idempotency keys")
+            
+            # Update monitoring statistics
+            self._last_cleanup_time = datetime.now(datetime.UTC)
+            self._total_cleanups += 1
+            self._total_keys_cleaned += cleaned_count
+            
+            return cleaned_count
+            
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
+            return 0
+    
+    def cleanup_expired_keys_batch(self, max_age_hours: int = 24, batch_size: int = 100) -> int:
+        """Clean up expired idempotency keys in batches for better performance."""
+        try:
+            logger.info(f"Starting batch cleanup of expired idempotency keys (max age: {max_age_hours} hours, batch size: {batch_size})")
+            
+            # Calculate the cutoff timestamp
+            cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=max_age_hours)
+            cutoff_timestamp = int(cutoff_time.timestamp())
+            
+            # Use Redis SCAN to iterate through keys efficiently
+            cleaned_count = 0
+            cursor = 0
+            pattern = "idempotency:*"
+            
+            while True:
+                # Scan for keys matching the pattern
+                cursor, keys = self.redis_reference.redis.scan(
+                    cursor=cursor, 
+                    match=pattern, 
+                    count=batch_size
+                )
+                
+                # Process keys in batches
+                keys_to_delete = []
+                
+                for key in keys:
+                    try:
+                        # Check if key exists and get its TTL
+                        ttl = self.redis_reference.redis.ttl(key)
+                        
+                        if ttl == -1:  # Key has no TTL set
+                            # Check if it's an old key by looking at the stored timestamp
+                            key_data = self.redis_reference.redis.get(key)
+                            if key_data:
+                                try:
+                                    data = json.loads(key_data)
+                                    stored_timestamp = data.get('timestamp')
+                                    if stored_timestamp:
+                                        # Convert to timestamp if it's a string
+                                        if isinstance(stored_timestamp, str):
+                                            stored_timestamp = datetime.fromisoformat(stored_timestamp.replace('Z', '+00:00')).timestamp()
+                                        
+                                        if stored_timestamp < cutoff_timestamp:
+                                            keys_to_delete.append(key)
+                                except (json.JSONDecodeError, ValueError) as e:
+                                    logger.warning(f"Could not parse timestamp for key {key}: {e}")
+                                    # If we can't parse the timestamp, delete the key as it's likely corrupted
+                                    keys_to_delete.append(key)
+                        
+                        elif ttl == 0:  # Key has expired TTL
+                            keys_to_delete.append(key)
+                            
+                    except Exception as e:
+                        logger.warning(f"Error processing key {key} during batch cleanup: {e}")
+                        continue
+                
+                # Delete keys in batch if we have any
+                if keys_to_delete:
+                    try:
+                        # Use pipeline for batch deletion
+                        pipe = self.redis_reference.redis.pipeline()
+                        for key in keys_to_delete:
+                            pipe.delete(key)
+                        results = pipe.execute()
+                        
+                        deleted_count = sum(1 for result in results if result == 1)
+                        cleaned_count += deleted_count
+                        
+                        logger.debug(f"Batch deleted {deleted_count} expired idempotency keys")
+                        
+                    except Exception as e:
+                        logger.error(f"Error during batch deletion: {e}")
+                        # Fall back to individual deletions
+                        for key in keys_to_delete:
+                            try:
+                                if self.redis_reference.redis.delete(key):
+                                    cleaned_count += 1
+                            except Exception as del_e:
+                                logger.warning(f"Error deleting key {key}: {del_e}")
+                
+                # If cursor is 0, we've completed the scan
+                if cursor == 0:
+                    break
+            
+            logger.info(f"Batch cleanup completed. Deleted {cleaned_count} expired idempotency keys")
+            
+            # Update monitoring statistics
+            self._last_cleanup_time = datetime.now(datetime.UTC)
+            self._total_cleanups += 1
+            self._total_keys_cleaned += cleaned_count
+            
+            return cleaned_count
+            
+        except Exception as e:
+            logger.error(f"Error during batch cleanup: {e}")
             return 0
     
     def validate_idempotency_config(self, event_type: str, operation: str) -> Dict[str, Any]:
@@ -344,5 +539,58 @@ class IdempotencyService:
             "generated_key": test_key,
             "key_valid": key_valid,
             "strategy_info": strategy_info,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(datetime.UTC).isoformat()
+        }
+    
+    def _start_cleanup_scheduler(self) -> None:
+        """Start the background cleanup scheduler."""
+        if self._cleanup_thread and self._cleanup_thread.is_alive():
+            logger.warning("Cleanup scheduler already running")
+            return
+        
+        self._stop_cleanup.clear()
+        self._cleanup_thread = Thread(
+            target=self._cleanup_scheduler_loop,
+            name="IdempotencyCleanupScheduler",
+            daemon=True
+        )
+        self._cleanup_thread.start()
+        logger.info(f"Started idempotency cleanup scheduler (interval: {self.cleanup_interval_hours} hours)")
+    
+    def _cleanup_scheduler_loop(self) -> None:
+        """Background loop for scheduled cleanup operations."""
+        while not self._stop_cleanup.is_set():
+            try:
+                # Wait for the cleanup interval
+                if self._stop_cleanup.wait(self.cleanup_interval_hours * 3600):
+                    break  # Stop event was set
+                
+                # Perform cleanup
+                cleaned_count = self.cleanup_expired_keys_batch(batch_size=200)
+                logger.info(f"Scheduled cleanup completed: {cleaned_count} keys cleaned")
+                
+            except Exception as e:
+                logger.error(f"Error in cleanup scheduler: {e}")
+                # Wait a bit before retrying
+                if not self._stop_cleanup.wait(300):  # 5 minutes
+                    break
+    
+    def stop_cleanup_scheduler(self) -> None:
+        """Stop the background cleanup scheduler."""
+        if self._cleanup_thread and self._cleanup_thread.is_alive():
+            self._stop_cleanup.set()
+            self._cleanup_thread.join(timeout=10)
+            logger.info("Stopped idempotency cleanup scheduler")
+    
+    def get_cleanup_status(self) -> Dict[str, Any]:
+        """Get the status of the cleanup scheduler."""
+        return {
+            "auto_cleanup_enabled": self.enable_auto_cleanup,
+            "cleanup_interval_hours": self.cleanup_interval_hours,
+            "scheduler_running": self._cleanup_thread is not None and self._cleanup_thread.is_alive(),
+            "last_cleanup": getattr(self, '_last_cleanup_time', None),
+            "cleanup_stats": {
+                "total_cleanups": getattr(self, '_total_cleanups', 0),
+                "total_keys_cleaned": getattr(self, '_total_keys_cleaned', 0)
+            }
         }
