@@ -4,7 +4,7 @@ Vespa Query Service - Query interface for hybrid search capabilities
 """
 
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import uvicorn
@@ -140,7 +140,7 @@ async def health_check() -> Dict[str, Any]:
     health_status: Dict[str, Any] = {
         "status": "healthy",
         "service": "vespa-query",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "checks": {},
     }
 
