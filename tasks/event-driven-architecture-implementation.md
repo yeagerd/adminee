@@ -97,13 +97,13 @@ Implementation checklist for the revised event-driven Office data architecture w
 - [x] Implement contact relevance scoring (last_seen + event counts)
 - [x] Add Vespa update triggers for significant contact changes
 
-### [ ] Implement Document Chunking Strategy
-- [ ] Design chunking algorithms for different document types (Word, Sheet, Presentation)
-- [ ] Implement parent-child relationship tracking between documents and fragments
-- [ ] Create fragment generation service that processes large documents
-- [ ] Implement chunking rules (section boundaries, page limits, semantic breaks)
-- [ ] Ensure fragment metadata includes parent document references
-- [ ] Test chunking performance and search relevance
+### [x] Implement Document Chunking Strategy
+- [x] Design chunking algorithms for different document types (Word, Sheet, Presentation)
+- [x] Implement parent-child relationship tracking between documents and fragments
+- [x] Create fragment generation service that processes large documents
+- [x] Implement chunking rules (section boundaries, page limits, semantic breaks)
+- [x] Ensure fragment metadata includes parent document references
+- [x] Test chunking performance and search relevance
 
 ### [ ] Consumer Subscription Management
 - [ ] Update subscription naming convention across all services
