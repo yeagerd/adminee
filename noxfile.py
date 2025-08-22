@@ -5,9 +5,7 @@ nox.options.sessions = [
     "lint",
     "typecheck",
     "test",
-    "test_fast",
     "test_cov",
-    "test_serial",
 ]
 # Create fresh isolated environments using uv backend
 nox.options.reuse_existing_virtualenvs = False
