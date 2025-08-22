@@ -206,9 +206,7 @@ class TestEnhancedLoggingConfiguration:
         assert "[office]" in result
         assert "[ERROR]" in result
         assert "[1235]" in result  # Request ID suffix
-        assert (
-            "office.api.health" in result
-        )  # Cleaned logger name without "services." prefix
+        assert "office.api.health" in result
         assert "Failed to process request" in result
         assert "| User: demo@example.com" in result
         assert "error_code=500" in result
