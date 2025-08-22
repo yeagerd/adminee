@@ -63,6 +63,11 @@ class Settings(BaseSettings):
         default=...,
         description="Office service URL",
     )
+    vespa_endpoint: str = Field(
+        default="http://localhost:8080",
+        description="Vespa search endpoint URL",
+        validation_alias=AliasChoices("VESPA_ENDPOINT", "VESPA_URL"),
+    )
 
     # LLM Configuration
     llm_provider: str = Field(default="openai", description="LLM provider")

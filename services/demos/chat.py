@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 import httpx
 import requests
 
-from services.chat.agents.workflow_agent import WorkflowAgent
+from services.chat.agents.briefly_agent import create_briefly_agent
 from services.common.logging_config import get_logger
 
 # from services.demos.settings_demos import get_demo_settings # Removed to prevent import-time errors during testing
@@ -430,6 +430,7 @@ class UserServiceClient(ServiceClient):
                 )
 
                 if response.status_code == 200:
+                if response.status_code == 200:
                     return response.json()
                 elif response.status_code == 404:
                     # User preferences don't exist yet, return defaults
@@ -597,7 +598,7 @@ class FullDemo:
 
         # Chat state
         self.current_thread_id: Optional[str] = None
-        self.agent: Optional[WorkflowAgent] = None
+        self.agent: Optional[Any] = None  # BrieflyAgent type
 
         # NextAuth client
         self.nextauth_client: Optional[NextAuthClient] = None
@@ -1011,17 +1012,17 @@ class FullDemo:
         finally:
             callback_server.stop()
 
-    async def create_agent(self) -> Optional[WorkflowAgent]:
-        """Create a workflow agent for local mode."""
+    async def create_agent(self) -> Optional[Any]:  # BrieflyAgent type
+        """Create a BrieflyAgent for local mode."""
         if not self.use_api:
             try:
-                agent = WorkflowAgent(
+                agent = create_briefly_agent(
                     thread_id=1,  # Default thread ID
                     user_id="demo_user",
+                    vespa_endpoint="http://localhost:8080",  # Default Vespa endpoint
                     llm_model="gpt-4",
                     llm_provider="openai",
                 )
-                await agent.build_agent()
                 return agent
             except Exception as e:
                 logger.error(f"Failed to create agent: {e}")
@@ -1052,10 +1053,10 @@ class FullDemo:
         user ID, and timezone settings.
         """
         print("=" * 80)
-        print("🚀 Welcome to the Enhanced Briefly Demo with NextAuth Testing!")
+        print("🚀 Welcome to the Enhanced Briefly Demo with Single-Agent Design!")
         print("=" * 80)
 
-        mode = "API" if self.use_api else "Local Multi-Agent"
+        mode = "API" if self.use_api else "Local Single-Agent"
         print(f"🔧 Mode: {mode}")
         print(f"👤 User: {self.user_id}")
         print(f"🌍 Timezone: {self.user_timezone}")

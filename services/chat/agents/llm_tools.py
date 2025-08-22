@@ -12,6 +12,7 @@ import requests
 
 from services.chat.service_client import ServiceClient
 from services.vespa_query.search_engine import SearchEngine
+from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
 
@@ -1136,6 +1137,110 @@ class SemanticSearchTool:
         return text[:max_length] + "..."
 
 
+# Simple web search tool (no external API key required).
+# Uses DuckDuckGo HTML endpoint and best-effort parsing.
+class WebSearchTool:
+    """Lightweight web search tool for general web information retrieval."""
+
+    def __init__(self) -> None:
+        self.tool_name = "web_search"
+        self.description = (
+            "Search the public web for information and return a concise list of results"
+        )
+
+    async def search(self, query: str, max_results: int = 5) -> Dict[str, Any]:
+        """Search the web and return a list of title/url/snippet entries.
+
+        Note: This uses DuckDuckGo's HTML endpoint and simple parsing. It may be brittle
+        and should be replaced with a proper search API in production.
+        """
+        try:
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                )
+            }
+            resp = requests.get(
+                "https://duckduckgo.com/html/",
+                params={"q": query},
+                headers=headers,
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                return {
+                    "status": "error",
+                    "error": f"HTTP {resp.status_code}",
+                    "results": [],
+                }
+
+            html = resp.text
+            results: List[Dict[str, Any]] = []
+
+            # Very lightweight parsing: look for links shaped like /l/?uddg=...
+            # and extract adjacent title text. This is intentionally simple.
+            # We avoid heavy dependencies for now.
+            anchor_marker = "href=\"/l/?uddg="
+            pos = 0
+            while len(results) < max_results:
+                idx = html.find(anchor_marker, pos)
+                if idx == -1:
+                    break
+                # Extract URL
+                start = idx + len("href=\"/l/?uddg=")
+                end = html.find("\"", start)
+                if end == -1:
+                    break
+                raw = html[start:end]
+                url = unquote(raw)
+                # Extract a crude title by looking for ">...<" after the anchor
+                title_start = html.find(">", end) + 1
+                title_end = html.find("<", title_start)
+                title = html[title_start:title_end].strip()
+                if title and url:
+                    results.append({"title": title, "url": url})
+                pos = end + 1
+
+            return {"status": "success", "query": query, "results": results}
+        except Exception as e:
+            logger.error(f"Web search failed: {e}")
+            return {"status": "error", "error": str(e), "results": []}
+
+
+class GetTool:
+    """Generic tool gateway backed by ToolRegistry.
+
+    Allows the LLM to discover and invoke available "get_*" tools dynamically.
+    """
+
+    def __init__(self, registry: "ToolRegistry", default_user_id: Optional[str] = None):
+        self.registry = registry
+        self.default_user_id = default_user_id
+        self.tool_name = "get_tool"
+        self.description = (
+            "Execute a named tool (e.g., get_calendar_events, get_emails) with params"
+        )
+
+    def list_tools(self) -> Dict[str, Any]:
+        try:
+            return {"status": "success", "tools": self.registry.list_tools()}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    def execute(self, tool_name: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        try:
+            kwargs = params.copy() if params else {}
+            if self.default_user_id and "user_id" not in kwargs:
+                kwargs["user_id"] = self.default_user_id
+            result = self.registry.execute_tool(tool_name, **kwargs)
+            # Unwrap ToolOutput-like object
+            raw = getattr(result, "raw_output", result)
+            return {"status": "success", "tool": tool_name, "result": raw}
+        except Exception as e:
+            logger.error(f"GetTool execute failed for {tool_name}: {e}")
+            return {"status": "error", "tool": tool_name, "error": str(e)}
+
 # Register tools with the chat service
 def register_vespa_tools(
     chat_service: ServiceClient, vespa_endpoint: str, user_id: str
@@ -1319,28 +1424,23 @@ def get_calendar_events(
                             and hasattr(event, "start_time")
                             and hasattr(event, "end_time")
                         ):
+                            # Ensure variables exist even if formatting fails
+                            start_time_str = str(getattr(event, "start_time", ""))
+                            end_time_str = str(getattr(event, "end_time", ""))
                             try:
-                                start_time_str = (
-                                    event.start_time.isoformat()
-                                    if hasattr(event.start_time, "isoformat")
-                                    else str(event.start_time)
-                                )
-                                end_time_str = (
-                                    event.end_time.isoformat()
-                                    if hasattr(event.end_time, "isoformat")
-                                    else str(event.end_time)
-                                )
-                                event_dict["display_time"] = (
-                                    format_event_time_for_display(
-                                        start_time_str, end_time_str, time_zone
-                                    )
+                                event_dict.update(
+                                    {
+                                        "display_time": format_event_time_for_display(
+                                            start_time_str, end_time_str, time_zone
+                                        )
+                                    }
                                 )
                             except Exception as e:
                                 logger.warning(
-                                    f"Failed to format display_time for event {event.id}: {e}"
+                                    f"Failed to format display_time for event {getattr(event, 'id', 'unknown')}: {e}"
                                 )
-                                event_dict["display_time"] = (
-                                    f"{start_time_str} to {end_time_str}"
+                                event_dict.update(
+                                    {"display_time": f"{start_time_str} to {end_time_str}"}
                                 )
 
                         events_list.append(event_dict)
@@ -1355,20 +1455,23 @@ def get_calendar_events(
                             and "start_time" in event
                             and "end_time" in event
                         ):
+                            # Ensure variables exist even if formatting fails
+                            start_time_str = str(event.get("start_time", ""))
+                            end_time_str = str(event.get("end_time", ""))
                             try:
-                                start_time_str = str(event["start_time"])
-                                end_time_str = str(event["end_time"])
-                                event_dict["display_time"] = (
-                                    format_event_time_for_display(
-                                        start_time_str, end_time_str, time_zone
-                                    )
+                                event_dict.update(
+                                    {
+                                        "display_time": format_event_time_for_display(
+                                            start_time_str, end_time_str, time_zone
+                                        )
+                                    }
                                 )
                             except Exception as e:
                                 logger.warning(
                                     f"Failed to format display_time for event {event.get('id', 'unknown')}: {e}"
                                 )
-                                event_dict["display_time"] = (
-                                    f"{start_time_str} to {end_time_str}"
+                                event_dict.update(
+                                    {"display_time": f"{start_time_str} to {end_time_str}"}
                                 )
 
                         events_list.append(event_dict)

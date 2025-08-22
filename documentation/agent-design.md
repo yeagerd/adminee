@@ -5,83 +5,24 @@
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture (Single-Agent)
 
+### BrieflyAgent
+The system is simplified to a single LLM-powered agent that invokes tools directly:
 
-### Key Roles in the Loop
+- user_data_search: Vespa-backed search across user emails, calendar, contacts, files
+- web_search: lightweight public web search
+- get_tool: gateway to service APIs (get_calendar_events, get_emails, get_notes, get_documents)
+- analyze_user_request / summarize_findings: small helpers to structure context
 
-🧭 Planner
-Converts user intent + context into a plan: sequence of actions (tool calls + clarifications)
+There are no subagents or handoffs. The agent decides which tool(s) to call and synthesizes the result into a concise answer or draft instructions.
 
-⚙️ ToolExecutor
-Executes planner’s actions
-Hands off to:
-Query tools (query_calendar, etc.)
-Clarifier when clarify(...) is returned in the plan
-Aggregates responses
+High-level loop:
 
-💬 Clarifier
-A lightweight LLM call that generates human-readable questions based on missing info
-Sends to user, collects answer, and passes it back to the planner or context
-🧺 Context Accumulator
-Tracks all relevant knowledge gathered: query results, user clarifications, prior drafts, etc.
-
-🧱 Draft Builder
-When the agent has enough info, this module (usually an LLM call) generates a structured or partial draft
-Optionally uses templating or reasoning
-
-🔁 Loop Behavior
-
-The Planner may be called repeatedly, especially if:
-New clarifications change the context
-Tool results invalidate prior assumptions (e.g. no available time slots)
-You can:
-
-Replan after every tool step (step-by-step, ReAct-style)
-Batch plan (multi-step upfront), then loop only if a step fails or context updates
-
-
-                   ┌────────────────────────────┐
-                   │        User Request        │
-                   └────────────┬───────────────┘
-                                │
-                        ┌───────▼────────┐
-                        │    Planner     │◀───┐
-                        └──────┬─────────┘    │ (Replan if needed)
-         (Plan = actions)     │              │
-         e.g.,                ▼              │
-     - query_calendar        [Step N]        │
-     - clarify            ┌────────────┐     │
-     - create_draft/edit  │ ToolExecutor│────┘
-                          └────┬───────┬┘
-          ┌────────────────────┘       │
-     ┌────▼────┐           ┌───────────▼────────────┐
-     │ Query   │           │     Clarifier LLM      │
-     │ Tools   │           └───────────┬────────────┘
-     └────┬────┘                       │
-          │                      ┌────▼────┐
-          └─────────────────────▶│  User   │◀────┐
-                                 │         │     │
-                                 └────┬─────┘     │
-                                      │           │
-                        (Clarified input/data)    │
-                                      ▼           │
-                          ┌────────────────────┐  │
-                          │   Context Accumulator│◀┘
-                          └─────────┬────────────┘
-                                    │
-                            ┌───────▼────────┐
-                            │  Draft Builder │
-                            │ (LLM or Logic) │
-                            └───────┬────────┘
-                                    │
-                         ┌──────────▼────────────┐
-                         │ create/edit_draft(...)│
-                         └──────────┬────────────┘
-                                    │
-                         ┌──────────▼────────┐
-                         │ Draft Shown in UI │
-                         └───────────────────┘
+1) Receive user input
+2) Call user_data_search and/or web_search and/or get_tool
+3) Aggregate and summarize results
+4) Return answer and optional follow-ups
 
 ### 🔁 Summary of Flow
 
@@ -115,16 +56,16 @@ from llama_index.tools import FunctionTool
 
 # LlamaIndex handles this automatically
 tools = [
-    calendar_tools,
-    email_tools, 
-    document_tools
+    FunctionTool.from_defaults(fn=user_data_search),
+    FunctionTool.from_defaults(fn=web_search),
+    FunctionTool.from_defaults(fn=get_tool),
 ]
 agent = FunctionCallingLLM(
     llm=OpenAI(model="gpt-4o-mini"), tools=tools, timeout=120, verbose=False
 )
 
 # Built-in parallel execution, error handling, retries
-response = await agent.achat("Schedule follow-up with client team")
+response = await agent.achat("Find last week’s meetings with Arjun and summarize action items")
 ```
 
 
@@ -165,40 +106,10 @@ Tool calls: [if any - execute in parallel when possible]
 Remember: Your job is to make progress efficiently while keeping the user informed and in control.
 ```
 
-### Planner Agent Prompt
+### Agent Prompt
 
 ```text
-You are a planning specialist for Briefly. Convert user requests into efficient, parallelizable execution plans.
-
-Your output should optimize for:
-- Parallel execution wherever possible
-- Clear confidence assessment
-- Minimal clarification needs
-- User preference awareness
-
-Output Format:
-{
-  "goal": "specific, measurable objective",
-  "confidence": 0.0-1.0,
-  "execution_strategy": "parallel_preferred|sequential_required", 
-  "task_groups": [
-    {
-      "can_run_parallel": true,
-      "tasks": [...],
-      "estimated_duration": "2-3 minutes"
-    }
-  ],
-  "assumptions": ["what I'm assuming to be true"],
-  "clarifications": [
-    {
-      "question": "specific question",
-      "blocking": false,
-      "confidence_impact": 0.2
-    }
-  ]
-}
-
-Be decisive. Default to reasonable assumptions rather than asking obvious questions.
+You are Briefly. Invoke tools directly to satisfy the request. Prefer parallel calls when helpful, but keep outputs concise and safe. If user context is required, ask a single, targeted clarification.
 ```
 
 ---

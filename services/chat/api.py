@@ -15,7 +15,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from services.chat import history_manager
-from services.chat.agents.workflow_agent import WorkflowAgent
+from services.chat.agents.briefly_agent import create_briefly_agent
+from services.chat.agents.llm_manager import get_llm_manager
 from services.chat.history_manager import count_user_drafts
 from services.chat.models import (
     ChatRequest,
@@ -74,7 +75,7 @@ async def chat_endpoint(
     chat_request: ChatRequest,
 ) -> ChatResponse:
     """
-    Chat endpoint using WorkflowAgent multi-agent system.
+    Chat endpoint using BrieflyAgent single-agent system.
 
     Demonstrates database model to API model conversion pattern.
     """
@@ -117,23 +118,43 @@ async def chat_endpoint(
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # Initialize the multi-agent workflow with user timezone
+    # Initialize the BrieflyAgent with user timezone and vespa endpoint
     if thread.id is None:
         raise ValidationError(message="thread.id cannot be None", field="thread.id")
-    agent = WorkflowAgent(
+    
+    agent = create_briefly_agent(
         thread_id=int(thread.id),
         user_id=user_id,
+        vespa_endpoint=get_settings().vespa_endpoint,
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
-        max_tokens=get_settings().max_tokens,
-        user_timezone=user_timezone,  # Pass user timezone to agent
+        **get_settings().llm_kwargs if hasattr(get_settings(), 'llm_kwargs') else {},
     )
 
-    # Build the agent workflow if not already built
-    await agent.build_agent(user_input)
+    # Save user message to database first
+    try:
+        await history_manager.append_message(
+            thread_id=int(thread.id),
+            user_id=user_id,
+            content=user_input,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to save user message to database: {e}")
+        # Continue without saving - conversation can still proceed
 
     # Actually run the chat and get the agent's response
-    agent_response = await agent.chat(user_input)
+    agent_response = await agent.achat(user_input)
+
+    # Save assistant response to database
+    try:
+        await history_manager.append_message(
+            thread_id=int(thread.id),
+            user_id="assistant",
+            content=agent_response,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to save assistant response to database: {e}")
+        # Continue without saving - response can still be returned
 
     # Extract structured draft data
     draft_data = await agent.get_draft_data()
@@ -204,7 +225,7 @@ async def chat_stream_endpoint(
     """
     Streaming chat endpoint using Server-Sent Events (SSE).
 
-    This endpoint streams the multi-agent workflow responses in real-time,
+    This endpoint streams the BrieflyAgent responses in real-time,
     allowing clients to see responses as they're generated.
     """
     from typing import cast
@@ -247,22 +268,30 @@ async def chat_stream_endpoint(
     async def generate_streaming_response() -> AsyncGenerator[str, None]:
         """Generate streaming response using Server-Sent Events format."""
         try:
-            # Initialize the multi-agent workflow with user timezone
+            # Initialize the BrieflyAgent with user timezone and vespa endpoint
             if thread.id is None:
                 raise ValidationError(
                     message="thread.id cannot be None", field="thread.id"
                 )
-            agent = WorkflowAgent(
+            agent = create_briefly_agent(
                 thread_id=int(thread.id),
                 user_id=user_id,
+                vespa_endpoint=get_settings().vespa_endpoint,
                 llm_model=get_settings().llm_model,
                 llm_provider=get_settings().llm_provider,
-                max_tokens=get_settings().max_tokens,
-                user_timezone=user_timezone,  # Pass user timezone to agent
+                **get_settings().llm_kwargs if hasattr(get_settings(), 'llm_kwargs') else {},
             )
 
-            # Build the agent workflow if not already built
-            await agent.build_agent(user_input)
+            # Save user message to database first
+            try:
+                await history_manager.append_message(
+                    thread_id=int(thread.id),
+                    user_id=user_id,
+                    content=user_input,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save user message to database: {e}")
+                # Continue without saving - conversation can still proceed
 
             # Create a placeholder message for the AI response to get its ID
             placeholder_message = await history_manager.append_message(
