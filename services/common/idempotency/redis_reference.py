@@ -17,11 +17,11 @@ class RedisReferencePattern:
     # Key patterns for different data types
     KEY_PATTERNS = {
         "office": "office:{user_id}:{doc_type}:{doc_id}",
-        "email": "email:{user_id}:{provider}:{message_id}",
-        "calendar": "calendar:{user_id}:{provider}:{event_id}",
-        "contact": "contact:{user_id}:{provider}:{contact_id}",
+        "email": "email:{user_id}:{provider}:{doc_id}",
+        "calendar": "calendar:{user_id}:{provider}:{doc_id}",
+        "contact": "contact:{user_id}:{provider}:{doc_id}",
         "document": "document:{user_id}:{provider}:{doc_id}",
-        "todo": "todo:{user_id}:{provider}:{todo_id}",
+        "todo": "todo:{user_id}:{provider}:{doc_id}",
         "idempotency": "idempotency:{key}",
         "batch": "batch:{batch_id}:{correlation_id}",
         "fragment": "fragment:{parent_doc_id}:{fragment_id}",

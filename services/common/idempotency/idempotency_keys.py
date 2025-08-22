@@ -4,7 +4,7 @@ Idempotency key generation for different data types and operations.
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Union
 
 from services.common.events import (
@@ -20,7 +20,7 @@ class IdempotencyKeyGenerator:
         """Generate idempotency key for email events."""
         # For emails, use provider_message_id + user_id as the base
         # This ensures uniqueness across different email providers
-        base_key = f"{event.provider}:{event.email.message_id}:{event.user_id}"
+        base_key = f"{event.provider}:{event.email.provider_message_id}:{event.user_id}"
         
         # For mutable data, include updated_at timestamp
         if event.operation in ["update", "delete"] and event.last_updated:
@@ -303,7 +303,7 @@ class IdempotencyKeyValidator:
         
         # For mutable operations, allow regeneration after TTL
         if IdempotencyStrategy.is_mutable_operation(data_type, operation):
-            time_since_last = (datetime.utcnow() - last_attempt).total_seconds()
+            time_since_last = (datetime.now(timezone.utc) - last_attempt).total_seconds()
             return time_since_last > 300  # 5 minutes
         
         # For batch operations, allow regeneration with correlation ID

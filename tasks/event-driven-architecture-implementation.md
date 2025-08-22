@@ -126,24 +126,24 @@ Implementation checklist for the revised event-driven Office data architecture w
 
 ## Phase 6: Testing and Validation
 
-### [ ] Update Existing Tests
-- [ ] Fix tests that reference old event names and topic names
-- [ ] Update test fixtures to use new event structure
-- [ ] Ensure all existing functionality still works
+### [x] Update Existing Tests
+- [x] Fix tests that reference old event names and topic names
+- [x] Update test fixtures to use new event structure
+- [x] Ensure all existing functionality still works
 
-### [ ] Add New Tests
-- [ ] Test new event models and validation
-- [ ] Test selective consumption (services only get events they need)
-- [ ] Test idempotency strategies for different data types
-- [ ] Test Redis reference pattern
-- [ ] Test Vespa document factory and type-specific indexing
-- [ ] Test email contact discovery and management
-- [ ] Test internal tool event integration
-- [ ] Test contact relevance scoring and Vespa updates
-- [ ] Test document chunking algorithms and fragment generation
-- [ ] Test parent-child relationships between documents and fragments
-- [ ] Test timestamp field validation and conversion
-- [ ] Test data freshness tracking with `last_updated` and `sync_timestamp`
+### [x] Add New Tests
+- [x] Test new event models and validation
+- [x] Test selective consumption (services only get events they need)
+- [x] Test idempotency strategies for different data types
+- [x] Test Redis reference pattern
+- [x] Test Vespa document factory and type-specific indexing
+- [x] Test email contact discovery and management
+- [x] Test internal tool event integration
+- [x] Test contact relevance scoring and Vespa updates
+- [x] Test document chunking algorithms and fragment generation
+- [x] Test parent-child relationships between documents and fragments
+- [x] Test timestamp field validation and conversion
+- [x] Test data freshness tracking with `last_updated` and `sync_timestamp`
 
 ### [ ] Integration Testing
 - [ ] Test end-to-end flow with new architecture
