@@ -74,7 +74,14 @@ async def ingest_document_service(
             raise ServiceError(
                 "Document mapper not initialized", code=ErrorCode.SERVICE_ERROR
             )
-        vespa_document = document_mapper.map_to_vespa(document_dict)
+        
+        # Check if document is already in Vespa-ready format (from VespaDocumentFactory)
+        if isinstance(document_data, VespaDocumentType):
+            # Document is already in Vespa format, use it directly
+            vespa_document = document_data.to_dict()
+        else:
+            # Use DocumentMapper for legacy/HTTP ingestion path
+            vespa_document = document_mapper.map_to_vespa(document_dict)
 
         # Normalize content
         if vespa_document.get("content") and content_normalizer:
