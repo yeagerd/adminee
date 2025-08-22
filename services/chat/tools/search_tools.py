@@ -33,6 +33,19 @@ class UserDataSearchTool:
         # Provide a small shim for legacy code that expects a nested vespa_search
         self.vespa_search = _SearchEngineShim(self.search_engine)
 
+    async def cleanup(self) -> None:
+        """Clean up resources, including closing the search engine session."""
+        if hasattr(self, 'search_engine') and self.search_engine:
+            await self.search_engine.close()
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - ensure cleanup."""
+        await self.cleanup()
+
     async def search_all_data(self, query: str, max_results: int = 20) -> Dict[str, Any]:
         """Single entry point: perform a hybrid search across all data types."""
         try:
