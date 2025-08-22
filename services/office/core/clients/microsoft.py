@@ -684,7 +684,6 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         # Request specific fields that give us clean text content
         params = {
-            "format": "full",
             "$select": (
                 "id,subject,body,bodyPreview,from,toRecipients,ccRecipients,"
                 "bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments,"
