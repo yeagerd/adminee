@@ -119,7 +119,7 @@ class TestEnhancedLoggingConfiguration:
         assert "2025-07-25T23:05:05.247325Z" in result
         assert "[test]" in result
         assert "[INFO]" in result
-        assert "services.test.main" in result
+        assert "test.main" in result  # Cleaned logger name without "services." prefix
         assert "Service started successfully" in result
         assert "port=8000" in result
         assert "environment=development" in result
@@ -206,7 +206,7 @@ class TestEnhancedLoggingConfiguration:
         assert "[office]" in result
         assert "[ERROR]" in result
         assert "[1235]" in result  # Request ID suffix
-        assert "services.office.api.health" in result
+        assert "office.api.health" in result
         assert "Failed to process request" in result
         assert "| User: demo@example.com" in result
         assert "error_code=500" in result
