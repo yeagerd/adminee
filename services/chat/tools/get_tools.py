@@ -5,7 +5,7 @@ This module provides dynamic tool discovery and execution capabilities.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import requests
 
@@ -98,8 +98,35 @@ class GetTools:
         self.web_tools = WebTools()
         self.utility_tools = UtilityTools()
 
+        # Initialize search tools - create once and reuse
+        self._search_tools = self._initialize_search_tools()
+
         # Register all tools with the enhanced registry
         self._register_all_tools()
+
+    def _initialize_search_tools(self) -> Dict[str, Any]:
+        """Initialize search tool instances for reuse."""
+        from services.chat.tools.search_tools import (
+            SemanticSearchTool,
+            UserDataSearchTool,
+            VespaSearchTool,
+        )
+        
+        return {
+            "vespa_search": VespaSearchTool(self.vespa_endpoint, self.user_id),
+            "user_data_search": UserDataSearchTool(self.vespa_endpoint, self.user_id),
+            "semantic_search": SemanticSearchTool(self.vespa_endpoint, self.user_id),
+        }
+
+    async def cleanup(self) -> None:
+        """Clean up all search tool resources."""
+        if hasattr(self, '_search_tools') and self._search_tools:
+            for tool_name, tool_instance in self._search_tools.items():
+                try:
+                    if hasattr(tool_instance, 'cleanup'):
+                        await tool_instance.cleanup()
+                except Exception as e:
+                    logger.warning(f"Failed to cleanup {tool_name}: {e}")
 
     def _register_all_tools(self) -> None:
         """Register all tools with the enhanced registry."""
@@ -1070,26 +1097,12 @@ class GetTools:
     ) -> Dict[str, Any]:
         """Wrapper method for Vespa search tool execution."""
         try:
-            import asyncio
-
-            from services.chat.tools.search_tools import VespaSearchTool
-
-            # Create tool instance with current endpoint
-            tool = VespaSearchTool(self.vespa_endpoint, self.user_id)
-
-            # Run async method in sync context
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an async context, create a new task
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run, tool.search(query, max_results, ranking)
-                    )
-                    return future.result()
-            else:
-                return asyncio.run(tool.search(query, max_results, ranking))
+            tool = self._search_tools["vespa_search"]
+            
+            # Use sync execution with proper async handling
+            return self._execute_async_tool_method(
+                tool.search, query, max_results, ranking
+            )
 
         except Exception as e:
             return {
@@ -1104,26 +1117,12 @@ class GetTools:
     ) -> Dict[str, Any]:
         """Wrapper method for user data search tool execution."""
         try:
-            import asyncio
-
-            from services.chat.tools.search_tools import UserDataSearchTool
-
-            # Create tool instance with current endpoint
-            tool = UserDataSearchTool(self.vespa_endpoint, self.user_id)
-
-            # Run async method in sync context
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an async context, create a new task
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run, tool.search_all_data(query, max_results)
-                    )
-                    return future.result()
-            else:
-                return asyncio.run(tool.search_all_data(query, max_results))
+            tool = self._search_tools["user_data_search"]
+            
+            # Use sync execution with proper async handling
+            return self._execute_async_tool_method(
+                tool.search_all_data, query, max_results
+            )
 
         except Exception as e:
             return {
@@ -1138,26 +1137,12 @@ class GetTools:
     ) -> Dict[str, Any]:
         """Wrapper method for semantic search tool execution."""
         try:
-            import asyncio
-
-            from services.chat.tools.search_tools import SemanticSearchTool
-
-            # Create tool instance with current endpoint
-            tool = SemanticSearchTool(self.vespa_endpoint, self.user_id)
-
-            # Run async method in sync context
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an async context, create a new task
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run, tool.search(query, max_results)
-                    )
-                    return future.result()
-            else:
-                return asyncio.run(tool.search(query, max_results))
+            tool = self._search_tools["semantic_search"]
+            
+            # Use sync execution with proper async handling
+            return self._execute_async_tool_method(
+                tool.search, query, max_results
+            )
 
         except Exception as e:
             return {
@@ -1165,6 +1150,28 @@ class GetTools:
                 "query": query,
                 "error": str(e),
                 "results": {},
+            }
+
+    def _execute_async_tool_method(self, async_method: Callable[..., Any], *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        """Execute an async tool method safely without creating nested event loops."""
+        try:
+            import asyncio
+            import concurrent.futures
+            
+            # Always use ThreadPoolExecutor to avoid event loop conflicts
+            # This ensures clean isolation and prevents resource sharing issues
+            def run_in_thread() -> Dict[str, Any]:
+                return asyncio.run(async_method(*args, **kwargs))
+                
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result()
+                
+        except Exception as e:
+            logger.error(f"Failed to execute async tool method: {e}")
+            return {
+                "status": "error", 
+                "error": str(e)
             }
 
 
