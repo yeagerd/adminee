@@ -308,7 +308,7 @@ def create_briefly_agent_tools(
     ) -> Any:
         """Delegate user data search to the unified search tool (hybrid)."""
         try:
-            return await search_tools.user_data_search.search_all_data(
+            return await search_tools.search_all_data(
                 query=query, max_results=max_results
             )
         except Exception as e:
