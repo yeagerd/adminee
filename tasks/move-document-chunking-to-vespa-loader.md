@@ -46,14 +46,14 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] Design new simplified document event structure
 
 ### Phase 2: Create New Vespa Loader Structure
-- [ ] Create `services/vespa_loader/models/` directory
-- [ ] Move `document_chunking.py` to `services/vespa_loader/models/document_chunking.py`
-- [ ] Create `services/vespa_loader/services/` directory
-- [ ] Move `document_chunking_service.py` to `services/vespa_loader/services/document_chunking_service.py`
-- [ ] Update import paths within the moved files
-- [ ] Integrate chunking service with existing `VespaDocumentType.content_chunks` field
-- [ ] Update `document_factory.py` to populate content_chunks using chunking service
-- [ ] Ensure chunking service works with existing vespa_loader infrastructure
+- [x] Create `services/vespa_loader/models/` directory
+- [x] Move `document_chunking.py` to `services/vespa_loader/models/document_chunking.py`
+- [x] Create `services/vespa_loader/services/` directory
+- [x] Move `document_chunking_service.py` to `services/vespa_loader/services/document_chunking_service.py`
+- [x] Update import paths within the moved files
+- [x] Integrate chunking service with existing `VespaDocumentType.content_chunks` field
+- [x] Update `document_factory.py` to populate content_chunks using chunking service
+- [x] Ensure chunking service works with existing vespa_loader infrastructure
 
 ### Phase 3: Move and Update Tests
 - [ ] Create `services/vespa_loader/tests/` directory if it doesn't exist

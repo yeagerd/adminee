@@ -157,7 +157,26 @@ class VespaDocumentFactory:
     @staticmethod
     def create_document_document(event: DocumentEvent) -> VespaDocumentType:
         """Create a Vespa document from a DocumentEvent"""
+        from services.vespa_loader.services.document_chunking_service import DocumentChunkingService
+        
         document = event.document
+        
+        # Create chunks using the chunking service
+        chunking_service = DocumentChunkingService()
+        chunking_result = chunking_service.chunk_document(
+            document_id=document.id,
+            content=document.content,
+            document_type=document.content_type,
+            metadata={
+                "provider": document.provider,
+                "content_type": document.content_type,
+                "title": document.title,
+            }
+        )
+        
+        # Extract chunk content for Vespa indexing
+        content_chunks = [chunk.content for chunk in chunking_result.chunks]
+        
         return VespaDocumentType(
             id=document.id,
             user_id=event.user_id,
@@ -171,6 +190,7 @@ class VespaDocumentFactory:
             folder="",
             created_at=None,
             updated_at=None,
+            content_chunks=content_chunks,  # Populate the existing chunks field
             metadata={
                 "operation": event.operation,
                 "batch_id": event.batch_id,
@@ -185,6 +205,11 @@ class VespaDocumentFactory:
                 "permissions": document.permissions,
                 "tags": document.tags,
                 "document_metadata": document.metadata,
+                "chunking_info": {
+                    "total_chunks": chunking_result.total_chunks,
+                    "chunking_strategy": chunking_result.chunking_strategy.value,
+                    "average_chunk_size": chunking_result.average_chunk_size,
+                }
             },
         )
 
