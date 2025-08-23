@@ -100,9 +100,10 @@ class BrieflyAgent(FunctionAgent):
 
         # Generate fresh date/time each time for current context
         now_utc = datetime.utcnow()
-        if self._user_timezone:
+        user_tz = getattr(self, '_user_timezone', None)
+        if user_tz:
             try:
-                tz = pytz.timezone(self._user_timezone)
+                tz = pytz.timezone(user_tz)
                 now_local = pytz.utc.localize(now_utc).astimezone(tz)
             except Exception:
                 now_local = now_utc
@@ -129,10 +130,16 @@ class BrieflyAgent(FunctionAgent):
         """Get thread-specific draft context for enhanced awareness."""
         try:
             # Create DraftTools instance to access draft data
-            draft_tools = DraftTools(self._user_id)
+            user_id = getattr(self, '_user_id', None)
+            thread_id = getattr(self, '_thread_id', None)
+            
+            if not user_id or not thread_id:
+                return ""
+                
+            draft_tools = DraftTools(user_id)
 
             # Get existing drafts for this thread
-            drafts = draft_tools.get_draft_data(self._thread_id)
+            drafts = draft_tools.get_draft_data(thread_id)
 
             if not drafts:
                 return ""
@@ -191,6 +198,7 @@ class BrieflyAgent(FunctionAgent):
         )
 
         # Store additional components we need first
+        # We'll set these after the parent constructor to avoid Pydantic conflicts
         self._user_timezone = user_timezone or "UTC"
         self._thread_id = str(thread_id)
         self._user_id = user_id
@@ -241,6 +249,13 @@ class BrieflyAgent(FunctionAgent):
             can_handoff_to=[],  # No handoffs in single-agent design
         )
 
+        # Re-set the attributes after parent constructor to ensure they're accessible
+        self._user_timezone = user_timezone or "UTC"
+        self._thread_id = str(thread_id)
+        self._user_id = user_id
+        self._vespa_endpoint = vespa_endpoint
+        self._tool_catalog = tool_catalog
+
         # Store additional components we need
         self._base_system_prompt = base_system_prompt
 
@@ -253,9 +268,14 @@ class BrieflyAgent(FunctionAgent):
         # Store tools and base system prompt for the worker functions
         self._tools = tools
 
-        logger.debug(
-            f"BrieflyAgent initialized with thread_id={self._thread_id}, user_id={self._user_id}"
-        )
+        # Log initialization after all attributes are set
+        try:
+            logger.debug(
+                f"BrieflyAgent initialized with thread_id={self._thread_id}, user_id={self._user_id}"
+            )
+        except AttributeError:
+            # Fallback logging if attributes aren't accessible yet
+            logger.debug("BrieflyAgent initialized successfully")
 
     async def cleanup(self) -> None:
         """Release any external resources held by the agent/tools."""
@@ -269,7 +289,7 @@ class BrieflyAgent(FunctionAgent):
     @property
     def thread_id(self) -> str:
         """Get the thread ID for API compatibility."""
-        return self._thread_id
+        return getattr(self, '_thread_id', None)
 
     def get_current_system_prompt(self) -> str:
         """Get the current system prompt with fresh context."""
