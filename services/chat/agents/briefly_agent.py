@@ -11,15 +11,19 @@ Part of the single-agent workflow system.
 """
 
 import logging
-from typing import Any, Callable, List, Optional, Sequence, Tuple
+from datetime import datetime
+from typing import Any, Callable, List, Optional, Sequence, Tuple, Union
 
-from llama_index.core.agent.workflow import FunctionAgent
+import pytz
+from llama_index.core.agent.workflow import AgentStream, FunctionAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.tools import FunctionTool
 from llama_index.core.workflow import Context
 
+from services.chat import history_manager
 from services.chat.agents.llm_manager import get_llm_manager
 from services.chat.tools import DraftTools, GetTools, UserDataSearchTool, WebTools
+from services.chat.tools.draft_tools import _draft_storage
 
 logger = logging.getLogger(__name__)
 
@@ -93,18 +97,27 @@ class BrieflyAgent(FunctionAgent):
 
     def _create_context_aware_prompt(self) -> str:
         """Create a context-aware system prompt with current date/time and thread-specific draft context."""
-        from datetime import datetime
 
         # Generate fresh date/time each time for current context
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_utc = datetime.utcnow()
+        if self._user_timezone:
+            try:
+                tz = pytz.timezone(self._user_timezone)
+                now_local = pytz.utc.localize(now_utc).astimezone(tz)
+            except Exception:
+                now_local = now_utc
+        else:
+            now_local = now_utc
+        current_date = now_local.strftime("%Y-%m-%d")
+        current_datetime = now_local.strftime("%Y-%m-%d %H:%M:%S")
+        current_day = now_local.strftime("%A")
 
         # Get thread-specific draft context
         draft_context = self._get_thread_draft_context()
 
         base_prompt = (
-            f"CURRENT DATE AND TIME: {current_datetime}\n"
-            f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
+            f"CURRENT DATE AND TIME: {current_day}, {current_datetime} (timezone: {getattr(self, '_user_timezone', 'UTC')})\n"
+            f"Use this for any date-related queries or calculations.\n\n"
         )
 
         # Add draft context if available
@@ -116,8 +129,6 @@ class BrieflyAgent(FunctionAgent):
         """Get thread-specific draft context for enhanced awareness."""
         try:
             # Create DraftTools instance to access draft data
-            from services.chat.tools import DraftTools
-
             draft_tools = DraftTools(self._user_id)
 
             # Get existing drafts for this thread
@@ -165,6 +176,7 @@ class BrieflyAgent(FunctionAgent):
         vespa_endpoint: str,
         tools: List[FunctionTool],
         tool_catalog: str,
+        user_timezone: Optional[str] = None,
         llm_model: str = "gpt-5-nano",
         llm_provider: str = "openai",
         search_tools: Optional[UserDataSearchTool] = None,
@@ -206,6 +218,9 @@ class BrieflyAgent(FunctionAgent):
             "Keep responses concise, helpful, and actionable.\n"
         )
 
+        # Create initial system prompt with current date/time context
+        initial_system_prompt = self._create_context_aware_prompt() + base_system_prompt
+
         # Call parent constructor with FunctionAgent pattern
         super().__init__(
             name="BrieflyAgent",
@@ -213,7 +228,7 @@ class BrieflyAgent(FunctionAgent):
                 "Single-agent Briefly assistant using organized tools: Vespa-backed search, "
                 "web search, service APIs, and draft management - all with pre-authenticated user context."
             ),
-            system_prompt=base_system_prompt,
+            system_prompt=initial_system_prompt,
             llm=llm,
             tools=tools,  # type: ignore[arg-type]
             can_handoff_to=[],  # No handoffs in single-agent design
@@ -228,6 +243,7 @@ class BrieflyAgent(FunctionAgent):
         self._user_id = user_id
         self._vespa_endpoint = vespa_endpoint
         self._tool_catalog = tool_catalog
+        self._user_timezone = user_timezone or "UTC"
 
         # Initialize simple state management instead of problematic Context
         self._state: dict[str, Any] = {}
@@ -257,6 +273,10 @@ class BrieflyAgent(FunctionAgent):
         """Get the current system prompt with fresh context."""
         return self._create_context_aware_prompt() + self._base_system_prompt
 
+    def get_system_prompt(self) -> str:
+        """Get the current system prompt with fresh context."""
+        return self.get_current_system_prompt()
+
     def run(
         self,
         user_msg: str | ChatMessage | None = None,
@@ -274,7 +294,9 @@ class BrieflyAgent(FunctionAgent):
         dynamic_prompt = self.get_current_system_prompt()
 
         # Set the dynamic prompt on the parent FunctionAgent
-        self._system_prompt = dynamic_prompt
+        # Note: We can't override the system_prompt property, so we set it directly
+        if hasattr(self, "_system_prompt"):
+            self._system_prompt = dynamic_prompt
 
         # For now, use a simple approach that doesn't rely on complex workflow
         # This avoids the max_iterations parameter issue
@@ -293,7 +315,6 @@ class BrieflyAgent(FunctionAgent):
     async def _load_conversation_history(self, exclude_latest: bool = True) -> None:
         """Load conversation history from database into agent context."""
         try:
-            from services.chat import history_manager
 
             # Get messages from database (get extra to account for exclusion)
             db_messages = await history_manager.get_thread_history(
@@ -459,9 +480,6 @@ class BrieflyAgent(FunctionAgent):
                 # Check if handler has stream_events method
                 if hasattr(handler, "stream_events"):
                     try:
-                        # Import the event types we need to check
-                        from llama_index.core.agent.workflow import AgentStream
-
                         async for event in handler.stream_events():
                             # Only yield actual content, not debug info
                             if (
@@ -501,7 +519,6 @@ class BrieflyAgent(FunctionAgent):
     async def get_draft_data(self) -> list[dict[str, Any]]:
         """Get draft data from the draft tools."""
         try:
-            from services.chat.tools.draft_tools import _draft_storage
 
             drafts = []
             thread_prefix = f"{self._thread_id}_"
@@ -688,6 +705,7 @@ def create_briefly_agent(
     thread_id: int,
     user_id: str,
     vespa_endpoint: str,
+    user_timezone: Optional[str] = None,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
     **llm_kwargs: Any,
@@ -702,6 +720,7 @@ def create_briefly_agent(
         vespa_endpoint=vespa_endpoint,
         tools=tools,
         tool_catalog=tool_catalog,
+        user_timezone=user_timezone,
         llm_model=llm_model,
         llm_provider=llm_provider,
         search_tools=search_tools,
