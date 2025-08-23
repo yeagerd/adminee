@@ -87,10 +87,10 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] ~~Add Redis cleanup/expiration policies for document content~~ (Not needed - existing system handles this)
 
 ### Phase 7: Update Event Consumers
-- [ ] Update vespa_loader pubsub consumer to handle full document events
-- [ ] Update other services that consume document events
-- [ ] Ensure document content can be retrieved from Redis when needed
-- [ ] Update event processing to work with simplified document structure
+- [x] Update vespa_loader pubsub consumer to handle full document events
+- [x] ~~Update other services that consume document events~~ (No other services consume document events)
+- [x] ~~Ensure document content can be retrieved from Redis when needed~~ (Content available in events)
+- [x] Update event processing to work with simplified document structure
 
 ### Phase 8: Update Tests and Documentation
 - [ ] Update all tests that use `DocumentFragmentData` or `DocumentFragmentEvent`
