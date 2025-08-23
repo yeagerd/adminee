@@ -14,6 +14,7 @@ import logging
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.tools import FunctionTool
 from llama_index.core.workflow import Context
 
@@ -256,6 +257,38 @@ class BrieflyAgent(FunctionAgent):
     def get_current_system_prompt(self) -> str:
         """Get the current system prompt with fresh context."""
         return self._create_context_aware_prompt() + self._base_system_prompt
+
+    def run(
+        self,
+        user_msg: str | ChatMessage | None = None,
+        chat_history: list[ChatMessage] | None = None,
+        memory: Any = None,
+        ctx: Any = None,
+        stepwise: bool = False,
+        checkpoint_callback: Any = None,
+        max_iterations: int | None = None,
+        start_event: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Override run method to inject dynamic system prompt before execution."""
+        # Update the agent's system prompt with fresh context
+        dynamic_prompt = self.get_current_system_prompt()
+
+        # Set the dynamic prompt on the parent FunctionAgent
+        self._system_prompt = dynamic_prompt
+
+        # Call the parent's run method with the updated prompt
+        return super().run(
+            user_msg=user_msg,
+            chat_history=chat_history,
+            memory=memory,
+            ctx=ctx,
+            stepwise=stepwise,
+            checkpoint_callback=checkpoint_callback,
+            max_iterations=max_iterations,
+            start_event=start_event,
+            **kwargs,
+        )
 
     async def _load_conversation_history(self) -> None:
         """Load conversation history from database into agent context."""
