@@ -17,6 +17,31 @@ AI-powered calendar and task management platform with intelligent scheduling, do
 
 - **Database:** PostgreSQL
 
+## AI Tool System
+
+Briefly features a dynamic tool discovery system that allows AI agents to discover, understand, and execute tools at runtime. This provides a flexible, extensible way to add new capabilities without modifying agent code.
+
+### Tool Categories
+
+- **Data Retrieval** (`data_retrieval`) - Access user data from integrated services (calendar, email, notes, documents)
+- **Draft Management** (`draft_management`) - Create and manage draft content for emails and calendar events  
+- **Search** (`search`) - Search across various data sources with semantic and traditional search
+- **Web Search** (`web_search`) - External web search capabilities
+- **Utility** (`utility`) - Helper functions for data processing, validation, and formatting
+
+### Key Features
+
+- **Dynamic Discovery**: Agents can discover available tools using `list_tools()`
+- **Self-Documenting**: Each tool provides complete API specifications via `get_tool_info(tool_id)`
+- **Secure by Design**: User context is pre-bound to prevent tampering
+- **Extensible**: New tools can be registered without agent code changes
+- **Categorized**: Tools are organized by functionality for easy discovery
+
+### Documentation
+
+- **[Tool Discovery Implementation](documentation/tool_discovery_implementation.md)** - Complete implementation guide
+- **[Tool Categories Reference](documentation/tool_categories.md)** - Detailed reference for all tool categories
+- **[Tool Registration Guide](documentation/tool_registration_guide.md)** - Step-by-step guide for adding new tools
 
 > 📚 **New to Briefly?** See our [New Service Guide](documentation/new-service-guide.md) for creating new microservices.
 

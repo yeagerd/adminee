@@ -63,6 +63,11 @@ class Settings(BaseSettings):
         default=...,
         description="Office service URL",
     )
+    vespa_endpoint: str = Field(
+        default="http://localhost:8080",
+        description="Vespa search endpoint URL",
+        validation_alias=AliasChoices("VESPA_ENDPOINT", "VESPA_URL"),
+    )
 
     # LLM Configuration
     llm_provider: str = Field(default="openai", description="LLM provider")
@@ -71,6 +76,9 @@ class Settings(BaseSettings):
         default=2000, description="Maximum tokens for LLM responses"
     )
     openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
+    llm_kwargs: dict = Field(
+        default={}, description="Additional keyword arguments to pass to LLM calls"
+    )
 
     # Logging Configuration
     log_level: str = Field(default="INFO", description="Logging level")

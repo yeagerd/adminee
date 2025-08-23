@@ -17,11 +17,21 @@ class BaseUserManagementTest:
 
     def setup_method(self):
         """Set up User Management test environment with required variables."""
+        # Reset database settings and connections before importing app
+        from services.user.database import reset_db, reset_settings
+
+        reset_settings()
+
         # Create temporary database file for tests that need file-based SQLite
-        self.db_fd, self.db_path = tempfile.mkstemp(suffix=".db")
+        # Use tempfile.NamedTemporaryFile with delete=False and close immediately
+        # so SQLite can open the file
+        temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.db_path = temp_db.name
+        temp_db.close()  # Close immediately so SQLite can use it
 
         # Set required environment variables for User Management service
-        os.environ["DB_URL_USER"] = f"sqlite:///{self.db_path}"
+        # Standardize to sqlite+aiosqlite:// everywhere for consistency
+        os.environ["DB_URL_USER"] = f"sqlite+aiosqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
         os.environ["API_FRONTEND_USER_KEY"] = "test-frontend-key"
         os.environ["API_CHAT_USER_KEY"] = "test-chat-key"
@@ -40,9 +50,23 @@ class BaseUserManagementTest:
 
     def teardown_method(self):
         """Clean up User Management test environment."""
-        # Close and remove temporary database file
-        if hasattr(self, "db_fd"):
-            os.close(self.db_fd)
+        # Reset database connections
+        import asyncio
+
+        from services.user.database import reset_db
+
+        try:
+            # Try to reset database asynchronously
+            asyncio.run(reset_db())
+        except RuntimeError:
+            # If we're already in an event loop, use ThreadPoolExecutor
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, reset_db())
+                future.result()
+
+        # Remove temporary database file
         if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
@@ -52,7 +76,7 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
     def setup_method(self):
         """Set up User Management integration test environment."""
-        # Call parent setup for environment variables
+        # Call parent setup for environment variables and database resets
         super().setup_method()
 
         # Use selective HTTP patches that don't interfere with TestClient
@@ -103,12 +127,8 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
         for http_patch in self.http_patches:
             http_patch.start()
 
-        # Reload the database module to pick up the new environment variable
-        import importlib
-
-        import services.user.database
-
-        importlib.reload(services.user.database)
+        # Database connections are already reset in parent setup_method
+        # No need to reload modules - just create tables
 
         # Actually create the database tables
         # Initialize database schema for testing

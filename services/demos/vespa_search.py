@@ -63,7 +63,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from services.chat.agents.llm_tools import (
+from services.chat.tools.search_tools import (
     SemanticSearchTool,
     UserDataSearchTool,
     VespaSearchTool,
