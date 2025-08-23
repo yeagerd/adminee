@@ -103,7 +103,7 @@ class BrieflyAgent(FunctionAgent):
             f"CURRENT DATE AND TIME: {current_datetime}\n"
             f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
         )
-        
+
         return base_prompt
 
     def __init__(
@@ -128,7 +128,7 @@ class BrieflyAgent(FunctionAgent):
 
         # Get context-aware prompt with current date/time
         context_prompt = self._create_context_aware_prompt(str(thread_id))
-        
+
         system_prompt = (
             f"{context_prompt}"
             "You are Briefly, a single-agent assistant with comprehensive tools.\n\n"
