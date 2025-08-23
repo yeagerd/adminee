@@ -22,7 +22,6 @@ class TestPubSubConsumer:
         mock_settings.pubsub_emulator_host = "localhost:8085"
 
         consumer = PubSubConsumer(mock_settings)
-        consumer.email_processor = MagicMock()
         return consumer
 
     @pytest.fixture

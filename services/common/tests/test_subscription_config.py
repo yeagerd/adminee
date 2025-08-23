@@ -97,8 +97,8 @@ class TestSubscriptionConfig:
         assert "word_documents" in vespa_topics
         assert "todos" in vespa_topics
         assert (
-            len(vespa_topics) == 11
-        )  # All document types + emails, calendars, contacts, todos
+            len(vespa_topics) == 15
+        )  # All document types + emails, calendars, contacts, todos, llm_chats, shipment_events, meeting_polls, bookings
 
         # Test contact_discovery service
         contact_topics = SubscriptionConfig.get_service_topics("contact_discovery")
