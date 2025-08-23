@@ -190,6 +190,13 @@ class BrieflyAgent(FunctionAgent):
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
+        # Store additional components we need first
+        self._user_timezone = user_timezone or "UTC"
+        self._thread_id = str(thread_id)
+        self._user_id = user_id
+        self._vespa_endpoint = vespa_endpoint
+        self._tool_catalog = tool_catalog
+
         # Create base system prompt without dynamic context (will be added dynamically)
         base_system_prompt = (
             "You are Briefly, a single-agent assistant with comprehensive tools.\n\n"
@@ -239,11 +246,6 @@ class BrieflyAgent(FunctionAgent):
 
         # Keep a reference to tools that manage external resources
         self._search_tools: Optional[UserDataSearchTool] = search_tools
-        self._thread_id = str(thread_id)
-        self._user_id = user_id
-        self._vespa_endpoint = vespa_endpoint
-        self._tool_catalog = tool_catalog
-        self._user_timezone = user_timezone or "UTC"
 
         # Initialize simple state management instead of problematic Context
         self._state: dict[str, Any] = {}
