@@ -108,13 +108,13 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Add contact import/export capabilities
 
 ### Phase 7: Update Service Configuration
-- [ ] Add Contacts Service to `scripts/start-all-services.sh` (port 8007)
-- [ ] Add Contacts Service to `scripts/postgres-start.sh` database creation
-- [ ] Add Contacts Service to `scripts/check-db-status.sh` database URLs
-- [ ] Add Contacts Service to `scripts/run-migrations.sh` migration support
-- [ ] Update `.example.env` with Contacts Service environment variables
-- [ ] Create `env.postgres.local` entry for Contacts Service database password
-- [ ] Add Contacts Service to port checks and health checks
+- [x] Add Contacts Service to `scripts/start-all-services.sh` (port 8007)
+- [x] Add Contacts Service to `scripts/postgres-start.sh` database creation
+- [x] Add Contacts Service to `scripts/check-db-status.sh` database URLs
+- [x] Add Contacts Service to `scripts/run-migrations.sh` migration support
+- [x] Update `.example.env` with Contacts Service environment variables
+- [x] Create `env.postgres.local` entry for Contacts Service database password
+- [x] Add Contacts Service to port checks and health checks
 
 ### Phase 8: Update Environment Variables
 - [ ] Add `DB_URL_CONTACTS` to `.example.env`
