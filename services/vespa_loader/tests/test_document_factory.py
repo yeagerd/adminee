@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from services.common.events.base_events import EventMetadata
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
 from services.common.events.contact_events import ContactData, ContactEvent
 from services.common.events.document_events import DocumentData, DocumentEvent
@@ -31,20 +32,27 @@ class TestVespaDocumentFactory:
         self.test_user_id = "test_user_123"
         self.test_batch_id = "test_batch_789"
         self.test_timestamp = datetime.now(timezone.utc)
+        self.test_metadata = EventMetadata(
+            event_id="test_event_001",
+            timestamp=self.test_timestamp,
+            source_service="test-service",
+            source_version="1.0.0"
+        )
 
     def test_create_email_document(self):
         """Test creating email document from EmailEvent"""
         # Create test email data
         email_data = EmailData(
             id="email_001",
-            provider="gmail",
+            thread_id="thread_001",
             subject="Test Email",
             body="This is a test email body",
             from_address="sender@example.com",
             to_addresses=["recipient@example.com"],
-            thread_id="thread_001",
             received_date=datetime.now(timezone.utc),
             sent_date=datetime.now(timezone.utc),
+            provider="gmail",
+            provider_message_id="gmail_msg_001",
             is_read=False,
             is_starred=False,
             has_attachments=False,
@@ -62,6 +70,8 @@ class TestVespaDocumentFactory:
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
             sync_type="backfill",
+            provider="gmail",
+            metadata=self.test_metadata,
         )
 
         # Create document
@@ -86,7 +96,6 @@ class TestVespaDocumentFactory:
         # Create test calendar data
         calendar_data = CalendarEventData(
             id="calendar_001",
-            provider="google",
             title="Test Meeting",
             description="This is a test meeting",
             organizer="organizer@example.com",
@@ -98,6 +107,8 @@ class TestVespaDocumentFactory:
             location="Conference Room A",
             status="confirmed",
             visibility="public",
+            provider="google",
+            provider_event_id="google_event_001",
             recurrence=None,
             reminders=[],
             attachments=[],
@@ -112,6 +123,9 @@ class TestVespaDocumentFactory:
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
+            provider="google",
+            calendar_id="cal_001",
+            metadata=self.test_metadata,
         )
 
         # Create document
@@ -136,14 +150,15 @@ class TestVespaDocumentFactory:
         # Create test contact data
         contact_data = ContactData(
             id="contact_001",
-            provider="google",
             display_name="John Doe",
             email_addresses=["john@example.com"],
-            phone_numbers=["+1234567890"],
+            phone_numbers=[{"type": "mobile", "number": "+1234567890"}],
             given_name="John",
             family_name="Doe",
             company="Example Corp",
             job_title="Developer",
+            provider="google",
+            provider_contact_id="google_contact_001",
             last_modified=datetime.now(timezone.utc),
             addresses=[],
             organizations=[],
@@ -160,6 +175,8 @@ class TestVespaDocumentFactory:
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
+            provider="google",
+            metadata=self.test_metadata,
         )
 
         # Create document
@@ -183,12 +200,12 @@ class TestVespaDocumentFactory:
         # Create test document data
         document_data = DocumentData(
             id="doc_001",
-            provider="microsoft",
             title="Test Document",
             content="This is test document content",
             content_type="word",
-            owner_email="owner@example.com",
+            provider="microsoft",
             provider_document_id="ms_doc_001",
+            owner_email="owner@example.com",
             permissions=["read", "write"],
             tags=["work", "important"],
             metadata={"version": "1.0"},
@@ -201,6 +218,9 @@ class TestVespaDocumentFactory:
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
+            provider="microsoft",
+            content_type="word",
+            metadata=self.test_metadata,
         )
 
         # Create document
@@ -224,7 +244,6 @@ class TestVespaDocumentFactory:
         # Create test todo data
         todo_data = TodoData(
             id="todo_001",
-            provider="microsoft",
             title="Test Todo",
             description="This is a test todo item",
             status="pending",
@@ -236,6 +255,7 @@ class TestVespaDocumentFactory:
             parent_todo_id=None,
             subtask_ids=[],
             list_id="list_001",
+            provider="microsoft",
             provider_todo_id="ms_todo_001",
             tags=["work", "urgent"],
         )
@@ -247,6 +267,9 @@ class TestVespaDocumentFactory:
             batch_id=self.test_batch_id,
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
+            provider="microsoft",
+            list_id="list_001",
+            metadata=self.test_metadata,
         )
 
         # Create document
@@ -271,14 +294,15 @@ class TestVespaDocumentFactory:
         # Test with email event
         email_data = EmailData(
             id="email_002",
-            provider="gmail",
+            thread_id="thread_002",
             subject="Generic Test",
             body="Generic test body",
             from_address="test@example.com",
             to_addresses=["user@example.com"],
-            thread_id="thread_002",
             received_date=datetime.now(timezone.utc),
             sent_date=datetime.now(timezone.utc),
+            provider="gmail",
+            provider_message_id="gmail_msg_002",
             is_read=False,
             is_starred=False,
             has_attachments=False,
@@ -296,6 +320,8 @@ class TestVespaDocumentFactory:
             last_updated=self.test_timestamp,
             sync_timestamp=self.test_timestamp,
             sync_type="backfill",
+            provider="gmail",
+            metadata=self.test_metadata,
         )
 
         # Use generic method
@@ -322,6 +348,12 @@ class TestParseEventByTopic:
     def setup_method(self):
         """Set up test fixtures"""
         self.test_message_id = "msg_001"
+        self.test_metadata = EventMetadata(
+            event_id="test_event_002",
+            timestamp=datetime.now(timezone.utc),
+            source_service="test-service",
+            source_version="1.0.0"
+        )
 
     def test_parse_email_event(self):
         """Test parsing email event from raw data"""
@@ -329,12 +361,11 @@ class TestParseEventByTopic:
             "user_id": "test_user",
             "email": {
                 "id": "email_001",
-                "provider": "gmail",
+                "thread_id": "thread_001",
                 "subject": "Test",
                 "body": "Test body",
                 "from_address": "test@example.com",
                 "to_addresses": ["user@example.com"],
-                "thread_id": "thread_001",
                 "received_date": "2023-01-01T00:00:00Z",
                 "sent_date": "2023-01-01T00:00:00Z",
                 "is_read": False,
@@ -344,12 +375,16 @@ class TestParseEventByTopic:
                 "size_bytes": 512,
                 "mime_type": "text/plain",
                 "headers": {},
+                "provider": "gmail",
+                "provider_message_id": "gmail_msg_001",
             },
             "operation": "create",
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
             "sync_type": "backfill",
+            "provider": "gmail",
+            "metadata": self.test_metadata.model_dump(),
         }
 
         event = parse_event_by_topic("emails", raw_data, self.test_message_id)
@@ -363,7 +398,6 @@ class TestParseEventByTopic:
             "user_id": "test_user",
             "event": {
                 "id": "calendar_001",
-                "provider": "google",
                 "title": "Meeting",
                 "description": "Test meeting",
                 "organizer": "organizer@example.com",
@@ -375,6 +409,8 @@ class TestParseEventByTopic:
                 "location": "Room A",
                 "status": "confirmed",
                 "visibility": "public",
+                "provider": "google",
+                "provider_event_id": "google_event_001",
                 "recurrence": None,
                 "reminders": [],
                 "attachments": [],
@@ -385,6 +421,9 @@ class TestParseEventByTopic:
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
+            "provider": "google",
+            "calendar_id": "cal_001",
+            "metadata": self.test_metadata.model_dump(),
         }
 
         event = parse_event_by_topic("calendars", raw_data, self.test_message_id)
@@ -398,14 +437,15 @@ class TestParseEventByTopic:
             "user_id": "test_user",
             "contact": {
                 "id": "contact_001",
-                "provider": "google",
                 "display_name": "John Doe",
                 "email_addresses": ["john@example.com"],
-                "phone_numbers": ["+1234567890"],
+                "phone_numbers": [{"type": "mobile", "number": "+1234567890"}],
                 "given_name": "John",
                 "family_name": "Doe",
                 "company": "Example Corp",
                 "job_title": "Developer",
+                "provider": "google",
+                "provider_contact_id": "google_contact_001",
                 "last_modified": "2023-01-01T00:00:00Z",
                 "addresses": [],
                 "organizations": [],
@@ -418,6 +458,8 @@ class TestParseEventByTopic:
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
+            "provider": "google",
+            "metadata": self.test_metadata.model_dump(),
         }
 
         event = parse_event_by_topic("contacts", raw_data, self.test_message_id)
@@ -431,12 +473,12 @@ class TestParseEventByTopic:
             "user_id": "test_user",
             "document": {
                 "id": "doc_001",
-                "provider": "microsoft",
                 "title": "Test Doc",
                 "content": "Test content",
                 "content_type": "word",
-                "owner_email": "owner@example.com",
+                "provider": "microsoft",
                 "provider_document_id": "ms_doc_001",
+                "owner_email": "owner@example.com",
                 "permissions": ["read"],
                 "tags": ["work"],
                 "metadata": {},
@@ -445,6 +487,9 @@ class TestParseEventByTopic:
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
+            "provider": "microsoft",
+            "content_type": "word",
+            "metadata": self.test_metadata.model_dump(),
         }
 
         event = parse_event_by_topic("word_documents", raw_data, self.test_message_id)
@@ -458,7 +503,6 @@ class TestParseEventByTopic:
             "user_id": "test_user",
             "todo": {
                 "id": "todo_001",
-                "provider": "microsoft",
                 "title": "Test Todo",
                 "description": "Test description",
                 "status": "pending",
@@ -470,6 +514,7 @@ class TestParseEventByTopic:
                 "parent_todo_id": None,
                 "subtask_ids": [],
                 "list_id": "list_001",
+                "provider": "microsoft",
                 "provider_todo_id": "ms_todo_001",
                 "tags": ["work"],
             },
@@ -477,6 +522,9 @@ class TestParseEventByTopic:
             "batch_id": "batch_001",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
+            "provider": "microsoft",
+            "list_id": "list_001",
+            "metadata": self.test_metadata.model_dump(),
         }
 
         event = parse_event_by_topic("todos", raw_data, self.test_message_id)
