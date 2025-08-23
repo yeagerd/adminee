@@ -54,11 +54,11 @@ Move the `simulate_event_processing` method from `services/common/idempotency/id
 - [x] Update import statements in test files
 
 ### Phase 5: Clean Up IdempotencyService
-- [ ] Remove `simulate_event_processing` method from `IdempotencyService`
-- [ ] Remove any unused imports related to simulation
-- [ ] Ensure service class is focused on production logic
-- [ ] Update service documentation if needed
-- [ ] Verify service still works correctly
+- [x] Remove `simulate_event_processing` method from `IdempotencyService`
+- [x] Remove any unused imports related to simulation
+- [x] Ensure service class is focused on production logic
+- [x] Update service documentation if needed
+- [x] Verify service still works correctly
 
 ### Phase 6: Validation and Testing
 - [ ] Run all idempotency-related tests to ensure they pass

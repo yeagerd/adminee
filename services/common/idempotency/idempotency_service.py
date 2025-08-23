@@ -514,45 +514,7 @@ class IdempotencyService:
             "valid": strategy != "unknown",
         }
 
-    def simulate_event_processing(
-        self,
-        event_type: str,
-        operation: str,
-        user_id: str,
-        provider: str,
-        event_id: str,
-        batch_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Simulate event processing to test idempotency configuration."""
-        # Generate a test key
-        test_key = self.key_generator.generate_generic_key(
-            event_type=event_type,
-            event_id=event_id,
-            user_id=user_id,
-            provider=provider,
-            operation=operation,
-            batch_id=batch_id,
-        )
 
-        # Validate the key
-        key_valid = self.key_validator.validate_key_format(test_key)
-
-        # Get strategy info
-        strategy_info = self.validate_idempotency_config(event_type, operation)
-
-        return {
-            "simulation": True,
-            "event_type": event_type,
-            "operation": operation,
-            "user_id": user_id,
-            "provider": provider,
-            "event_id": event_id,
-            "batch_id": batch_id,
-            "generated_key": test_key,
-            "key_valid": key_valid,
-            "strategy_info": strategy_info,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
 
     def _start_cleanup_scheduler(self) -> None:
         """Start the background cleanup scheduler."""
