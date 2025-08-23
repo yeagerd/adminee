@@ -488,9 +488,7 @@ class SemanticSearchTool:
         """Async context manager exit - ensure cleanup."""
         await self.cleanup()
 
-    async def search(
-        self, query: str, max_results: int = 20
-    ) -> Dict[str, Any]:
+    async def search(self, query: str, max_results: int = 20) -> Dict[str, Any]:
         """Execute a semantic search using vector embeddings."""
         try:
             yql_query = f'select * from briefly_document where user_id="{self.user_id}" and search_text contains "{query}"'

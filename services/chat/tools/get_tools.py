@@ -12,7 +12,6 @@ import requests
 from services.chat.settings import get_settings
 from services.chat.tools.data_tools import DataTools
 from services.chat.tools.draft_tools import DraftTools
-
 from services.chat.tools.tool_registry import (
     ToolMetadata,
 )
@@ -305,8 +304,6 @@ class GetTools:
 
         # Register draft management tools
         self._register_draft_tools()
-
-
 
         # Register web tools
         self._register_web_tools()
@@ -637,8 +634,6 @@ class GetTools:
             clear_drafts_metadata, self.draft_tools.clear_all_drafts
         )
 
-
-
     def _register_web_tools(self) -> None:
         """Register web search tools."""
         # Register web_search
@@ -915,9 +910,9 @@ class GetTools:
     def _register_search_tools(self) -> None:
         """Register search tools with the enhanced registry."""
         from services.chat.tools.search_tools import (
+            SemanticSearchTool,
             UserDataSearchTool,
             VespaSearchTool,
-            SemanticSearchTool,
         )
 
         # Register vespa_search
@@ -965,7 +960,8 @@ class GetTools:
             service_dependency="vespa",
         )
         self.registry.register_tool(
-            vespa_search_metadata, VespaSearchTool("http://localhost:8080", self.user_id)
+            vespa_search_metadata,
+            VespaSearchTool("http://localhost:8080", self.user_id),
         )
 
         # Register user_data_search
@@ -1008,7 +1004,8 @@ class GetTools:
             service_dependency="vespa",
         )
         self.registry.register_tool(
-            user_data_search_metadata, UserDataSearchTool("http://localhost:8080", self.user_id)
+            user_data_search_metadata,
+            UserDataSearchTool("http://localhost:8080", self.user_id),
         )
 
         # Register semantic_search
@@ -1050,7 +1047,8 @@ class GetTools:
             service_dependency="vespa",
         )
         self.registry.register_tool(
-            semantic_search_metadata, SemanticSearchTool("http://localhost:8080", self.user_id)
+            semantic_search_metadata,
+            SemanticSearchTool("http://localhost:8080", self.user_id),
         )
 
 
