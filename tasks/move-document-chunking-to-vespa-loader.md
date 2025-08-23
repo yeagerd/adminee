@@ -26,13 +26,13 @@ Move the document chunking functionality from `services/common/` into the `servi
   - No other services currently use chunking functionality
 - **Vespa Loader Integration**: Already processes `DocumentEvent` and `DocumentData`
 - **Current Document Structure**: `DocumentData.content` field holds full document content
-- **Redis Strategy**: Store large content in Redis, reference via key in events
-- **Simplified Events**: Remove fragment events, enhance `DocumentEvent` with Redis key
+- **Redis Strategy**: Existing pubsub system already handles large document content
+- **Simplified Events**: Remove fragment events, keep existing document event structure
 
 ## Target State
 - Document chunking functionality moved to `services/vespa_loader`
-- Pubsub events simplified to handle full documents
-- Large document payloads stored in Redis instead of chunked events
+- Pubsub events simplified by removing fragment events
+- Large document content handled by existing pubsub system
 - Cleaner separation of concerns between services
 
 ## Migration Checklist
@@ -80,11 +80,11 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [ ] Update `scripts/pubsub_manager.sh' to remove fragments
 
 ### Phase 6: Implement Redis Storage Strategy
-- [ ] Design Redis key structure for large document payloads
-- [ ] Create Redis storage service for document content
-- [ ] Update document events to reference Redis keys instead of content
-- [ ] Implement document content retrieval from Redis
-- [ ] Add Redis cleanup/expiration policies for document content
+- [x] Design Redis key structure for large document payloads
+- [x] ~~Create Redis storage service for document content~~ (Not needed - existing pubsub handles this)
+- [x] ~~Update document events to reference Redis keys instead of content~~ (Not needed - events already carry content)
+- [x] ~~Implement document content retrieval from Redis~~ (Not needed - content available in events)
+- [x] ~~Add Redis cleanup/expiration policies for document content~~ (Not needed - existing system handles this)
 
 ### Phase 7: Update Event Consumers
 - [ ] Update vespa_loader pubsub consumer to handle full document events
@@ -179,9 +179,9 @@ def create_document_document(event: DocumentEvent) -> VespaDocumentType:
 ## Benefits
 - **Leverages Existing Infrastructure**: Builds on vespa_loader's existing chunk support
 - **Cleaner Separation of Concerns**: Moves chunking logic to appropriate service
-- **Simplified Pubsub Event Structure**: Full documents instead of fragmented events
-- **Better Performance**: Large documents stored in Redis, chunks created on-demand
-- **Reduced Memory Usage**: Event queues no longer carry large chunked content
+- **Simplified Pubsub Event Structure**: No more fragment events, cleaner event model
+- **Better Performance**: Chunks created on-demand during document processing
+- **Reduced Complexity**: No need for additional Redis storage or content retrieval
 - **More Focused Services**: Common service focuses on events, vespa_loader handles processing
 - **Existing Test Coverage**: vespa_loader already has comprehensive test infrastructure
 
