@@ -56,12 +56,12 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] Ensure chunking service works with existing vespa_loader infrastructure
 
 ### Phase 3: Move and Update Tests
-- [ ] Create `services/vespa_loader/tests/` directory if it doesn't exist
-- [ ] Move `test_document_chunking_service.py` to `services/vespa_loader/tests/test_document_chunking_service.py`
-- [ ] Update test imports to use new vespa_loader paths
-- [ ] Update test fixtures and mocks as needed
-- [ ] Ensure all document chunking tests pass in new location
-- [ ] Remove old test file from common services
+- [x] Create `services/vespa_loader/tests/` directory if it doesn't exist
+- [x] Move `test_document_chunking_service.py` to `services/vespa_loader/tests/test_document_chunking_service.py`
+- [x] Update test imports to use new vespa_loader paths
+- [x] Update test fixtures and mocks as needed
+- [x] Ensure all document chunking tests pass in new location
+- [x] Remove old test file from common services
 
 ### Phase 4: Update Vespa Loader Service
 - [ ] Update `services/vespa_loader/document_factory.py` to populate `content_chunks` field
