@@ -514,8 +514,6 @@ class IdempotencyService:
             "valid": strategy != "unknown",
         }
 
-
-
     def _start_cleanup_scheduler(self) -> None:
         """Start the background cleanup scheduler."""
         if self._cleanup_thread and self._cleanup_thread.is_alive():

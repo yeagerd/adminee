@@ -457,8 +457,10 @@ class TestIdempotencyService:
 
     def test_simulate_event_processing(self):
         """Test event processing simulation using test helper."""
-        from services.common.tests.helpers.idempotency_test_helpers import simulate_event_processing
-        
+        from services.common.tests.helpers.idempotency_test_helpers import (
+            simulate_event_processing,
+        )
+
         result = simulate_event_processing(
             "email", "create", "user123", "gmail", "email123"
         )
