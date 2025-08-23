@@ -61,11 +61,11 @@ Move the `simulate_event_processing` method from `services/common/idempotency/id
 - [x] Verify service still works correctly
 
 ### Phase 6: Validation and Testing
-- [ ] Run all idempotency-related tests to ensure they pass
-- [ ] Run broader test suite to ensure no regressions
-- [ ] Verify that `IdempotencyService` still functions correctly
-- [ ] Test the new helper function independently
-- [ ] Ensure proper error handling in helper function
+- [x] Run all idempotency-related tests to ensure they pass
+- [x] Run broader test suite to ensure no regressions
+- [x] Verify that `IdempotencyService` still functions correctly
+- [x] Test the new helper function independently
+- [x] Ensure proper error handling in helper function
 
 ### Phase 7: Documentation and Cleanup
 - [ ] Update test helper documentation
