@@ -117,14 +117,14 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Add Contacts Service to port checks and health checks
 
 ### Phase 8: Update Environment Variables
-- [ ] Add `DB_URL_CONTACTS` to `.example.env`
-- [ ] Add `CONTACTS_SERVICE_URL` to `.example.env`
-- [ ] Add `API_FRONTEND_CONTACTS_KEY` to `.example.env`
-- [ ] Add `API_CONTACTS_USER_KEY` to `.example.env`
-- [ ] Add `API_CONTACTS_OFFICE_KEY` to `.example.env`
-- [ ] Add `API_CONTACTS_CHAT_KEY` to `.example.env`
-- [ ] Add `API_CONTACTS_MEETINGS_KEY` to `.example.env`
-- [ ] Add `API_CONTACTS_SHIPMENTS_KEY` to `.example.env`
+- [x] Add `DB_URL_CONTACTS` to `.example.env`
+- [x] Add `CONTACTS_SERVICE_URL` to `.example.env`
+- [x] Add `API_FRONTEND_CONTACTS_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_USER_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_OFFICE_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_CHAT_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_MEETINGS_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_SHIPMENTS_KEY` to `.example.env`
 
 ### Phase 9: Update Database Configuration
 - [ ] Add `briefly_contacts` database creation in PostgreSQL setup
