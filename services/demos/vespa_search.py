@@ -353,7 +353,7 @@ class VespaSearchDemo:
                     results = await self.vespa_search.search(
                         query=query,
                         max_results=10,
-                        ranking_profile=scenario["ranking_profile"],
+                        ranking=scenario["ranking_profile"],
                     )
                 else:
                     results = {

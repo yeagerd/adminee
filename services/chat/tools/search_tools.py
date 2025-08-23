@@ -30,8 +30,6 @@ class UserDataSearchTool:
             "Hybrid search across emails, calendar, contacts, and files with "
             "intelligent result processing, grouping, and summarization"
         )
-        # Provide a small shim for legacy code that expects a nested vespa_search
-        self.vespa_search = _SearchEngineShim(self.search_engine)
 
     async def cleanup(self) -> None:
         """Clean up resources, including closing the search engine session."""
@@ -404,54 +402,23 @@ class UserDataSearchTool:
         return summary
 
 
-class SearchTools:
-    """Collection exposing the unified search tool with pre-authenticated user context.
-
-    Backwards-compatible attributes `vespa_search` and `semantic_search` are
-    provided to preserve existing call sites and registry wiring. They both
-    delegate to the unified `UserDataSearchTool.search_all_data` method and
-    ignore extra parameters.
-    """
+class VespaSearchTool:
+    """Vespa-specific search tool for raw Vespa queries."""
 
     def __init__(self, vespa_endpoint: str, user_id: str):
-        self.vespa_endpoint = vespa_endpoint
+        self.search_engine = SearchEngine(vespa_endpoint)
         self.user_id = user_id
-        self._user_data_search: Optional[UserDataSearchTool] = None
-        self._vespa_search: Optional[_VespaSearchCompat] = None
-        self._semantic_search: Optional[_SemanticSearchCompat] = None
-
-    @property
-    def user_data_search(self) -> UserDataSearchTool:
-        """Lazy initialization of UserDataSearchTool."""
-        if self._user_data_search is None:
-            self._user_data_search = UserDataSearchTool(
-                self.vespa_endpoint, self.user_id
-            )
-        return self._user_data_search
-
-    @property
-    def vespa_search(self) -> "_VespaSearchCompat":
-        """Lazy initialization of VespaSearchCompat."""
-        if self._vespa_search is None:
-            self._vespa_search = _VespaSearchCompat(self.user_data_search)
-        return self._vespa_search
-
-    @property
-    def semantic_search(self) -> "_SemanticSearchCompat":
-        """Lazy initialization of SemanticSearchCompat."""
-        if self._semantic_search is None:
-            self._semantic_search = _SemanticSearchCompat(self.user_data_search)
-        return self._semantic_search
+        self.tool_name = "vespa_search"
+        self.description = (
+            "Raw Vespa search with custom YQL queries and ranking profiles"
+        )
 
     async def cleanup(self) -> None:
-        """Clean up all search tool resources."""
-        if self._user_data_search:
-            await self._user_data_search.cleanup()
-            self._user_data_search = None
-        self._vespa_search = None
-        self._semantic_search = None
+        """Clean up resources, including closing the search engine session."""
+        if hasattr(self, "search_engine") and self.search_engine:
+            await self.search_engine.close()
 
-    async def __aenter__(self) -> "SearchTools":
+    async def __aenter__(self) -> "VespaSearchTool":
         """Async context manager entry."""
         return self
 
@@ -459,63 +426,99 @@ class SearchTools:
         """Async context manager exit - ensure cleanup."""
         await self.cleanup()
 
-
-class _VespaSearchCompat:
-    """Compatibility wrapper that mirrors the old VespaSearchTool API."""
-
-    def __init__(self, uds: UserDataSearchTool):
-        self._uds = uds
-        self.tool_name = "vespa_search"
-        self.description = (
-            "Compatibility: delegates to unified hybrid search across user data"
-        )
-
     async def search(
-        self,
-        query: str,
-        max_results: int = 10,
-        source_types: Optional[List[str]] = None,  # ignored for now
-        ranking_profile: str = "hybrid",  # ignored for now
+        self, query: str, max_results: int = 20, ranking: str = "hybrid"
     ) -> Dict[str, Any]:
-        return await self._uds.search_all_data(query=query, max_results=max_results)
+        """Execute a Vespa search with custom parameters."""
+        try:
+            yql_query = f'select * from briefly_document where user_id="{self.user_id}" and search_text contains "{query}"'
+            search_query = {
+                "yql": yql_query,
+                "hits": max_results,
+                "ranking": ranking,
+                "timeout": "5.0s",
+                "streaming.groupname": self.user_id,
+            }
+
+            logger.info(f"Vespa search query: {search_query}")
+            results = await self.search_engine.search(search_query)
+
+            return {
+                "status": "success",
+                "query": query,
+                "results": results,
+                "total_found": results.get("root", {})
+                .get("fields", {})
+                .get("totalCount", 0),
+                "search_time_ms": results.get("performance", {}).get(
+                    "query_time_ms", 0
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Vespa search failed: {e}")
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
 
 
-class _SemanticSearchCompat:
-    """Compatibility wrapper that mirrors the old SemanticSearchTool API."""
+class SemanticSearchTool:
+    """Semantic search tool using vector embeddings."""
 
-    def __init__(self, uds: UserDataSearchTool):
-        self._uds = uds
+    def __init__(self, vespa_endpoint: str, user_id: str):
+        self.search_engine = SearchEngine(vespa_endpoint)
+        self.user_id = user_id
         self.tool_name = "semantic_search"
         self.description = (
-            "Compatibility: delegates to unified hybrid search across user data"
+            "Semantic search using vector embeddings and similarity scoring"
         )
 
-    async def semantic_search(
-        self, query: str, max_results: int = 10
-    ) -> Dict[str, Any]:
-        return await self._uds.search_all_data(query=query, max_results=max_results)
+    async def cleanup(self) -> None:
+        """Clean up resources, including closing the search engine session."""
+        if hasattr(self, "search_engine") and self.search_engine:
+            await self.search_engine.close()
 
+    async def __aenter__(self) -> "SemanticSearchTool":
+        """Async context manager entry."""
+        return self
 
-class _SearchEngineShim:
-    """Shim exposing a search_engine attribute for legacy cleanup code."""
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Async context manager exit - ensure cleanup."""
+        await self.cleanup()
 
-    def __init__(self, search_engine: SearchEngine):
-        self.search_engine = search_engine
+    async def search(self, query: str, max_results: int = 20) -> Dict[str, Any]:
+        """Execute a semantic search using vector embeddings."""
+        try:
+            yql_query = f'select * from briefly_document where user_id="{self.user_id}" and search_text contains "{query}"'
+            search_query = {
+                "yql": yql_query,
+                "hits": max_results,
+                "ranking": "semantic",  # Use semantic ranking
+                "timeout": "5.0s",
+                "streaming.groupname": self.user_id,
+            }
 
+            logger.info(f"Semantic search query: {search_query}")
+            results = await self.search_engine.search(search_query)
 
-class VespaSearchTool(_VespaSearchCompat):
-    """Public compatibility class to preserve imports and cleanup behavior."""
-
-    def __init__(self, vespa_endpoint: str, user_id: str):
-        uds = UserDataSearchTool(vespa_endpoint, user_id)
-        super().__init__(uds)
-        self.search_engine = uds.search_engine
-
-
-class SemanticSearchTool(_SemanticSearchCompat):
-    """Public compatibility class to preserve imports and calls."""
-
-    def __init__(self, vespa_endpoint: str, user_id: str):
-        uds = UserDataSearchTool(vespa_endpoint, user_id)
-        super().__init__(uds)
-        self.search_engine = uds.search_engine
+            return {
+                "status": "success",
+                "query": query,
+                "results": results,
+                "total_found": results.get("root", {})
+                .get("fields", {})
+                .get("totalCount", 0),
+                "search_time_ms": results.get("performance", {}).get(
+                    "query_time_ms", 0
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Semantic search failed: {e}")
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }

@@ -5,14 +5,13 @@ This module provides dynamic tool discovery and execution capabilities.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import requests
 
 from services.chat.settings import get_settings
 from services.chat.tools.data_tools import DataTools
 from services.chat.tools.draft_tools import DraftTools
-from services.chat.tools.search_tools import SearchTools
 from services.chat.tools.tool_registry import (
     ToolMetadata,
 )
@@ -74,20 +73,60 @@ class GetTool:
 class GetTools:
     """Collection of get tools with pre-authenticated user context."""
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, vespa_endpoint: Optional[str] = None):
         self.user_id = user_id
+
+        # Get Vespa endpoint from settings if not provided
+        if vespa_endpoint is None:
+            try:
+                from services.chat.settings import get_settings
+
+                settings = get_settings()
+                self.vespa_endpoint = settings.vespa_endpoint
+            except Exception:
+                # Fallback to default if settings can't be loaded
+                self.vespa_endpoint = "http://localhost:8080"
+        else:
+            self.vespa_endpoint = vespa_endpoint
+
         self.registry = EnhancedToolRegistry()
         self.get_tool = GetTool(registry=self.registry, default_user_id=user_id)
 
         # Initialize tool classes
         self.data_tools = DataTools(user_id)
         self.draft_tools = DraftTools(user_id)
-        self.search_tools = SearchTools("", user_id)  # Empty vespa_endpoint for now
         self.web_tools = WebTools()
         self.utility_tools = UtilityTools()
 
+        # Initialize search tools - create once and reuse
+        self._search_tools = self._initialize_search_tools()
+
         # Register all tools with the enhanced registry
         self._register_all_tools()
+
+    def _initialize_search_tools(self) -> Dict[str, Any]:
+        """Initialize search tool instances for reuse."""
+        from services.chat.tools.search_tools import (
+            SemanticSearchTool,
+            UserDataSearchTool,
+            VespaSearchTool,
+        )
+
+        return {
+            "vespa_search": VespaSearchTool(self.vespa_endpoint, self.user_id),
+            "user_data_search": UserDataSearchTool(self.vespa_endpoint, self.user_id),
+            "semantic_search": SemanticSearchTool(self.vespa_endpoint, self.user_id),
+        }
+
+    async def cleanup(self) -> None:
+        """Clean up all search tool resources."""
+        if hasattr(self, "_search_tools") and self._search_tools:
+            for tool_name, tool_instance in self._search_tools.items():
+                try:
+                    if hasattr(tool_instance, "cleanup"):
+                        await tool_instance.cleanup()
+                except Exception as e:
+                    logger.warning(f"Failed to cleanup {tool_name}: {e}")
 
     def _register_all_tools(self) -> None:
         """Register all tools with the enhanced registry."""
@@ -306,9 +345,6 @@ class GetTools:
 
         # Register draft management tools
         self._register_draft_tools()
-
-        # Register search tools
-        self._register_search_tools()
 
         # Register web tools
         self._register_web_tools()
@@ -639,143 +675,6 @@ class GetTools:
             clear_drafts_metadata, self.draft_tools.clear_all_drafts
         )
 
-    def _register_search_tools(self) -> None:
-        """Register search tools."""
-        # Register vespa_search
-        vespa_search_metadata = ToolMetadata(
-            tool_id="vespa_search",
-            description="Search through user's emails, calendar events, contacts, and files using semantic and keyword search",
-            category="search",
-            parameters={
-                "query": {
-                    "type": "str",
-                    "description": "Search query string",
-                    "required": True,
-                },
-                "max_results": {
-                    "type": "int",
-                    "description": "Maximum number of results",
-                    "required": False,
-                    "default": 10,
-                },
-                "source_types": {
-                    "type": "list",
-                    "description": "Types of sources to search",
-                    "required": False,
-                },
-                "ranking_profile": {
-                    "type": "str",
-                    "description": "Search ranking profile",
-                    "required": False,
-                    "default": "hybrid",
-                },
-            },
-            examples=[
-                {
-                    "description": "Search for emails about meetings",
-                    "params": {"query": "meeting", "source_types": ["email"]},
-                },
-                {
-                    "description": "General search across all data",
-                    "params": {"query": "project update"},
-                },
-            ],
-            return_format={
-                "status": "success/error",
-                "results": "List of search results",
-                "total_found": "Total number of results",
-                "search_time_ms": "Search execution time",
-            },
-            requires_auth=True,
-            service_dependency="vespa",
-        )
-        self.registry.register_tool(
-            vespa_search_metadata, self.search_tools.vespa_search.search
-        )
-
-        # Register user_data_search
-        user_data_search_metadata = ToolMetadata(
-            tool_id="user_data_search",
-            description="Search across all user data types (email, calendar, contacts, files) using intelligent method selection",
-            category="search",
-            parameters={
-                "query": {
-                    "type": "str",
-                    "description": "Search query string",
-                    "required": True,
-                },
-                "max_results": {
-                    "type": "int",
-                    "description": "Maximum number of results",
-                    "required": False,
-                    "default": 20,
-                },
-            },
-            examples=[
-                {
-                    "description": "Search for meeting-related data",
-                    "params": {"query": "meeting", "max_results": 15},
-                },
-                {
-                    "description": "Search for project updates",
-                    "params": {"query": "project update", "max_results": 10},
-                },
-            ],
-            return_format={
-                "status": "success/error",
-                "results": "List of search results",
-                "total_found": "Total number of results",
-                "search_method": "Method used for search",
-            },
-            requires_auth=True,
-            service_dependency="office_service",
-        )
-        self.registry.register_tool(
-            user_data_search_metadata,
-            self.search_tools.user_data_search.search_all_data,
-        )
-
-        # Register semantic_search
-        semantic_search_metadata = ToolMetadata(
-            tool_id="semantic_search",
-            description="Perform semantic search through user data using vector embeddings",
-            category="search",
-            parameters={
-                "query": {
-                    "type": "str",
-                    "description": "Search query string",
-                    "required": True,
-                },
-                "max_results": {
-                    "type": "int",
-                    "description": "Maximum number of results",
-                    "required": False,
-                    "default": 10,
-                },
-            },
-            examples=[
-                {
-                    "description": "Semantic search for similar concepts",
-                    "params": {"query": "about project planning", "max_results": 8},
-                },
-                {
-                    "description": "Find related documents",
-                    "params": {"query": "similar to budget report", "max_results": 12},
-                },
-            ],
-            return_format={
-                "status": "success/error",
-                "results": "List of semantically similar results",
-                "total_found": "Total number of results",
-                "similarity_scores": "Relevance scores for results",
-            },
-            requires_auth=True,
-            service_dependency="vespa",
-        )
-        self.registry.register_tool(
-            semantic_search_metadata, self.search_tools.semantic_search.semantic_search
-        )
-
     def _register_web_tools(self) -> None:
         """Register web search tools."""
         # Register web_search
@@ -1045,6 +944,232 @@ class GetTools:
         self.registry.register_tool(
             generate_summary_metadata, self.utility_tools.generate_summary
         )
+
+        # Register search tools
+        self._register_search_tools()
+
+    def _register_search_tools(self) -> None:
+        """Register search tools with the enhanced registry."""
+        from services.chat.tools.search_tools import (
+            SemanticSearchTool,
+            UserDataSearchTool,
+            VespaSearchTool,
+        )
+
+        # Register vespa_search
+        vespa_search_metadata = ToolMetadata(
+            tool_id="vespa_search",
+            description="Raw Vespa search with custom YQL queries and ranking profiles",
+            category="search",
+            parameters={
+                "query": {
+                    "type": "str",
+                    "description": "Search query string",
+                    "required": True,
+                },
+                "max_results": {
+                    "type": "int",
+                    "description": "Maximum number of results to return",
+                    "required": False,
+                    "default": 20,
+                },
+                "ranking": {
+                    "type": "str",
+                    "description": "Ranking profile to use (hybrid, bm25, semantic)",
+                    "required": False,
+                    "default": "hybrid",
+                },
+            },
+            examples=[
+                {
+                    "description": "Search for meeting notes",
+                    "params": {"query": "meeting notes", "max_results": 10},
+                },
+                {
+                    "description": "Search with specific ranking",
+                    "params": {"query": "project update", "ranking": "semantic"},
+                },
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "results": "Raw Vespa search results",
+                "total_found": "Number of results found",
+                "search_time_ms": "Search execution time in milliseconds",
+            },
+            requires_auth=True,
+            service_dependency="vespa",
+        )
+        self.registry.register_tool(
+            vespa_search_metadata,
+            self._vespa_search_wrapper,
+        )
+
+        # Register user_data_search
+        user_data_search_metadata = ToolMetadata(
+            tool_id="user_data_search",
+            description="Hybrid search across emails, calendar, contacts, and files with intelligent result processing, grouping, and summarization",
+            category="search",
+            parameters={
+                "query": {
+                    "type": "str",
+                    "description": "Search query string",
+                    "required": True,
+                },
+                "max_results": {
+                    "type": "int",
+                    "description": "Maximum number of results to return",
+                    "required": False,
+                    "default": 20,
+                },
+            },
+            examples=[
+                {
+                    "description": "Search for emails about meetings",
+                    "params": {"query": "meeting emails", "max_results": 15},
+                },
+                {
+                    "description": "Search for calendar events",
+                    "params": {"query": "calendar events tomorrow", "max_results": 10},
+                },
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "summary": "Summary of search results",
+                "grouped_results": "Results grouped by data type",
+                "total_found": "Number of results found",
+                "search_time_ms": "Search execution time in milliseconds",
+            },
+            requires_auth=True,
+            service_dependency="vespa",
+        )
+        self.registry.register_tool(
+            user_data_search_metadata,
+            self._user_data_search_wrapper,
+        )
+
+        # Register semantic_search
+        semantic_search_metadata = ToolMetadata(
+            tool_id="semantic_search",
+            description="Semantic search using vector embeddings and similarity scoring",
+            category="search",
+            parameters={
+                "query": {
+                    "type": "str",
+                    "description": "Search query string",
+                    "required": True,
+                },
+                "max_results": {
+                    "type": "int",
+                    "description": "Maximum number of results to return",
+                    "required": False,
+                    "default": 20,
+                },
+            },
+            examples=[
+                {
+                    "description": "Semantic search for similar content",
+                    "params": {"query": "project planning", "max_results": 10},
+                },
+                {
+                    "description": "Find related documents",
+                    "params": {"query": "budget analysis", "max_results": 15},
+                },
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "results": "Semantic search results",
+                "total_found": "Number of results found",
+                "search_time_ms": "Search execution time in milliseconds",
+            },
+            requires_auth=True,
+            service_dependency="vespa",
+        )
+        self.registry.register_tool(
+            semantic_search_metadata,
+            self._semantic_search_wrapper,
+        )
+
+    def _vespa_search_wrapper(
+        self, query: str, max_results: int = 20, ranking: str = "hybrid"
+    ) -> Dict[str, Any]:
+        """Wrapper method for Vespa search tool execution."""
+        try:
+            tool = self._search_tools["vespa_search"]
+
+            # Use sync execution with proper async handling
+            return self._execute_async_tool_method(
+                tool.search, query, max_results, ranking
+            )
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
+
+    def _user_data_search_wrapper(
+        self, query: str, max_results: int = 20
+    ) -> Dict[str, Any]:
+        """Wrapper method for user data search tool execution."""
+        try:
+            tool = self._search_tools["user_data_search"]
+
+            # Use sync execution with proper async handling
+            return self._execute_async_tool_method(
+                tool.search_all_data, query, max_results
+            )
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "grouped_results": {},
+            }
+
+    def _semantic_search_wrapper(
+        self, query: str, max_results: int = 20
+    ) -> Dict[str, Any]:
+        """Wrapper method for semantic search tool execution."""
+        try:
+            tool = self._search_tools["semantic_search"]
+
+            # Use sync execution with proper async handling
+            return self._execute_async_tool_method(tool.search, query, max_results)
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
+
+    def _execute_async_tool_method(
+        self, async_method: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
+        """Execute an async tool method safely without creating nested event loops."""
+        try:
+            import asyncio
+            import concurrent.futures
+
+            # Always use ThreadPoolExecutor to avoid event loop conflicts
+            # This ensures clean isolation and prevents resource sharing issues
+            def run_in_thread() -> Dict[str, Any]:
+                return asyncio.run(async_method(*args, **kwargs))
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result()
+
+        except Exception as e:
+            logger.error(f"Failed to execute async tool method: {e}")
+            return {"status": "error", "error": str(e)}
 
 
 # Note: Legacy get_* functions have been moved to DataTools class

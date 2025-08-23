@@ -5,7 +5,7 @@ Chat tools package - organized by functionality with pre-authenticated user cont
 from services.chat.tools.data_tools import DataTools
 from services.chat.tools.draft_tools import DraftTools
 from services.chat.tools.get_tools import GetTools
-from services.chat.tools.search_tools import SearchTools
+from services.chat.tools.search_tools import UserDataSearchTool
 from services.chat.tools.tool_registry import (
     ToolMetadata,
     ToolRegistry,
@@ -17,7 +17,7 @@ from services.chat.tools.web_tools import WebTools
 __all__ = [
     "DraftTools",
     "GetTools",
-    "SearchTools",
+    "UserDataSearchTool",
     "WebTools",
     "DataTools",
     "UtilityTools",
