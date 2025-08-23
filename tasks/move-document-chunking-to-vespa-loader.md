@@ -18,6 +18,17 @@ Move the document chunking functionality from `services/common/` into the `servi
 - **Document ingestion** is handled by `ingest_service.py` and `vespa_client.py`
 - **Existing test infrastructure** for document processing and Vespa integration
 
+## Phase 1 Analysis Results
+- **DocumentFragmentData/Event Usage**: Only used in `services/common/events/` module
+- **Document Chunking Dependencies**: 
+  - `test_document_chunking_service.py` imports models and service
+  - `test_event_driven_architecture_integration.py` imports service
+  - No other services currently use chunking functionality
+- **Vespa Loader Integration**: Already processes `DocumentEvent` and `DocumentData`
+- **Current Document Structure**: `DocumentData.content` field holds full document content
+- **Redis Strategy**: Store large content in Redis, reference via key in events
+- **Simplified Events**: Remove fragment events, enhance `DocumentEvent` with Redis key
+
 ## Target State
 - Document chunking functionality moved to `services/vespa_loader`
 - Pubsub events simplified to handle full documents
@@ -27,12 +38,12 @@ Move the document chunking functionality from `services/common/` into the `servi
 ## Migration Checklist
 
 ### Phase 1: Analysis and Planning
-- [ ] Audit current usage of `DocumentFragmentData` and `DocumentFragmentEvent` across services
-- [ ] Identify all imports and dependencies on `document_chunking.py`
-- [ ] Identify all imports and dependencies on `document_chunking_service.py`
-- [ ] Review how vespa_loader currently processes documents
-- [ ] Plan Redis storage strategy for large document payloads
-- [ ] Design new simplified document event structure
+- [x] Audit current usage of `DocumentFragmentData` and `DocumentFragmentEvent` across services
+- [x] Identify all imports and dependencies on `document_chunking.py`
+- [x] Identify all imports and dependencies on `document_chunking_service.py`
+- [x] Review how vespa_loader currently processes documents
+- [x] Plan Redis storage strategy for large document payloads
+- [x] Design new simplified document event structure
 
 ### Phase 2: Create New Vespa Loader Structure
 - [ ] Create `services/vespa_loader/models/` directory
