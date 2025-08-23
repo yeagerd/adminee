@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .base_events import BaseEvent
+from services.common.events.base_events import BaseEvent
 
 
 class ContactData(BaseModel):
@@ -61,48 +61,6 @@ class ContactEvent(BaseEvent):
         ..., description="When the data was last synced from provider"
     )
     provider: str = Field(..., description="Contact provider (google, outlook, etc.)")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-class ContactUpdateEvent(BaseEvent):
-    """Event for individual contact updates (deprecated - use ContactEvent)."""
-
-    user_id: str = Field(..., description="User ID for the contact update")
-    contact: ContactData = Field(..., description="Updated contact data")
-    update_type: str = Field(..., description="Type of update (create, update, delete)")
-    change_reason: Optional[str] = Field(None, description="Reason for the change")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-class ContactBatchEvent(BaseEvent):
-    """Event for batch contact operations.
-
-    Deprecated - use ContactEvent with batch_id instead.
-    """
-
-    user_id: str = Field(..., description="User ID for the batch operation")
-    provider: str = Field(..., description="Contact provider")
-    contacts: List[ContactData] = Field(
-        ..., description="List of contacts in the batch"
-    )
-    operation: str = Field(..., description="Operation type (sync, import, export)")
-    batch_id: str = Field(..., description="Unique batch identifier")
-
-    # Progress tracking
-    total_contacts: Optional[int] = Field(None, description="Total contacts to process")
-    processed_count: int = Field(
-        default=0, description="Number of contacts processed so far"
-    )
 
     def model_post_init(self, __context: Any) -> None:
         """Set default source service if not provided."""

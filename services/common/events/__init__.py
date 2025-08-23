@@ -5,20 +5,16 @@ This module provides Pydantic models for all PubSub events to ensure
 type safety and consistency across services.
 """
 
-from .base_events import BaseEvent, EventMetadata
-from .calendar_events import (
-    CalendarBatchEvent,
+from services.common.events.base_events import BaseEvent, EventMetadata
+from services.common.events.calendar_events import (
     CalendarEvent,
     CalendarEventData,
-    CalendarUpdateEvent,
 )
-from .contact_events import (
-    ContactBatchEvent,
+from services.common.events.contact_events import (
     ContactData,
     ContactEvent,
-    ContactUpdateEvent,
 )
-from .document_events import (
+from services.common.events.document_events import (
     DocumentData,
     DocumentEvent,
     DocumentFragmentData,
@@ -27,14 +23,11 @@ from .document_events import (
     SheetDocumentData,
     WordDocumentData,
 )
-from .email_events import (
-    EmailBackfillEvent,
-    EmailBatchEvent,
+from services.common.events.email_events import (
     EmailData,
     EmailEvent,
-    EmailUpdateEvent,
 )
-from .internal_tool_events import (
+from services.common.events.internal_tool_events import (
     BookingData,
     BookingEvent,
     LLMChatEvent,
@@ -44,7 +37,7 @@ from .internal_tool_events import (
     ShipmentEvent,
     ShipmentEventData,
 )
-from .todo_events import (
+from services.common.events.todo_events import (
     TodoData,
     TodoEvent,
     TodoListData,
@@ -58,19 +51,12 @@ __all__ = [
     # Email data and events
     "EmailData",
     "EmailEvent",
-    "EmailBackfillEvent",  # Deprecated
-    "EmailUpdateEvent",  # Deprecated
-    "EmailBatchEvent",  # Deprecated
     # Calendar data and events
     "CalendarEventData",
     "CalendarEvent",
-    "CalendarUpdateEvent",  # Deprecated
-    "CalendarBatchEvent",  # Deprecated
     # Contact data and events
     "ContactData",
     "ContactEvent",
-    "ContactUpdateEvent",  # Deprecated
-    "ContactBatchEvent",  # Deprecated
     # Document data and events
     "DocumentData",
     "DocumentEvent",

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .base_events import BaseEvent
+from services.common.events.base_events import BaseEvent
 
 
 class EmailData(BaseModel):
@@ -57,67 +57,6 @@ class EmailEvent(BaseEvent):
     )
     provider: str = Field(..., description="Email provider (gmail, outlook, etc.)")
     sync_type: str = Field(default="sync", description="Type of sync operation")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-# Keep EmailBackfillEvent for backward compatibility during transition
-class EmailBackfillEvent(BaseEvent):
-    """Event for email backfill operations (deprecated - use EmailEvent)."""
-
-    user_id: str = Field(..., description="User ID for the backfill operation")
-    provider: str = Field(..., description="Email provider being backfilled")
-    emails: List[EmailData] = Field(..., description="List of emails to backfill")
-    batch_size: int = Field(..., description="Number of emails in this batch")
-    sync_type: str = Field(default="backfill", description="Type of sync operation")
-    start_date: Optional[datetime] = Field(
-        None, description="Start date for backfill range"
-    )
-    end_date: Optional[datetime] = Field(
-        None, description="End date for backfill range"
-    )
-    folder: Optional[str] = Field(None, description="Email folder being processed")
-
-    # Progress tracking
-    total_emails: Optional[int] = Field(None, description="Total emails to process")
-    processed_count: int = Field(
-        default=0, description="Number of emails processed so far"
-    )
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-class EmailUpdateEvent(BaseEvent):
-    """Event for individual email updates (deprecated - use EmailEvent)."""
-
-    user_id: str = Field(..., description="User ID for the email update")
-    email: EmailData = Field(..., description="Updated email data")
-    update_type: str = Field(..., description="Type of update (create, update, delete)")
-    change_reason: Optional[str] = Field(None, description="Reason for the change")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-class EmailBatchEvent(BaseEvent):
-    """Event for batch email operations (deprecated - use EmailEvent with batch_id)."""
-
-    user_id: str = Field(..., description="User ID for the batch operation")
-    provider: str = Field(..., description="Email provider")
-    emails: List[EmailData] = Field(..., description="List of emails in the batch")
-    operation: str = Field(..., description="Operation type (sync, import, export)")
-    batch_id: str = Field(..., description="Unique batch identifier")
 
     def model_post_init(self, __context: Any) -> None:
         """Set default source service if not provided."""

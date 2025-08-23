@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .base_events import BaseEvent
+from services.common.events.base_events import BaseEvent
 
 
 class TodoData(BaseModel):

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .base_events import BaseEvent
+from services.common.events.base_events import BaseEvent
 
 
 class CalendarEventData(BaseModel):
@@ -64,49 +64,6 @@ class CalendarEvent(BaseEvent):
     )
     provider: str = Field(..., description="Calendar provider (google, outlook, etc.)")
     calendar_id: str = Field(..., description="Calendar ID where the event is stored")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-class CalendarUpdateEvent(BaseEvent):
-    """Event for individual calendar event updates (deprecated - use CalendarEvent)."""
-
-    user_id: str = Field(..., description="User ID for the calendar update")
-    event: CalendarEventData = Field(..., description="Updated calendar event data")
-    update_type: str = Field(..., description="Type of update (create, update, delete)")
-    change_reason: Optional[str] = Field(None, description="Reason for the change")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"
-
-
-class CalendarBatchEvent(BaseEvent):
-    """Event for batch calendar operations.
-
-    Deprecated - use CalendarEvent with batch_id instead.
-    """
-
-    user_id: str = Field(..., description="User ID for the batch operation")
-    provider: str = Field(..., description="Calendar provider")
-    events: List[CalendarEventData] = Field(
-        ..., description="List of calendar events in the batch"
-    )
-    operation: str = Field(..., description="Operation type (sync, import, export)")
-    batch_id: str = Field(..., description="Unique batch identifier")
-    calendar_id: str = Field(..., description="Calendar ID being processed")
-
-    # Time range for batch operations
-    start_date: Optional[datetime] = Field(
-        None, description="Start date for batch range"
-    )
-    end_date: Optional[datetime] = Field(None, description="End date for batch range")
 
     def model_post_init(self, __context: Any) -> None:
         """Set default source service if not provided."""
