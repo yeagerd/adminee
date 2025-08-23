@@ -909,6 +909,150 @@ class GetTools:
             generate_summary_metadata, self.utility_tools.generate_summary
         )
 
+        # Register search tools
+        self._register_search_tools()
+
+    def _register_search_tools(self) -> None:
+        """Register search tools with the enhanced registry."""
+        from services.chat.tools.search_tools import (
+            UserDataSearchTool,
+            VespaSearchTool,
+            SemanticSearchTool,
+        )
+
+        # Register vespa_search
+        vespa_search_metadata = ToolMetadata(
+            tool_id="vespa_search",
+            description="Raw Vespa search with custom YQL queries and ranking profiles",
+            category="search",
+            parameters={
+                "query": {
+                    "type": "str",
+                    "description": "Search query string",
+                    "required": True,
+                },
+                "max_results": {
+                    "type": "int",
+                    "description": "Maximum number of results to return",
+                    "required": False,
+                    "default": 20,
+                },
+                "ranking": {
+                    "type": "str",
+                    "description": "Ranking profile to use (hybrid, bm25, semantic)",
+                    "required": False,
+                    "default": "hybrid",
+                },
+            },
+            examples=[
+                {
+                    "description": "Search for meeting notes",
+                    "params": {"query": "meeting notes", "max_results": 10},
+                },
+                {
+                    "description": "Search with specific ranking",
+                    "params": {"query": "project update", "ranking": "semantic"},
+                },
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "results": "Raw Vespa search results",
+                "total_found": "Number of results found",
+                "search_time_ms": "Search execution time in milliseconds",
+            },
+            requires_auth=True,
+            service_dependency="vespa",
+        )
+        self.registry.register_tool(
+            vespa_search_metadata, VespaSearchTool("http://localhost:8080", self.user_id)
+        )
+
+        # Register user_data_search
+        user_data_search_metadata = ToolMetadata(
+            tool_id="user_data_search",
+            description="Hybrid search across emails, calendar, contacts, and files with intelligent result processing, grouping, and summarization",
+            category="search",
+            parameters={
+                "query": {
+                    "type": "str",
+                    "description": "Search query string",
+                    "required": True,
+                },
+                "max_results": {
+                    "type": "int",
+                    "description": "Maximum number of results to return",
+                    "required": False,
+                    "default": 20,
+                },
+            },
+            examples=[
+                {
+                    "description": "Search for emails about meetings",
+                    "params": {"query": "meeting emails", "max_results": 15},
+                },
+                {
+                    "description": "Search for calendar events",
+                    "params": {"query": "calendar events tomorrow", "max_results": 10},
+                },
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "summary": "Summary of search results",
+                "grouped_results": "Results grouped by data type",
+                "total_found": "Number of results found",
+                "search_time_ms": "Search execution time in milliseconds",
+            },
+            requires_auth=True,
+            service_dependency="vespa",
+        )
+        self.registry.register_tool(
+            user_data_search_metadata, UserDataSearchTool("http://localhost:8080", self.user_id)
+        )
+
+        # Register semantic_search
+        semantic_search_metadata = ToolMetadata(
+            tool_id="semantic_search",
+            description="Semantic search using vector embeddings and similarity scoring",
+            category="search",
+            parameters={
+                "query": {
+                    "type": "str",
+                    "description": "Search query string",
+                    "required": True,
+                },
+                "max_results": {
+                    "type": "int",
+                    "description": "Maximum number of results to return",
+                    "required": False,
+                    "default": 20,
+                },
+            },
+            examples=[
+                {
+                    "description": "Semantic search for similar content",
+                    "params": {"query": "project planning", "max_results": 10},
+                },
+                {
+                    "description": "Find related documents",
+                    "params": {"query": "budget analysis", "max_results": 15},
+                },
+            ],
+            return_format={
+                "status": "success/error",
+                "query": "Original search query",
+                "results": "Semantic search results",
+                "total_found": "Number of results found",
+                "search_time_ms": "Search execution time in milliseconds",
+            },
+            requires_auth=True,
+            service_dependency="vespa",
+        )
+        self.registry.register_tool(
+            semantic_search_metadata, SemanticSearchTool("http://localhost:8080", self.user_id)
+        )
+
 
 # Note: Legacy get_* functions have been moved to DataTools class
 # Use self.data_tools.get_calendar_events(), self.data_tools.get_emails(), etc.

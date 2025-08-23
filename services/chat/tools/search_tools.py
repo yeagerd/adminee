@@ -400,3 +400,127 @@ class UserDataSearchTool:
             insights.append(f"{high_confidence} high-confidence matches found")
 
         return summary
+
+
+class VespaSearchTool:
+    """Vespa-specific search tool for raw Vespa queries."""
+
+    def __init__(self, vespa_endpoint: str, user_id: str):
+        self.search_engine = SearchEngine(vespa_endpoint)
+        self.user_id = user_id
+        self.tool_name = "vespa_search"
+        self.description = (
+            "Raw Vespa search with custom YQL queries and ranking profiles"
+        )
+
+    async def cleanup(self) -> None:
+        """Clean up resources, including closing the search engine session."""
+        if hasattr(self, "search_engine") and self.search_engine:
+            await self.search_engine.close()
+
+    async def __aenter__(self) -> "VespaSearchTool":
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Async context manager exit - ensure cleanup."""
+        await self.cleanup()
+
+    async def search(
+        self, query: str, max_results: int = 20, ranking: str = "hybrid"
+    ) -> Dict[str, Any]:
+        """Execute a Vespa search with custom parameters."""
+        try:
+            yql_query = f'select * from briefly_document where user_id="{self.user_id}" and search_text contains "{query}"'
+            search_query = {
+                "yql": yql_query,
+                "hits": max_results,
+                "ranking": ranking,
+                "timeout": "5.0s",
+                "streaming.groupname": self.user_id,
+            }
+
+            logger.info(f"Vespa search query: {search_query}")
+            results = await self.search_engine.search(search_query)
+
+            return {
+                "status": "success",
+                "query": query,
+                "results": results,
+                "total_found": results.get("root", {})
+                .get("fields", {})
+                .get("totalCount", 0),
+                "search_time_ms": results.get("performance", {}).get(
+                    "query_time_ms", 0
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Vespa search failed: {e}")
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
+
+
+class SemanticSearchTool:
+    """Semantic search tool using vector embeddings."""
+
+    def __init__(self, vespa_endpoint: str, user_id: str):
+        self.search_engine = SearchEngine(vespa_endpoint)
+        self.user_id = user_id
+        self.tool_name = "semantic_search"
+        self.description = (
+            "Semantic search using vector embeddings and similarity scoring"
+        )
+
+    async def cleanup(self) -> None:
+        """Clean up resources, including closing the search engine session."""
+        if hasattr(self, "search_engine") and self.search_engine:
+            await self.search_engine.close()
+
+    async def __aenter__(self) -> "SemanticSearchTool":
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Async context manager exit - ensure cleanup."""
+        await self.cleanup()
+
+    async def search(
+        self, query: str, max_results: int = 20
+    ) -> Dict[str, Any]:
+        """Execute a semantic search using vector embeddings."""
+        try:
+            yql_query = f'select * from briefly_document where user_id="{self.user_id}" and search_text contains "{query}"'
+            search_query = {
+                "yql": yql_query,
+                "hits": max_results,
+                "ranking": "semantic",  # Use semantic ranking
+                "timeout": "5.0s",
+                "streaming.groupname": self.user_id,
+            }
+
+            logger.info(f"Semantic search query: {search_query}")
+            results = await self.search_engine.search(search_query)
+
+            return {
+                "status": "success",
+                "query": query,
+                "results": results,
+                "total_found": results.get("root", {})
+                .get("fields", {})
+                .get("totalCount", 0),
+                "search_time_ms": results.get("performance", {}).get(
+                    "query_time_ms", 0
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Semantic search failed: {e}")
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
