@@ -314,9 +314,33 @@ async def ingest_document(
 ) -> Dict[str, Any]:
     """Ingest a document into Vespa"""
     try:
+        # Convert Dict to VespaDocumentType
+        from services.vespa_loader.types import VespaDocumentType
+        
+        # Create a VespaDocumentType from the input data
+        vespa_document = VespaDocumentType(
+            id=document_data.get("id", ""),
+            user_id=document_data.get("user_id", ""),
+            type=document_data.get("type", "unknown"),
+            provider=document_data.get("provider", "unknown"),
+            subject=document_data.get("subject", ""),
+            body=document_data.get("body", ""),
+            from_address=document_data.get("from_address", ""),
+            to_addresses=document_data.get("to_addresses", []),
+            thread_id=document_data.get("thread_id"),
+            folder=document_data.get("folder"),
+            created_at=document_data.get("created_at"),
+            updated_at=document_data.get("updated_at"),
+            metadata=document_data.get("metadata"),
+            content_chunks=document_data.get("content_chunks"),
+            quoted_content=document_data.get("quoted_content"),
+            thread_summary=document_data.get("thread_summary"),
+            search_text=document_data.get("search_text"),
+        )
+        
         # Call the shared service function
         result = await ingest_document_service(
-            document_data,
+            vespa_document,
             vespa_client,
             content_normalizer,
             embedding_generator,
@@ -328,7 +352,8 @@ async def ingest_document(
             user_id=document_data["user_id"],
         )
 
-        return result
+        # Convert result to dict for API response
+        return result.model_dump()
 
     except ValidationError:
         # Re-raise ValidationError to preserve specific error details
@@ -385,34 +410,15 @@ async def debug_trigger_pubsub_processing(
         return {"status": "error", "message": "Pub/Sub consumer not initialized"}
 
     try:
-        # Check if there are any pending messages in batches
-        pending_messages = {}
-        for topic_name, batch in pubsub_consumer.message_batches.items():
-            if batch:
-                pending_messages[topic_name] = len(batch)
-
-        if not pending_messages:
-            return {
-                "status": "info",
-                "message": "No pending messages to process",
-                "pending_messages": pending_messages,
-            }
-
-        # Process all pending batches
-        results = {}
-        for topic_name, config in pubsub_consumer.topics.items():
-            if pubsub_consumer.message_batches[topic_name]:
-                try:
-                    await pubsub_consumer._process_batch(topic_name, config)
-                    results[topic_name] = "processed"
-                except Exception as e:
-                    results[topic_name] = f"error: {str(e)}"
-
+        # Get current consumer status
+        stats = pubsub_consumer.get_stats()
+        
         return {
             "status": "success",
-            "message": "Manually triggered batch processing",
-            "pending_messages": pending_messages,
-            "processing_results": results,
+            "message": "Pub/Sub consumer status retrieved",
+            "consumer_stats": stats,
+            "topics": list(pubsub_consumer.topics.keys()),
+            "note": "This service processes messages individually, not in batches"
         }
 
     except Exception as e:

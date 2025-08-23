@@ -373,7 +373,7 @@ class RedisReferencePattern:
         """Generate a unique reference ID."""
         return f"{prefix}_{uuid4().hex[:16]}"
 
-    def validate_key_pattern(self, data_type: str, **kwargs) -> bool:
+    def validate_key_pattern(self, data_type: str, **kwargs: Any) -> bool:
         """Validate that required parameters are present for a key pattern."""
         if data_type not in self.KEY_PATTERNS:
             return False
@@ -412,3 +412,22 @@ class RedisReferencePattern:
                 return False
 
         return True
+
+    def get_idempotency_stats(self) -> Dict[str, Any]:
+        """Get statistics about idempotency keys."""
+        try:
+            # Get Redis info
+            info = self.redis.info("keyspace")
+            
+            # Count idempotency keys
+            pattern = self.KEY_PATTERNS["idempotency"].format(key="*")
+            keys = self.redis.keys(pattern)
+            
+            return {
+                "total_keys": len(keys),
+                "active_keys": len([k for k in keys if self.redis.ttl(k) > 0]),
+                "expired_keys": len([k for k in keys if self.redis.ttl(k) <= 0]),
+            }
+        except Exception as e:
+            logger.error(f"Error getting idempotency stats: {e}")
+            return {"error": str(e)}

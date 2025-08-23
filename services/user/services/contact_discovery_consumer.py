@@ -4,10 +4,16 @@ Contact discovery consumer for processing events and discovering contacts.
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-from google.cloud import pubsub_v1
-from google.cloud.pubsub_v1.types import ReceivedMessage
+try:
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+    from google.cloud.pubsub_v1.types import ReceivedMessage  # type: ignore[attr-defined]
+    PUBSUB_AVAILABLE = True
+except ImportError:
+    PUBSUB_AVAILABLE = False
+    pubsub_v1 = None  # type: ignore
+    ReceivedMessage = None  # type: ignore
 
 from services.common.config.subscription_config import SubscriptionConfig
 from services.common.events import (
@@ -35,11 +41,11 @@ class ContactDiscoveryConsumer:
         for topic_name in SubscriptionConfig.get_service_topics("contact_discovery"):
             self.topics[topic_name] = self._get_processor_for_topic(topic_name)
 
-        # Subscriber client
-        self.subscriber = None
-        self.subscription_paths = {}
+        # Subscriber client  
+        self.subscriber: Optional[Any] = None
+        self.subscription_paths: Dict[str, str] = {}
 
-    def _get_processor_for_topic(self, topic_name: str):
+    def _get_processor_for_topic(self, topic_name: str) -> Optional[Callable[[Dict[str, Any]], None]]:
         """Get the appropriate processor method for a topic."""
         if topic_name == "emails":
             return self._process_email_event
@@ -64,9 +70,16 @@ class ContactDiscoveryConsumer:
     ) -> None:
         """Start consuming events from all subscribed topics."""
         try:
+            if not PUBSUB_AVAILABLE:
+                logger.error("Google Cloud Pub/Sub not available")
+                return
+                
             self.subscriber = pubsub_v1.SubscriberClient()
 
             for topic_name, process_func in self.topics.items():
+                if process_func is None:
+                    continue
+                    
                 config = SubscriptionConfig.get_subscription_config(
                     "contact_discovery", topic_name
                 )
@@ -108,11 +121,11 @@ class ContactDiscoveryConsumer:
             raise
 
     def _consume_topic(
-        self, topic_name: str, subscription_path: str, process_func: callable
+        self, topic_name: str, subscription_path: str, process_func: Callable[[Dict[str, Any]], None]
     ) -> None:
         """Start consuming from a specific topic subscription."""
 
-        def callback(message: ReceivedMessage) -> None:
+        def callback(message: Any) -> None:
             try:
                 logger.debug(
                     f"Processing message from {topic_name}: {message.message_id}"
@@ -138,9 +151,10 @@ class ContactDiscoveryConsumer:
                 message.nack()
 
         # Start streaming pull
-        streaming_pull_future = self.subscriber.subscribe(
-            subscription_path, callback=callback
-        )
+        if self.subscriber is not None:
+            streaming_pull_future = self.subscriber.subscribe(
+                subscription_path, callback=callback
+            )
 
         logger.info(f"Started consuming from {topic_name}")
 
@@ -159,7 +173,7 @@ class ContactDiscoveryConsumer:
             self.contact_discovery_service.process_email_event(email_event)
 
             logger.debug(
-                f"Processed email event for contact discovery: {email_event.email.message_id}"
+                f"Processed email event for contact discovery: {email_event.email.id}"
             )
 
         except Exception as e:
@@ -247,10 +261,10 @@ class ContactDiscoveryConsumer:
         """Get contact statistics for a user."""
         return self.contact_discovery_service.get_contact_stats(user_id)
 
-    def search_contacts(self, user_id: str, query: str, limit: int = 20):
+    def search_contacts(self, user_id: str, query: str, limit: int = 20) -> List[Any]:
         """Search contacts for a user."""
         return self.contact_discovery_service.search_contacts(user_id, query, limit)
 
-    def get_user_contacts(self, user_id: str, limit: int = 100):
+    def get_user_contacts(self, user_id: str, limit: int = 100) -> List[Any]:
         """Get all contacts for a user."""
         return self.contact_discovery_service.get_user_contacts(user_id, limit)

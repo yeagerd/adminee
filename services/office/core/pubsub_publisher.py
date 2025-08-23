@@ -88,6 +88,10 @@ class PubSubPublisher:
             source_service=source_service,
             user_id=user_id,
             correlation_id=correlation_id,
+            trace_id=None,
+            span_id=None,
+            parent_span_id=None,
+            request_id=None,
             tags={"publisher": "office-service"},
         )
 

@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from threading import Event, Thread
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from services.common.events.calendar_events import CalendarEvent
 from services.common.events.contact_events import ContactEvent
@@ -34,7 +34,7 @@ class IdempotencyService:
         strategy: Optional[IdempotencyStrategy] = None,
         cleanup_interval_hours: int = 24,
         enable_auto_cleanup: bool = True,
-    ):
+    ) -> None:
         self.redis_reference = redis_reference
         self.key_generator = key_generator or IdempotencyKeyGenerator()
         self.key_validator = key_validator or IdempotencyKeyValidator()
@@ -59,8 +59,8 @@ class IdempotencyService:
         self,
         event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent],
         processor_func: Callable,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """Process an event with idempotency checking."""
         try:
@@ -89,75 +89,59 @@ class IdempotencyService:
                 "user_id": event.user_id,
                 "operation": event.operation,
                 "batch_id": event.batch_id,
-                "stored_at": datetime.utcnow().isoformat(),
+                "stored_at": datetime.now(timezone.utc).isoformat(),
                 "status": "processing",
             }
 
             self.redis_reference.store_idempotency_key(idempotency_key, metadata)
 
             # Process the event
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             result = processor_func(event, *args, **kwargs)
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Update metadata with result
-            metadata.update(
-                {
-                    "status": "completed",
-                    "processed_at": datetime.utcnow().isoformat(),
-                    "processing_time_seconds": processing_time,
-                    "result": result,
-                    "success": True,
-                }
-            )
+            metadata.update({
+                "status": "completed",
+                "result": result,
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "processing_time": str(processing_time),
+            })
 
-            # Update idempotency key with result
             self.redis_reference.store_idempotency_key(idempotency_key, metadata)
-
-            logger.info(
-                f"Successfully processed event with idempotency key: {idempotency_key}"
-            )
 
             return {
                 "success": True,
                 "idempotent": False,
                 "idempotency_key": idempotency_key,
                 "result": result,
-                "processing_time_seconds": processing_time,
+                "processing_time": processing_time,
                 "message": "Event processed successfully",
             }
 
         except Exception as e:
             logger.error(f"Error processing event with idempotency: {e}")
-
             # Update metadata with error
             if "idempotency_key" in locals():
                 error_metadata = {
-                    "event_type": self._get_event_type(event),
-                    "user_id": event.user_id,
-                    "operation": event.operation,
-                    "batch_id": event.batch_id,
-                    "stored_at": datetime.utcnow().isoformat(),
                     "status": "error",
                     "error": str(e),
-                    "error_type": type(e).__name__,
-                    "success": False,
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
                 }
-
                 self.redis_reference.store_idempotency_key(
                     idempotency_key, error_metadata
                 )
 
-            raise
+            return {"error": str(e)}
 
     def process_batch_with_idempotency(
         self,
         batch_id: str,
         correlation_id: str,
-        events: list,
+        events: List[Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]],
         processor_func: Callable,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """Process a batch of events with idempotency checking."""
         try:
@@ -187,7 +171,7 @@ class IdempotencyService:
                 "correlation_id": correlation_id,
                 "event_count": len(events),
                 "event_types": [self._get_event_type(event) for event in events],
-                "stored_at": datetime.utcnow().isoformat(),
+                "stored_at": datetime.now(timezone.utc).isoformat(),
                 "status": "processing",
             }
 
@@ -219,7 +203,7 @@ class IdempotencyService:
             batch_metadata.update(
                 {
                     "status": "completed",
-                    "processed_at": datetime.utcnow().isoformat(),
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
                     "results": results,
                     "errors": errors,
                     "success_count": len(results),
@@ -260,7 +244,7 @@ class IdempotencyService:
                     "batch_id": batch_id,
                     "correlation_id": correlation_id,
                     "event_count": len(events),
-                    "stored_at": datetime.utcnow().isoformat(),
+                    "stored_at": datetime.now(timezone.utc).isoformat(),
                     "status": "error",
                     "error": str(e),
                     "error_type": type(e).__name__,
@@ -273,50 +257,18 @@ class IdempotencyService:
 
             raise
 
-    def _generate_event_key(
-        self,
-        event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent],
-    ) -> str:
-        """Generate idempotency key for an event."""
-        if isinstance(event, EmailEvent):
-            return self.key_generator.generate_email_key(event)
-        elif isinstance(event, CalendarEvent):
-            return self.key_generator.generate_calendar_key(event)
-        elif isinstance(event, ContactEvent):
-            return self.key_generator.generate_contact_key(event)
-        elif isinstance(event, DocumentEvent):
-            return self.key_generator.generate_document_key(event)
-        elif isinstance(event, TodoEvent):
-            return self.key_generator.generate_todo_key(event)
-        else:
-            # Fallback to generic key generation
-            return self.key_generator.generate_generic_key(
-                event_type=type(event).__name__,
-                event_id=getattr(event, "id", "unknown"),
-                user_id=event.user_id,
-                provider=getattr(event, "provider", "unknown"),
-                operation=event.operation,
-                updated_at=event.last_updated,
-                batch_id=event.batch_id,
-            )
+    def _generate_event_key(self, event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]) -> str:
+        """Generate a unique idempotency key for an event."""
+        return self.key_generator.generate_key(
+            event_type=self._get_event_type(event),
+            user_id=event.user_id,
+            operation=event.operation,
+            batch_id=event.batch_id,
+        )
 
-    def _get_event_type(
-        self,
-        event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent],
-    ) -> str:
-        """Get the event type string."""
-        if isinstance(event, EmailEvent):
-            return "email"
-        elif isinstance(event, CalendarEvent):
-            return "calendar"
-        elif isinstance(event, ContactEvent):
-            return "contact"
-        elif isinstance(event, DocumentEvent):
-            return "document"
-        elif isinstance(event, TodoEvent):
-            return "todo"
-        else:
-            return type(event).__name__.lower()
+    def _get_event_type(self, event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]) -> str:
+        """Get the event type as a string."""
+        return type(event).__name__.lower().replace("event", "")
 
     def check_idempotency_status(self, key: str) -> Optional[Dict[str, Any]]:
         """Check the status of an idempotency key."""
@@ -325,15 +277,14 @@ class IdempotencyService:
     def get_idempotency_stats(self) -> Dict[str, Any]:
         """Get statistics about idempotency usage."""
         try:
-            # This would typically query Redis for statistics
-            # For now, return basic info
+            stats = self.redis_reference.get_idempotency_stats()
             return {
-                "service": "idempotency",
-                "timestamp": datetime.utcnow().isoformat(),
-                "key_generator": "IdempotencyKeyGenerator",
-                "strategy": "IdempotencyStrategy",
-                "validator": "IdempotencyKeyValidator",
-                "redis_integration": True,
+                "total_keys": stats.get("total_keys", 0),
+                "active_keys": stats.get("active_keys", 0),
+                "expired_keys": stats.get("expired_keys", 0),
+                "last_cleanup": self._last_cleanup_time.isoformat() if self._last_cleanup_time else None,
+                "total_cleanups": self._total_cleanups,
+                "total_keys_cleaned": self._total_keys_cleaned,
             }
         except Exception as e:
             logger.error(f"Error getting idempotency stats: {e}")
@@ -348,7 +299,7 @@ class IdempotencyService:
             )
 
             # Calculate the cutoff timestamp
-            cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=max_age_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
             cutoff_timestamp = int(cutoff_time.timestamp())
 
             # Use Redis SCAN to iterate through keys efficiently
@@ -423,7 +374,7 @@ class IdempotencyService:
             )
 
             # Update monitoring statistics
-            self._last_cleanup_time = datetime.now(datetime.UTC)
+            self._last_cleanup_time = datetime.now(timezone.utc)
             self._total_cleanups += 1
             self._total_keys_cleaned += cleaned_count
 
@@ -444,10 +395,10 @@ class IdempotencyService:
             )
 
             # Calculate the cutoff timestamp
-            cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=max_age_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
             cutoff_timestamp = int(cutoff_time.timestamp())
 
-            # Use Redis SCAN to iterate through keys efficiently
+            # Use Redis SCAN with batch processing
             cleaned_count = 0
             cursor = 0
             pattern = "idempotency:*"
@@ -458,9 +409,7 @@ class IdempotencyService:
                     cursor=cursor, match=pattern, count=batch_size
                 )
 
-                # Process keys in batches
-                keys_to_delete = []
-
+                # Process batch of keys
                 for key in keys:
                     try:
                         # Check if key exists and get its TTL
@@ -482,17 +431,30 @@ class IdempotencyService:
                                             ).timestamp()
 
                                         if stored_timestamp < cutoff_timestamp:
-                                            keys_to_delete.append(key)
+                                            # Key is old, delete it
+                                            self.redis_reference.redis.delete(key)
+                                            cleaned_count += 1
+                                            logger.debug(f"Deleted expired key: {key}")
                                 except (json.JSONDecodeError, ValueError) as e:
                                     logger.warning(
                                         f"Could not parse timestamp for key {key}: {e}"
                                     )
                                     # If we can't parse the timestamp, delete the key as
                                     # it's likely corrupted
-                                    keys_to_delete.append(key)
+                                    self.redis_reference.redis.delete(key)
+                                    cleaned_count += 1
+                                    logger.debug(
+                                        f"Deleted corrupted idempotency key: {key}"
+                                    )
+
+                        elif ttl == -2:  # Key doesn't exist (was deleted)
+                            continue
 
                         elif ttl == 0:  # Key has expired TTL
-                            keys_to_delete.append(key)
+                            # Delete the expired key
+                            self.redis_reference.redis.delete(key)
+                            cleaned_count += 1
+                            logger.debug(f"Deleted expired idempotency key: {key}")
 
                     except Exception as e:
                         logger.warning(
@@ -500,42 +462,16 @@ class IdempotencyService:
                         )
                         continue
 
-                # Delete keys in batch if we have any
-                if keys_to_delete:
-                    try:
-                        # Use pipeline for batch deletion
-                        pipe = self.redis_reference.redis.pipeline()
-                        for key in keys_to_delete:
-                            pipe.delete(key)
-                        results = pipe.execute()
-
-                        deleted_count = sum(1 for result in results if result == 1)
-                        cleaned_count += deleted_count
-
-                        logger.debug(
-                            f"Batch deleted {deleted_count} expired idempotency keys"
-                        )
-
-                    except Exception as e:
-                        logger.error(f"Error during batch deletion: {e}")
-                        # Fall back to individual deletions
-                        for key in keys_to_delete:
-                            try:
-                                if self.redis_reference.redis.delete(key):
-                                    cleaned_count += 1
-                            except Exception as del_e:
-                                logger.warning(f"Error deleting key {key}: {del_e}")
-
                 # If cursor is 0, we've completed the scan
                 if cursor == 0:
                     break
 
             logger.info(
-                f"Batch cleanup completed. Deleted {cleaned_count} expired keys"
+                f"Batch cleanup completed. Deleted {cleaned_count} expired idempotency keys"
             )
 
             # Update monitoring statistics
-            self._last_cleanup_time = datetime.now(datetime.UTC)
+            self._last_cleanup_time = datetime.now(timezone.utc)
             self._total_cleanups += 1
             self._total_keys_cleaned += cleaned_count
 
@@ -606,40 +542,31 @@ class IdempotencyService:
     def _start_cleanup_scheduler(self) -> None:
         """Start the background cleanup scheduler."""
         if self._cleanup_thread and self._cleanup_thread.is_alive():
-            logger.warning("Cleanup scheduler already running")
             return
 
         self._stop_cleanup.clear()
         self._cleanup_thread = Thread(
-            target=self._cleanup_scheduler_loop,
-            name="IdempotencyCleanupScheduler",
-            daemon=True,
+            target=self._cleanup_scheduler_loop, daemon=True
         )
         self._cleanup_thread.start()
-        logger.info(
-            f"Started idempotency cleanup scheduler "
-            f"(interval: {self.cleanup_interval_hours} hours)"
-        )
+        logger.info("Started idempotency cleanup scheduler")
 
     def _cleanup_scheduler_loop(self) -> None:
-        """Background loop for scheduled cleanup operations."""
+        """Main loop for the cleanup scheduler."""
         while not self._stop_cleanup.is_set():
             try:
                 # Wait for the cleanup interval
-                if self._stop_cleanup.wait(self.cleanup_interval_hours * 3600):
-                    break  # Stop event was set
+                self._stop_cleanup.wait(self.cleanup_interval_hours * 3600)
 
-                # Perform cleanup
-                cleaned_count = self.cleanup_expired_keys_batch(batch_size=200)
-                logger.info(
-                    f"Scheduled cleanup completed: {cleaned_count} keys cleaned"
-                )
+                if not self._stop_cleanup.is_set():
+                    # Perform cleanup
+                    cleaned_count = self.cleanup_expired_keys()
+                    logger.info(f"Scheduled cleanup completed. Deleted {cleaned_count} keys")
 
             except Exception as e:
                 logger.error(f"Error in cleanup scheduler: {e}")
                 # Wait a bit before retrying
-                if not self._stop_cleanup.wait(300):  # 5 minutes
-                    break
+                self._stop_cleanup.wait(300)  # 5 minutes
 
     def stop_cleanup_scheduler(self) -> None:
         """Stop the background cleanup scheduler."""
@@ -661,3 +588,7 @@ class IdempotencyService:
                 "total_keys_cleaned": getattr(self, "_total_keys_cleaned", 0),
             },
         }
+
+    def __del__(self) -> None:
+        """Cleanup when the service is destroyed."""
+        self.stop_cleanup_scheduler()

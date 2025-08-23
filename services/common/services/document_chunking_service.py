@@ -153,13 +153,17 @@ class DocumentChunkingService:
                 word_count=len(section_content.split()),
                 title=section_title,
                 section_path=[section_title] if section_title else [],
+                page_number=None,
                 chunking_strategy=rules.strategy,
                 chunk_size=rules.target_chunk_size,
                 overlap_size=rules.overlap_size,
                 start_offset=content.find(section_content),
                 end_offset=content.find(section_content) + len(section_content),
+                previous_chunk_id=None,
+                next_chunk_id=None,
                 search_text=self._optimize_for_search(section_content),
                 keywords=self._extract_keywords(section_content),
+                embedding=None,
             )
 
             chunks.append(chunk)
@@ -197,8 +201,11 @@ class DocumentChunkingService:
                 overlap_size=rules.overlap_size,
                 start_offset=content.find(page_content),
                 end_offset=content.find(page_content) + len(page_content),
+                previous_chunk_id=None,
+                next_chunk_id=None,
                 search_text=self._optimize_for_search(page_content),
                 keywords=self._extract_keywords(page_content),
+                embedding=None,
             )
 
             chunks.append(chunk)
@@ -229,13 +236,17 @@ class DocumentChunkingService:
                 word_count=len(unit_content.split()),
                 title=unit_title,
                 section_path=[unit_title] if unit_title else [],
+                page_number=None,
                 chunking_strategy=rules.strategy,
                 chunk_size=rules.target_chunk_size,
                 overlap_size=rules.overlap_size,
                 start_offset=content.find(unit_content),
                 end_offset=content.find(unit_content) + len(unit_content),
+                previous_chunk_id=None,
+                next_chunk_id=None,
                 search_text=self._optimize_for_search(unit_content),
                 keywords=self._extract_keywords(unit_content),
+                embedding=None,
             )
 
             chunks.append(chunk)
@@ -284,13 +295,17 @@ class DocumentChunkingService:
                     word_count=len(chunk_content.split()),
                     title=f"Chunk {sequence}",
                     section_path=[f"chunk_{sequence}"],
+                    page_number=None,
                     chunking_strategy=rules.strategy,
                     chunk_size=chunk_size,
                     overlap_size=overlap,
                     start_offset=start,
                     end_offset=end,
+                    previous_chunk_id=None,
+                    next_chunk_id=None,
                     search_text=self._optimize_for_search(chunk_content),
                     keywords=self._extract_keywords(chunk_content),
+                    embedding=None,
                 )
 
                 chunks.append(chunk)
@@ -317,7 +332,7 @@ class DocumentChunkingService:
 
         # Split content by headers
         lines = content.split("\n")
-        current_section = []
+        current_section: List[str] = []
         current_title = "Introduction"
 
         for line in lines:
@@ -468,7 +483,7 @@ class DocumentChunkingService:
         keywords = [word for word in words if word not in stop_words and len(word) > 3]
 
         # Count frequency and return top keywords
-        word_freq = {}
+        word_freq: Dict[str, int] = {}
         for word in keywords:
             word_freq[word] = word_freq.get(word, 0) + 1
 

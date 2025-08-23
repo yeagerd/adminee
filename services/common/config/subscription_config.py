@@ -2,7 +2,24 @@
 Shared subscription configuration for consistent naming across services.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, TypedDict, Union
+
+
+class SubscriptionSettings(TypedDict):
+    """Type definition for subscription settings."""
+    subscription_name: str
+    batch_size: int
+    ack_deadline_seconds: int
+
+
+class DefaultSubscriptionSettings(TypedDict):
+    """Type definition for default subscription settings."""
+    ack_deadline_seconds: int
+    retain_acked_messages: bool
+    enable_exactly_once_delivery: bool
+    filter: Optional[str]
+    dead_letter_topic: Optional[str]
+    max_retry_attempts: int
 
 
 class SubscriptionConfig:
@@ -42,7 +59,7 @@ class SubscriptionConfig:
     }
 
     # Default subscription settings
-    DEFAULT_SUBSCRIPTION_SETTINGS = {
+    DEFAULT_SUBSCRIPTION_SETTINGS: DefaultSubscriptionSettings = {
         "ack_deadline_seconds": 60,
         "retain_acked_messages": False,
         "enable_exactly_once_delivery": False,
@@ -52,7 +69,7 @@ class SubscriptionConfig:
     }
 
     # Service-specific subscription configurations
-    SERVICE_SUBSCRIPTIONS = {
+    SERVICE_SUBSCRIPTIONS: Dict[str, Dict[str, SubscriptionSettings]] = {
         "vespa_loader": {
             "emails": {
                 "subscription_name": "vespa-loader-emails",
@@ -221,9 +238,9 @@ class SubscriptionConfig:
     @classmethod
     def get_subscription_config(
         cls, service_name: str, topic_name: str
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """Get the complete subscription configuration for a service and topic."""
-        config = cls.DEFAULT_SUBSCRIPTION_SETTINGS.copy()
+        config = dict(cls.DEFAULT_SUBSCRIPTION_SETTINGS)
 
         if service_name in cls.SERVICE_SUBSCRIPTIONS:
             if topic_name in cls.SERVICE_SUBSCRIPTIONS[service_name]:
@@ -256,19 +273,19 @@ class SubscriptionConfig:
         )
 
     @classmethod
-    def get_all_subscriptions(cls) -> Dict[str, Dict[str, Dict[str, any]]]:
+    def get_all_subscriptions(cls) -> Dict[str, Dict[str, SubscriptionSettings]]:
         """Get all subscription configurations."""
         return cls.SERVICE_SUBSCRIPTIONS.copy()
 
     @classmethod
-    def get_subscription_stats(cls) -> Dict[str, any]:
+    def get_subscription_stats(cls) -> Dict[str, Any]:
         """Get statistics about subscription configurations."""
         total_services = len(cls.SERVICE_SUBSCRIPTIONS)
         total_subscriptions = sum(
             len(topics) for topics in cls.SERVICE_SUBSCRIPTIONS.values()
         )
 
-        topic_usage = {}
+        topic_usage: Dict[str, List[str]] = {}
         for service_name, topics in cls.SERVICE_SUBSCRIPTIONS.items():
             for topic_name in topics:
                 if topic_name not in topic_usage:

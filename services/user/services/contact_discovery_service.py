@@ -95,10 +95,10 @@ class ContactDiscoveryService:
             for contact_info in contacts_to_process:
                 self._process_discovered_contact(
                     user_id=event.user_id,
-                    email=contact_info["email"],
-                    name=contact_info["name"],
-                    event_type=contact_info["event_type"],
-                    timestamp=contact_info["timestamp"],
+                    email=str(contact_info["email"]),
+                    name=str(contact_info["name"]) if contact_info["name"] is not None and not isinstance(contact_info["name"], datetime) else None,
+                    event_type=str(contact_info["event_type"]),
+                    timestamp=contact_info["timestamp"] if isinstance(contact_info["timestamp"], datetime) else datetime.now(timezone.utc),
                     source_service="email_sync",
                 )
 
@@ -156,10 +156,10 @@ class ContactDiscoveryService:
             for contact_info in contacts_to_process:
                 self._process_discovered_contact(
                     user_id=event.user_id,
-                    email=contact_info["email"],
-                    name=contact_info["name"],
-                    event_type=contact_info["event_type"],
-                    timestamp=contact_info["timestamp"],
+                    email=str(contact_info["email"]),
+                    name=str(contact_info["name"]) if contact_info["name"] is not None and not isinstance(contact_info["name"], datetime) else None,
+                    event_type=str(contact_info["event_type"]),
+                    timestamp=contact_info["timestamp"] if isinstance(contact_info["timestamp"], datetime) else datetime.now(timezone.utc),
                     source_service="calendar_sync",
                 )
 
@@ -443,6 +443,7 @@ class ContactDiscoveryService:
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc),
                     source_services=[source_service],  # Initialize with source service
+                    notes=None,
                 )
                 self._contacts_cache[contact_key] = contact
                 logger.info(f"Created new contact: {email} for user {user_id}")
@@ -495,15 +496,44 @@ class ContactDiscoveryService:
             # Convert to Vespa document format
             vespa_doc = contact.to_vespa_document()
 
-            # Publish to contacts topic
-            self.pubsub_client.publish_contact_event(
+            # Create ContactEvent and publish to contacts topic
+            from services.common.events.contact_events import ContactData, ContactEvent
+            from services.common.events.base_events import EventMetadata
+            
+            contact_data = ContactData(
+                id=contact.id,
+                display_name=contact.display_name or contact.email_address,
+                given_name=contact.given_name,
+                family_name=contact.family_name,
+                email_addresses=[contact.email_address],
+                provider="contact_discovery",
+                provider_contact_id=contact.id,
+                notes=contact.notes,
+                last_modified=contact.updated_at,
+            )
+            
+            metadata = EventMetadata(
+                source_service="contact-discovery",
                 user_id=contact.user_id,
-                contact=vespa_doc,
+                correlation_id=None,
+                trace_id=None,
+                span_id=None,
+                parent_span_id=None,
+                request_id=None,
+            )
+            
+            contact_event = ContactEvent(
+                user_id=contact.user_id,
+                contact=contact_data,
                 operation="update",
                 batch_id=None,
                 last_updated=contact.last_seen,
                 sync_timestamp=contact.updated_at,
+                provider="contact_discovery",
+                metadata=metadata,
             )
+            
+            self.pubsub_client.publish_contact_event(contact_event)
 
             logger.debug(f"Published contact update for {contact.email_address}")
 

@@ -100,6 +100,17 @@ class IdempotencyKeyGenerator:
         return IdempotencyKeyGenerator._hash_key(base_key)
 
     @staticmethod
+    def generate_key(event_type: str, user_id: str, operation: str, batch_id: Optional[str] = None) -> str:
+        """Generate a generic idempotency key."""
+        base_key = f"{event_type}:{user_id}:{operation}"
+        
+        # For batch operations, include batch_id
+        if batch_id:
+            base_key += f":{batch_id}"
+            
+        return IdempotencyKeyGenerator._hash_key(base_key)
+
+    @staticmethod
     def generate_generic_key(
         event_type: str,
         event_id: str,
