@@ -69,6 +69,10 @@ app.middleware("http")(create_request_logging_middleware())
 
 register_briefly_exception_handlers(app)
 
+# Include routers with v1 prefix
+from services.contacts.routers.contacts import router as contacts_router
+app.include_router(contacts_router, prefix="/v1")
+
 
 @app.get("/")
 async def read_root() -> Dict[str, str]:
