@@ -47,11 +47,11 @@ Move the `simulate_event_processing` method from `services/common/idempotency/id
 - [x] Test the helper function independently
 
 ### Phase 4: Update Test Files
-- [ ] Update `services/common/tests/test_idempotency.py` to use new helper
-- [ ] Update `services/common/tests/test_event_driven_architecture_integration.py` to use new helper
-- [ ] Update any other test files that use the simulation method
-- [ ] Ensure all tests still pass with the new helper
-- [ ] Update import statements in test files
+- [x] Update `services/common/tests/test_idempotency.py` to use new helper
+- [x] Update `services/common/tests/test_event_driven_architecture_integration.py` to use new helper
+- [x] Update any other test files that use the simulation method
+- [x] Ensure all tests still pass with the new helper
+- [x] Update import statements in test files
 
 ### Phase 5: Clean Up IdempotencyService
 - [ ] Remove `simulate_event_processing` method from `IdempotencyService`

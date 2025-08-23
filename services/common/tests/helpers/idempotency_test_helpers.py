@@ -101,10 +101,10 @@ def validate_idempotency_config(
         Dictionary containing strategy validation results
     """
     # Get strategy info
-    strategy_name = strategy.get_strategy(event_type, operation)
+    strategy_name = strategy.get_key_strategy(event_type, operation)
     
     # Get component information
-    components = strategy.get_components(event_type, operation)
+    components = strategy.get_key_components(event_type, operation)
     
     return {
         "strategy": strategy_name,
