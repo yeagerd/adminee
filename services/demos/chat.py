@@ -1342,15 +1342,14 @@ class FullDemo:
         elif command.startswith("switch "):
             thread_id = command[7:].strip()
             if thread_id:
+                # Switch to the thread first and print confirmation
+                self.current_thread_id = thread_id
+                print(f"✅ Switched to thread {thread_id}")
+
                 # Load and display conversation history for this thread
                 try:
                     history = self.chat_client.getChatHistory(thread_id, self.user_id)
                     if history:
-                        # Debug: print the actual response structure
-                        print(
-                            f"🔍 Debug: History response keys: {list(history.keys()) if isinstance(history, dict) else 'Not a dict'}"
-                        )
-
                         # Check if messages exist in the response
                         messages = (
                             history.get("messages", [])
@@ -1359,7 +1358,7 @@ class FullDemo:
                         )
                         if messages:
                             print(
-                                f"\n📚 Loading conversation history for thread {thread_id}:"
+                                f"📚 Loading conversation history for thread {thread_id}:"
                             )
                             print("=" * 50)
                             for msg in messages:
@@ -1370,19 +1369,17 @@ class FullDemo:
                                 )
                                 print(f"{sender}: {msg.get('content', 'No content')}")
                             print("=" * 50)
-                            print(f"✅ Switched to thread {thread_id}")
                         else:
                             print(f"📝 Thread {thread_id} has no conversation history")
-                            print(f"✅ Switched to thread {thread_id}")
                     else:
                         print(f"📝 Thread {thread_id} has no conversation history")
-                        print(f"✅ Switched to thread {thread_id}")
                 except Exception as e:
                     print(f"⚠️  Could not load thread history: {e}")
-                    print(f"✅ Switched to thread {thread_id} anyway")
 
-                self.current_thread_id = thread_id
-                return True, f"✅ Switched to thread {thread_id}"
+                return (
+                    True,
+                    "",
+                )  # Return empty string since we already printed the switch confirmation
             else:
                 return True, "❌ Please provide a thread ID"
 
