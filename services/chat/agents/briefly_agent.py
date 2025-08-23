@@ -261,6 +261,12 @@ class BrieflyAgent(FunctionAgent):
         self,
         user_msg: str | ChatMessage | None = None,
         chat_history: list[ChatMessage] | None = None,
+        memory: Any = None,
+        ctx: Any = None,
+        stepwise: bool = False,
+        checkpoint_callback: Any = None,
+        max_iterations: int | None = None,
+        start_event: Any = None,
         **kwargs: Any,
     ) -> Any:
         """Override run method to inject dynamic system prompt before execution."""
@@ -342,13 +348,28 @@ class BrieflyAgent(FunctionAgent):
         except Exception as e:
             logger.error(f"Failed to load conversation history: {e}")
 
-    async def _fallback_stream_events(self, user_msg: str):
+    async def _fallback_stream_events(self, user_msg: str | ChatMessage | None) -> Any:
         """Fallback streaming method when parent run method fails."""
         try:
+            # Handle the case where user_msg might be None or a ChatMessage
+            if user_msg is None:
+                message_content = (
+                    "I understand your request. Let me process that for you."
+                )
+            elif isinstance(user_msg, str):
+                message_content = user_msg
+            else:
+                # It's a ChatMessage, extract the content
+                message_content = (
+                    str(user_msg.content)
+                    if hasattr(user_msg, "content")
+                    else str(user_msg)
+                )
+
             # Simple fallback that yields a basic response
             yield {
                 "type": "text",
-                "delta": f"I understand you said: {user_msg}. Let me process that for you.",
+                "delta": f"I understand you said: {message_content}. Let me process that for you.",
             }
         except Exception as e:
             logger.error(f"Fallback streaming failed: {e}")
