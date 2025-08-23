@@ -290,18 +290,26 @@ class BrieflyAgent(FunctionAgent):
                 {"stream_events": lambda: self._fallback_stream_events(user_msg)},
             )()
 
-    async def _load_conversation_history(self) -> None:
+    async def _load_conversation_history(self, exclude_latest: bool = True) -> None:
         """Load conversation history from database into agent context."""
         try:
             from services.chat import history_manager
 
-            # Get messages from database
+            # Get messages from database (get extra to account for exclusion)
             db_messages = await history_manager.get_thread_history(
-                int(self._thread_id), limit=100
+                int(self._thread_id), limit=101 if exclude_latest else 100
             )
 
             # Reverse to chronological order (oldest to newest)
             db_messages = list(reversed(db_messages))
+
+            # Exclude the most recent message if requested (it's likely the current user input)
+            if (
+                exclude_latest
+                and db_messages
+                and db_messages[-1].user_id == self._user_id
+            ):
+                db_messages = db_messages[:-1]
 
             # Convert to context format
             chat_history = []
@@ -421,8 +429,8 @@ class BrieflyAgent(FunctionAgent):
     async def astream_chat(self, message: str) -> Any:
         """Async streaming chat method for compatibility with API usage."""
         try:
-            # Load conversation history before streaming chat
-            await self._load_conversation_history()
+            # Load conversation history before streaming chat (exclude latest to avoid duplication)
+            await self._load_conversation_history(exclude_latest=True)
 
             try:
                 history_len = len(
