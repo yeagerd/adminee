@@ -72,12 +72,12 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Create database migration scripts using Alembic
 
 ### Phase 3: Move Contact Discovery Service
-- [ ] Move `ContactDiscoveryService` to `services/contacts/services/contact_discovery_service.py`
-- [ ] Update service to use database models instead of in-memory cache
-- [ ] Integrate with database session management
-- [ ] Update contact creation/update logic for database persistence
-- [ ] Maintain event processing capabilities for contact discovery
-- [ ] Update relevance score calculation for database-stored contacts
+- [x] Move `ContactDiscoveryService` to `services/contacts/services/contact_discovery_service.py`
+- [x] Update service to use database models instead of in-memory cache
+- [x] Integrate with database session management
+- [x] Update contact creation/update logic for database persistence
+- [x] Maintain event processing capabilities for contact discovery
+- [x] Update relevance score calculation for database-stored contacts
 
 ### Phase 4: Move Contact Discovery Consumer
 - [ ] Move `ContactDiscoveryConsumer` to `services/contacts/services/contact_discovery_consumer.py`
