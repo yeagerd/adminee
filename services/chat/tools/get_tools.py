@@ -73,8 +73,21 @@ class GetTool:
 class GetTools:
     """Collection of get tools with pre-authenticated user context."""
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, vespa_endpoint: Optional[str] = None):
         self.user_id = user_id
+        
+        # Get Vespa endpoint from settings if not provided
+        if vespa_endpoint is None:
+            try:
+                from services.chat.settings import get_settings
+                settings = get_settings()
+                self.vespa_endpoint = settings.vespa_endpoint
+            except Exception:
+                # Fallback to default if settings can't be loaded
+                self.vespa_endpoint = "http://localhost:8080"
+        else:
+            self.vespa_endpoint = vespa_endpoint
+            
         self.registry = EnhancedToolRegistry()
         self.get_tool = GetTool(registry=self.registry, default_user_id=user_id)
 
@@ -961,7 +974,7 @@ class GetTools:
         )
         self.registry.register_tool(
             vespa_search_metadata,
-            VespaSearchTool("http://localhost:8080", self.user_id),
+            self._vespa_search_wrapper,
         )
 
         # Register user_data_search
@@ -1005,7 +1018,7 @@ class GetTools:
         )
         self.registry.register_tool(
             user_data_search_metadata,
-            UserDataSearchTool("http://localhost:8080", self.user_id),
+            self._user_data_search_wrapper,
         )
 
         # Register semantic_search
@@ -1048,8 +1061,92 @@ class GetTools:
         )
         self.registry.register_tool(
             semantic_search_metadata,
-            SemanticSearchTool("http://localhost:8080", self.user_id),
+            self._semantic_search_wrapper,
         )
+
+    def _vespa_search_wrapper(self, query: str, max_results: int = 20, ranking: str = "hybrid") -> Dict[str, Any]:
+        """Wrapper method for Vespa search tool execution."""
+        try:
+            from services.chat.tools.search_tools import VespaSearchTool
+            import asyncio
+            
+            # Create tool instance with current endpoint
+            tool = VespaSearchTool(self.vespa_endpoint, self.user_id)
+            
+            # Run async method in sync context
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an async context, create a new task
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, tool.search(query, max_results, ranking))
+                    return future.result()
+            else:
+                return asyncio.run(tool.search(query, max_results, ranking))
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
+
+    def _user_data_search_wrapper(self, query: str, max_results: int = 20) -> Dict[str, Any]:
+        """Wrapper method for user data search tool execution."""
+        try:
+            from services.chat.tools.search_tools import UserDataSearchTool
+            import asyncio
+            
+            # Create tool instance with current endpoint
+            tool = UserDataSearchTool(self.vespa_endpoint, self.user_id)
+            
+            # Run async method in sync context
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an async context, create a new task
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, tool.search_all_data(query, max_results))
+                    return future.result()
+            else:
+                return asyncio.run(tool.search_all_data(query, max_results))
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "grouped_results": {},
+            }
+
+    def _semantic_search_wrapper(self, query: str, max_results: int = 20) -> Dict[str, Any]:
+        """Wrapper method for semantic search tool execution."""
+        try:
+            from services.chat.tools.search_tools import SemanticSearchTool
+            import asyncio
+            
+            # Create tool instance with current endpoint
+            tool = SemanticSearchTool(self.vespa_endpoint, self.user_id)
+            
+            # Run async method in sync context
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an async context, create a new task
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, tool.search(query, max_results))
+                    return future.result()
+            else:
+                return asyncio.run(tool.search(query, max_results))
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "results": {},
+            }
 
 
 # Note: Legacy get_* functions have been moved to DataTools class
