@@ -10,6 +10,14 @@ Move the document chunking functionality from `services/common/` into the `servi
 - Pubsub events include `DocumentFragmentData` and `DocumentFragmentEvent` for chunked documents
 - Vespa loader service handles document ingestion and processing
 
+## Current Vespa Loader Chunking State
+- **VespaDocumentType** already has `content_chunks: Optional[List[str]]` field
+- **Document Factory** creates documents with empty `content_chunks=[]` by default
+- **No active chunking logic** - chunks field exists but is not populated
+- **Content processing** happens in `content_normalizer.py` and `embeddings.py`
+- **Document ingestion** is handled by `ingest_service.py` and `vespa_client.py`
+- **Existing test infrastructure** for document processing and Vespa integration
+
 ## Target State
 - Document chunking functionality moved to `services/vespa_loader`
 - Pubsub events simplified to handle full documents
@@ -32,8 +40,9 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [ ] Create `services/vespa_loader/services/` directory
 - [ ] Move `document_chunking_service.py` to `services/vespa_loader/services/document_chunking_service.py`
 - [ ] Update import paths within the moved files
-- [ ] Create `services/vespa_loader/services/document_chunking_service.py` for chunking logic
-- [ ] Move chunking service logic from common to vespa_loader
+- [ ] Integrate chunking service with existing `VespaDocumentType.content_chunks` field
+- [ ] Update `document_factory.py` to populate content_chunks using chunking service
+- [ ] Ensure chunking service works with existing vespa_loader infrastructure
 
 ### Phase 3: Move and Update Tests
 - [ ] Create `services/vespa_loader/tests/` directory if it doesn't exist
@@ -44,11 +53,12 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [ ] Remove old test file from common services
 
 ### Phase 4: Update Vespa Loader Service
-- [ ] Update `services/vespa_loader/document_factory.py` to use new chunking models
-- [ ] Update `services/vespa_loader/ingest_service.py` to handle chunking internally
-- [ ] Update `services/vespa_loader/vespa_client.py` to work with chunked documents
-- [ ] Ensure vespa_loader can process full documents and create chunks internally
-- [ ] Update vespa_loader tests to use new structure
+- [ ] Update `services/vespa_loader/document_factory.py` to populate `content_chunks` field
+- [ ] Integrate chunking service into document creation pipeline
+- [ ] Update `services/vespa_loader/ingest_service.py` to handle chunked documents
+- [ ] Ensure `services/vespa_loader/vespa_client.py` properly indexes chunked content
+- [ ] Update existing vespa_loader tests to work with new chunking functionality
+- [ ] Leverage existing `content_normalizer.py` and `embeddings.py` for chunk processing
 
 ### Phase 5: Simplify Pubsub Events
 - [ ] Remove `DocumentFragmentData` from `services/common/events/document_events.py`
@@ -56,6 +66,7 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [ ] Update `DocumentData` to handle full document content
 - [ ] Remove chunking-related fields from document events
 - [ ] Update `services/common/events/__init__.py` to remove fragment exports
+- [ ] Update `scripts/pubsub_manager.sh' to remove fragments
 
 ### Phase 6: Implement Redis Storage Strategy
 - [ ] Design Redis key structure for large document payloads
@@ -96,6 +107,14 @@ Move the document chunking functionality from `services/common/` into the `servi
 
 ## Technical Considerations
 
+### Leveraging Existing Vespa Loader Infrastructure
+- **VespaDocumentType.content_chunks**: Already exists and ready for chunk data
+- **Content Normalizer**: Can be extended to process individual chunks
+- **Embedding Generator**: Already handles content processing for search
+- **Document Factory**: Has pipeline for creating Vespa-ready documents
+- **Ingest Service**: Can be enhanced to handle chunked document ingestion
+- **Vespa Client**: Already supports indexing with chunked content structure
+
 ### Redis Storage Strategy
 - Use consistent key naming: `doc:content:{document_id}`
 - Set appropriate TTL for document content
@@ -114,6 +133,27 @@ class DocumentEvent(BaseEvent):
     redis_content_key: str  # Reference to Redis-stored content
 ```
 
+### Integration with Existing Vespa Loader
+```python
+# Current VespaDocumentType already supports chunks
+class VespaDocumentType:
+    content_chunks: Optional[List[str]] = None  # Ready for chunk data
+    
+# Document Factory will be updated to populate chunks
+def create_document_document(event: DocumentEvent) -> VespaDocumentType:
+    # Use chunking service to create chunks
+    chunks = chunking_service.chunk_document(
+        document_id=event.document.id,
+        content=event.document.content,
+        document_type=event.document.type
+    )
+    
+    return VespaDocumentType(
+        # ... other fields ...
+        content_chunks=[chunk.content for chunk in chunks.chunks]
+    )
+```
+
 ### Chunking Logic
 - Move chunking logic to vespa_loader service
 - Process full documents internally
@@ -126,11 +166,13 @@ class DocumentEvent(BaseEvent):
 - Ensure no breaking changes to public APIs
 
 ## Benefits
-- Cleaner separation of concerns
-- Simplified pubsub event structure
-- Better performance for large documents
-- Reduced memory usage in event queues
-- More focused vespa_loader service
+- **Leverages Existing Infrastructure**: Builds on vespa_loader's existing chunk support
+- **Cleaner Separation of Concerns**: Moves chunking logic to appropriate service
+- **Simplified Pubsub Event Structure**: Full documents instead of fragmented events
+- **Better Performance**: Large documents stored in Redis, chunks created on-demand
+- **Reduced Memory Usage**: Event queues no longer carry large chunked content
+- **More Focused Services**: Common service focuses on events, vespa_loader handles processing
+- **Existing Test Coverage**: vespa_loader already has comprehensive test infrastructure
 
 ## Risks
 - Breaking changes to document event structure
