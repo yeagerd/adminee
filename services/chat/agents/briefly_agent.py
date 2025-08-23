@@ -90,15 +90,13 @@ class BrieflyAgent(FunctionAgent):
     - Simple analyze/summarize helpers
     """
 
-    @staticmethod
-    def _create_context_aware_prompt(thread_id: str) -> str:
-        """Create a context-aware system prompt based on existing drafts."""
+    def _create_context_aware_prompt(self) -> str:
+        """Create a context-aware system prompt with current date and time information."""
         from datetime import datetime
 
         current_date = datetime.now().strftime("%Y-%m-%d")
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Common prefix that can be cached
         base_prompt = (
             f"CURRENT DATE AND TIME: {current_datetime}\n"
             f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
@@ -127,7 +125,7 @@ class BrieflyAgent(FunctionAgent):
         )
 
         # Get context-aware prompt with current date/time
-        context_prompt = self._create_context_aware_prompt(str(thread_id))
+        context_prompt = self._create_context_aware_prompt()
 
         system_prompt = (
             f"{context_prompt}"
