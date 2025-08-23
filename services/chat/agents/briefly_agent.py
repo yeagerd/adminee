@@ -90,6 +90,22 @@ class BrieflyAgent(FunctionAgent):
     - Simple analyze/summarize helpers
     """
 
+    @staticmethod
+    def _create_context_aware_prompt(thread_id: str) -> str:
+        """Create a context-aware system prompt based on existing drafts."""
+        from datetime import datetime
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Common prefix that can be cached
+        base_prompt = (
+            f"CURRENT DATE AND TIME: {current_datetime}\n"
+            f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
+        )
+        
+        return base_prompt
+
     def __init__(
         self,
         thread_id: int,
@@ -110,7 +126,11 @@ class BrieflyAgent(FunctionAgent):
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
+        # Get context-aware prompt with current date/time
+        context_prompt = self._create_context_aware_prompt(str(thread_id))
+        
         system_prompt = (
+            f"{context_prompt}"
             "You are Briefly, a single-agent assistant with comprehensive tools.\n\n"
             "CORE TOOLS (always available):\n"
             "- user_data_search: INTELLIGENT search across all your personal data (emails, calendar, contacts, files) - USE THIS FOR ALL SEARCHING EXISTING DATA\n"
