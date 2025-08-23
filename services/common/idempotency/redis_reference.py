@@ -416,9 +416,6 @@ class RedisReferencePattern:
     def get_idempotency_stats(self) -> Dict[str, Any]:
         """Get statistics about idempotency keys."""
         try:
-            # Get Redis info
-            info = self.redis.info("keyspace")
-
             # Count idempotency keys
             pattern = self.KEY_PATTERNS["idempotency"].format(key="*")
             keys = self.redis.keys(pattern)

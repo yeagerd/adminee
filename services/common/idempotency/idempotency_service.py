@@ -481,7 +481,8 @@ class IdempotencyService:
                     break
 
             logger.info(
-                f"Batch cleanup completed. Deleted {cleaned_count} expired idempotency keys"
+                f"Batch cleanup completed. Deleted {cleaned_count} "
+                f"expired idempotency keys"
             )
 
             # Update monitoring statistics
