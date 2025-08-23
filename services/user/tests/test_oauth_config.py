@@ -722,7 +722,9 @@ class TestOAuthConfig(BaseUserManagementTest):
             # Check the URL and data
             assert actual_call[0][0] == expected_token_url
             # Verify that the content is a URL-encoded string matching the payload
-            actual_payload = urllib.parse.parse_qs(actual_call[1]["content"].decode("utf-8"))
+            actual_payload = urllib.parse.parse_qs(
+                actual_call[1]["content"].decode("utf-8")
+            )
             # parse_qs returns lists for values, so we need to adjust the expected payload
             expected_payload_qs = {k: [v] for k, v in expected_payload.items()}
             assert actual_payload == expected_payload_qs
@@ -782,7 +784,9 @@ class TestOAuthConfig(BaseUserManagementTest):
             # Check the URL and data
             assert actual_call[0][0] == expected_token_url
             # Verify that the content is a URL-encoded string matching the payload
-            actual_payload = urllib.parse.parse_qs(actual_call[1]["content"].decode("utf-8"))
+            actual_payload = urllib.parse.parse_qs(
+                actual_call[1]["content"].decode("utf-8")
+            )
             # parse_qs returns lists for values, so we need to adjust the expected payload
             expected_payload_qs = {k: [v] for k, v in expected_payload.items()}
             assert actual_payload == expected_payload_qs
@@ -858,7 +862,9 @@ class TestOAuthConfig(BaseUserManagementTest):
             # Check the URL and data
             assert actual_call[0][0] == expected_token_url
             # Verify that the content is a URL-encoded string matching the payload
-            actual_payload = urllib.parse.parse_qs(actual_call[1]["content"].decode("utf-8"))
+            actual_payload = urllib.parse.parse_qs(
+                actual_call[1]["content"].decode("utf-8")
+            )
             # parse_qs returns lists for values, so we need to adjust the expected payload
             expected_payload_qs = {k: [v] for k, v in expected_payload.items()}
             assert actual_payload == expected_payload_qs
