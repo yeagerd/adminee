@@ -93,12 +93,12 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] Update event processing to work with simplified document structure
 
 ### Phase 8: Update Tests and Documentation
-- [ ] Update all tests that use `DocumentFragmentData` or `DocumentFragmentEvent`
-- [ ] Update tests that import from `services/common/models/document_chunking`
-- [ ] Update tests that import from `services/common/services/document_chunking_service`
-- [ ] Update integration tests to work with new document flow
-- [ ] Update API documentation and schemas
-- [ ] Update service documentation
+- [x] Update all tests that use `DocumentFragmentData` or `DocumentFragmentEvent`
+- [x] Update tests that import from `services/common/models/document_chunking`
+- [x] Update tests that import from `services/common/services/document_chunking_service`
+- [x] Update integration tests to work with new document flow
+- [x] Update API documentation and schemas
+- [x] Update service documentation
 
 ### Phase 9: Cleanup and Validation
 - [ ] Remove old `services/common/models/document_chunking.py`
