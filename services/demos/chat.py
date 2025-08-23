@@ -472,8 +472,11 @@ class ChatServiceClient(ServiceClient):
 
     def send_message(
         self, user_id: str, message: str, thread_id: Optional[str] = None
-    ) -> Optional[str]:
-        """Send a message to the chat service."""
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Send a message to the chat service.
+
+        Returns a tuple of (assistant_response_text, thread_id).
+        """
         try:
             response = requests.post(
                 f"{self.base_url}/completions",
@@ -490,16 +493,18 @@ class ChatServiceClient(ServiceClient):
             if response.status_code == 200:
                 # The chat API returns a ChatResponse with 'messages' (list of MessageResponse)
                 data = response.json()
+                thread = data.get("thread_id")
                 messages = data.get("messages", [])
                 if messages:
-                    return messages[-1].get("content")
+                    return messages[-1].get("content"), thread
+                return None, thread
             else:
                 logger.error(
                     f"Chat service returned status {response.status_code}: {response.text}"
                 )
         except Exception as e:
             logger.error(f"Chat service error: {e}")
-        return None
+        return None, None
 
     def delete_draft(self, user_id: str, thread_id: Optional[str] = None) -> bool:
         """Delete the current draft."""
@@ -520,8 +525,10 @@ class ChatServiceClient(ServiceClient):
         try:
             response = requests.get(
                 f"{self.base_url}/threads",
-                params={"user_id": user_id},
-                headers={"X-API-Key": get_settings().api_frontend_chat_key},
+                headers={
+                    "X-API-Key": get_settings().api_frontend_chat_key,
+                    "X-User-Id": user_id,
+                },
                 timeout=self.timeout,
             )
             if response.status_code == 200:
@@ -529,6 +536,28 @@ class ChatServiceClient(ServiceClient):
         except Exception as e:
             logger.error(f"Get threads error: {e}")
         return []
+
+    def getChatHistory(self, thread_id: str, user_id: str) -> Optional[Any]:
+        """Retrieve the chat history for a specific thread."""
+        try:
+            response = requests.get(
+                f"{self.base_url}/threads/{thread_id}/history",
+                headers={
+                    "X-API-Key": get_settings().api_frontend_chat_key,
+                    "X-User-Id": user_id,
+                },
+                timeout=self.timeout,
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(
+                    f"Failed to get chat history for thread {thread_id}: {response.status_code} {response.text}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"Error retrieving chat history for thread {thread_id}: {e}")
+            return None
 
 
 class OfficeServiceClient(ServiceClient):
@@ -1167,11 +1196,16 @@ class FullDemo:
 
     def send_message_api(self, message: str) -> str:
         """Send a message using API."""
-        response = self.chat_client.send_message(
+        response_text, thread_id = self.chat_client.send_message(
             self.user_id, message, self.current_thread_id
         )
-        if response:
-            return response
+        # On first message, capture and print new thread id
+        if self.current_thread_id is None and thread_id:
+            self.current_thread_id = thread_id
+            print(f"🧵 Started new chat thread: {thread_id}")
+
+        if response_text:
+            return response_text
         else:
             return "❌ Failed to send message"
 
@@ -1301,12 +1335,52 @@ class FullDemo:
 
             result = "📝 Chat Threads:\n"
             for thread in threads:
-                result += f"  {thread['id']}: {thread.get('title', 'Untitled')}\n"
+                tid = thread.get("thread_id") or thread.get("id") or "unknown"
+                result += f"  {tid}: {thread.get('title', 'Untitled')}\n"
             return True, result
 
         elif command.startswith("switch "):
             thread_id = command[7:].strip()
             if thread_id:
+                # Load and display conversation history for this thread
+                try:
+                    history = self.chat_client.getChatHistory(thread_id, self.user_id)
+                    if history:
+                        # Debug: print the actual response structure
+                        print(
+                            f"🔍 Debug: History response keys: {list(history.keys()) if isinstance(history, dict) else 'Not a dict'}"
+                        )
+
+                        # Check if messages exist in the response
+                        messages = (
+                            history.get("messages", [])
+                            if isinstance(history, dict)
+                            else []
+                        )
+                        if messages:
+                            print(
+                                f"\n📚 Loading conversation history for thread {thread_id}:"
+                            )
+                            print("=" * 50)
+                            for msg in messages:
+                                sender = (
+                                    "👤 You"
+                                    if not msg.get("llm_generated", False)
+                                    else "🤖 Briefly"
+                                )
+                                print(f"{sender}: {msg.get('content', 'No content')}")
+                            print("=" * 50)
+                            print(f"✅ Switched to thread {thread_id}")
+                        else:
+                            print(f"📝 Thread {thread_id} has no conversation history")
+                            print(f"✅ Switched to thread {thread_id}")
+                    else:
+                        print(f"📝 Thread {thread_id} has no conversation history")
+                        print(f"✅ Switched to thread {thread_id}")
+                except Exception as e:
+                    print(f"⚠️  Could not load thread history: {e}")
+                    print(f"✅ Switched to thread {thread_id} anyway")
+
                 self.current_thread_id = thread_id
                 return True, f"✅ Switched to thread {thread_id}"
             else:
