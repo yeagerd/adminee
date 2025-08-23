@@ -114,7 +114,9 @@ class PubSubPublisher:
 
             # Validate required user_id parameter
             if not user_id:
-                logger.error(f"user_id is required for publishing EmailEvent {email_data.id}")
+                logger.error(
+                    f"user_id is required for publishing EmailEvent {email_data.id}"
+                )
                 return False
 
             # Create EmailEvent
@@ -182,7 +184,9 @@ class PubSubPublisher:
 
             # Validate required user_id parameter
             if not user_id:
-                logger.error(f"user_id is required for publishing CalendarEvent {calendar_data.id}")
+                logger.error(
+                    f"user_id is required for publishing CalendarEvent {calendar_data.id}"
+                )
                 return False
 
             # Create CalendarEvent
@@ -250,7 +254,9 @@ class PubSubPublisher:
 
             # Validate required user_id parameter
             if not user_id:
-                logger.error(f"user_id is required for publishing ContactEvent {contact_data.id}")
+                logger.error(
+                    f"user_id is required for publishing ContactEvent {contact_data.id}"
+                )
                 return False
 
             # Create ContactEvent

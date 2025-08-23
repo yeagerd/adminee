@@ -314,20 +314,22 @@ def parse_event_by_topic(
         raise
 
 
-def process_message(topic_name: str, raw_data: Dict[str, Any], message_id: str) -> VespaDocumentType:
+def process_message(
+    topic_name: str, raw_data: Dict[str, Any], message_id: str
+) -> VespaDocumentType:
     """
     Single entry point to process a raw message into a Vespa document.
-    
+
     This function combines event parsing and document creation in one step.
-    
+
     Args:
         topic_name: The Pub/Sub topic name
         raw_data: Raw JSON data from the message
         message_id: Message ID for logging
-        
+
     Returns:
         VespaDocumentType ready for indexing
-        
+
     Raises:
         ValueError: If topic is unsupported or data is invalid
         ValidationError: If event data doesn't validate
@@ -335,17 +337,17 @@ def process_message(topic_name: str, raw_data: Dict[str, Any], message_id: str) 
     try:
         # Step 1: Parse raw data into typed event
         event = parse_event_by_topic(topic_name, raw_data, message_id)
-        
+
         # Step 2: Create Vespa document from typed event
         document = VespaDocumentFactory.create_document_from_event(event)
-        
+
         logger.info(
             f"Successfully processed message {message_id} from topic {topic_name} "
             f"into document {document.id} for user {document.user_id}"
         )
-        
+
         return document
-        
+
     except Exception as e:
         logger.error(
             f"Failed to process message {message_id} from topic {topic_name}: {e}"

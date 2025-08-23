@@ -36,11 +36,6 @@ except ImportError:
 logger = get_logger(__name__)
 
 
-
-
-
-
-
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
     from google.cloud.pubsub_v1.types import (
@@ -90,8 +85,6 @@ class PubSubConsumer:
 
         # Event loop reference for cross-thread communication
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-
-
 
     async def start(self) -> bool:
         """Start the Pub/Sub consumer"""
@@ -256,7 +249,9 @@ class PubSubConsumer:
                 subscription_path,
                 callback=self._create_message_callback(topic_name, config),
                 flow_control=pubsub_v1.types.FlowControl(
-                    max_messages=100, max_bytes=1024 * 1024  # 1MB, process up to 100 messages concurrently
+                    max_messages=100,
+                    max_bytes=1024
+                    * 1024,  # 1MB, process up to 100 messages concurrently
                 ),
             )
 
@@ -301,8 +296,8 @@ class PubSubConsumer:
                     if self.loop:
                         # Schedule immediate processing in the event loop
                         asyncio.run_coroutine_threadsafe(
-                            self._process_message_immediate(vespa_document, message), 
-                            self.loop
+                            self._process_message_immediate(vespa_document, message),
+                            self.loop,
                         )
                     else:
                         logger.error("No event loop available for message processing")
@@ -340,11 +335,11 @@ class PubSubConsumer:
                 self.content_normalizer,
                 self.embedding_generator,
             )
-            
+
             logger.info(
                 f"Successfully ingested document {vespa_document.id} from message {message.message_id}"
             )
-            
+
             # Acknowledge the message on success
             message.ack()
             self.processed_count += 1
@@ -353,8 +348,6 @@ class PubSubConsumer:
             logger.error(f"Error processing message {message.message_id}: {e}")
             message.nack()
             self.error_count += 1
-
-
 
     def get_stats(self) -> Dict[str, Any]:
         """Get consumer statistics"""
@@ -373,7 +366,3 @@ class PubSubConsumer:
         }
         logger.info(f"Consumer stats: {stats}")
         return stats
-
-
-
-
