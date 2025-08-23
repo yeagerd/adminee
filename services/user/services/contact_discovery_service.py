@@ -54,8 +54,14 @@ class ContactDiscoveryService:
                         name = None
                     else:
                         # Fallback for backward compatibility
-                        email = to_addr.get("email") if isinstance(to_addr, dict) else str(to_addr)
-                        name = to_addr.get("name") if isinstance(to_addr, dict) else None
+                        email = (
+                            to_addr.get("email")
+                            if isinstance(to_addr, dict)
+                            else str(to_addr)
+                        )
+                        name = (
+                            to_addr.get("name") if isinstance(to_addr, dict) else None
+                        )
 
                     if email:
                         contacts_to_process.append(
@@ -77,8 +83,14 @@ class ContactDiscoveryService:
                         name = None
                     else:
                         # Fallback for backward compatibility
-                        email = cc_addr.get("email") if isinstance(cc_addr, dict) else str(cc_addr)
-                        name = cc_addr.get("name") if isinstance(cc_addr, dict) else None
+                        email = (
+                            cc_addr.get("email")
+                            if isinstance(cc_addr, dict)
+                            else str(cc_addr)
+                        )
+                        name = (
+                            cc_addr.get("name") if isinstance(cc_addr, dict) else None
+                        )
 
                     if email:
                         contacts_to_process.append(
@@ -96,9 +108,18 @@ class ContactDiscoveryService:
                 self._process_discovered_contact(
                     user_id=event.user_id,
                     email=str(contact_info["email"]),
-                    name=str(contact_info["name"]) if contact_info["name"] is not None and not isinstance(contact_info["name"], datetime) else None,
+                    name=(
+                        str(contact_info["name"])
+                        if contact_info["name"] is not None
+                        and not isinstance(contact_info["name"], datetime)
+                        else None
+                    ),
                     event_type=str(contact_info["event_type"]),
-                    timestamp=contact_info["timestamp"] if isinstance(contact_info["timestamp"], datetime) else datetime.now(timezone.utc),
+                    timestamp=(
+                        contact_info["timestamp"]
+                        if isinstance(contact_info["timestamp"], datetime)
+                        else datetime.now(timezone.utc)
+                    ),
                     source_service="email_sync",
                 )
 
@@ -157,9 +178,18 @@ class ContactDiscoveryService:
                 self._process_discovered_contact(
                     user_id=event.user_id,
                     email=str(contact_info["email"]),
-                    name=str(contact_info["name"]) if contact_info["name"] is not None and not isinstance(contact_info["name"], datetime) else None,
+                    name=(
+                        str(contact_info["name"])
+                        if contact_info["name"] is not None
+                        and not isinstance(contact_info["name"], datetime)
+                        else None
+                    ),
                     event_type=str(contact_info["event_type"]),
-                    timestamp=contact_info["timestamp"] if isinstance(contact_info["timestamp"], datetime) else datetime.now(timezone.utc),
+                    timestamp=(
+                        contact_info["timestamp"]
+                        if isinstance(contact_info["timestamp"], datetime)
+                        else datetime.now(timezone.utc)
+                    ),
                     source_service="calendar_sync",
                 )
 
@@ -497,9 +527,9 @@ class ContactDiscoveryService:
             vespa_doc = contact.to_vespa_document()
 
             # Create ContactEvent and publish to contacts topic
-            from services.common.events.contact_events import ContactData, ContactEvent
             from services.common.events.base_events import EventMetadata
-            
+            from services.common.events.contact_events import ContactData, ContactEvent
+
             contact_data = ContactData(
                 id=contact.id,
                 display_name=contact.display_name or contact.email_address,
@@ -511,7 +541,7 @@ class ContactDiscoveryService:
                 notes=contact.notes,
                 last_modified=contact.updated_at,
             )
-            
+
             metadata = EventMetadata(
                 source_service="contact-discovery",
                 user_id=contact.user_id,
@@ -521,7 +551,7 @@ class ContactDiscoveryService:
                 parent_span_id=None,
                 request_id=None,
             )
-            
+
             contact_event = ContactEvent(
                 user_id=contact.user_id,
                 contact=contact_data,
@@ -532,7 +562,7 @@ class ContactDiscoveryService:
                 provider="contact_discovery",
                 metadata=metadata,
             )
-            
+
             self.pubsub_client.publish_contact_event(contact_event)
 
             logger.debug(f"Published contact update for {contact.email_address}")

@@ -18,8 +18,11 @@ class TestDocumentChunkingService:
     @pytest.fixture
     def config(self):
         """Create a test configuration."""
-        from services.common.models.document_chunking import ChunkingRule, ChunkingStrategy
-        
+        from services.common.models.document_chunking import (
+            ChunkingRule,
+            ChunkingStrategy,
+        )
+
         # Create more lenient rules for testing
         return DocumentChunkingConfig(
             word_document_rules=ChunkingRule(

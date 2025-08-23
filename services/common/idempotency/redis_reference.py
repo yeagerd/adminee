@@ -418,11 +418,11 @@ class RedisReferencePattern:
         try:
             # Get Redis info
             info = self.redis.info("keyspace")
-            
+
             # Count idempotency keys
             pattern = self.KEY_PATTERNS["idempotency"].format(key="*")
             keys = self.redis.keys(pattern)
-            
+
             return {
                 "total_keys": len(keys),
                 "active_keys": len([k for k in keys if self.redis.ttl(k) > 0]),

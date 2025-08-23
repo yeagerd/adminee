@@ -247,7 +247,9 @@ class TestContactDiscoveryService:
         # Search by another email
         results = service.search_contacts("user123", "organizer@example.com")
         assert len(results) >= 1
-        assert any("organizer@example.com" in contact.email_address for contact in results)
+        assert any(
+            "organizer@example.com" in contact.email_address for contact in results
+        )
 
         # Search with no query
         results = service.search_contacts("user123", "")

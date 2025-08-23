@@ -316,7 +316,7 @@ async def ingest_document(
     try:
         # Convert Dict to VespaDocumentType
         from services.vespa_loader.types import VespaDocumentType
-        
+
         # Create a VespaDocumentType from the input data
         vespa_document = VespaDocumentType(
             id=document_data.get("id", ""),
@@ -337,7 +337,7 @@ async def ingest_document(
             thread_summary=document_data.get("thread_summary"),
             search_text=document_data.get("search_text"),
         )
-        
+
         # Call the shared service function
         result = await ingest_document_service(
             vespa_document,
@@ -412,13 +412,13 @@ async def debug_trigger_pubsub_processing(
     try:
         # Get current consumer status
         stats = pubsub_consumer.get_stats()
-        
+
         return {
             "status": "success",
             "message": "Pub/Sub consumer status retrieved",
             "consumer_stats": stats,
             "topics": list(pubsub_consumer.topics.keys()),
-            "note": "This service processes messages individually, not in batches"
+            "note": "This service processes messages individually, not in batches",
         }
 
     except Exception as e:

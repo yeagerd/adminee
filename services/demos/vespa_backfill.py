@@ -1106,9 +1106,10 @@ class VespaBackfillDemo:
             ):
                 try:
                     # Convert email dictionaries to EmailData objects and add trace_id
-                    from services.common.events.email_events import EmailData
                     from datetime import datetime, timezone
-                    
+
+                    from services.common.events.email_events import EmailData
+
                     email_data_list = []
                     for email in email_batch:
                         # Add trace_id to metadata
@@ -1116,7 +1117,7 @@ class VespaBackfillDemo:
                             email["metadata"] = {}
                         email["metadata"]["trace_id"] = self.trace_id
                         email["metadata"]["backfill_operation"] = "vespa_backfill_demo"
-                        
+
                         # Convert to EmailData
                         try:
                             email_data = EmailData(
@@ -1128,7 +1129,8 @@ class VespaBackfillDemo:
                                 to_addresses=email.get("to", []),
                                 cc_addresses=email.get("cc", []),
                                 bcc_addresses=email.get("bcc", []),
-                                received_date=email.get("created_at") or datetime.now(timezone.utc),
+                                received_date=email.get("created_at")
+                                or datetime.now(timezone.utc),
                                 sent_date=email.get("updated_at"),
                                 labels=email.get("labels", []),
                                 is_read=email.get("is_read", True),
@@ -1142,7 +1144,9 @@ class VespaBackfillDemo:
                             )
                             email_data_list.append(email_data)
                         except Exception as e:
-                            logger.warning(f"Failed to convert email {email.get('id', 'unknown')} to EmailData: {e}")
+                            logger.warning(
+                                f"Failed to convert email {email.get('id', 'unknown')} to EmailData: {e}"
+                            )
                             continue
 
                     # Publish batch to Pub/Sub

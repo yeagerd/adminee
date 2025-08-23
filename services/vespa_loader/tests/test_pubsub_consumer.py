@@ -2,10 +2,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.common.events.email_events import EmailEvent, EmailData
 from services.common.events.base_events import EventMetadata
-from services.vespa_loader.pubsub_consumer import PubSubConsumer
+from services.common.events.email_events import EmailData, EmailEvent
 from services.vespa_loader.document_factory import process_message
+from services.vespa_loader.pubsub_consumer import PubSubConsumer
 
 
 class TestPubSubConsumer:
@@ -68,7 +68,9 @@ class TestPubSubConsumer:
     async def test_process_message_creates_email_document(self, sample_email_event):
         """Test that process_message creates email document correctly"""
         # Test the process_message function directly
-        vespa_document = process_message("emails", sample_email_event, "test-message-123")
+        vespa_document = process_message(
+            "emails", sample_email_event, "test-message-123"
+        )
 
         # Verify document structure
         assert vespa_document.id == "email-1"
@@ -108,13 +110,13 @@ class TestPubSubConsumer:
     async def test_consumer_stats(self, mock_consumer):
         """Test that consumer statistics are tracked correctly"""
         stats = mock_consumer.get_stats()
-        
+
         assert "running" in stats
         assert "processed_count" in stats
         assert "error_count" in stats
         assert "subscriptions" in stats
         assert "subscription_details" in stats
-        
+
         assert stats["running"] is False
         assert stats["processed_count"] == 0
         assert stats["error_count"] == 0
@@ -123,59 +125,63 @@ class TestPubSubConsumer:
         """Test that consumer configures topics correctly"""
         # The consumer should have topics configured from SubscriptionConfig
         assert isinstance(mock_consumer.topics, dict)
-        
+
         # Check that topics have the expected structure
         for topic_name, config in mock_consumer.topics.items():
             assert "subscription_name" in config
             assert isinstance(config["subscription_name"], str)
 
-    @patch('services.vespa_loader.pubsub_consumer.ingest_document_service')
-    async def test_process_message_immediate_handles_success(self, mock_ingest_service, mock_consumer):
+    @patch("services.vespa_loader.pubsub_consumer.ingest_document_service")
+    async def test_process_message_immediate_handles_success(
+        self, mock_ingest_service, mock_consumer
+    ):
         """Test that _process_message_immediate handles successful processing"""
         from services.vespa_loader.types import VespaDocumentType
-        
+
         # Create a mock Vespa document
         mock_document = MagicMock(spec=VespaDocumentType)
         mock_document.id = "test-doc-123"
         mock_document.type = "email"
         mock_document.user_id = "test-user-123"
-        
+
         # Create a mock message
         mock_message = MagicMock()
         mock_message.message_id = "test-message-123"
-        
+
         # Mock the ingest_document_service to succeed
         mock_ingest_service.return_value = {"status": "success"}
-        
+
         # Process the message
         await mock_consumer._process_message_immediate(mock_document, mock_message)
-        
+
         # Verify that the message was acknowledged
         mock_message.ack.assert_called_once()
         assert mock_consumer.processed_count == 1
         assert mock_consumer.error_count == 0
 
-    @patch('services.vespa_loader.pubsub_consumer.ingest_document_service')
-    async def test_process_message_immediate_handles_failure(self, mock_ingest_service, mock_consumer):
+    @patch("services.vespa_loader.pubsub_consumer.ingest_document_service")
+    async def test_process_message_immediate_handles_failure(
+        self, mock_ingest_service, mock_consumer
+    ):
         """Test that _process_message_immediate handles processing failures"""
         from services.vespa_loader.types import VespaDocumentType
-        
+
         # Create a mock Vespa document
         mock_document = MagicMock(spec=VespaDocumentType)
         mock_document.id = "test-doc-123"
         mock_document.type = "email"
         mock_document.user_id = "test-user-123"
-        
+
         # Create a mock message
         mock_message = MagicMock()
         mock_message.message_id = "test-message-123"
-        
+
         # Mock the ingest_document_service to fail
         mock_ingest_service.side_effect = Exception("Processing failed")
-        
+
         # Process the message
         await mock_consumer._process_message_immediate(mock_document, mock_message)
-        
+
         # Verify that the message was not acknowledged
         mock_message.ack.assert_not_called()
         mock_message.nack.assert_called_once()

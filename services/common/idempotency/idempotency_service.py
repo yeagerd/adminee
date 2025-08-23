@@ -16,8 +16,8 @@ from services.common.events.todo_events import TodoEvent
 from services.common.idempotency.idempotency_keys import (
     IdempotencyKeyGenerator,
     IdempotencyKeyValidator,
+    IdempotencyStrategy,
 )
-from services.common.idempotency.idempotency_keys import IdempotencyStrategy
 from services.common.idempotency.redis_reference import RedisReferencePattern
 
 logger = logging.getLogger(__name__)
@@ -101,12 +101,14 @@ class IdempotencyService:
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Update metadata with result
-            metadata.update({
-                "status": "completed",
-                "result": result,
-                "processed_at": datetime.now(timezone.utc).isoformat(),
-                "processing_time": str(processing_time),
-            })
+            metadata.update(
+                {
+                    "status": "completed",
+                    "result": result,
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                    "processing_time": str(processing_time),
+                }
+            )
 
             self.redis_reference.store_idempotency_key(idempotency_key, metadata)
 
@@ -138,7 +140,9 @@ class IdempotencyService:
         self,
         batch_id: str,
         correlation_id: str,
-        events: List[Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]],
+        events: List[
+            Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]
+        ],
         processor_func: Callable,
         *args: Any,
         **kwargs: Any,
@@ -257,7 +261,10 @@ class IdempotencyService:
 
             raise
 
-    def _generate_event_key(self, event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]) -> str:
+    def _generate_event_key(
+        self,
+        event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent],
+    ) -> str:
         """Generate a unique idempotency key for an event."""
         return self.key_generator.generate_key(
             event_type=self._get_event_type(event),
@@ -266,7 +273,10 @@ class IdempotencyService:
             batch_id=event.batch_id,
         )
 
-    def _get_event_type(self, event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent]) -> str:
+    def _get_event_type(
+        self,
+        event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent],
+    ) -> str:
         """Get the event type as a string."""
         return type(event).__name__.lower().replace("event", "")
 
@@ -282,7 +292,11 @@ class IdempotencyService:
                 "total_keys": stats.get("total_keys", 0),
                 "active_keys": stats.get("active_keys", 0),
                 "expired_keys": stats.get("expired_keys", 0),
-                "last_cleanup": self._last_cleanup_time.isoformat() if self._last_cleanup_time else None,
+                "last_cleanup": (
+                    self._last_cleanup_time.isoformat()
+                    if self._last_cleanup_time
+                    else None
+                ),
                 "total_cleanups": self._total_cleanups,
                 "total_keys_cleaned": self._total_keys_cleaned,
             }
@@ -545,9 +559,7 @@ class IdempotencyService:
             return
 
         self._stop_cleanup.clear()
-        self._cleanup_thread = Thread(
-            target=self._cleanup_scheduler_loop, daemon=True
-        )
+        self._cleanup_thread = Thread(target=self._cleanup_scheduler_loop, daemon=True)
         self._cleanup_thread.start()
         logger.info("Started idempotency cleanup scheduler")
 
@@ -561,7 +573,9 @@ class IdempotencyService:
                 if not self._stop_cleanup.is_set():
                     # Perform cleanup
                     cleaned_count = self.cleanup_expired_keys()
-                    logger.info(f"Scheduled cleanup completed. Deleted {cleaned_count} keys")
+                    logger.info(
+                        f"Scheduled cleanup completed. Deleted {cleaned_count} keys"
+                    )
 
             except Exception as e:
                 logger.error(f"Error in cleanup scheduler: {e}")

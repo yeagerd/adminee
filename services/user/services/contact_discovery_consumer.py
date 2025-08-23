@@ -8,7 +8,10 @@ from typing import Any, Callable, Dict, List, Optional
 
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
-    from google.cloud.pubsub_v1.types import ReceivedMessage  # type: ignore[attr-defined]
+    from google.cloud.pubsub_v1.types import (
+        ReceivedMessage,  # type: ignore[attr-defined]
+    )
+
     PUBSUB_AVAILABLE = True
 except ImportError:
     PUBSUB_AVAILABLE = False
@@ -41,11 +44,13 @@ class ContactDiscoveryConsumer:
         for topic_name in SubscriptionConfig.get_service_topics("contact_discovery"):
             self.topics[topic_name] = self._get_processor_for_topic(topic_name)
 
-        # Subscriber client  
+        # Subscriber client
         self.subscriber: Optional[Any] = None
         self.subscription_paths: Dict[str, str] = {}
 
-    def _get_processor_for_topic(self, topic_name: str) -> Optional[Callable[[Dict[str, Any]], None]]:
+    def _get_processor_for_topic(
+        self, topic_name: str
+    ) -> Optional[Callable[[Dict[str, Any]], None]]:
         """Get the appropriate processor method for a topic."""
         if topic_name == "emails":
             return self._process_email_event
@@ -73,13 +78,13 @@ class ContactDiscoveryConsumer:
             if not PUBSUB_AVAILABLE:
                 logger.error("Google Cloud Pub/Sub not available")
                 return
-                
+
             self.subscriber = pubsub_v1.SubscriberClient()
 
             for topic_name, process_func in self.topics.items():
                 if process_func is None:
                     continue
-                    
+
                 config = SubscriptionConfig.get_subscription_config(
                     "contact_discovery", topic_name
                 )
@@ -121,7 +126,10 @@ class ContactDiscoveryConsumer:
             raise
 
     def _consume_topic(
-        self, topic_name: str, subscription_path: str, process_func: Callable[[Dict[str, Any]], None]
+        self,
+        topic_name: str,
+        subscription_path: str,
+        process_func: Callable[[Dict[str, Any]], None],
     ) -> None:
         """Start consuming from a specific topic subscription."""
 

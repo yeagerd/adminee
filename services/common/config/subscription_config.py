@@ -2,11 +2,12 @@
 Shared subscription configuration for consistent naming across services.
 """
 
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict
 
 
 class SubscriptionSettings(TypedDict):
     """Type definition for subscription settings."""
+
     subscription_name: str
     batch_size: int
     ack_deadline_seconds: int
@@ -14,6 +15,7 @@ class SubscriptionSettings(TypedDict):
 
 class DefaultSubscriptionSettings(TypedDict):
     """Type definition for default subscription settings."""
+
     ack_deadline_seconds: int
     retain_acked_messages: bool
     enable_exactly_once_delivery: bool

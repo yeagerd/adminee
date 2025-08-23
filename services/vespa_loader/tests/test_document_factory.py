@@ -36,7 +36,7 @@ class TestVespaDocumentFactory:
             event_id="test_event_001",
             timestamp=self.test_timestamp,
             source_service="test-service",
-            source_version="1.0.0"
+            source_version="1.0.0",
         )
 
     def test_create_email_document(self):
@@ -352,7 +352,7 @@ class TestParseEventByTopic:
             event_id="test_event_002",
             timestamp=datetime.now(timezone.utc),
             source_service="test-service",
-            source_version="1.0.0"
+            source_version="1.0.0",
         )
 
     def test_parse_email_event(self):
