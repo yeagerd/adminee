@@ -3,6 +3,22 @@ Test helpers for idempotency testing.
 
 This module contains utility functions for testing idempotency functionality
 without cluttering the main IdempotencyService class.
+
+Example Usage:
+    from services.common.tests.helpers.idempotency_test_helpers import simulate_event_processing
+    
+    # Test idempotency configuration for email creation
+    result = simulate_event_processing(
+        event_type="email",
+        operation="create", 
+        user_id="user123",
+        provider="gmail",
+        event_id="email123"
+    )
+    
+    assert result["simulation"] is True
+    assert result["strategy_info"]["strategy"] == "immutable"
+    assert result["key_valid"] is True
 """
 
 from datetime import datetime, timezone
