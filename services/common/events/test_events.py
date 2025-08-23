@@ -5,12 +5,12 @@ Test file for the events module to verify the structure works correctly.
 from datetime import datetime, timezone
 
 from services.common.events import (
-    CalendarEventData,
     CalendarEvent,
+    CalendarEventData,
     ContactData,
     ContactEvent,
-    EmailEvent,
     EmailData,
+    EmailEvent,
     EventMetadata,
 )
 
