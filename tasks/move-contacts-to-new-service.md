@@ -62,14 +62,14 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Create `services/contacts/tests/` directory for tests
 
 ### Phase 2: Move and Adapt Contact Models
-- [ ] Move `EmailContact` model to `services/contacts/models/contact.py`
-- [ ] Create SQLModel table model for `Contact` with proper database fields
-- [ ] Move `EmailContactUpdate` to `services/contacts/schemas/contact.py`
-- [ ] Move `EmailContactSearchResult` to `services/contacts/schemas/contact.py`
-- [ ] Move `EmailContactEventCount` to `services/contacts/models/contact.py`
-- [ ] Update models to use SQLModel for database persistence
-- [ ] Add database indexes for common query patterns (user_id, email, relevance_score)
-- [ ] Create database migration scripts using Alembic
+- [x] Move `EmailContact` model to `services/contacts/models/contact.py`
+- [x] Create SQLModel table model for `Contact` with proper database fields
+- [x] Move `EmailContactUpdate` to `services/contacts/schemas/contact.py`
+- [x] Move `EmailContactSearchResult` to `services/contacts/schemas/contact.py`
+- [x] Move `EmailContactEventCount` to `services/contacts/models/contact.py`
+- [x] Update models to use SQLModel for database persistence
+- [x] Add database indexes for common query patterns (user_id, email, relevance_score)
+- [x] Create database migration scripts using Alembic
 
 ### Phase 3: Move Contact Discovery Service
 - [ ] Move `ContactDiscoveryService` to `services/contacts/services/contact_discovery_service.py`
