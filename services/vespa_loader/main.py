@@ -32,7 +32,6 @@ from services.common.telemetry import get_tracer, setup_telemetry
 from services.vespa_loader.content_normalizer import ContentNormalizer
 from services.vespa_loader.embeddings import EmbeddingGenerator
 from services.vespa_loader.ingest_service import ingest_document_service
-from services.vespa_loader.mapper import DocumentMapper
 from services.vespa_loader.pubsub_consumer import PubSubConsumer
 from services.vespa_loader.types import VespaDocumentType
 from services.vespa_loader.vespa_client import VespaClient
@@ -48,7 +47,6 @@ tracer = get_tracer(__name__)
 vespa_client: VespaClient | None = None
 content_normalizer: ContentNormalizer | None = None
 embedding_generator: EmbeddingGenerator | None = None
-document_mapper: DocumentMapper | None = None
 pubsub_consumer: PubSubConsumer | None = None
 
 
@@ -131,7 +129,7 @@ async def check_rate_limit(api_key: str = Depends(verify_api_key)) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage service lifecycle"""
-    global vespa_client, content_normalizer, embedding_generator, document_mapper, pubsub_consumer
+    global vespa_client, content_normalizer, embedding_generator, pubsub_consumer
 
     # Initialize settings
     from services.vespa_loader.settings import Settings
@@ -148,7 +146,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Now import modules that use logging after logging is configured
     from services.vespa_loader.content_normalizer import ContentNormalizer
     from services.vespa_loader.embeddings import EmbeddingGenerator
-    from services.vespa_loader.mapper import DocumentMapper
     from services.vespa_loader.pubsub_consumer import PubSubConsumer
     from services.vespa_loader.vespa_client import VespaClient
 
@@ -162,7 +159,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     vespa_client = VespaClient(settings.vespa_endpoint)
     content_normalizer = ContentNormalizer()
     embedding_generator = EmbeddingGenerator(settings.embedding_model)
-    document_mapper = DocumentMapper()
 
     # Initialize rate limiter with settings
     global rate_limiter
@@ -187,7 +183,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 vespa_client,
                 content_normalizer,
                 embedding_generator,
-                document_mapper,
             )
             success = await pubsub_consumer.start()
             if success:
@@ -285,7 +280,6 @@ async def health_check() -> Dict[str, Any]:
     core_components = {
         "content_normalizer": content_normalizer,
         "embedding_generator": embedding_generator,
-        "document_mapper": document_mapper,
     }
 
     for name, component in core_components.items():
@@ -326,7 +320,6 @@ async def ingest_document(
             vespa_client,
             content_normalizer,
             embedding_generator,
-            document_mapper,
         )
 
         # Run post-processing synchronously since we removed background tasks
