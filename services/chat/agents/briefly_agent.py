@@ -100,7 +100,7 @@ class BrieflyAgent(FunctionAgent):
 
         # Generate fresh date/time each time for current context
         now_utc = datetime.utcnow()
-        user_tz = getattr(self, '_user_timezone', None)
+        user_tz = getattr(self, "_user_timezone", None)
         if user_tz:
             try:
                 tz = pytz.timezone(user_tz)
@@ -130,12 +130,12 @@ class BrieflyAgent(FunctionAgent):
         """Get thread-specific draft context for enhanced awareness."""
         try:
             # Create DraftTools instance to access draft data
-            user_id = getattr(self, '_user_id', None)
-            thread_id = getattr(self, '_thread_id', None)
-            
+            user_id = getattr(self, "_user_id", None)
+            thread_id = getattr(self, "_thread_id", None)
+
             if not user_id or not thread_id:
                 return ""
-                
+
             draft_tools = DraftTools(user_id)
 
             # Get existing drafts for this thread
@@ -289,7 +289,7 @@ class BrieflyAgent(FunctionAgent):
     @property
     def thread_id(self) -> str:
         """Get the thread ID for API compatibility."""
-        return getattr(self, '_thread_id', None)
+        return getattr(self, "_thread_id", None)
 
     def get_current_system_prompt(self) -> str:
         """Get the current system prompt with fresh context."""
