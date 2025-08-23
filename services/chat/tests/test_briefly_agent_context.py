@@ -119,8 +119,9 @@ class TestBrieflyAgentContext:
                 # Test that conversation history is loaded
                 # The agent should have loaded the conversation history during achat
                 # We can verify this by checking if the history manager was called
+                # Note: limit=101 is used when exclude_latest=True to account for excluding the latest message
                 mock_history_manager.get_thread_history.assert_called_once_with(
-                    123, limit=100
+                    123, limit=101
                 )
 
     @pytest.mark.asyncio
@@ -355,8 +356,9 @@ class TestBrieflyAgentContext:
                 mock_run.assert_called_once()
 
                 # Verify that the rich history was loaded during the achat call
+                # Note: limit=101 is used when exclude_latest=True to account for excluding the latest message
                 mock_history_manager.get_thread_history.assert_called_once_with(
-                    123, limit=100
+                    123, limit=101
                 )
 
 
