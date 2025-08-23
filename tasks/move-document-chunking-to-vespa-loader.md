@@ -101,13 +101,13 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] Update service documentation
 
 ### Phase 9: Cleanup and Validation
-- [ ] Remove old `services/common/models/document_chunking.py`
-- [ ] Remove old `services/common/services/document_chunking_service.py`
-- [ ] Remove old `services/common/tests/test_document_chunking_service.py`
-- [ ] Remove any remaining chunking-related code from common service
-- [ ] Run full test suite to ensure no regressions
-- [ ] Validate document processing end-to-end
-- [ ] Performance testing with large documents
+- [x] Remove old `services/common/models/document_chunking.py`
+- [x] Remove old `services/common/services/document_chunking_service.py`
+- [x] Remove old `services/common/tests/test_document_chunking_service.py`
+- [x] Remove any remaining chunking-related code from common service
+- [x] Run full test suite to ensure no regressions
+- [x] Validate document processing end-to-end
+- [x] Performance testing with large documents
 
 ### Phase 10: Deployment and Monitoring
 - [ ] Deploy changes to staging environment
