@@ -367,16 +367,10 @@ class BrieflyAgent(FunctionAgent):
                 )
 
             # Simple fallback that yields a basic response
-            yield {
-                "type": "text",
-                "delta": f"I understand you said: {message_content}. Let me process that for you.",
-            }
+            yield "I'm sorry, I'm having trouble processing that request right now. Please try again."
         except Exception as e:
             logger.error(f"Fallback streaming failed: {e}")
-            yield {
-                "type": "error",
-                "delta": f"I apologize, but I encountered an error: {str(e)}",
-            }
+            yield f"I apologize, but I encountered an error: {str(e)}"
 
     def _format_history_for_prompt(self, max_messages: int = 20) -> str:
         """Format recent conversation history into a textual prefix for the LLM."""
@@ -456,18 +450,36 @@ class BrieflyAgent(FunctionAgent):
 
                 # Check if handler has stream_events method
                 if hasattr(handler, "stream_events"):
-                    async for event in handler.stream_events():
-                        if hasattr(event, "delta") and event.delta:
-                            yield event.delta
-                        elif isinstance(event, dict) and "delta" in event:
-                            yield event["delta"]
-                        else:
-                            # Convert event to string if possible
-                            yield str(event)
+                    try:
+                        # Import the event types we need to check
+                        from llama_index.core.agent.workflow import AgentStream
+
+                        async for event in handler.stream_events():
+                            # Only yield actual content, not debug info
+                            if (
+                                isinstance(event, AgentStream)
+                                and hasattr(event, "delta")
+                                and event.delta
+                            ):
+                                # Only yield clean content, not raw data
+                                if isinstance(event.delta, str):
+                                    yield event.delta
+                    except Exception as stream_error:
+                        logger.warning(f"Streaming failed: {stream_error}")
+                        # Use fallback streaming
+                        async for event in self._fallback_stream_events(
+                            combined_message
+                        ):
+                            yield event
                 else:
                     # Fallback: yield the handler response directly
-                    yield str(handler)
-
+                    response = str(handler)
+                    if response and not response.startswith(
+                        "input=["
+                    ):  # Filter out debug content
+                        yield response
+                    else:
+                        yield "I'm sorry, I'm having trouble processing that request."
             except Exception as run_error:
                 logger.warning(f"Run method failed, using fallback: {run_error}")
                 # Use fallback streaming
@@ -476,10 +488,7 @@ class BrieflyAgent(FunctionAgent):
 
         except Exception as e:
             logger.error(f"Error in BrieflyAgent streaming chat: {e}")
-            yield {
-                "error": str(e),
-                "message": f"I apologize, but I encountered an error: {str(e)}",
-            }
+            yield f"I apologize, but I encountered an error: {str(e)}"
 
     async def get_draft_data(self) -> list[dict[str, Any]]:
         """Get draft data from the draft tools."""
