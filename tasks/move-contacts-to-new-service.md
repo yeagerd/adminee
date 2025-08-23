@@ -127,11 +127,11 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Add `API_CONTACTS_SHIPMENTS_KEY` to `.example.env`
 
 ### Phase 9: Update Database Configuration
-- [ ] Add `briefly_contacts` database creation in PostgreSQL setup
-- [ ] Create `briefly_contacts_service` user with proper permissions
-- [ ] Update database URL patterns for Contacts Service
-- [ ] Create initial database migration for contact tables
-- [ ] Add database health checks to Contacts Service
+- [x] Add `briefly_contacts` database creation in PostgreSQL setup
+- [x] Create `briefly_contacts_service` user with proper permissions
+- [x] Update database URL patterns for Contacts Service
+- [x] Create initial database migration for contact tables
+- [x] Add database health checks to Contacts Service
 
 ### Phase 10: Update Service Dependencies
 - [ ] Update User Service to remove contact discovery dependencies
