@@ -5,17 +5,19 @@ This module contains utility functions for testing idempotency functionality
 without cluttering the main IdempotencyService class.
 
 Example Usage:
-    from services.common.tests.helpers.idempotency_test_helpers import simulate_event_processing
-    
+    from services.common.tests.helpers.idempotency_test_helpers import (
+        simulate_event_processing,
+    )
+
     # Test idempotency configuration for email creation
     result = simulate_event_processing(
         event_type="email",
-        operation="create", 
+        operation="create",
         user_id="user123",
         provider="gmail",
         event_id="email123"
     )
-    
+
     assert result["simulation"] is True
     assert result["strategy_info"]["strategy"] == "immutable"
     assert result["key_valid"] is True
@@ -44,10 +46,10 @@ def simulate_event_processing(
 ) -> Dict[str, Any]:
     """
     Simulate event processing to test idempotency configuration.
-    
+
     This function is moved from IdempotencyService to avoid cluttering
     the production service with test-only functionality.
-    
+
     Args:
         event_type: Type of event being processed
         operation: Operation being performed (create, update, delete)
@@ -58,7 +60,7 @@ def simulate_event_processing(
         key_generator: Optional key generator instance
         key_validator: Optional key validator instance
         strategy: Optional strategy instance
-        
+
     Returns:
         Dictionary containing simulation results and configuration info
     """
@@ -66,7 +68,7 @@ def simulate_event_processing(
     key_gen = key_generator or IdempotencyKeyGenerator()
     key_val = key_validator or IdempotencyKeyValidator()
     strat = strategy or IdempotencyStrategy()
-    
+
     # Generate a test key
     test_key = key_gen.generate_generic_key(
         event_type=event_type,
@@ -81,9 +83,7 @@ def simulate_event_processing(
     key_valid = key_val.validate_key_format(test_key)
 
     # Get strategy info
-    strategy_info = validate_idempotency_config(
-        event_type, operation, strat
-    )
+    strategy_info = validate_idempotency_config(event_type, operation, strat)
 
     return {
         "simulation": True,
@@ -101,27 +101,25 @@ def simulate_event_processing(
 
 
 def validate_idempotency_config(
-    event_type: str, 
-    operation: str, 
-    strategy: IdempotencyStrategy
+    event_type: str, operation: str, strategy: IdempotencyStrategy
 ) -> Dict[str, Any]:
     """
     Validate idempotency configuration for a given event type and operation.
-    
+
     Args:
         event_type: Type of event being processed
         operation: Operation being performed
         strategy: Strategy instance to use for validation
-        
+
     Returns:
         Dictionary containing strategy validation results
     """
     # Get strategy info
     strategy_name = strategy.get_key_strategy(event_type, operation)
-    
+
     # Get component information
     components = strategy.get_key_components(event_type, operation)
-    
+
     return {
         "strategy": strategy_name,
         "components": components,
