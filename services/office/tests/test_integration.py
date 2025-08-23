@@ -833,11 +833,29 @@ class TestHTTPCallDetection(BaseOfficeServiceIntegrationTest):
                     "Real HTTP call detected! Client.send was called"
                 ),
             ),
-            # Patch requests
+            # Patch requests more comprehensively
             patch(
                 "requests.adapters.HTTPAdapter.send",
                 side_effect=AssertionError(
                     "Real HTTP call detected! requests HTTPAdapter.send was called"
+                ),
+            ),
+            patch(
+                "requests.Session.request",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! requests Session.request was called"
+                ),
+            ),
+            patch(
+                "requests.get",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! requests.get was called"
+                ),
+            ),
+            patch(
+                "requests.post",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! requests.post was called"
                 ),
             ),
             # Patch urllib
