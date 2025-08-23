@@ -18,7 +18,7 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.workflow import Context
 
 from services.chat.agents.llm_manager import get_llm_manager
-from services.chat.tools import DraftTools, GetTools, SearchTools, WebTools
+from services.chat.tools import DraftTools, GetTools, UserDataSearchTool, WebTools
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class BrieflyAgent(FunctionAgent):
         tool_catalog: str,
         llm_model: str = "gpt-5-nano",
         llm_provider: str = "openai",
-        search_tools: Optional[SearchTools] = None,
+        search_tools: Optional[UserDataSearchTool] = None,
         **llm_kwargs: Any,
     ) -> None:
         # Ensure we have max_tokens set to handle large tool outputs
@@ -154,7 +154,7 @@ class BrieflyAgent(FunctionAgent):
         self._system_prompt = system_prompt
 
         # Keep a reference to tools that manage external resources
-        self._search_tools: Optional[SearchTools] = search_tools
+        self._search_tools: Optional[UserDataSearchTool] = search_tools
         self._thread_id = str(thread_id)
         self._user_id = user_id
         self._vespa_endpoint = vespa_endpoint
@@ -294,10 +294,10 @@ class BrieflyAgent(FunctionAgent):
 
 def create_briefly_agent_tools(
     vespa_endpoint: str, user_id: str
-) -> Tuple[List[FunctionTool], str, SearchTools]:
+) -> Tuple[List[FunctionTool], str, UserDataSearchTool]:
     """Create and return tools, tool catalog string, and the SearchTools instance."""
     # Initialize pre-authenticated tools with user context
-    search_tools = SearchTools(vespa_endpoint, user_id)
+    search_tools = UserDataSearchTool(vespa_endpoint, user_id)
     web_tools = WebTools()
     get_tools = GetTools(user_id)
     draft_tools = DraftTools(user_id)
