@@ -135,7 +135,27 @@ create_topics() {
     sleep 2
     
     # Create required topics
-    local topics=("email-backfill" "calendar-updates" "contact-updates")
+    local topics=(
+        # Core data types
+        "emails"
+        "calendars" 
+        "contacts"
+        # Office document types
+        "word_documents"
+        "word_fragments"
+        "sheet_documents"
+        "sheet_fragments"
+        "presentation_documents"
+        "presentation_fragments"
+        "task_documents"
+        # Todo types
+        "todos"
+        # Internal tool types
+        "llm_chats"
+        "shipment_events"
+        "meeting_polls"
+        "bookings"
+    )
     
     for topic in "${topics[@]}"; do
         log_info "Creating topic: ${topic}"
@@ -159,9 +179,9 @@ create_subscriptions() {
     # Create router subscriptions
     log_info "Creating router subscriptions..."
     local router_subs=(
-        "email-router-subscription:email-backfill"
-        "calendar-router-subscription:calendar-updates"
-        "contact-router-subscription:contact-updates"
+        "email-router-subscription:emails"
+        "calendar-router-subscription:calendars"
+        "contact-router-subscription:contacts"
     )
     
     for sub_info in "${router_subs[@]}"; do
@@ -182,9 +202,9 @@ create_subscriptions() {
     # Create vespa-loader subscriptions
     log_info "Creating vespa-loader subscriptions..."
     local vespa_subs=(
-        "vespa-loader-email-backfill:email-backfill"
-        "vespa-loader-calendar-updates:calendar-updates"
-        "vespa-loader-contact-updates:contact-updates"
+        "vespa-loader-emails:emails"
+        "vespa-loader-calendars:calendars"
+        "vespa-loader-contacts:contacts"
     )
     
     for sub_info in "${vespa_subs[@]}"; do
