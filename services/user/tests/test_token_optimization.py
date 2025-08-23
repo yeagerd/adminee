@@ -7,7 +7,7 @@ redundant token requests and refresh operations.
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -165,6 +165,7 @@ class TestTokenOptimization(BaseUserManagementTest):
             "services.user.services.integration_service.get_async_session"
         ) as mock_session:
             mock_session_instance = AsyncMock()
+            mock_session_instance.add = MagicMock()  # Mock session.add as synchronous
             mock_session_instance.__aenter__ = AsyncMock(
                 return_value=mock_session_instance
             )
