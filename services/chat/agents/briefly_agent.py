@@ -91,18 +91,72 @@ class BrieflyAgent(FunctionAgent):
     """
 
     def _create_context_aware_prompt(self) -> str:
-        """Create a context-aware system prompt with current date and time information."""
+        """Create a context-aware system prompt with current date/time and thread-specific draft context."""
         from datetime import datetime
 
+        # Generate fresh date/time each time for current context
         current_date = datetime.now().strftime("%Y-%m-%d")
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Get thread-specific draft context
+        draft_context = self._get_thread_draft_context()
 
         base_prompt = (
             f"CURRENT DATE AND TIME: {current_datetime}\n"
             f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
         )
 
+        # Add draft context if available
+        if draft_context:
+            base_prompt += f"THREAD CONTEXT:\n{draft_context}\n\n"
+
         return base_prompt
+
+    def _get_thread_draft_context(self) -> str:
+        """Get thread-specific draft context for enhanced awareness."""
+        try:
+            # Create DraftTools instance to access draft data
+            from services.chat.tools import DraftTools
+
+            draft_tools = DraftTools(self._user_id)
+
+            # Get existing drafts for this thread
+            drafts = draft_tools.get_draft_data(self._thread_id)
+
+            if not drafts:
+                return ""
+
+            context_parts = []
+            for draft in drafts:
+                draft_type = draft.get("type", "unknown")
+                if draft_type == "email":
+                    subject = draft.get("subject", "")
+                    to = draft.get("to", "")
+                    if subject or to:
+                        context_parts.append(
+                            f"- Email draft: {f'To: {to}' if to else ''}{f' Subject: {subject}' if subject else ''}"
+                        )
+                elif draft_type == "calendar_event":
+                    title = draft.get("title", "")
+                    start_time = draft.get("start_time", "")
+                    if title or start_time:
+                        context_parts.append(
+                            f"- Calendar event draft: {f'Title: {title}' if title else ''}{f' Start: {start_time}' if start_time else ''}"
+                        )
+                elif draft_type == "calendar_edit":
+                    change_type = draft.get("change_type", "")
+                    if change_type:
+                        context_parts.append(f"- Calendar edit draft: {change_type}")
+
+            if context_parts:
+                return "Existing drafts in this conversation:\n" + "\n".join(
+                    context_parts
+                )
+
+            return ""
+        except Exception as e:
+            logger.debug(f"Could not retrieve draft context: {e}")
+            return ""
 
     def __init__(
         self,
@@ -124,11 +178,8 @@ class BrieflyAgent(FunctionAgent):
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Get context-aware prompt with current date/time
-        context_prompt = self._create_context_aware_prompt()
-
-        system_prompt = (
-            f"{context_prompt}"
+        # Create base system prompt without dynamic context (will be added dynamically)
+        base_system_prompt = (
             "You are Briefly, a single-agent assistant with comprehensive tools.\n\n"
             "CORE TOOLS (always available):\n"
             "- user_data_search: INTELLIGENT search across all your personal data (emails, calendar, contacts, files) - USE THIS FOR ALL SEARCHING EXISTING DATA\n"
@@ -162,14 +213,14 @@ class BrieflyAgent(FunctionAgent):
                 "Single-agent Briefly assistant using organized tools: Vespa-backed search, "
                 "web search, service APIs, and draft management - all with pre-authenticated user context."
             ),
-            system_prompt=system_prompt,
+            system_prompt=base_system_prompt,
             llm=llm,
             tools=tools,  # type: ignore[arg-type]
             can_handoff_to=[],  # No handoffs in single-agent design
         )
 
         # Store additional components we need
-        self._system_prompt = system_prompt
+        self._base_system_prompt = base_system_prompt
 
         # Keep a reference to tools that manage external resources
         self._search_tools: Optional[SearchTools] = search_tools
@@ -181,9 +232,8 @@ class BrieflyAgent(FunctionAgent):
         # Initialize simple state management instead of problematic Context
         self._state: dict[str, Any] = {}
 
-        # Store tools and system prompt for the worker functions
+        # Store tools and base system prompt for the worker functions
         self._tools = tools
-        self._system_prompt = system_prompt
 
         logger.debug(
             f"BrieflyAgent initialized with thread_id={self._thread_id}, user_id={self._user_id}"
@@ -202,6 +252,10 @@ class BrieflyAgent(FunctionAgent):
     def thread_id(self) -> str:
         """Get the thread ID for API compatibility."""
         return self._thread_id
+
+    def get_current_system_prompt(self) -> str:
+        """Get the current system prompt with fresh context."""
+        return self._create_context_aware_prompt() + self._base_system_prompt
 
     async def _load_conversation_history(self) -> None:
         """Load conversation history from database into agent context."""
