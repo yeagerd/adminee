@@ -80,11 +80,11 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Update relevance score calculation for database-stored contacts
 
 ### Phase 4: Move Contact Discovery Consumer
-- [ ] Move `ContactDiscoveryConsumer` to `services/contacts/services/contact_discovery_consumer.py`
-- [ ] Update consumer to work with new service structure
-- [ ] Maintain PubSub topic subscriptions (emails, calendars, documents, todos)
-- [ ] Update event processing to use new contact discovery service
-- [ ] Ensure proper error handling and logging
+- [x] Move `ContactDiscoveryConsumer` to `services/contacts/services/contact_discovery_consumer.py`
+- [x] Update consumer to work with new service structure
+- [x] Maintain PubSub topic subscriptions (emails, calendars, documents, todos)
+- [x] Update event processing to use new contact discovery service
+- [x] Ensure proper error handling and logging
 
 ### Phase 5: Create Contact API Endpoints
 - [ ] Create `services/contacts/routers/contacts.py` with RESTful endpoints
