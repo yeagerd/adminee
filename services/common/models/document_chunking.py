@@ -2,7 +2,7 @@
 Document chunking data models for managing large documents and fragments.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -86,10 +86,10 @@ class DocumentChunk(BaseModel):
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When this chunk was created"
+        default_factory=lambda: datetime.now(timezone.utc), description="When this chunk was created"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When this chunk was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="When this chunk was last updated"
     )
 
     class Config:
@@ -231,7 +231,7 @@ class ChunkingResult(BaseModel):
         ..., description="Rules applied during chunking"
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When chunking was completed"
+        default_factory=lambda: datetime.now(timezone.utc), description="When chunking was completed"
     )
 
     class Config:

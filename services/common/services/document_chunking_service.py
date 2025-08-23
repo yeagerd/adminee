@@ -5,7 +5,7 @@ Document chunking service for processing large documents into searchable fragmen
 import logging
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.common.models.document_chunking import (
@@ -80,7 +80,7 @@ class DocumentChunkingService:
                 memory_usage_mb=self._get_memory_usage() - start_memory,
                 chunking_strategy=rules.strategy,
                 chunking_rules=rules,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
 
             # Validate result
