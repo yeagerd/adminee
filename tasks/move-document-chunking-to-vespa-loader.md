@@ -64,12 +64,12 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] Remove old test file from common services
 
 ### Phase 4: Update Vespa Loader Service
-- [ ] Update `services/vespa_loader/document_factory.py` to populate `content_chunks` field
-- [ ] Integrate chunking service into document creation pipeline
-- [ ] Update `services/vespa_loader/ingest_service.py` to handle chunked documents
-- [ ] Ensure `services/vespa_loader/vespa_client.py` properly indexes chunked content
-- [ ] Update existing vespa_loader tests to work with new chunking functionality
-- [ ] Leverage existing `content_normalizer.py` and `embeddings.py` for chunk processing
+- [x] Update `services/vespa_loader/document_factory.py` to populate `content_chunks` field
+- [x] Integrate chunking service into document creation pipeline
+- [x] Update `services/vespa_loader/ingest_service.py` to handle chunked documents
+- [x] Ensure `services/vespa_loader/vespa_client.py` properly indexes chunked content
+- [x] Update existing vespa_loader tests to work with new chunking functionality
+- [x] Leverage existing `content_normalizer.py` and `embeddings.py` for chunk processing
 
 ### Phase 5: Simplify Pubsub Events
 - [ ] Remove `DocumentFragmentData` from `services/common/events/document_events.py`
