@@ -40,11 +40,11 @@ Move the `simulate_event_processing` method from `services/common/idempotency/id
 - [x] Add appropriate docstrings and type hints
 
 ### Phase 3: Update Test Helper Implementation
-- [ ] Extract the simulation logic from `IdempotencyService`
-- [ ] Adapt the method to work as a standalone function or helper method
-- [ ] Ensure all dependencies are properly imported
-- [ ] Add any missing imports that were previously available in the service
-- [ ] Test the helper function independently
+- [x] Extract the simulation logic from `IdempotencyService`
+- [x] Adapt the method to work as a standalone function or helper method
+- [x] Ensure all dependencies are properly imported
+- [x] Add any missing imports that were previously available in the service
+- [x] Test the helper function independently
 
 ### Phase 4: Update Test Files
 - [ ] Update `services/common/tests/test_idempotency.py` to use new helper
