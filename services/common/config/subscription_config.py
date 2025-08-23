@@ -109,6 +109,26 @@ class SubscriptionConfig:
                 "batch_size": 50,
                 "ack_deadline_seconds": 120,
             },
+            "llm_chats": {
+                "subscription_name": "vespa-loader-llm-chats",
+                "batch_size": 25,
+                "ack_deadline_seconds": 120,
+            },
+            "shipment_events": {
+                "subscription_name": "vespa-loader-shipment-events",
+                "batch_size": 30,
+                "ack_deadline_seconds": 120,
+            },
+            "meeting_polls": {
+                "subscription_name": "vespa-loader-meeting-polls",
+                "batch_size": 20,
+                "ack_deadline_seconds": 120,
+            },
+            "bookings": {
+                "subscription_name": "vespa-loader-bookings",
+                "batch_size": 40,
+                "ack_deadline_seconds": 120,
+            },
         },
         "contact_discovery": {
             "emails": {

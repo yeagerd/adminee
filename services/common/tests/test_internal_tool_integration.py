@@ -28,7 +28,7 @@ from services.common.events.internal_tool_events import (
     ShipmentEvent,
     ShipmentEventData,
 )
-from services.vespa_loader.pubsub_consumer import VespaDocumentFactory
+from services.vespa_loader.document_factory import VespaDocumentFactory
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)
@@ -404,8 +404,8 @@ class TestInternalToolEventIntegration:
         # Test with missing required fields
         with pytest.raises(ValidationError):
             LLMChatEvent(
-                metadata=self._create_test_metadata(),
-                user_id="",  # Empty user_id should fail
+                # metadata=self._create_test_metadata(),  # Missing required metadata
+                user_id="test_user",
                 message=LLMChatMessageData(
                     id="test",
                     chat_id="test",
@@ -422,10 +422,18 @@ class TestInternalToolEventIntegration:
                 session_id="test",
             )
 
-        # Test with invalid operation
+        # Test with missing message data
         with pytest.raises(ValidationError):
-            event = self._create_test_llm_chat_event()
-            event.operation = "invalid_operation"  # This should fail validation
+            LLMChatEvent(
+                metadata=self._create_test_metadata(),
+                user_id="test_user",
+                # message=...,  # Missing required message
+                operation="create",
+                last_updated=datetime.now(timezone.utc),
+                sync_timestamp=datetime.now(timezone.utc),
+                chat_id="test",
+                session_id="test",
+            )
 
     def test_internal_tool_event_batch_processing(self):
         """Test batch processing of internal tool events."""
@@ -511,6 +519,11 @@ class TestInternalToolEventIntegration:
 class TestInternalToolEventEndToEnd:
     """Test end-to-end flow of internal tool events."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.test_helper = TestInternalToolEventIntegration()
+        self.test_helper.setup_method()
+
     @pytest.mark.asyncio
     async def test_llm_chat_event_end_to_end_flow(self):
         """Test complete LLM chat event flow from creation to processing."""
@@ -518,7 +531,7 @@ class TestInternalToolEventEndToEnd:
         # For now, we'll simulate the key components
 
         # 1. Event Creation
-        event = TestInternalToolEventIntegration()._create_test_llm_chat_event()
+        event = self.test_helper._create_test_llm_chat_event()
 
         # 2. Event Validation
         assert event.metadata.source_service == "chat-service"
@@ -559,7 +572,7 @@ class TestInternalToolEventEndToEnd:
     async def test_shipment_event_end_to_end_flow(self):
         """Test complete shipment event flow from creation to processing."""
         # Similar end-to-end test for shipment events
-        event = TestInternalToolEventIntegration()._create_test_shipment_event()
+        event = self.test_helper._create_test_shipment_event()
 
         # Validate event structure
         assert event.shipment_event.carrier == "FedEx"
@@ -585,7 +598,7 @@ class TestInternalToolEventEndToEnd:
     @pytest.mark.asyncio
     async def test_meeting_poll_event_end_to_end_flow(self):
         """Test complete meeting poll event flow from creation to processing."""
-        event = TestInternalToolEventIntegration()._create_test_meeting_poll_event()
+        event = self.test_helper._create_test_meeting_poll_event()
 
         # Validate event structure
         assert event.poll.poll_type == "single_choice"
@@ -611,7 +624,7 @@ class TestInternalToolEventEndToEnd:
     @pytest.mark.asyncio
     async def test_booking_event_end_to_end_flow(self):
         """Test complete booking event flow from creation to processing."""
-        event = TestInternalToolEventIntegration()._create_test_booking_event()
+        event = self.test_helper._create_test_booking_event()
 
         # Validate event structure
         assert event.booking.resource_type == "conference_room"
