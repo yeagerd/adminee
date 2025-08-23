@@ -17,8 +17,6 @@ from services.common.events.contact_events import (
 from services.common.events.document_events import (
     DocumentData,
     DocumentEvent,
-    DocumentFragmentData,
-    DocumentFragmentEvent,
     PresentationDocumentData,
     SheetDocumentData,
     WordDocumentData,
@@ -60,8 +58,6 @@ __all__ = [
     # Document data and events
     "DocumentData",
     "DocumentEvent",
-    "DocumentFragmentData",
-    "DocumentFragmentEvent",
     "WordDocumentData",
     "SheetDocumentData",
     "PresentationDocumentData",

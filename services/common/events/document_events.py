@@ -97,38 +97,4 @@ class DocumentEvent(BaseEvent):
             self.metadata.source_service = "office-service"
 
 
-class DocumentFragmentData(BaseModel):
-    """Document fragment data for chunked documents."""
 
-    id: str = Field(..., description="Unique fragment ID")
-    document_id: str = Field(..., description="Parent document ID")
-    content: str = Field(..., description="Fragment content")
-    fragment_type: str = Field(..., description="Fragment type (section, page, chunk)")
-    sequence_number: int = Field(..., description="Fragment sequence in document")
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Fragment metadata"
-    )
-
-
-class DocumentFragmentEvent(BaseEvent):
-    """Event for document fragment operations."""
-
-    user_id: str = Field(..., description="User ID for the fragment operation")
-    fragment: DocumentFragmentData = Field(..., description="Fragment data")
-    operation: str = Field(..., description="Operation type (create, update, delete)")
-    batch_id: Optional[str] = Field(
-        None, description="Batch identifier for batch operations"
-    )
-    last_updated: datetime = Field(
-        ..., description="When the fragment was last updated"
-    )
-    sync_timestamp: datetime = Field(
-        ..., description="When the data was last synced from provider"
-    )
-    document_id: str = Field(..., description="Parent document ID")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Set default source service if not provided."""
-        super().model_post_init(__context)
-        if not self.metadata.source_service:
-            self.metadata.source_service = "office-service"

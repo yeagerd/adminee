@@ -72,11 +72,11 @@ Move the document chunking functionality from `services/common/` into the `servi
 - [x] Leverage existing `content_normalizer.py` and `embeddings.py` for chunk processing
 
 ### Phase 5: Simplify Pubsub Events
-- [ ] Remove `DocumentFragmentData` from `services/common/events/document_events.py`
-- [ ] Remove `DocumentFragmentEvent` from `services/common/events/document_events.py`
-- [ ] Update `DocumentData` to handle full document content
-- [ ] Remove chunking-related fields from document events
-- [ ] Update `services/common/events/__init__.py` to remove fragment exports
+- [x] Remove `DocumentFragmentData` from `services/common/events/document_events.py`
+- [x] Remove `DocumentFragmentEvent` from `services/common/events/document_events.py`
+- [x] Update `DocumentData` to handle full document content
+- [x] Remove chunking-related fields from document events
+- [x] Update `services/common/events/__init__.py` to remove fragment exports
 - [ ] Update `scripts/pubsub_manager.sh' to remove fragments
 
 ### Phase 6: Implement Redis Storage Strategy
