@@ -110,7 +110,6 @@ class BrieflyAgent(FunctionAgent):
         # Add draft context if available
         if draft_context:
             base_prompt += f"THREAD CONTEXT:\n{draft_context}\n\n"
-
         return base_prompt
 
     def _get_thread_draft_context(self) -> str:
@@ -314,20 +313,64 @@ class BrieflyAgent(FunctionAgent):
                     }
                 )
 
-            # Store in context state
-            if self._state:
-                state = self._state.get("state", {})
-                if not isinstance(state, dict):
-                    state = {}
-                state["conversation_history"] = chat_history
-                self._state["state"] = state
+            # Store in context state (ensure state dict exists even if initially empty)
+            state = self._state.get("state", {})
+            if not isinstance(state, dict):
+                state = {}
+            state["conversation_history"] = chat_history
+            self._state["state"] = state
 
-                logger.debug(
-                    f"Loaded {len(chat_history)} conversation messages into context"
+            # Logging to help diagnose history loading behavior
+            if chat_history:
+                logger.info(
+                    f"Loaded {len(chat_history)} conversation messages for thread {self._thread_id}"
+                )
+                try:
+                    logger.debug(
+                        "First message: role=%s, content=%s",
+                        chat_history[0]["role"],
+                        str(chat_history[0]["content"])[:200],
+                    )
+                    logger.debug(
+                        "Last message: role=%s, content=%s",
+                        chat_history[-1]["role"],
+                        str(chat_history[-1]["content"])[:200],
+                    )
+                except Exception:
+                    # Never let logging break execution
+                    pass
+            else:
+                logger.info(
+                    f"No prior conversation history found for thread {self._thread_id}"
                 )
 
         except Exception as e:
             logger.error(f"Failed to load conversation history: {e}")
+
+    def _format_history_for_prompt(self, max_messages: int = 20) -> str:
+        """Format recent conversation history into a textual prefix for the LLM."""
+        try:
+            state = (
+                self._state.get("state", {}) if isinstance(self._state, dict) else {}
+            )
+            history = state.get("conversation_history", [])
+            if not isinstance(history, list) or not history:
+                logger.info(
+                    f"No conversation history found for thread {self._thread_id}"
+                )
+                return ""
+
+            # Take last N messages for brevity
+            recent_history = history[-max_messages:]
+            lines: List[str] = ["Conversation so far (most recent last):"]
+            for entry in recent_history:
+                role = str(entry.get("role", "user")).capitalize()
+                content = str(entry.get("content", ""))
+                lines.append(f"{role}: {content}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.error(f"Error formatting history for prompt: {e}")
+            return ""
 
     async def achat(self, message: str) -> str:
         """Async chat method for compatibility with API usage."""
@@ -357,10 +400,28 @@ class BrieflyAgent(FunctionAgent):
             await self._load_conversation_history()
 
             # Use the FunctionAgent's run method with streaming following the correct pattern
-            logger.info(f"BrieflyAgent: Starting streaming chat for message: {message}")
+            try:
+                history_len = len(
+                    (self._state.get("state", {}) or {}).get("conversation_history", [])
+                )
+            except Exception:
+                history_len = 0
+            logger.info(
+                f"BrieflyAgent: Starting streaming chat (history_messages={history_len}) for message: {message}"
+            )
+
+            # Include formatted history as prefix to the user message
+            history_prefix = self._format_history_for_prompt()
+            combined_message = (
+                f"{history_prefix}\n\nUser: {message}" if history_prefix else message
+            )
+            logger.debug(
+                "Including history prefix: %s",
+                "yes" if bool(history_prefix) else "no",
+            )
 
             # FunctionAgent doesn't require Context - use simple run method
-            handler = self.run(user_msg=message)
+            handler = self.run(user_msg=combined_message)
 
             # Import the event types we need to check
             from llama_index.core.agent.workflow import AgentStream, ToolCallResult
