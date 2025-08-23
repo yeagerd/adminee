@@ -1105,17 +1105,51 @@ class VespaBackfillDemo:
                 folders=self.folders,
             ):
                 try:
-                    # Add trace_id to each email for distributed tracing
+                    # Convert email dictionaries to EmailData objects and add trace_id
+                    from services.common.events.email_events import EmailData
+                    from datetime import datetime, timezone
+                    
+                    email_data_list = []
                     for email in email_batch:
+                        # Add trace_id to metadata
                         if "metadata" not in email:
                             email["metadata"] = {}
                         email["metadata"]["trace_id"] = self.trace_id
                         email["metadata"]["backfill_operation"] = "vespa_backfill_demo"
+                        
+                        # Convert to EmailData
+                        try:
+                            email_data = EmailData(
+                                id=email.get("id", ""),
+                                thread_id=email.get("thread_id", ""),
+                                subject=email.get("subject", "No Subject"),
+                                body=email.get("body", ""),
+                                from_address=email.get("from", ""),
+                                to_addresses=email.get("to", []),
+                                cc_addresses=email.get("cc", []),
+                                bcc_addresses=email.get("bcc", []),
+                                received_date=email.get("created_at") or datetime.now(timezone.utc),
+                                sent_date=email.get("updated_at"),
+                                labels=email.get("labels", []),
+                                is_read=email.get("is_read", True),
+                                is_starred=email.get("is_starred", False),
+                                has_attachments=email.get("has_attachments", False),
+                                provider=email.get("provider", "unknown"),
+                                provider_message_id=email.get("id", ""),
+                                size_bytes=email.get("size_bytes"),
+                                mime_type=email.get("mime_type"),
+                                headers=email.get("headers", {}),
+                            )
+                            email_data_list.append(email_data)
+                        except Exception as e:
+                            logger.warning(f"Failed to convert email {email.get('id', 'unknown')} to EmailData: {e}")
+                            continue
 
                     # Publish batch to Pub/Sub
-                    message_ids = await self.pubsub_publisher.publish_batch_emails(
-                        email_batch
-                    )
+                    if email_data_list:
+                        message_ids = await self.pubsub_publisher.publish_batch_emails(
+                            email_data_list
+                        )
                     total_published += len(message_ids)
                     logger.debug(
                         f"Published batch of {len(email_batch)} emails for user {user_id}"
