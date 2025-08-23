@@ -111,7 +111,7 @@ class GetTools:
             UserDataSearchTool,
             VespaSearchTool,
         )
-        
+
         return {
             "vespa_search": VespaSearchTool(self.vespa_endpoint, self.user_id),
             "user_data_search": UserDataSearchTool(self.vespa_endpoint, self.user_id),
@@ -120,10 +120,10 @@ class GetTools:
 
     async def cleanup(self) -> None:
         """Clean up all search tool resources."""
-        if hasattr(self, '_search_tools') and self._search_tools:
+        if hasattr(self, "_search_tools") and self._search_tools:
             for tool_name, tool_instance in self._search_tools.items():
                 try:
-                    if hasattr(tool_instance, 'cleanup'):
+                    if hasattr(tool_instance, "cleanup"):
                         await tool_instance.cleanup()
                 except Exception as e:
                     logger.warning(f"Failed to cleanup {tool_name}: {e}")
@@ -1098,7 +1098,7 @@ class GetTools:
         """Wrapper method for Vespa search tool execution."""
         try:
             tool = self._search_tools["vespa_search"]
-            
+
             # Use sync execution with proper async handling
             return self._execute_async_tool_method(
                 tool.search, query, max_results, ranking
@@ -1118,7 +1118,7 @@ class GetTools:
         """Wrapper method for user data search tool execution."""
         try:
             tool = self._search_tools["user_data_search"]
-            
+
             # Use sync execution with proper async handling
             return self._execute_async_tool_method(
                 tool.search_all_data, query, max_results
@@ -1138,11 +1138,9 @@ class GetTools:
         """Wrapper method for semantic search tool execution."""
         try:
             tool = self._search_tools["semantic_search"]
-            
+
             # Use sync execution with proper async handling
-            return self._execute_async_tool_method(
-                tool.search, query, max_results
-            )
+            return self._execute_async_tool_method(tool.search, query, max_results)
 
         except Exception as e:
             return {
@@ -1152,27 +1150,26 @@ class GetTools:
                 "results": {},
             }
 
-    def _execute_async_tool_method(self, async_method: Callable[..., Any], *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    def _execute_async_tool_method(
+        self, async_method: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
         """Execute an async tool method safely without creating nested event loops."""
         try:
             import asyncio
             import concurrent.futures
-            
+
             # Always use ThreadPoolExecutor to avoid event loop conflicts
             # This ensures clean isolation and prevents resource sharing issues
             def run_in_thread() -> Dict[str, Any]:
                 return asyncio.run(async_method(*args, **kwargs))
-                
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(run_in_thread)
                 return future.result()
-                
+
         except Exception as e:
             logger.error(f"Failed to execute async tool method: {e}")
-            return {
-                "status": "error", 
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
 
 # Note: Legacy get_* functions have been moved to DataTools class
