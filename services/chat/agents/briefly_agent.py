@@ -278,9 +278,11 @@ class BrieflyAgent(FunctionAgent):
         except Exception as e:
             logger.warning(f"Parent run method failed, using fallback: {e}")
             # Fallback: return a simple response object
-            return type('Response', (), {
-                'stream_events': lambda: self._fallback_stream_events(user_msg)
-            })()
+            return type(
+                "Response",
+                (),
+                {"stream_events": lambda: self._fallback_stream_events(user_msg)},
+            )()
 
     async def _load_conversation_history(self) -> None:
         """Load conversation history from database into agent context."""
@@ -346,13 +348,13 @@ class BrieflyAgent(FunctionAgent):
             # Simple fallback that yields a basic response
             yield {
                 "type": "text",
-                "delta": f"I understand you said: {user_msg}. Let me process that for you."
+                "delta": f"I understand you said: {user_msg}. Let me process that for you.",
             }
         except Exception as e:
             logger.error(f"Fallback streaming failed: {e}")
             yield {
                 "type": "error",
-                "delta": f"I apologize, but I encountered an error: {str(e)}"
+                "delta": f"I apologize, but I encountered an error: {str(e)}",
             }
 
     def _format_history_for_prompt(self, max_messages: int = 20) -> str:
@@ -430,21 +432,21 @@ class BrieflyAgent(FunctionAgent):
             # Try to use the FunctionAgent's run method, but with fallback
             try:
                 handler = self.run(user_msg=combined_message)
-                
+
                 # Check if handler has stream_events method
-                if hasattr(handler, 'stream_events'):
+                if hasattr(handler, "stream_events"):
                     async for event in handler.stream_events():
-                        if hasattr(event, 'delta') and event.delta:
+                        if hasattr(event, "delta") and event.delta:
                             yield event.delta
-                        elif isinstance(event, dict) and 'delta' in event:
-                            yield event['delta']
+                        elif isinstance(event, dict) and "delta" in event:
+                            yield event["delta"]
                         else:
                             # Convert event to string if possible
                             yield str(event)
                 else:
                     # Fallback: yield the handler response directly
                     yield str(handler)
-                    
+
             except Exception as run_error:
                 logger.warning(f"Run method failed, using fallback: {run_error}")
                 # Use fallback streaming
