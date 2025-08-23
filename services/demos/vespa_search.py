@@ -63,7 +63,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from services.chat.agents.llm_tools import (
+from services.chat.tools.search_tools import (
     SemanticSearchTool,
     UserDataSearchTool,
     VespaSearchTool,
@@ -353,7 +353,7 @@ class VespaSearchDemo:
                     results = await self.vespa_search.search(
                         query=query,
                         max_results=10,
-                        ranking_profile=scenario["ranking_profile"],
+                        ranking=scenario["ranking_profile"],
                     )
                 else:
                     results = {

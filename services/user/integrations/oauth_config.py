@@ -646,9 +646,11 @@ class OAuthConfig:
                 headers["X-Request-Id"] = request_id
 
             async with httpx.AsyncClient() as client:
+                # Manually encode data to prevent httpx deprecation warning with respx
+                encoded_params = urllib.parse.urlencode(token_params).encode("utf-8")
                 response = await client.post(
                     provider_config.token_url,
-                    data=token_params,
+                    content=encoded_params,
                     headers=headers,
                     timeout=30.0,
                 )
@@ -711,9 +713,11 @@ class OAuthConfig:
                 headers["X-Request-Id"] = request_id
 
             async with httpx.AsyncClient() as client:
+                # Manually encode data to prevent httpx deprecation warning with respx
+                encoded_params = urllib.parse.urlencode(refresh_params).encode("utf-8")
                 response = await client.post(
                     provider_config.token_url,
-                    data=refresh_params,
+                    content=encoded_params,
                     headers=headers,
                     timeout=30.0,
                 )
@@ -821,9 +825,11 @@ class OAuthConfig:
                 headers["X-Request-Id"] = request_id
 
             async with httpx.AsyncClient() as client:
+                # Manually encode data to prevent httpx deprecation warning with respx
+                encoded_params = urllib.parse.urlencode(revoke_params).encode("utf-8")
                 response = await client.post(
                     provider_config.revoke_url,
-                    data=revoke_params,
+                    content=encoded_params,
                     headers=headers,
                     timeout=30.0,
                 )

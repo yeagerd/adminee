@@ -353,7 +353,7 @@ class TestEmailParserAPI:
         """Test handling of malformed JSON."""
         response = client.post(
             "/v1/shipments/events/from-email",
-            data="invalid json",
+            content="invalid json",
             headers={"Content-Type": "application/json"},
         )
 

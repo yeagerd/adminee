@@ -373,7 +373,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.get(
-                f"{self.base_url}/users/{clerk_id}/integrations",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations",
                 headers={"Authorization": self.auth_token},
             )
             self.print_response(response, "User integrations list")
@@ -407,7 +407,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.post(
-                f"{self.base_url}/users/{clerk_id}/integrations/oauth/start",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations/oauth/start",
                 json={"provider": provider, "scopes": scopes},
                 headers={"Authorization": self.auth_token},
             )
@@ -453,7 +453,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.post(
-                f"{self.base_url}/users/{clerk_id}/integrations/oauth/callback?provider={provider}",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations/oauth/callback?provider={provider}",
                 json={"code": code, "state": state},
                 headers={"Authorization": self.auth_token},
             )
@@ -475,7 +475,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.get(
-                f"{self.base_url}/users/{clerk_id}/integrations/{provider}",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations/{provider}",
                 headers={"Authorization": self.auth_token},
             )
             self.print_response(response, f"{provider.title()} integration status")
@@ -501,7 +501,7 @@ class UserManagementDemo:
             # Add force parameter to the request if needed
             params = {"force": "true"} if force else {}
             response = await self.client.put(
-                f"{self.base_url}/users/{clerk_id}/integrations/{provider}/refresh",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations/{provider}/refresh",
                 params=params,
                 headers={"Authorization": self.auth_token},
             )
@@ -561,7 +561,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.delete(
-                f"{self.base_url}/users/{clerk_id}/integrations/{provider}",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations/{provider}",
                 headers={"Authorization": self.auth_token},
             )
             self.print_response(response, f"{provider.title()} integration disconnect")
@@ -579,7 +579,7 @@ class UserManagementDemo:
                 return None
 
             response = await self.client.get(
-                f"{self.base_url}/users/{clerk_id}/integrations",
+                f"{self.base_url}/v1/users/{clerk_id}/integrations",
                 headers={"Authorization": self.auth_token},
             )
 

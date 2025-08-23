@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 import httpx
 import requests
 
-from services.chat.agents.workflow_agent import WorkflowAgent
+from services.chat.agents.briefly_agent import create_briefly_agent
 from services.common.logging_config import get_logger
 
 # from services.demos.settings_demos import get_demo_settings # Removed to prevent import-time errors during testing
@@ -242,7 +242,7 @@ class UserServiceClient(ServiceClient):
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations/oauth/start",
                     json={
                         "provider": provider,
                         "scopes": scopes,
@@ -280,7 +280,7 @@ class UserServiceClient(ServiceClient):
                 scopes = ["read"]
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations/oauth/start",
                     json={
                         "provider": provider,
                         "scopes": scopes,
@@ -303,7 +303,7 @@ class UserServiceClient(ServiceClient):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/callback?provider={provider}",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations/oauth/callback?provider={provider}",
                     json={"code": code, "state": state},
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
@@ -329,7 +329,7 @@ class UserServiceClient(ServiceClient):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 # Try the public endpoint first (requires Bearer token)
                 response = await client.get(
-                    f"{self.base_url}/users/{self.user_id}/integrations",
+                    f"{self.base_url}/v1/users/{self.user_id}/integrations",
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
 
@@ -472,8 +472,11 @@ class ChatServiceClient(ServiceClient):
 
     def send_message(
         self, user_id: str, message: str, thread_id: Optional[str] = None
-    ) -> Optional[str]:
-        """Send a message to the chat service."""
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Send a message to the chat service.
+
+        Returns a tuple of (assistant_response_text, thread_id).
+        """
         try:
             response = requests.post(
                 f"{self.base_url}/completions",
@@ -490,16 +493,18 @@ class ChatServiceClient(ServiceClient):
             if response.status_code == 200:
                 # The chat API returns a ChatResponse with 'messages' (list of MessageResponse)
                 data = response.json()
+                thread = data.get("thread_id")
                 messages = data.get("messages", [])
                 if messages:
-                    return messages[-1].get("content")
+                    return messages[-1].get("content"), thread
+                return None, thread
             else:
                 logger.error(
                     f"Chat service returned status {response.status_code}: {response.text}"
                 )
         except Exception as e:
             logger.error(f"Chat service error: {e}")
-        return None
+        return None, None
 
     def delete_draft(self, user_id: str, thread_id: Optional[str] = None) -> bool:
         """Delete the current draft."""
@@ -520,8 +525,10 @@ class ChatServiceClient(ServiceClient):
         try:
             response = requests.get(
                 f"{self.base_url}/threads",
-                params={"user_id": user_id},
-                headers={"X-API-Key": get_settings().api_frontend_chat_key},
+                headers={
+                    "X-API-Key": get_settings().api_frontend_chat_key,
+                    "X-User-Id": user_id,
+                },
                 timeout=self.timeout,
             )
             if response.status_code == 200:
@@ -529,6 +536,28 @@ class ChatServiceClient(ServiceClient):
         except Exception as e:
             logger.error(f"Get threads error: {e}")
         return []
+
+    def getChatHistory(self, thread_id: str, user_id: str) -> Optional[Any]:
+        """Retrieve the chat history for a specific thread."""
+        try:
+            response = requests.get(
+                f"{self.base_url}/threads/{thread_id}/history",
+                headers={
+                    "X-API-Key": get_settings().api_frontend_chat_key,
+                    "X-User-Id": user_id,
+                },
+                timeout=self.timeout,
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(
+                    f"Failed to get chat history for thread {thread_id}: {response.status_code} {response.text}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"Error retrieving chat history for thread {thread_id}: {e}")
+            return None
 
 
 class OfficeServiceClient(ServiceClient):
@@ -597,7 +626,7 @@ class FullDemo:
 
         # Chat state
         self.current_thread_id: Optional[str] = None
-        self.agent: Optional[WorkflowAgent] = None
+        self.agent: Optional[Any] = None  # BrieflyAgent type
 
         # NextAuth client
         self.nextauth_client: Optional[NextAuthClient] = None
@@ -1011,17 +1040,17 @@ class FullDemo:
         finally:
             callback_server.stop()
 
-    async def create_agent(self) -> Optional[WorkflowAgent]:
-        """Create a workflow agent for local mode."""
+    async def create_agent(self) -> Optional[Any]:  # BrieflyAgent type
+        """Create a BrieflyAgent for local mode."""
         if not self.use_api:
             try:
-                agent = WorkflowAgent(
+                agent = create_briefly_agent(
                     thread_id=1,  # Default thread ID
                     user_id="demo_user",
+                    vespa_endpoint="http://localhost:8080",  # Default Vespa endpoint
                     llm_model="gpt-4",
                     llm_provider="openai",
                 )
-                await agent.build_agent()
                 return agent
             except Exception as e:
                 logger.error(f"Failed to create agent: {e}")
@@ -1052,10 +1081,10 @@ class FullDemo:
         user ID, and timezone settings.
         """
         print("=" * 80)
-        print("🚀 Welcome to the Enhanced Briefly Demo with NextAuth Testing!")
+        print("🚀 Welcome to the Enhanced Briefly Demo with Single-Agent Design!")
         print("=" * 80)
 
-        mode = "API" if self.use_api else "Local Multi-Agent"
+        mode = "API" if self.use_api else "Local Single-Agent"
         print(f"🔧 Mode: {mode}")
         print(f"👤 User: {self.user_id}")
         print(f"🌍 Timezone: {self.user_timezone}")
@@ -1167,11 +1196,16 @@ class FullDemo:
 
     def send_message_api(self, message: str) -> str:
         """Send a message using API."""
-        response = self.chat_client.send_message(
+        response_text, thread_id = self.chat_client.send_message(
             self.user_id, message, self.current_thread_id
         )
-        if response:
-            return response
+        # On first message, capture and print new thread id
+        if self.current_thread_id is None and thread_id:
+            self.current_thread_id = thread_id
+            print(f"🧵 Started new chat thread: {thread_id}")
+
+        if response_text:
+            return response_text
         else:
             return "❌ Failed to send message"
 
@@ -1301,14 +1335,51 @@ class FullDemo:
 
             result = "📝 Chat Threads:\n"
             for thread in threads:
-                result += f"  {thread['id']}: {thread.get('title', 'Untitled')}\n"
+                tid = thread.get("thread_id") or thread.get("id") or "unknown"
+                result += f"  {tid}: {thread.get('title', 'Untitled')}\n"
             return True, result
 
         elif command.startswith("switch "):
             thread_id = command[7:].strip()
             if thread_id:
+                # Switch to the thread first and print confirmation
                 self.current_thread_id = thread_id
-                return True, f"✅ Switched to thread {thread_id}"
+                print(f"✅ Switched to thread {thread_id}")
+
+                # Load and display conversation history for this thread
+                try:
+                    history = self.chat_client.getChatHistory(thread_id, self.user_id)
+                    if history:
+                        # Check if messages exist in the response
+                        messages = (
+                            history.get("messages", [])
+                            if isinstance(history, dict)
+                            else []
+                        )
+                        if messages:
+                            print(
+                                f"📚 Loading conversation history for thread {thread_id}:"
+                            )
+                            print("=" * 50)
+                            for msg in messages:
+                                sender = (
+                                    "👤 You"
+                                    if not msg.get("llm_generated", False)
+                                    else "🤖 Briefly"
+                                )
+                                print(f"{sender}: {msg.get('content', 'No content')}")
+                            print("=" * 50)
+                        else:
+                            print(f"📝 Thread {thread_id} has no conversation history")
+                    else:
+                        print(f"📝 Thread {thread_id} has no conversation history")
+                except Exception as e:
+                    print(f"⚠️  Could not load thread history: {e}")
+
+                return (
+                    True,
+                    "",
+                )  # Return empty string since we already printed the switch confirmation
             else:
                 return True, "❌ Please provide a thread ID"
 
@@ -1606,15 +1677,15 @@ async def main() -> None:
         if not use_api:
             demo.agent = await demo.create_agent()
 
-        # Show welcome
-        demo.show_welcome()
-
         # Handle single message mode
         if args.message:
             print(f"🤖 Sending message: {args.message}")
             response = await demo.send_message(args.message)
             print(f"🤖 Response: {response}")
             return
+
+        # Show welcome (only when not in single message mode)
+        demo.show_welcome()
 
         # Handle streaming mode
         if args.streaming:

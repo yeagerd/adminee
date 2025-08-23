@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
@@ -67,7 +67,7 @@ class AuditLogger:
             severity: Log level (INFO, WARNING, ERROR)
         """
         audit_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "event_type": event_type.value,
             "user_id": user_id,
             "resource_id": resource_id,

@@ -5,9 +5,7 @@ nox.options.sessions = [
     "lint",
     "typecheck",
     "test",
-    "test_fast",
     "test_cov",
-    "test_serial",
 ]
 # Create fresh isolated environments using uv backend
 nox.options.reuse_existing_virtualenvs = False
@@ -73,29 +71,7 @@ def test(session: nox.Session) -> None:
     session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
 
     # Run tests
-    session.run("python", "-m", "pytest", "services/", "-v", "-n", "auto")
-
-
-@nox.session(python="3.12")
-def test_fast(session: nox.Session) -> None:
-    """Run fast tests only."""
-    session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
-    )
-    
-    # Use UV to sync workspace packages
-    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
-
-    session.run(
-        "python", "-m", "pytest", "services/user/tests/", "-v", "-k", "not slow"
-    )
-    session.run(
-        "python", "-m", "pytest", "services/chat/tests/", "-v", "-k", "not slow"
-    )
-    session.run(
-        "python", "-m", "pytest", "services/office/tests/", "-v", "-k", "not slow"
-    )
-
+    session.run("python", "-m", "pytest", "services/", "-n", "auto", "-r", "fE", "--tb=short")
 
 @nox.session(python="3.12")
 def test_cov(session: nox.Session) -> None:
@@ -111,41 +87,11 @@ def test_cov(session: nox.Session) -> None:
         "python",
         "-m",
         "pytest",
-        "services/user/tests/",
-        "--cov=services/user",
-        "--cov-report=xml:coverage-user.xml",
-        "-v",
-    )
-    session.run(
-        "python",
-        "-m",
-        "pytest",
-        "services/chat/tests/",
-        "--cov=services/chat",
-        "--cov-report=xml:coverage-chat-service.xml",
-        "-v",
-    )
-    session.run(
-        "python",
-        "-m",
-        "pytest",
-        "services/office/tests/",
-        "--cov=services/office",
-        "--cov-report=xml:coverage-office-service.xml",
-        "-v",
+        "services",
+        "--cov=services",
+        "--cov-report=xml:coverage.xml",
+        "-r",
+        "fE",
+        "--tb=short",
     )
 
-
-@nox.session(python="3.12")
-def test_serial(session: nox.Session) -> None:
-    """Run tests serially (not in parallel)."""
-    session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
-    )
-    
-    # Use UV to sync workspace packages
-    session.run("uv", "sync", "--all-packages", "--all-extras", "--active", "--group", "dev", external=True)
-
-    session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
-    session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
-    session.run("python", "-m", "pytest", "services/office/tests/", "-v", "--tb=short")

@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from services.chat.agents.llm_tools import (
+from services.chat.tools.search_tools import (
     SemanticSearchTool,
     UserDataSearchTool,
     VespaSearchTool,
@@ -261,7 +261,7 @@ class VespaChatDemo:
             contextual_query = f"{original_query} {follow_up}"
 
             # Use semantic search for follow-up questions
-            semantic_results = await self.semantic_search.semantic_search(
+            semantic_results = await self.semantic_search.search(
                 contextual_query, max_results=10
             )
 
