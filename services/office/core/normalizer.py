@@ -8,7 +8,7 @@ Provides functions to normalize API responses from different providers
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from services.common.logging_config import get_logger
@@ -24,6 +24,24 @@ from services.office.schemas import (
 )
 
 logger = get_logger(__name__)
+
+
+def _is_html_content(content: str) -> bool:
+    """
+    Check if content appears to be HTML by looking for HTML tags.
+    
+    Args:
+        content: Content to check
+        
+    Returns:
+        True if content contains HTML tags, False otherwise
+    """
+    if not content:
+        return False
+    
+    # Look for HTML tags (simple but effective)
+    html_pattern = re.compile(r'<[^>]+>')
+    return bool(html_pattern.search(content))
 
 
 def _safe_log_raw_data(raw_data: Dict[str, Any], max_content_length: int = 100) -> str:
@@ -153,12 +171,10 @@ def normalize_google_email(
         body_html_unquoted = None
 
         if visible_content:
-            if body_html:
-                # If we have HTML content, populate body_html_unquoted
+            if body_html and _is_html_content(visible_content):
+                # If we have HTML content and visible_content is actually HTML, populate body_html_unquoted
                 body_html_unquoted = visible_content
                 # Also extract text version for body_text_unquoted
-                import re
-
                 body_text_unquoted = re.sub(r"<[^>]+>", "", visible_content)
                 body_text_unquoted = (
                     body_text_unquoted.replace("&nbsp;", " ")
@@ -168,7 +184,7 @@ def normalize_google_email(
                 )
                 body_text_unquoted = re.sub(r"\s+", " ", body_text_unquoted).strip()
             else:
-                # If we only have text content, populate body_text_unquoted
+                # If visible_content is text (either from text emails or HTML-to-text conversion), populate body_text_unquoted
                 body_text_unquoted = visible_content
 
         # Fallback to original content if splitting didn't work
@@ -316,8 +332,8 @@ def normalize_microsoft_email(
         body_html_unquoted = None
 
         if visible_content:
-            if body_html:
-                # If we have HTML content, populate body_html_unquoted
+            if body_html and _is_html_content(visible_content):
+                # If we have HTML content and visible_content is actually HTML, populate body_html_unquoted
                 body_html_unquoted = visible_content
                 # Also extract text version for body_text_unquoted
                 import re
@@ -331,7 +347,7 @@ def normalize_microsoft_email(
                 )
                 body_text_unquoted = re.sub(r"\s+", " ", body_text_unquoted).strip()
             else:
-                # If we only have text content, populate body_text_unquoted
+                # If visible_content is text (either from text emails or HTML-to-text conversion), populate body_text_unquoted
                 body_text_unquoted = visible_content
 
         # Fallback to original content if splitting didn't work
