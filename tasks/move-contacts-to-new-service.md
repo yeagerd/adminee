@@ -134,12 +134,12 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Add database health checks to Contacts Service
 
 ### Phase 10: Update Service Dependencies
-- [ ] Update User Service to remove contact discovery dependencies
-- [ ] Update Office Service to use Contacts Service API instead of internal logic
-- [ ] Update Chat Service to use Contacts Service for contact lookups
-- [ ] Update Meetings Service to use Contacts Service for attendee information
-- [ ] Update Shipments Service to use Contacts Service for contact data
-- [ ] Ensure all services use API key authentication for Contacts Service
+- [x] Update User Service to remove contact discovery dependencies
+- [x] Update Office Service to use Contacts Service API instead of internal logic
+- [x] Update Chat Service to use Contacts Service for contact lookups
+- [x] Update Meetings Service to use Contacts Service for attendee information
+- [x] Update Shipments Service to use Contacts Service for contact data
+- [x] Ensure all services use API key authentication for Contacts Service
 
 ### Phase 11: Update Frontend Integration
 - [ ] Update `frontend/api/clients/` to use Contacts Service endpoints
