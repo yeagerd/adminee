@@ -135,7 +135,9 @@ class TestSubscriptionConfig:
         assert "frontend_sse" in calendar_subscribers
 
         # Test word_documents topic
-        word_doc_subscribers = SubscriptionConfig.get_topic_subscribers("word_documents")
+        word_doc_subscribers = SubscriptionConfig.get_topic_subscribers(
+            "word_documents"
+        )
         assert "vespa_loader" in word_doc_subscribers
         assert "contact_discovery" in word_doc_subscribers
 
