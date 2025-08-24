@@ -153,9 +153,6 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
 ]
-filterwarnings = [
-    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited",
-]
 
 [dependency-groups]
 dev = [
