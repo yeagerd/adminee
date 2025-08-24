@@ -1,15 +1,24 @@
-/* 
- * Main types index for the frontend application.
- * This file exports commonly used types from various modules.
+/**
+ * Main Type Definitions Index
+ * 
+ * This file exports all the custom type definitions that bridge the gap
+ * between generated OpenAPI types and component requirements.
  */
 
-// Re-export types from API modules
-export type { EmailMessage } from './api/office/models/EmailMessage';
+// Email types
+export * from './email-types';
 
-// Define types that are not in the generated API files
-export type BulkActionType = 'mark_read' | 'mark_unread' | 'move_to_folder' | 'delete' | 'archive' | 'label';
+// Contact types
+export * from './contact-types';
 
-// Re-export types from other modules
-export * from './draft';
-export * from './navigation';
+// Package/Shipment types
 export * from './package-types';
+
+// Bulk action types
+export * from './bulk-action-types';
+
+// Re-export commonly used generated types
+export type { UserDraftRequest, UserDraftResponse } from './api/chat';
+export { Provider } from './api/office';
+export type { CalendarEvent, CalendarEventResponse } from './api/office';
+
