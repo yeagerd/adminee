@@ -7,7 +7,7 @@ for database persistence in the Contacts Service.
 
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]

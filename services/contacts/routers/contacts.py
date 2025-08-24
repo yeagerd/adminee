@@ -5,9 +5,9 @@ Provides RESTful API for contact CRUD operations, search, and statistics.
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Body
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.common.http_errors import NotFoundError, ValidationError

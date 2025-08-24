@@ -8,7 +8,7 @@ for database persistence.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, JSON
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 
@@ -49,9 +49,9 @@ class Contact(SQLModel, table=True):
 
     # Event tracking - stored as JSONB in PostgreSQL
     event_counts: Dict[str, EmailContactEventCount] = Field(
-        default_factory=dict, 
+        default_factory=dict,
         sa_column=Column(JSON),
-        description="Count of events by type for this contact"
+        description="Count of events by type for this contact",
     )
     total_event_count: int = Field(
         default=0, description="Total number of events across all types"
@@ -66,21 +66,19 @@ class Contact(SQLModel, table=True):
         default=0.0, description="Contact relevance score (0.0 to 1.0)"
     )
     relevance_factors: Dict[str, float] = Field(
-        default_factory=dict, 
+        default_factory=dict,
         sa_column=Column(JSON),
-        description="Factors contributing to relevance score"
+        description="Factors contributing to relevance score",
     )
 
     # Metadata
     source_services: List[str] = Field(
-        default_factory=list, 
+        default_factory=list,
         sa_column=Column(JSON),
-        description="Services where this contact was discovered"
+        description="Services where this contact was discovered",
     )
     tags: List[str] = Field(
-        default_factory=list, 
-        sa_column=Column(JSON),
-        description="Contact tags"
+        default_factory=list, sa_column=Column(JSON), description="Contact tags"
     )
     notes: Optional[str] = Field(
         default=None, description="Additional notes about the contact"

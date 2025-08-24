@@ -7,8 +7,8 @@ Provides CRUD operations, search, filtering, and statistics for contacts.
 import logging
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select, desc, or_, and_
 from sqlmodel import select as sqlmodel_select
 
 from services.common.http_errors import NotFoundError, ValidationError

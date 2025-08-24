@@ -4,7 +4,7 @@ Tests for the Contact model class.
 Tests contact model functionality, event handling, and relevance scoring.
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
 import pytest
@@ -186,7 +186,7 @@ class TestContactModel:
         # Now add an event and verify the score improves
         timestamp = datetime.now(timezone.utc)
         sample_contact.add_event("email", timestamp)
-        
+
         new_score = sample_contact.calculate_relevance_score()
         assert new_score > score  # Score should improve after recent activity
 
