@@ -87,6 +87,72 @@ async def list_contacts(
         raise HTTPException(status_code=500, detail="Failed to list contacts")
 
 
+@router.get("/search", response_model=List[EmailContactSearchResult])
+async def search_contacts(
+    user_id: str = Query(..., description="User ID to search contacts for"),
+    query: str = Query(..., description="Search query for name or email"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
+    tags: Optional[List[str]] = Query(None, description="Filter by tags"),
+    source_services: Optional[List[str]] = Query(
+        None, description="Filter by source services"
+    ),
+    session: AsyncSession = Depends(get_async_session),
+    contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
+) -> List[EmailContactSearchResult]:
+    """Search contacts for a user by query."""
+    try:
+        contacts = await contact_service.search_contacts(
+            session=session,
+            user_id=user_id,
+            query=query,
+            limit=limit,
+            tags=tags,
+            source_services=source_services,
+        )
+
+        # Convert to search results with relevance scores
+        results = []
+        for contact in contacts:
+            result = EmailContactSearchResult(
+                contact=contact,
+                relevance_score=contact.relevance_score,
+                match_highlights=[
+                    query
+                ],  # Simplified - could implement actual highlighting
+            )
+            results.append(result)
+
+        return results
+    except Exception as e:
+        logger.error(f"Error searching contacts for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to search contacts")
+
+
+@router.get("/stats", response_model=ContactStatsResponse)
+async def get_contact_stats(
+    user_id: str = Query(..., description="User ID to get stats for"),
+    session: AsyncSession = Depends(get_async_session),
+    contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
+) -> ContactStatsResponse:
+    """Get contact statistics for a user."""
+    try:
+        stats = await contact_service.get_contact_stats(
+            session=session, user_id=user_id
+        )
+
+        return ContactStatsResponse(
+            total_contacts=stats["total_contacts"],
+            total_events=stats["total_events"],
+            by_service=stats["by_service"],
+            success=True,
+        )
+    except Exception as e:
+        logger.error(f"Error getting contact stats for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get contact statistics")
+
+
 @router.get("/{contact_id}", response_model=ContactResponse)
 async def get_contact(
     contact_id: str = Path(..., description="Contact ID to retrieve"),
@@ -191,69 +257,3 @@ async def delete_contact(
     except Exception as e:
         logger.error(f"Error deleting contact {contact_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete contact")
-
-
-@router.get("/search", response_model=List[EmailContactSearchResult])
-async def search_contacts(
-    user_id: str = Query(..., description="User ID to search contacts for"),
-    query: str = Query(..., description="Search query for name or email"),
-    limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
-    tags: Optional[List[str]] = Query(None, description="Filter by tags"),
-    source_services: Optional[List[str]] = Query(
-        None, description="Filter by source services"
-    ),
-    session: AsyncSession = Depends(get_async_session),
-    contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(require_frontend_auth),
-) -> List[EmailContactSearchResult]:
-    """Search contacts for a user by query."""
-    try:
-        contacts = await contact_service.search_contacts(
-            session=session,
-            user_id=user_id,
-            query=query,
-            limit=limit,
-            tags=tags,
-            source_services=source_services,
-        )
-
-        # Convert to search results with relevance scores
-        results = []
-        for contact in contacts:
-            result = EmailContactSearchResult(
-                contact=contact,
-                relevance_score=contact.relevance_score,
-                match_highlights=[
-                    query
-                ],  # Simplified - could implement actual highlighting
-            )
-            results.append(result)
-
-        return results
-    except Exception as e:
-        logger.error(f"Error searching contacts for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to search contacts")
-
-
-@router.get("/stats", response_model=ContactStatsResponse)
-async def get_contact_stats(
-    user_id: str = Query(..., description="User ID to get stats for"),
-    session: AsyncSession = Depends(get_async_session),
-    contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(require_frontend_auth),
-) -> ContactStatsResponse:
-    """Get contact statistics for a user."""
-    try:
-        stats = await contact_service.get_contact_stats(
-            session=session, user_id=user_id
-        )
-
-        return ContactStatsResponse(
-            total_contacts=stats["total_contacts"],
-            total_events=stats["total_events"],
-            by_service=stats["by_service"],
-            success=True,
-        )
-    except Exception as e:
-        logger.error(f"Error getting contact stats for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get contact statistics")
