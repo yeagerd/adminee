@@ -719,14 +719,13 @@ Generate OpenAPI schemas for your service:
 Generate TypeScript types from OpenAPI schemas:
 
 ```bash
-cd frontend
-./scripts/generate-types.sh
+./scripts/generate-api-schema.sh
 ```
 
 **What this does:**
-- Automatically cleans existing types before generation
-- Creates TypeScript types for all services
-- Generates client classes for API calls
+- Generates OpenAPI schemas for all services
+- Creates TypeScript types from schemas
+- Runs type validation automatically
 - Updates `frontend/types/api/index.ts`
 
 ### **Complete Workflow Script**
@@ -814,8 +813,8 @@ frontend/types/api/
    - Verify OpenAPI schema is valid JSON
 
 4. **CI fails with "Generated files are out of date":**
-   - The `generate-types.sh` script automatically cleans existing types
-   - Simply run `./scripts/generate-types.sh` again to regenerate
+   - The `generate-api-schema.sh` script automatically cleans existing types
+   - Simply run `./scripts/generate-api-schema.sh` again to regenerate
    - No need to manually remove `frontend/types/api` directory
 
 ### **Best Practices**
