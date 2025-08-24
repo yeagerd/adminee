@@ -146,6 +146,15 @@ nox -s format                # Format check
 nox -s typecheck             # Standard
 nox -s typecheck_strict      # Strict mode
 
+# OpenAPI Schema Generation
+./scripts/generate-openapi-schemas.sh        # Generate schemas for all services
+./scripts/generate-openapi-schemas.sh chat   # Generate schema for specific service
+
+# Frontend Type Generation
+cd frontend
+./scripts/generate-types.sh                  # Generate TypeScript types from schemas
+npm run typecheck                           # Verify generated types are valid
+
 # Add dependencies
 uv add fastapi               # Add to root
 uv add sqlalchemy --project services/user  # Add to service
