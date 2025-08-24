@@ -10,7 +10,7 @@ echo "🚀 Generating TypeScript types from OpenAPI schemas..."
 cd "$(dirname "$0")/.."
 
 # Create types directory structure
-mkdir -p types/api/{chat,contacts,meetings,office,user,shipments}
+mkdir -p types/api/{chat,contacts,meetings,office,user,shipments,vespa_loader,vespa_query}
 
 # Install dependencies if not already installed
 if ! npm list openapi-typescript-codegen >/dev/null 2>&1; then
@@ -36,6 +36,14 @@ npx openapi --input ../openapi-schemas/user-openapi.json --output ./types/api/us
 
 echo "📝 Generating types for Shipments service..."
 npx openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/api/shipments --exportCore false --exportServices false
+
+echo "📝 Generating types for Vespa Loader service..."
+npx openapi --input ../openapi-schemas/vespa_loader-openapi.json --output ./types/api/vespa_loader --exportCore false --exportServices false
+
+echo "📝 Generating types for Vespa Query service..."
+npx openapi --input ../openapi-schemas/vespa_query-openapi.json --output ./types/api/vespa_query --exportCore false --exportServices false
+
+
 
 # Create index file
 echo "📄 Creating index file..."
