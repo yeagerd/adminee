@@ -1093,40 +1093,33 @@ class VespaBackfillDemo:
 
                     email_data_list = []
                     for email in email_batch:
-                        # Add trace_id to metadata
-                        if "metadata" not in email:
-                            email["metadata"] = {}
-                        email["metadata"]["trace_id"] = self.trace_id
-                        email["metadata"]["backfill_operation"] = "vespa_backfill_demo"
-
-                        # Convert to EmailData
+                        # Convert to EmailData using EmailMessage attributes
                         try:
                             email_data = EmailData(
-                                id=email.get("id", ""),
-                                thread_id=email.get("thread_id", ""),
-                                subject=email.get("subject", "No Subject"),
-                                body=email.get("body", ""),
-                                from_address=email.get("from", ""),
-                                to_addresses=email.get("to", []),
-                                cc_addresses=email.get("cc", []),
-                                bcc_addresses=email.get("bcc", []),
-                                received_date=email.get("created_at")
-                                or datetime.now(timezone.utc),
-                                sent_date=email.get("updated_at"),
-                                labels=email.get("labels", []),
-                                is_read=email.get("is_read", True),
-                                is_starred=email.get("is_starred", False),
-                                has_attachments=email.get("has_attachments", False),
-                                provider=email.get("provider", "unknown"),
-                                provider_message_id=email.get("id", ""),
-                                size_bytes=email.get("size_bytes"),
-                                mime_type=email.get("mime_type"),
-                                headers=email.get("headers", {}),
+                                id=email.id,
+                                thread_id=email.thread_id or "",
+                                subject=email.subject or "No Subject",
+                                body=email.body_text or email.body_html or "",
+                                from_address=str(email.from_address) if email.from_address else "",
+                                to_addresses=[str(addr) for addr in email.to_addresses] if email.to_addresses else [],
+                                cc_addresses=[str(addr) for addr in email.cc_addresses] if email.cc_addresses else [],
+                                bcc_addresses=[str(addr) for addr in email.bcc_addresses] if email.bcc_addresses else [],
+                                received_date=email.date or datetime.now(timezone.utc),
+                                sent_date=email.date,
+                                labels=email.labels or [],
+                                is_read=email.is_read,
+                                is_starred=False,  # EmailMessage doesn't have is_starred
+                                has_attachments=email.has_attachments,
+                                provider=email.provider.value if hasattr(email.provider, 'value') else str(email.provider),
+                                provider_message_id=email.provider_message_id,
+                                size_bytes=None,  # EmailMessage doesn't have size_bytes
+                                mime_type=None,  # EmailMessage doesn't have mime_type
+                                headers={},  # EmailMessage doesn't have headers
                             )
                             email_data_list.append(email_data)
                         except Exception as e:
                             logger.warning(
-                                f"Failed to convert email {email.get('id', 'unknown')} to EmailData: {e}"
+                                f"Failed to convert email {email.id or 'unknown'} to EmailData: {e}"
                             )
                             continue
 
