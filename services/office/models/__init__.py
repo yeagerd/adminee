@@ -77,7 +77,7 @@ class ApiCallStatus(str, Enum):
 
 # API Call Tracking
 class ApiCall(SQLModel, table=True):
-    __tablename__ = "api_calls"
+    __tablename__ = "api_calls"  # type: ignore[assignment]
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -100,7 +100,7 @@ class ApiCall(SQLModel, table=True):
 
 # Cache Entries
 class CacheEntry(SQLModel, table=True):
-    __tablename__ = "cache_entries"
+    __tablename__ = "cache_entries"  # type: ignore[assignment]
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -122,7 +122,7 @@ class CacheEntry(SQLModel, table=True):
 
 # Rate Limiting
 class RateLimitBucket(SQLModel, table=True):
-    __tablename__ = "rate_limit_buckets"
+    __tablename__ = "rate_limit_buckets"  # type: ignore[assignment]
     __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
