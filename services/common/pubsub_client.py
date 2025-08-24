@@ -229,6 +229,17 @@ class PubSubClient:
         )
         return self.publish_message(topic_name, event)
 
+    def close(self) -> None:
+        """Close the publisher client and release resources."""
+        if self.publisher:
+            try:
+                # Close the underlying transport channel to release network resources
+                self.publisher.transport.channel.close()
+                logger.info("PubSub publisher client closed")
+            except Exception as e:
+                logger.error(f"Error closing PubSub publisher client: {e}")
+                logger.error(f"Error type: {type(e).__name__}")
+
 
 class PubSubConsumer:
     """Shared PubSub consumer for subscribing to topics with logging and tracing."""
