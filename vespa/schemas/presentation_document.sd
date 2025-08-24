@@ -33,11 +33,13 @@ schema presentation_document {
         
         # Presentation structure
         field slides type array<map<string, string>> {
-            indexing: summary
+            indexing: index | summary
+            index: enable-bm25
         }
         
         field slide_notes type array<map<string, string>> {
-            indexing: summary
+            indexing: index | summary
+            index: enable-bm25
         }
         
         field slide_transitions type array<map<string, string>> {
@@ -49,7 +51,8 @@ schema presentation_document {
         }
         
         field speaker_notes type array<map<string, string>> {
-            indexing: summary
+            indexing: index | summary
+            index: enable-bm25
         }
         
         field master_slides type array<map<string, string>> {

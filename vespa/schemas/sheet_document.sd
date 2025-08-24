@@ -38,11 +38,13 @@ schema sheet_document {
         
         # Sheet structure
         field sheets type array<map<string, string>> {
-            indexing: summary
+            indexing: index | summary
+            index: enable-bm25
         }
         
         field named_ranges type array<map<string, string>> {
-            indexing: summary
+            indexing: index | summary
+            index: enable-bm25
         }
         
         field data_validation type array<map<string, string>> {
