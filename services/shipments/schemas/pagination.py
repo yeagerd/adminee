@@ -8,7 +8,7 @@ common pagination schemas.
 from typing import List, Optional
 
 from common.pagination.schemas import CursorPaginationRequest, CursorPaginationResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PackageCursorPaginationRequest(CursorPaginationRequest):
@@ -33,10 +33,9 @@ class PackageCursorPaginationResponse(CursorPaginationResponse):
 
     # Override items to be packages
     packages: List[dict] = Field(description="List of packages")
+    items: List[dict] = Field(description="List of items", exclude=True)
 
     # Remove items field from parent class
-    class Config:
-        fields = {"items": {"exclude": True}}
 
 
 class PackageSearchRequest(BaseModel):

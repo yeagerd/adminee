@@ -23,67 +23,15 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
         # Add aiohttp patching to prevent real HTTP calls
         self.aiohttp_patcher = patch("aiohttp.ClientSession")
         self.mock_aiohttp_class = self.aiohttp_patcher.start()
+        self.mock_aiohttp_instance = self.mock_aiohttp_class.return_value
 
-        # Create a proper mock session that returns async context managers
-        class MockSession:
-            def __init__(self, test_instance):
-                self.test_instance = test_instance
-
-            def post(self, url, json=None):
-                # For indexing, return success response with proper ID format
-                if "/document/v1/" in url:
-                    # Extract user_id and doc_id from URL for realistic ID generation
-                    parts = url.split("/")
-                    user_id = parts[-2]
-                    doc_id = parts[-1]
-                    vespa_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
-
-                    return self.test_instance.mock_response(
-                        200, {"id": vespa_id, "status": "success"}
-                    )
-                else:
-                    return self.test_instance.mock_response()
-
-            def get(self, url):
-                # For document retrieval, return document data
-                if "/document/v1/" in url:
-                    parts = url.split("/")
-                    user_id = parts[-2]
-                    doc_id = parts[-1]
-                    vespa_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
-
-                    return self.test_instance.mock_response(
-                        200,
-                        {
-                            "id": vespa_id,
-                            "fields": {
-                                "user_id": user_id,
-                                "doc_id": doc_id,
-                                "title": "Test Document",
-                                "content": "Test content",
-                                "search_text": "test document",
-                            },
-                        },
-                    )
-                else:
-                    return self.test_instance.mock_response()
-
-            def delete(self, url):
-                # For deletion, return success response
-                if "/document/v1/" in url:
-                    parts = url.split("/")
-                    user_id = parts[-2]
-                    doc_id = parts[-1]
-                    vespa_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
-
-                    return self.test_instance.mock_response(
-                        200, {"id": vespa_id, "status": "success"}
-                    )
-                else:
-                    return self.test_instance.mock_response()
-
-        self.mock_aiohttp_instance = MockSession(self)
-        self.mock_aiohttp_class.return_value = self.mock_aiohttp_instance
+        # Configure the mock session methods to be async and return a context manager
+        self.mock_aiohttp_instance.post.return_value.__aenter__.return_value.status = 200
+        self.mock_aiohttp_instance.post.return_value.__aenter__.return_value.json = AsyncMock(return_value={"id": "test_id", "status": "success"})
+        self.mock_aiohttp_instance.get.return_value.__aenter__.return_value.status = 200
+        self.mock_aiohttp_instance.get.return_value.__aenter__.return_value.json = AsyncMock(return_value={"id": "test_id", "fields": {}})
+        self.mock_aiohttp_instance.delete.return_value.__aenter__.return_value.status = 200
+        self.mock_aiohttp_instance.delete.return_value.__aenter__.return_value.json = AsyncMock(return_value={"id": "test_id", "status": "success"})
 
         # Also patch the VespaClient.start method to prevent real session creation
         self.vespa_start_patcher = patch("vespa_loader.vespa_client.VespaClient.start")

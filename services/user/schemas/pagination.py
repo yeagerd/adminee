@@ -27,10 +27,9 @@ class UserCursorPaginationResponse(CursorPaginationResponse):
 
     # Override items to be users
     users: List[dict] = Field(description="List of users")
+    items: List[dict] = Field(description="List of items", exclude=True)
 
     # Remove items field from parent class
-    class Config:
-        fields = {"items": {"exclude": True}}
 
 
 class UserSearchRequest(BaseModel):

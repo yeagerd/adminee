@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 
 
 class EventMetadata(BaseModel):
@@ -47,14 +47,15 @@ class EventMetadata(BaseModel):
         default_factory=dict, description="Additional tags for the event"
     )
 
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, dt: datetime, _info):
+        return dt.isoformat()
+
 
 class BaseEvent(BaseModel):
     """Base class for all PubSub events."""
 
     metadata: EventMetadata = Field(..., description="Event metadata")
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def add_trace_context(
         self, trace_id: str, span_id: str, parent_span_id: Optional[str] = None
