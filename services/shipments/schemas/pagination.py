@@ -5,7 +5,7 @@ This module defines shipments-specific pagination schemas that extend the
 common pagination schemas.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from common.pagination.schemas import CursorPaginationRequest, CursorPaginationResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,11 +31,33 @@ class PackageCursorPaginationRequest(CursorPaginationRequest):
 class PackageCursorPaginationResponse(CursorPaginationResponse):
     """Response schema for package cursor-based pagination."""
 
-    # Override items to be packages
+    # Override items to be packages - properly override parent field
     packages: List[dict] = Field(description="List of packages")
-    items: List[dict] = Field(description="List of items", exclude=True)
-
-    # Remove items field from parent class
+    
+    # Override the items field from parent class to use packages data
+    items: List[dict] = Field(default_factory=list, description="List of packages")
+    
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Ensure items field is synchronized with packages
+        if 'packages' in data:
+            self.items = data['packages']
+    
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        # Override to use packages field instead of items
+        data = super().model_dump(**kwargs)
+        data['items'] = self.packages
+        if 'packages' in data:
+            del data['packages']
+        return data
+    
+    def __setattr__(self, name: str, value: Any) -> None:
+        # Ensure items and packages fields stay synchronized
+        if name == 'packages':
+            super().__setattr__('items', value)
+        elif name == 'items':
+            super().__setattr__('packages', value)
+        super().__setattr__(name, value)
 
 
 class PackageSearchRequest(BaseModel):

@@ -5,7 +5,7 @@ This module defines user-specific pagination schemas that extend the
 common pagination schemas.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from common.pagination.schemas import CursorPaginationRequest, CursorPaginationResponse
 from pydantic import BaseModel, Field
@@ -25,11 +25,33 @@ class UserCursorPaginationRequest(CursorPaginationRequest):
 class UserCursorPaginationResponse(CursorPaginationResponse):
     """Response schema for user cursor-based pagination."""
 
-    # Override items to be users
+    # Override items to be users - properly override parent field
     users: List[dict] = Field(description="List of users")
-    items: List[dict] = Field(description="List of items", exclude=True)
-
-    # Remove items field from parent class
+    
+    # Override the items field from parent class to use users data
+    items: List[dict] = Field(default_factory=list, description="List of users")
+    
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Ensure items field is synchronized with users
+        if 'users' in data:
+            self.items = data['users']
+    
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        # Override to use users field instead of items
+        data = super().model_dump(**kwargs)
+        data['items'] = self.users
+        if 'users' in data:
+            del data['users']
+        return data
+    
+    def __setattr__(self, name: str, value: Any) -> None:
+        # Ensure items and users fields stay synchronized
+        if name == 'users':
+            super().__setattr__('items', value)
+        elif name == 'items':
+            super().__setattr__('users', value)
+        super().__setattr__(name, value)
 
 
 class UserSearchRequest(BaseModel):
