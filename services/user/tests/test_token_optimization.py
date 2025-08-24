@@ -192,10 +192,17 @@ class TestTokenOptimization(BaseUserManagementTest):
                 mock_refresh_token = Mock()
                 mock_refresh_token.encrypted_value = "encrypted_refresh_token"
 
-                calls = [mock_access_token, mock_refresh_token]
+                # Track query calls to return appropriate tokens
+                query_count = 0
 
                 def scalar_one_or_none():
-                    return calls.pop(0)
+                    nonlocal query_count
+                    query_count += 1
+                    # First call returns access token, second call returns refresh token
+                    if query_count == 1:
+                        return mock_access_token
+                    else:
+                        return mock_refresh_token
 
                 mock_result = Mock()
                 mock_result.scalar_one_or_none.side_effect = scalar_one_or_none
