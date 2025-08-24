@@ -146,8 +146,11 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
 
                         {/* Tags Filter */}
                         <select
-                            value={tagFilter.join(',')}
-                            onChange={(e) => setTagFilter(e.target.value ? e.target.value.split(',') : [])}
+                            value={tagFilter}
+                            onChange={(e) => {
+                                const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                                setTagFilter(selectedOptions);
+                            }}
                             className="border rounded px-2 py-1 text-sm"
                             multiple
                         >
