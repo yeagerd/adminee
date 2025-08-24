@@ -1,6 +1,11 @@
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import declarative_base
 
 from services.contacts.settings import get_settings
@@ -9,11 +14,11 @@ from services.contacts.settings import get_settings
 Base = declarative_base()
 
 # Global variables for lazy initialization
-_engine = None
-_async_session_local = None
+_engine: AsyncEngine | None = None
+_async_session_local: async_sessionmaker[AsyncSession] | None = None
 
 
-def get_engine():
+def get_engine() -> AsyncEngine:
     """Get database engine with lazy initialization."""
     global _engine
     if _engine is None:
@@ -23,7 +28,7 @@ def get_engine():
     return _engine
 
 
-def get_async_session_factory():
+def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
     """Get async session factory with lazy initialization."""
     global _async_session_local
     if _async_session_local is None:
