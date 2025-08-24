@@ -163,6 +163,110 @@ update_service_types() {
         --exportApiTest false \
         --exportApiReadme false; then
         print_status "success" "Types updated for $service_name (using openapi-typescript-codegen)"
+        
+        # Clean up duplicate types if Python is available
+        if command -v python3 &> /dev/null; then
+            print_status "info" "Cleaning up duplicate types for $service_name..."
+            if python3 -c "
+import re
+import sys
+from pathlib import Path
+
+def cleanup_duplicate_types(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            content = f.read()
+        
+        # Split content into lines for processing
+        lines = content.split('\n')
+        result_lines = []
+        seen_types = set()
+        i = 0
+        
+        while i < len(lines):
+            line = lines[i]
+            
+            # Check if this line starts a type/interface declaration
+            type_match = re.match(r'^(export\s+)?(type|interface)\s+([A-Za-z_][A-Za-z0-9_]*)', line)
+            
+            if type_match:
+                type_name = type_match.group(3)
+                
+                if type_name in seen_types:
+                    # This is a duplicate - skip until we find the end
+                    i += 1
+                    
+                    # Skip lines until we find the end of this type definition
+                    brace_count = 0
+                    if '{' in line:
+                        brace_count += line.count('{')
+                    
+                    while i < len(lines) and brace_count > 0:
+                        current_line = lines[i]
+                        brace_count += current_line.count('{')
+                        brace_count -= current_line.count('}')
+                        i += 1
+                    
+                    # Also check for semicolon (single-line types)
+                    if i < len(lines) and ';' in lines[i-1]:
+                        continue
+                    
+                    continue
+                else:
+                    # First occurrence - keep it
+                    seen_types.add(type_name)
+            
+            result_lines.append(line)
+            i += 1
+        
+        # Clean up empty lines and write the cleaned content back
+        cleaned_lines = [line for line in result_lines if line.strip() or line == '']
+        with open(file_path, 'w') as f:
+            f.write('\n'.join(cleaned_lines))
+            
+    except Exception as e:
+        print(f'Error processing {file_path}: {e}', file=sys.stderr)
+        return False
+    
+    return True
+
+def cleanup_service_directory(service_dir):
+    service_path = Path(service_dir)
+    if not service_path.is_dir():
+        print(f'Service directory not found: {service_dir}', file=sys.stderr)
+        return False
+    
+    # Find all TypeScript files in the service directory
+    ts_files = list(service_path.rglob('*.ts'))
+    
+    if not ts_files:
+        print(f'No TypeScript files found in {service_dir}')
+        return True
+    
+    print(f'Processing {len(ts_files)} TypeScript files in {service_dir}')
+    
+    success = True
+    for ts_file in ts_files:
+        if not cleanup_duplicate_types(str(ts_file)):
+            success = False
+    
+    return success
+
+# Process the service directory
+if cleanup_service_directory('$types_dir'):
+    print('✅ Duplicate type cleanup completed successfully')
+    sys.exit(0)
+else:
+    print('❌ Duplicate type cleanup failed', file=sys.stderr)
+    sys.exit(1)
+"; then
+            print_status "success" "Duplicate types cleaned for $service_name"
+        else
+            print_status "warning" "Duplicate type cleanup failed for $service_name (continuing anyway)"
+        fi
+    else
+        print_status "warning" "Python3 not available, skipping duplicate type cleanup for $service_name"
+    fi
     else
         print_status "error" "Failed to update types for $service_name"
         return 1
