@@ -303,12 +303,6 @@ def parse_event_by_topic(
                 f"Parsed as CalendarEvent: message_id={message_id}, user_id={calendar_event.user_id}, event_id={calendar_event.event.id}"
             )
             return calendar_event
-        elif topic_name == "contacts":
-            contact_event: ContactEvent = ContactEvent(**raw_data)
-            logger.debug(
-                f"Parsed as ContactEvent: message_id={message_id}, user_id={contact_event.user_id}, contact_id={contact_event.contact.id}"
-            )
-            return contact_event
         elif topic_name in [
             "word_documents",
             "sheet_documents",
@@ -320,6 +314,12 @@ def parse_event_by_topic(
                 f"Parsed as DocumentEvent: message_id={message_id}, user_id={document_event.user_id}, document_id={document_event.document.id}, content_type={document_event.content_type}"
             )
             return document_event
+        elif topic_name == "contacts":
+            contact_event: ContactEvent = ContactEvent(**raw_data)
+            logger.debug(
+                f"Parsed as ContactEvent: message_id={message_id}, user_id={contact_event.user_id}, contact_id={contact_event.contact.id}"
+            )
+            return contact_event
         elif topic_name == "todos":
             todo_event: TodoEvent = TodoEvent(**raw_data)
             logger.debug(
