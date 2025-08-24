@@ -11,8 +11,6 @@ export type EmailMessage = {
     snippet?: (string | null);
     body_text?: (string | null);
     body_html?: (string | null);
-    body_text_unquoted?: (string | null);
-    body_html_unquoted?: (string | null);
     from_address?: (EmailAddress | null);
     to_addresses?: Array<EmailAddress>;
     cc_addresses?: Array<EmailAddress>;
