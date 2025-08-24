@@ -44,10 +44,10 @@ show_usage() {
     echo "  -c, --clean-only   Clean generated files only"
     echo "  -v, --verbose      Enable verbose output"
     echo
-    echo "Default behavior (no flags): Generate schemas and types, then clean up"
+    echo "Default behavior (no flags): Generate schemas, types, validation, and version matrix"
     echo
     echo "Examples:"
-    echo "  $0                    # Full workflow: schemas + types"
+    echo "  $0                    # Full workflow: schemas + types + validation + version matrix"
     echo "  $0 --schema-only      # Generate OpenAPI schemas only"
     echo "  $0 --types-only       # Generate TypeScript types only"
     echo "  $0 --clean-only       # Clean generated files only"
@@ -92,9 +92,9 @@ generate_schemas() {
     print_status "info" "Generating OpenAPI schemas for all services..."
     
     if [[ "$VERBOSE" == "true" ]]; then
-        ./scripts/generate-openapi-schemas.sh
+        ./scripts/subscripts/generate-openapi-schemas.sh
     else
-        ./scripts/generate-openapi-schemas.sh > /dev/null 2>&1
+        ./scripts/subscripts/generate-openapi-schemas.sh > /dev/null 2>&1
     fi
     
     print_status "success" "OpenAPI schemas generated successfully"
@@ -139,12 +139,25 @@ validate_types() {
     print_status "info" "Validating generated types..."
     
     if [[ "$VERBOSE" == "true" ]]; then
-        ./scripts/validate-types.sh
+        ./scripts/subscripts/validate-types.sh
     else
-        ./scripts/validate-types.sh > /dev/null 2>&1
+        ./scripts/subscripts/validate-types.sh > /dev/null 2>&1
     fi
     
     print_status "success" "Type validation completed successfully"
+}
+
+# Function to generate version compatibility matrix
+generate_version_matrix() {
+    print_status "info" "Generating version compatibility matrix..."
+    
+    if [[ "$VERBOSE" == "true" ]]; then
+        python3 ./scripts/generate-version-matrix.py
+    else
+        python3 ./scripts/generate-version-matrix.py > /dev/null 2>&1
+    fi
+    
+    print_status "success" "Version compatibility matrix generated successfully"
 }
 
 # Function to run full workflow
@@ -159,6 +172,9 @@ run_full_workflow() {
     
     # Step 3: Validate types
     validate_types
+    
+    # Step 4: Generate version compatibility matrix
+    generate_version_matrix
     
     print_status "success" "Complete workflow finished successfully!"
     print_status "info" "Generated files are ready for use"

@@ -9,12 +9,12 @@
         "lint": "next lint",
         "test": "jest",
         "typecheck": "npx tsc --noEmit",
-        "generate-types": "../scripts/update-types.sh",
-        "generate-types:clean": "../scripts/update-types.sh --clean",
-        "generate-types:force": "../scripts/update-types.sh --force",
-        "validate-types": "../scripts/validate-types.sh",
-        "validate-types:strict": "../scripts/validate-types.sh --strict",
-        "validate-types:integration": "../scripts/validate-types.sh --integration",
+        "generate-types": "../scripts/subscripts/update-types.sh",
+        "generate-types:clean": "../scripts/subscripts/update-types.sh --clean",
+        "generate-types:force": "../scripts/subscripts/update-types.sh --force",
+        "validate-types": "../scripts/subscripts/validate-types.sh",
+        "validate-types:strict": "../scripts/subscripts/validate-types.sh --strict",
+        "validate-types:integration": "../scripts/subscripts/validate-types.sh --integration",
         "build:with-types": "npm run generate-types && npm run validate-types && npm run build"
     },
     "dependencies": {
