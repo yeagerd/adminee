@@ -16,9 +16,6 @@ from services.office.api.backfill import internal_router as backfill_internal_ro
 from services.office.api.calendar import router as calendar_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
-from services.office.api.health import router as health_router
-from services.office.api.oauth import router as oauth_router
-from services.office.api.users import router as users_router
 from services.office.core.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
@@ -90,11 +87,6 @@ register_briefly_exception_handlers(app)
 app.include_router(email_router, prefix="/v1")
 app.include_router(calendar_router, prefix="/v1")
 app.include_router(files_router, prefix="/v1")
-app.include_router(health_router, prefix="/v1")
-app.include_router(oauth_router, prefix="/v1")
-app.include_router(users_router, prefix="/v1")
-
-# Include internal routers (no prefix - direct access)
 app.include_router(backfill_internal_router)
 
 
