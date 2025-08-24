@@ -434,11 +434,47 @@ class TestAvailabilityService(BaseMeetingsTest):
         base_date = future_date.replace(hour=9, minute=0, second=0, microsecond=0)
 
         slots = []
-        for i in range(60):  # More than the weekly limit
-            # Create slots within the same day by using minutes instead of hours
-            slot_start = base_date + timedelta(minutes=i * 30)  # 30-minute intervals
-            slot_end = slot_start + timedelta(minutes=30)
-            slots.append({"start": slot_start, "end": slot_end})
+        # Create exactly 60 slots within the same week
+        # Start with Monday and create slots across multiple days but within the same week
+        slot_count = 0
+        current_date = base_date
+
+        # Ensure we start on a Monday to have a full week
+        while current_date.weekday() != 0:  # 0 = Monday
+            current_date += timedelta(days=1)
+
+        # Create slots for up to 5 days (Monday to Friday) within the same week
+        for day_offset in range(5):  # Monday to Friday
+            if slot_count >= 60:
+                break
+
+            day_date = current_date + timedelta(days=day_offset)
+
+            # Create slots for this day (9 AM to 6 PM, 30-minute intervals)
+            for hour in range(9, 18):  # 9 AM to 6 PM
+                for minute in [0, 30]:  # 30-minute intervals
+                    if slot_count >= 60:
+                        break
+
+                    slot_start = day_date.replace(hour=hour, minute=minute)
+                    slot_end = slot_start + timedelta(minutes=30)
+
+                    slots.append({"start": slot_start, "end": slot_end})
+                    slot_count += 1
+
+                if slot_count >= 60:
+                    break
+
+        # Verify we have the expected number of slots
+        assert len(slots) == 60, f"Expected 60 slots, got {len(slots)}"
+
+        # Verify all slots are within the same week
+        first_week = slots[0]["start"].isocalendar()
+        last_week = slots[-1]["start"].isocalendar()
+        assert (first_week.year, first_week.week) == (
+            last_week.year,
+            last_week.week,
+        ), f"All slots should be in the same week: {first_week} vs {last_week}"
 
         settings = {
             "max_per_week": 50,
@@ -455,7 +491,9 @@ class TestAvailabilityService(BaseMeetingsTest):
         )
 
         # Should respect weekly limit - only 50 slots within the same week
-        assert len(result) == 50
+        assert (
+            len(result) == 50
+        ), f"Expected 50 slots due to weekly limit, got {len(result)}"
 
     def test_is_within_business_hours_enabled_day(self):
         """Test business hours check for enabled day."""

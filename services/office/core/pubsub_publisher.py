@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pub/Sub publisher for backfill data
+Pub/Sub publisher for event-driven architecture
 """
 
 import asyncio
@@ -26,13 +26,17 @@ except Exception:
         "Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub"
     )
 
+from services.common.events.base_events import EventMetadata
+from services.common.events.calendar_events import CalendarEvent, CalendarEventData
+from services.common.events.contact_events import ContactData, ContactEvent
+from services.common.events.email_events import EmailData, EmailEvent
 from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
 class PubSubPublisher:
-    """Publishes data to Google Cloud Pub/Sub for backfill operations"""
+    """Publishes events to Google Cloud Pub/Sub for event-driven architecture"""
 
     def __init__(
         self, project_id: str = "briefly-dev", emulator_host: str = "localhost:8085"
@@ -40,11 +44,20 @@ class PubSubPublisher:
         self.project_id = project_id
         self.emulator_host = emulator_host
         self.publisher = None
-        # Fix topic names to match actual Pub/Sub setup
+        # New data-type focused topic names
         self.topics = {
-            "emails": "email-backfill",  # Short name
-            "calendar": "calendar-updates",  # Short name
-            "contacts": "contact-updates",  # Short name
+            "emails": "emails",
+            "calendars": "calendars",
+            "contacts": "contacts",
+            "word_documents": "word_documents",
+            "sheet_documents": "sheet_documents",
+            "presentation_documents": "presentation_documents",
+            "task_documents": "task_documents",
+            "todos": "todos",
+            "llm_chats": "llm_chats",
+            "shipment_events": "shipment_events",
+            "meeting_polls": "meeting_polls",
+            "bookings": "bookings",
         }
 
         if PUBSUB_AVAILABLE:
@@ -65,35 +78,67 @@ class PubSubPublisher:
             logger.error(f"Failed to initialize Pub/Sub publisher: {e}")
             self.publisher = None
 
-    def _sanitize_data_for_json(self, data: Any) -> Any:
-        """Sanitize data to ensure it's JSON serializable"""
-        if isinstance(data, dict):
-            return {k: self._sanitize_data_for_json(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [self._sanitize_data_for_json(item) for item in data]
-        elif isinstance(data, datetime):
-            return data.isoformat()
-        elif hasattr(data, "isoformat"):  # Handle other datetime-like objects
-            return data.isoformat()
-        else:
-            return data
+    def _create_event_metadata(
+        self,
+        source_service: str = "office-service",
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> EventMetadata:
+        """Create event metadata with proper tracing and context"""
+        return EventMetadata(
+            source_service=source_service,
+            user_id=user_id,
+            correlation_id=correlation_id,
+            trace_id=None,
+            span_id=None,
+            parent_span_id=None,
+            request_id=None,
+            tags={"publisher": "office-service"},
+        )
 
-    async def publish_email(self, email_data: Dict[str, Any]) -> bool:
-        """Publish a single email to Pub/Sub"""
+    async def publish_email_event(
+        self,
+        email_data: EmailData,
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> bool:
+        """Publish an EmailEvent to Pub/Sub"""
         if not self.publisher:
             logger.warning("Pub/Sub publisher not available")
             return False
 
         try:
-            # Sanitize data to ensure JSON serialization
-            sanitized_data = self._sanitize_data_for_json(email_data.copy())
+            # Create event metadata
+            metadata = self._create_event_metadata(
+                source_service="office-service",
+                user_id=user_id,
+                correlation_id=correlation_id,
+            )
 
-            # Add timestamp and message ID
-            sanitized_data["timestamp"] = datetime.now(timezone.utc).isoformat()
-            sanitized_data["message_id"] = str(uuid.uuid4())
+            # Validate required user_id parameter
+            if not user_id:
+                logger.error(
+                    f"user_id is required for publishing EmailEvent {email_data.id}"
+                )
+                return False
+
+            # Create EmailEvent
+            email_event = EmailEvent(
+                metadata=metadata,
+                user_id=user_id,  # user_id is required, no fallback
+                email=email_data,
+                operation=operation,
+                batch_id=batch_id,
+                last_updated=datetime.now(timezone.utc),
+                sync_timestamp=datetime.now(timezone.utc),
+                provider=email_data.provider,
+                sync_type="sync",
+            )
 
             # Convert to JSON
-            message_data = json.dumps(sanitized_data).encode("utf-8")
+            message_data = email_event.model_dump_json().encode("utf-8")
 
             # Publish to emails topic
             future = self.publisher.publish(
@@ -103,7 +148,7 @@ class PubSubPublisher:
             message_id = future.result()
 
             logger.debug(
-                f"Published email {sanitized_data.get('id')} to Pub/Sub: {message_id}"
+                f"Published EmailEvent {email_data.id} (operation: {operation}) to Pub/Sub: {message_id}"
             )
             return True
 
@@ -118,68 +163,121 @@ class PubSubPublisher:
                 f"Pub/Sub topic '{self.topics['emails']}' not found. Please create the topic first."
             ) from e
         except Exception as e:
-            logger.error(f"Failed to publish email to Pub/Sub: {e}")
+            logger.error(f"Failed to publish EmailEvent to Pub/Sub: {e}")
             return False
 
-    async def publish_calendar_event(self, calendar_data: Dict[str, Any]) -> bool:
-        """Publish a single calendar event to Pub/Sub"""
+    async def publish_calendar_event(
+        self,
+        calendar_data: CalendarEventData,
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> bool:
+        """Publish a CalendarEvent to Pub/Sub"""
         if not self.publisher:
             logger.warning("Pub/Sub publisher not available")
             return False
 
         try:
-            # Sanitize data to ensure JSON serialization
-            sanitized_data = self._sanitize_data_for_json(calendar_data.copy())
+            # Create event metadata
+            metadata = self._create_event_metadata(
+                source_service="office-service",
+                user_id=user_id,
+                correlation_id=correlation_id,
+            )
 
-            # Add timestamp and message ID
-            sanitized_data["timestamp"] = datetime.now(timezone.utc).isoformat()
-            sanitized_data["message_id"] = str(uuid.uuid4())
+            # Validate required user_id parameter
+            if not user_id:
+                logger.error(
+                    f"user_id is required for publishing CalendarEvent {calendar_data.id}"
+                )
+                return False
+
+            # Create CalendarEvent
+            calendar_event = CalendarEvent(
+                metadata=metadata,
+                user_id=user_id,  # user_id is required, no fallback
+                event=calendar_data,
+                operation=operation,
+                batch_id=batch_id,
+                last_updated=datetime.now(timezone.utc),
+                sync_timestamp=datetime.now(timezone.utc),
+                provider=calendar_data.provider,
+                calendar_id=calendar_data.calendar_id,
+            )
 
             # Convert to JSON
-            message_data = json.dumps(sanitized_data).encode("utf-8")
+            message_data = calendar_event.model_dump_json().encode("utf-8")
 
-            # Publish to calendar topic
+            # Publish to calendars topic
             future = self.publisher.publish(
-                f"projects/{self.project_id}/topics/{self.topics['calendar']}",
+                f"projects/{self.project_id}/topics/{self.topics['calendars']}",
                 message_data,
             )
             message_id = future.result()
 
             logger.debug(
-                f"Published calendar event {sanitized_data.get('id')} to Pub/Sub: {message_id}"
+                f"Published CalendarEvent {calendar_data.id} (operation: {operation}) to Pub/Sub: {message_id}"
             )
             return True
 
         except google_exceptions.NotFound as e:
             # Topic not found - this is a fatal error that should halt the process
             logger.error(
-                f"FATAL: Pub/Sub topic '{self.topics['calendar']}' not found. Halting calendar publishing. Error: {e}"
+                f"FATAL: Pub/Sub topic '{self.topics['calendars']}' not found. Halting calendar publishing. Error: {e}"
             )
             # Set publisher to None to prevent further attempts
             self.publisher = None
             raise RuntimeError(
-                f"Pub/Sub topic '{self.topics['calendar']}' not found. Please create the topic first."
+                f"Pub/Sub topic '{self.topics['calendars']}' not found. Please create the topic first."
             ) from e
         except Exception as e:
-            logger.error(f"Failed to publish calendar event to Pub/Sub: {e}")
+            logger.error(f"Failed to publish CalendarEvent to Pub/Sub: {e}")
             return False
 
-    async def publish_contact(self, contact_data: Dict[str, Any]) -> bool:
-        """Publish a single contact to Pub/Sub"""
+    async def publish_contact(
+        self,
+        contact_data: ContactData,
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> bool:
+        """Publish a ContactEvent to Pub/Sub"""
         if not self.publisher:
             logger.warning("Pub/Sub publisher not available")
             return False
 
         try:
-            # Sanitize data to ensure JSON serialization
-            sanitized_data = self._sanitize_data_for_json(contact_data.copy())
+            # Create event metadata
+            metadata = self._create_event_metadata(
+                source_service="office-service",
+                user_id=user_id,
+                correlation_id=correlation_id,
+            )
 
-            # Add timestamp and message ID
-            sanitized_data["timestamp"] = datetime.now(timezone.utc).isoformat()
-            sanitized_data["message_id"] = str(uuid.uuid4())
+            # Validate required user_id parameter
+            if not user_id:
+                logger.error(
+                    f"user_id is required for publishing ContactEvent {contact_data.id}"
+                )
+                return False
+
+            # Create ContactEvent
+            contact_event = ContactEvent(
+                metadata=metadata,
+                user_id=user_id,  # user_id is required, no fallback
+                contact=contact_data,
+                operation=operation,
+                batch_id=batch_id,
+                last_updated=datetime.now(timezone.utc),
+                sync_timestamp=datetime.now(timezone.utc),
+                provider=contact_data.provider,
+            )
 
             # Convert to JSON
-            message_data = json.dumps(sanitized_data).encode("utf-8")
+            message_data = contact_event.model_dump_json().encode("utf-8")
 
             # Publish to contacts topic
             future = self.publisher.publish(
@@ -189,7 +287,7 @@ class PubSubPublisher:
             message_id = future.result()
 
             logger.debug(
-                f"Published contact {sanitized_data.get('id')} to Pub/Sub: {message_id}"
+                f"Published ContactEvent {contact_data.id} (operation: {operation}) to Pub/Sub: {message_id}"
             )
             return True
 
@@ -204,17 +302,26 @@ class PubSubPublisher:
                 f"Pub/Sub topic '{self.topics['contacts']}' not found. Please create the topic first."
             ) from e
         except Exception as e:
-            logger.error(f"Failed to publish contact to Pub/Sub: {e}")
+            logger.error(f"Failed to publish ContactEvent to Pub/Sub: {e}")
             return False
 
-    async def publish_batch_emails(self, emails: list[Dict[str, Any]]) -> list[bool]:
-        """Publish multiple emails in batch"""
+    async def publish_batch_emails(
+        self,
+        emails: List[EmailData],
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> List[bool]:
+        """Publish multiple EmailEvents in batch"""
         try:
             results = []
 
             for email in emails:
                 try:
-                    success = await self.publish_email(email)
+                    success = await self.publish_email_event(
+                        email, operation, batch_id, user_id, correlation_id
+                    )
                     results.append(success)
                 except RuntimeError as e:
                     # Fatal error (e.g., topic not found) - halt the batch
@@ -229,7 +336,7 @@ class PubSubPublisher:
 
             success_count = sum(results)
             logger.info(
-                f"Published {success_count} out of {len(emails)} emails to topic {self.topics['emails']}"
+                f"Published {success_count} out of {len(emails)} EmailEvents to topic {self.topics['emails']}"
             )
             return results
 
@@ -238,15 +345,22 @@ class PubSubPublisher:
             raise
 
     async def publish_batch_calendar_events(
-        self, events: list[Dict[str, Any]]
-    ) -> list[bool]:
-        """Publish multiple calendar events in batch"""
+        self,
+        events: List[CalendarEventData],
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> List[bool]:
+        """Publish multiple CalendarEvents in batch"""
         try:
             results = []
 
             for event in events:
                 try:
-                    success = await self.publish_calendar_event(event)
+                    success = await self.publish_calendar_event(
+                        event, operation, batch_id, user_id, correlation_id
+                    )
                     results.append(success)
                 except RuntimeError as e:
                     # Fatal error (e.g., topic not found) - halt the batch
@@ -261,7 +375,7 @@ class PubSubPublisher:
 
             success_count = sum(results)
             logger.info(
-                f"Published {success_count} out of {len(events)} calendar events to topic {self.topics['calendar']}"
+                f"Published {success_count} out of {len(events)} CalendarEvents to topic {self.topics['calendars']}"
             )
             return results
 
@@ -270,15 +384,22 @@ class PubSubPublisher:
             raise
 
     async def publish_batch_contacts(
-        self, contacts: list[Dict[str, Any]]
-    ) -> list[bool]:
+        self,
+        contacts: List[ContactData],
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> List[bool]:
         """Publish multiple contacts in batch"""
         try:
             results = []
 
             for contact in contacts:
                 try:
-                    success = await self.publish_contact(contact)
+                    success = await self.publish_contact(
+                        contact, operation, batch_id, user_id, correlation_id
+                    )
                     results.append(success)
                 except RuntimeError as e:
                     # Fatal error (e.g., topic not found) - halt the batch
@@ -293,7 +414,7 @@ class PubSubPublisher:
 
             success_count = sum(results)
             logger.info(
-                f"Published {len(results)} out of {len(contacts)} contacts to topic {self.topics['contacts']}"
+                f"Published {success_count} out of {len(contacts)} contacts to topic {self.topics['contacts']}"
             )
             return results
 
@@ -305,18 +426,18 @@ class PubSubPublisher:
         self,
         email_topic: Optional[str] = None,
         calendar_topic: Optional[str] = None,
-        contact_topic: Optional[str] = None,
+        contacts_topic: Optional[str] = None,
     ) -> None:
         """Set custom topic names"""
         if email_topic:
             self.topics["emails"] = email_topic
         if calendar_topic:
-            self.topics["calendar"] = calendar_topic
-        if contact_topic:
-            self.topics["contacts"] = contact_topic
+            self.topics["calendars"] = calendar_topic
+        if contacts_topic:
+            self.topics["contacts"] = contacts_topic
 
         logger.info(
-            f"Set topics: email={self.topics['emails']}, calendar={self.topics['calendar']}, contact={self.topics['contacts']}"
+            f"Set topics: email={self.topics['emails']}, calendar={self.topics['calendars']}, contacts={self.topics['contacts']}"
         )
 
     async def close(self) -> None:

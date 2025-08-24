@@ -5,18 +5,18 @@ Test file for the events module to verify the structure works correctly.
 from datetime import datetime, timezone
 
 from services.common.events import (
+    CalendarEvent,
     CalendarEventData,
-    CalendarUpdateEvent,
     ContactData,
-    ContactUpdateEvent,
-    EmailBackfillEvent,
+    ContactEvent,
     EmailData,
+    EmailEvent,
     EventMetadata,
 )
 
 
-def test_email_backfill_event_creation():
-    """Test creating an EmailBackfillEvent with proper metadata."""
+def test_email_event_creation():
+    """Test creating an EmailEvent with proper metadata."""
     # Create email data
     email_data = EmailData(
         id="email_123",
@@ -37,30 +37,34 @@ def test_email_backfill_event_creation():
         provider_message_id="gmail_123",
     )
 
-    # Create backfill event
-    event = EmailBackfillEvent(
+    # Create email event
+    event = EmailEvent(
         user_id="user_789",
+        email=email_data,
+        operation="create",
+        batch_id="batch_123",
+        last_updated=datetime.now(timezone.utc),
+        sync_timestamp=datetime.now(timezone.utc),
         provider="gmail",
-        emails=[email_data],
-        batch_size=1,
         sync_type="backfill",
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
-            correlation_id="backfill_job_123",
+            correlation_id="email_job_123",
         ),
     )
 
     assert event.user_id == "user_789"
     assert event.provider == "gmail"
-    assert len(event.emails) == 1
-    assert event.emails[0].subject == "Test Email"
+    assert event.email.subject == "Test Email"
+    assert event.operation == "create"
+    assert event.batch_id == "batch_123"
     assert event.metadata.source_service == "office-service"
-    assert event.metadata.correlation_id == "backfill_job_123"
+    assert event.metadata.correlation_id == "email_job_123"
 
 
-def test_calendar_update_event_creation():
-    """Test creating a CalendarUpdateEvent."""
+def test_calendar_event_creation():
+    """Test creating a CalendarEvent."""
     calendar_data = CalendarEventData(
         id="event_123",
         title="Test Meeting",
@@ -78,10 +82,15 @@ def test_calendar_update_event_creation():
         calendar_id="calendar_456",
     )
 
-    event = CalendarUpdateEvent(
+    event = CalendarEvent(
         user_id="user_789",
         event=calendar_data,
-        update_type="create",
+        operation="create",
+        batch_id="batch_123",
+        last_updated=datetime.now(timezone.utc),
+        sync_timestamp=datetime.now(timezone.utc),
+        provider="google",
+        calendar_id="calendar_456",
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
@@ -90,12 +99,13 @@ def test_calendar_update_event_creation():
 
     assert event.user_id == "user_789"
     assert event.event.title == "Test Meeting"
-    assert event.update_type == "create"
+    assert event.operation == "create"
+    assert event.batch_id == "batch_123"
     assert event.metadata.source_service == "office-service"
 
 
-def test_contact_update_event_creation():
-    """Test creating a ContactUpdateEvent."""
+def test_contact_event_creation():
+    """Test creating a ContactEvent."""
     contact_data = ContactData(
         id="contact_123",
         display_name="John Doe",
@@ -111,10 +121,14 @@ def test_contact_update_event_creation():
         provider_contact_id="google_123",
     )
 
-    event = ContactUpdateEvent(
+    event = ContactEvent(
         user_id="user_789",
         contact=contact_data,
-        update_type="create",
+        operation="create",
+        batch_id="batch_123",
+        last_updated=datetime.now(timezone.utc),
+        sync_timestamp=datetime.now(timezone.utc),
+        provider="google",
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
@@ -123,17 +137,32 @@ def test_contact_update_event_creation():
 
     assert event.user_id == "user_789"
     assert event.contact.display_name == "John Doe"
-    assert event.update_type == "create"
+    assert event.operation == "create"
+    assert event.batch_id == "batch_123"
     assert event.metadata.source_service == "office-service"
 
 
 def test_event_metadata_tracing():
     """Test that events can have tracing context added."""
-    event = EmailBackfillEvent(
+    event = EmailEvent(
         user_id="user_123",
+        email=EmailData(
+            id="email_123",
+            thread_id="thread_456",
+            subject="Test Email",
+            body="Test body",
+            from_address="test@example.com",
+            to_addresses=["recipient@example.com"],
+            received_date=datetime.now(timezone.utc),
+            provider="gmail",
+            provider_message_id="gmail_123",
+        ),
+        operation="create",
+        batch_id="batch_123",
+        last_updated=datetime.now(timezone.utc),
+        sync_timestamp=datetime.now(timezone.utc),
         provider="gmail",
-        emails=[],
-        batch_size=0,
+        sync_type="sync",
         metadata=EventMetadata(
             source_service="office-service",
             source_version="1.0.0",
@@ -158,8 +187,8 @@ def test_event_metadata_tracing():
 
 if __name__ == "__main__":
     # Run tests
-    test_email_backfill_event_creation()
-    test_calendar_update_event_creation()
-    test_contact_update_event_creation()
+    test_email_event_creation()
+    test_calendar_event_creation()
+    test_contact_event_creation()
     test_event_metadata_tracing()
     print("All tests passed!")

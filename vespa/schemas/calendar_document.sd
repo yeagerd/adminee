@@ -1,0 +1,101 @@
+schema calendar_document {
+    document calendar_document inherits base_document {
+        # Calendar-specific fields
+        field start_time type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field end_time type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field all_day type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field location type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field organizer type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field attendees type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field status type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field visibility type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field calendar_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field recurrence type map<string, string> {
+            indexing: summary
+        }
+        
+        field reminders type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field attachments type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field color_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field html_link type string {
+            indexing: summary
+        }
+        
+        # Override content_type for calendar events
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "calendar"
+        }
+    }
+    
+    fieldset calendar_search {
+        fields: title, content, search_text, location, organizer, attendees
+    }
+    
+    rank-profile calendar_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, location)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, location) + 0.65 * closeness(field, embedding) + 0.1 * freshness(start_time)
+        }
+        match-features: nativeRank(title, content, search_text, location) closeness(field, embedding) freshness(start_time)
+    }
+    
+    rank-profile calendar_upcoming inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, location)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(title, content, search_text, location) + 0.6 * closeness(field, embedding) + 0.2 * freshness(start_time)
+        }
+        match-features: nativeRank(title, content, search_text, location) closeness(field, embedding) freshness(start_time)
+    }
+}

@@ -1,6 +1,6 @@
 ## Event-driven Office data architecture
 
-This document proposes a well-architected, event-driven flow for both batch synchronization and real-time streaming of Office data (emails, calendars, contacts, documents, todos), aligned with existing Briefly services and code patterns under `services/`.
+This document describes the implemented event-driven architecture for both batch synchronization and real-time streaming of Office data (emails, calendars, contacts, documents, todos), aligned with existing Briefly services and code patterns under `services/`.
 
 ### Goals
 - **Unified ingestion**: a consistent pipeline for batch sync and streaming updates across Microsoft and Google providers.
@@ -12,15 +12,19 @@ This document proposes a well-architected, event-driven flow for both batch sync
 
 ### Existing building blocks
 - `services/common/events/` defines typed events and a `BaseEvent` with tracing metadata.
-- `services/common/pubsub_client.py` provides a shared publisher/consumer abstraction with tracing and logging and typed helpers like `publish_email_backfill`.
-- `services/office/core/email_crawler.py` performs normalized retrieval from providers via the Office service’s own internal APIs.
-- `services/office/api/backfill.py` constructs `EmailBackfillEvent` batches and publishes to Pub/Sub.
+- `services/common/pubsub_client.py` provides a shared publisher/consumer abstraction with tracing and logging and typed helpers like `publish_email_event`.
+- `services/office/core/email_crawler.py` performs normalized retrieval from providers via the Office service's own internal APIs.
+- `services/office/api/backfill.py` constructs `EmailEvent` batches and publishes to Pub/Sub.
 - Topics used today (see demos and vespa loader):
-  - `email-backfill` (backfill batches of normalized emails)
-  - `calendar-updates` (single or batch calendar updates)
-  - `contact-updates` (single or batch contact updates)
+  - `emails` (replaces `email-backfill` - all email events)
+  - `calendars` (replaces `calendar-updates` - all calendar events)
+  - `contacts` (replaces `contact-updates` - all contact events)
+  - `word_documents` (new - Word document events)
+  - `sheet_documents` (new - Excel/Sheet document events)
+  - `presentation_documents` (new - PowerPoint/Presentation events)
+  - `todos` (new - Todo and task events)
 
-**Note**: The current topic naming mixes data types with operation types, which creates confusion. We'll revise this to be data-type focused.
+**Note**: The topic naming has been revised to be data-type focused, eliminating confusion between data types and operation types.
 
 ### High-level data flow
 1) User connects an integration (Google or Microsoft)
@@ -29,7 +33,7 @@ This document proposes a well-architected, event-driven flow for both batch sync
   - a backfill job request (enqueue to a job queue or call Office internal backfill start endpoint)
   - registration for streaming updates:
     - Microsoft: set up webhook subscription to Office service callback URL
-    - Google: configure Google Pub/Sub push or pull subscription to Office’s project/topic
+    - Google: configure Google Pub/Sub push or pull subscription to Office's project/topic
 
 2) Batch sync path
 - A sync request handler (thin orchestrator) enqueues or directly calls the Office sync internal endpoint with parameters (user, provider, date range, batch size).
@@ -48,6 +52,7 @@ This document proposes a well-architected, event-driven flow for both batch sync
   - Vespa Loader (`services/vespa_loader`): subscribes to all data types for indexing.
   - Meetings (`services/meetings`): subscribe to `calendars` only for meeting contexts and availability.
   - Shipments (`services/shipments`): subscribe to `emails` only for shipping event parsing.
+  - Contact Discovery (`services/user`): subscribes to `emails`, `calendars`, `word_documents`, `sheet_documents`, `presentation_documents` for contact management.
   - FE Client SSE Notifier: subscribes to relevant data types for user notifications.
 
 5) Content access pattern
@@ -63,8 +68,10 @@ This document proposes a well-architected, event-driven flow for both batch sync
 emails          # All email events (batch sync, incremental sync, real-time)
 calendars       # All calendar events (batch sync, incremental sync, real-time)  
 contacts        # All contact events (batch sync, incremental sync, real-time)
-documents       # All document events (batch sync, incremental sync, real-time)
-todos           # All todo events (batch sync, incremental sync, real-time)
+word_documents  # All Word document events (batch sync, incremental sync, real-time)
+sheet_documents # All Excel/Sheet document events (batch sync, incremental sync, real-time)
+presentation_documents # All PowerPoint/Presentation events (batch sync, incremental sync, real-time)
+todos           # All todo and task events (batch sync, incremental sync, real-time)
 ```
 
 #### Event Types
@@ -92,6 +99,28 @@ class ContactEvent(BaseEvent):
     sync_timestamp: datetime     # when we last synced this data
 ```
 
+**Document events (Word, Sheet, Presentation):**
+```python
+class DocumentEvent(BaseEvent):
+    data: DocumentData
+    operation: Literal["create", "update", "delete"]
+    batch_id: Optional[str]      # for batch operations
+    correlation_id: Optional[str] # for job tracking
+    last_updated: datetime       # when the content was last modified
+    sync_timestamp: datetime     # when we last synced this data
+```
+
+**Todo events:**
+```python
+class TodoEvent(BaseEvent):
+    data: TodoData
+    operation: Literal["create", "update", "delete"]
+    batch_id: Optional[str]      # for batch operations
+    correlation_id: Optional[str] # for job tracking
+    last_updated: datetime       # when the content was last modified
+    sync_timestamp: datetime     # when we last synced this data
+```
+
 All events extend `BaseEvent` and include `metadata` (trace_id/span_id, correlation_id, user_id, source_service, source_version). Use typed events from `services.common.events.*` to ensure schema consistency.
 
 ### Service boundaries and responsibilities
@@ -104,6 +133,7 @@ All events extend `BaseEvent` and include `metadata` (trace_id/span_id, correlat
 - User service (`services/user`)
   - Manages user identities, integrations, tokens.
   - Triggers batch sync start and streaming subscriptions when an integration is created or refreshed.
+  - **Contact Discovery Service**: Processes events from multiple sources to maintain email contact lists.
 
 - Meetings service (`services/meetings`)
   - Subscribes to `calendars` only to update meeting models, availability, polls, and booking artifacts.
@@ -390,10 +420,84 @@ class EmailContact(BaseModel):
 - Include `correlation_id` for batch sync jobs to aggregate metrics and trace.
 - Keep consumers stateless; track progress in their own stores if necessary.
 
-### Idempotency strategies by data type
+### Idempotency Implementation
+
+**Strategy**: Comprehensive idempotency system using SHA-256 hashed keys and Redis-backed reference patterns for reliable event processing.
+
+#### Idempotency Key Generation
+```python
+class IdempotencyKeyGenerator:
+    @staticmethod
+    def generate_email_key(event: EmailEvent) -> str:
+        # For emails, use provider_message_id + user_id as the base
+        base_key = f"{event.provider}:{event.email.provider_message_id}:{event.user_id}"
+        
+        # For mutable data, include updated_at timestamp
+        if event.operation in ["update", "delete"] and event.last_updated:
+            base_key += f":{int(event.last_updated.timestamp())}"
+        
+        # For batch operations, include batch_id
+        if event.batch_id:
+            base_key += f":{event.batch_id}"
+        
+        return IdempotencyKeyGenerator._hash_key(base_key)
+```
+
+#### Idempotency Strategies by Data Type
 - **Immutable data (emails, calendar events)**: Use `provider_message_id` + `user_id` as idempotency key
 - **Mutable data (contacts, documents, drafts)**: Use `provider_message_id` + `user_id` + `updated_at` timestamp
 - **Batch operations**: Include `batch_id` + `correlation_id` for job tracking
+
+#### Redis Reference Pattern
+The system implements a shared library for Redis key generation and management:
+
+```python
+class RedisReferencePattern:
+    KEY_PATTERNS = {
+        "office": "office:{user_id}:{doc_type}:{doc_id}",
+        "email": "email:{user_id}:{provider}:{doc_id}",
+        "calendar": "calendar:{user_id}:{provider}:{doc_id}",
+        "contact": "contact:{user_id}:{provider}:{doc_id}",
+        "document": "document:{user_id}:{provider}:{doc_id}",
+        "todo": "todo:{user_id}:{provider}:{doc_id}",
+        "idempotency": "idempotency:{key}",
+        "batch": "batch:{batch_id}:{correlation_id}",
+        "fragment": "fragment:{parent_doc_id}:{fragment_id}",
+    }
+    
+    TTL_SETTINGS = {
+        "office": 86400 * 7,  # 7 days
+        "idempotency": 86400,  # 24 hours
+        "batch": 86400 * 3,    # 3 days
+        "fragment": 86400 * 30, # 30 days
+    }
+```
+
+#### Idempotency Service
+High-level service that orchestrates idempotency checks for event and batch processing:
+
+```python
+class IdempotencyService:
+    def process_event_with_idempotency(
+        self,
+        event: Union[EmailEvent, CalendarEvent, ContactEvent, DocumentEvent, TodoEvent],
+        processor_func: Callable,
+        *args,
+        **kwargs
+    ) -> Dict[str, Any]:
+        # Generate idempotency key
+        # Check if already processed
+        # Store processing status
+        # Execute processor function
+        # Update with results
+```
+
+#### Benefits
+- **Reliable Processing**: Events are processed exactly once, even with retries
+- **Performance**: Redis-backed storage enables fast idempotency checks
+- **Flexibility**: Different strategies for different data types
+- **Monitoring**: Full visibility into processing status and retry patterns
+- **Scalability**: Stateless design enables horizontal scaling
 
 ### Consumer filtering and selective consumption
 - **Vespa Loader**: Subscribes to all data types (`emails`, `calendars`, `contacts`, `word_documents`, `word_fragments`, `sheet_documents`, `sheet_fragments`, `presentation_documents`, `presentation_fragments`, `task_documents`, `todos`) for comprehensive indexing
@@ -440,19 +544,28 @@ This selective consumption model:
   - `emails` (all email events)
   - `calendars` (all calendar events)
   - `contacts` (all contact events)
-  - `documents` (all document events)
-  - `todos` (all todo events)
+  - `word_documents` (all Word document events)
+  - `sheet_documents` (all Excel/Sheet document events)
+  - `presentation_documents` (all PowerPoint/Presentation events)
+  - `todos` (all todo and task events)
 - Subscription names (by consumer):
-  - Vespa: `vespa-loader-emails`, `vespa-loader-calendars`, `vespa-loader-contacts`, `vespa-loader-documents`, `vespa-loader-todos`
+  - Vespa: `vespa-loader-emails`, `vespa-loader-calendars`, `vespa-loader-contacts`, `vespa-loader-word-documents`, `vespa-loader-sheet-documents`, `vespa-loader-presentation-documents`, `vespa-loader-todos`
+  - Contact Discovery: `contact-discovery-emails`, `contact-discovery-calendars`, `contact-discovery-word-documents`, `contact-discovery-sheet-documents`, `contact-discovery-presentation-documents`
   - Meetings: `meetings-calendars`
   - Shipments: `shipments-emails`
   - SSE: `client-sse-emails`, `client-sse-calendars`, etc.
 
+**Note**: All subscription names follow the pattern `{service-prefix}-{topic-name}` for consistency and easy identification.
+
 ### Open questions and near-term improvements
-- Event type consolidation: migrate from `EmailBackfillEvent` to `EmailEvent` with `sync_type` field for cleaner semantics.
-- Redis reference mode: introduce a shared small library to generate keys, set TTLs, and include reference envelopes in events.
-- Calendar/contacts sync: mirror the email sync approach with typed events and shared crawler abstraction.
-- Quotas and batch sizing: expose batch sizes via settings per consumer; align with provider limits.
+- ~~Event type consolidation: migrate from `EmailBackfillEvent` to `EmailEvent` with `sync_type` field for cleaner semantics.~~ ✅ **COMPLETED**
+- ~~Redis reference mode: introduce a shared small library to generate keys, set TTLs, and include reference envelopes in events.~~ ✅ **COMPLETED**
+- ~~Calendar/contacts sync: mirror the email sync approach with typed events and shared crawler abstraction.~~ ✅ **COMPLETED**
+- ~~Quotas and batch sizing: expose batch sizes via settings per consumer; align with provider limits.~~ ✅ **COMPLETED**
+- **Testing and Validation**: ✅ **COMPLETED** - Comprehensive test suite covering all aspects of the new architecture
+- **Documentation**: ✅ **COMPLETED** - Updated documentation reflecting the implemented architecture
+- **Deployment Guides**: Update deployment guides to reflect new topic names and subscription patterns
+- **Monitoring and Observability**: Implement monitoring dashboards for the new event-driven architecture
 
 ### Appendix: Key code references
 - Typed events: `services/common/events/*.py`
@@ -461,5 +574,70 @@ This selective consumption model:
 - Office crawler: `services/office/core/email_crawler.py`
 - Vespa consumer: `services/vespa_loader/pubsub_consumer.py`
 - Demo topic setup: `services/demos/setup_pubsub.py`
+- **Idempotency System**: `services/common/idempotency/*.py`
+- **Subscription Configuration**: `services/common/config/subscription_config.py`
+- **Contact Discovery Service**: `services/user/services/contact_discovery_service.py`
+- **Document Chunking Service**: `services/common/services/document_chunking_service.py`
+- **Integration Tests**: `services/common/tests/test_event_driven_architecture_integration.py`
+
+### Consumer Subscription Management
+
+**Strategy**: Centralized configuration for Pub/Sub subscription naming and management across all services.
+
+#### Subscription Configuration
+The system provides a centralized configuration for subscription naming and management:
+
+```python
+class SubscriptionConfig:
+    SERVICE_PREFIXES = {
+        "vespa_loader": "vespa-loader",
+        "contact_discovery": "contact-discovery",
+        "meetings": "meetings",
+        "shipments": "shipments",
+        "client_sse": "client-sse",
+    }
+    
+    TOPIC_NAMES = {
+        "emails": "emails",
+        "calendars": "calendars",
+        "contacts": "contacts",
+        "word_documents": "word_documents",
+        "sheet_documents": "sheet_documents",
+        "presentation_documents": "presentation_documents",
+        "todos": "todos",
+    }
+    
+    SERVICE_SUBSCRIPTIONS = {
+        "vespa_loader": {
+            "emails": {
+                "subscription_name": "vespa-loader-emails",
+                "batch_size": 50,
+                "ack_deadline_seconds": 120,
+            },
+            "calendars": {
+                "subscription_name": "vespa-loader-calendars",
+                "batch_size": 50,
+                "ack_deadline_seconds": 120,
+            },
+            # ... other topics
+        },
+        "contact_discovery": {
+            "emails": {
+                "subscription_name": "contact-discovery-emails",
+                "batch_size": 100,
+                "ack_deadline_seconds": 60,
+            },
+            # ... other topics
+        },
+    }
+```
+
+#### Benefits
+- **Consistent Naming**: Standardized subscription naming convention across all services
+- **Centralized Configuration**: Single source of truth for subscription settings
+- **Selective Consumption**: Services only subscribe to topics they need
+- **Easy Maintenance**: Configuration changes in one place
+- **Validation**: Built-in validation of subscription configurations
+- **Monitoring**: Centralized subscription statistics and health checks
 
 
