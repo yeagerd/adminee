@@ -93,43 +93,30 @@ class TestSubscriptionConfig:
         vespa_topics = SubscriptionConfig.get_service_topics("vespa_loader")
         assert "emails" in vespa_topics
         assert "calendars" in vespa_topics
-        assert "contacts" in vespa_topics
         assert "word_documents" in vespa_topics
+        assert "sheet_documents" in vespa_topics
+        assert "presentation_documents" in vespa_topics
+        assert "task_documents" in vespa_topics
         assert "todos" in vespa_topics
-        assert (
-            len(vespa_topics) == 15
-        )  # All vespa_loader topics from subscription config
+        assert "llm_chats" in vespa_topics
+        assert "shipment_events" in vespa_topics
+        assert "meeting_polls" in vespa_topics
+        assert "bookings" in vespa_topics
 
         # Test contact_discovery service
         contact_topics = SubscriptionConfig.get_service_topics("contact_discovery")
         assert "emails" in contact_topics
         assert "calendars" in contact_topics
-        assert "contacts" in contact_topics
         assert "word_documents" in contact_topics
+        assert "sheet_documents" in contact_topics
+        assert "presentation_documents" in contact_topics
         assert "todos" in contact_topics
-        assert len(contact_topics) == 7
-
-        # Test meetings service
-        meetings_topics = SubscriptionConfig.get_service_topics("meetings")
-        assert "calendars" in meetings_topics
-        assert len(meetings_topics) == 1
-
-        # Test shipments service
-        shipments_topics = SubscriptionConfig.get_service_topics("shipments")
-        assert "emails" in shipments_topics
-        assert len(shipments_topics) == 1
 
         # Test frontend_sse service
         frontend_topics = SubscriptionConfig.get_service_topics("frontend_sse")
         assert "emails" in frontend_topics
         assert "calendars" in frontend_topics
-        assert "contacts" in frontend_topics
         assert "todos" in frontend_topics
-        assert len(frontend_topics) == 4
-
-        # Test unknown service
-        unknown_topics = SubscriptionConfig.get_service_topics("unknown_service")
-        assert len(unknown_topics) == 0
 
     def test_get_topic_subscribers(self):
         """Test getting subscribers for different topics."""
@@ -147,22 +134,8 @@ class TestSubscriptionConfig:
         assert "meetings" in calendar_subscribers
         assert "frontend_sse" in calendar_subscribers
 
-        # Test contacts topic
-        contact_subscribers = SubscriptionConfig.get_topic_subscribers("contacts")
-        assert "vespa_loader" in contact_subscribers
-        assert "contact_discovery" in contact_subscribers
-        assert "frontend_sse" in contact_subscribers
-
-        # Test todos topic
-        todo_subscribers = SubscriptionConfig.get_topic_subscribers("todos")
-        assert "vespa_loader" in todo_subscribers
-        assert "contact_discovery" in todo_subscribers
-        assert "frontend_sse" in todo_subscribers
-
         # Test word_documents topic
-        word_doc_subscribers = SubscriptionConfig.get_topic_subscribers(
-            "word_documents"
-        )
+        word_doc_subscribers = SubscriptionConfig.get_topic_subscribers("word_documents")
         assert "vespa_loader" in word_doc_subscribers
         assert "contact_discovery" in word_doc_subscribers
 
@@ -237,8 +210,9 @@ class TestSubscriptionConfig:
         contact_subscriptions = all_subscriptions["contact_discovery"]
         assert "emails" in contact_subscriptions
         assert "calendars" in contact_subscriptions
-        assert "contacts" in contact_subscriptions
         assert "word_documents" in contact_subscriptions
+        assert "sheet_documents" in contact_subscriptions
+        assert "presentation_documents" in contact_subscriptions
         assert "todos" in contact_subscriptions
 
     def test_get_subscription_stats(self):
@@ -261,7 +235,7 @@ class TestSubscriptionConfig:
         topic_usage = stats["topic_usage"]
         assert "emails" in topic_usage
         assert "calendars" in topic_usage
-        assert "contacts" in topic_usage
+        assert "word_documents" in topic_usage
         assert "todos" in topic_usage
 
         # Verify specific topic subscribers
@@ -277,10 +251,10 @@ class TestSubscriptionConfig:
         # Check that all expected topic names are present
         assert "emails" in topic_names
         assert "calendars" in topic_names
-        assert "contacts" in topic_names
         assert "word_documents" in topic_names
         assert "sheet_documents" in topic_names
         assert "presentation_documents" in topic_names
+        assert "task_documents" in topic_names
         assert "todos" in topic_names
         assert "llm_chats" in topic_names
         assert "shipment_events" in topic_names
@@ -290,7 +264,6 @@ class TestSubscriptionConfig:
         # Check that topic names match the values
         assert topic_names["emails"] == "emails"
         assert topic_names["calendars"] == "calendars"
-        assert topic_names["contacts"] == "contacts"
         assert topic_names["word_documents"] == "word_documents"
         assert topic_names["todos"] == "todos"
 

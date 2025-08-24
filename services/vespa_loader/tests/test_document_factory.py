@@ -145,56 +145,6 @@ class TestVespaDocumentFactory:
         assert doc.metadata["operation"] == "create"
         assert doc.metadata["event_type"] == "calendar"
 
-    def test_create_contact_document(self):
-        """Test creating contact document from ContactEvent"""
-        # Create test contact data
-        contact_data = ContactData(
-            id="contact_001",
-            display_name="John Doe",
-            email_addresses=["john@example.com"],
-            phone_numbers=[{"type": "mobile", "number": "+1234567890"}],
-            given_name="John",
-            family_name="Doe",
-            company="Example Corp",
-            job_title="Developer",
-            provider="google",
-            provider_contact_id="google_contact_001",
-            last_modified=datetime.now(timezone.utc),
-            addresses=[],
-            organizations=[],
-            birthdays=[],
-            photos=[],
-            groups=[],
-            tags=["work"],
-        )
-
-        contact_event = ContactEvent(
-            user_id=self.test_user_id,
-            contact=contact_data,
-            operation="create",
-            batch_id=self.test_batch_id,
-            last_updated=self.test_timestamp,
-            sync_timestamp=self.test_timestamp,
-            provider="google",
-            metadata=self.test_metadata,
-        )
-
-        # Create document
-        doc = self.factory.create_contact_document(contact_event)
-
-        # Verify document structure
-        assert isinstance(doc, VespaDocumentType)
-        assert doc.id == "contact_001"
-        assert doc.user_id == self.test_user_id
-        assert doc.type == "contact"
-        assert doc.provider == "google"
-        assert doc.subject == "John Doe"
-        assert doc.body == ""
-        assert doc.from_address == ""
-        assert doc.to_addresses == ["john@example.com"]
-        assert doc.metadata["operation"] == "create"
-        assert doc.metadata["contact_type"] == "contact"
-
     def test_create_document_document(self):
         """Test creating document from DocumentEvent"""
         # Create test document data
@@ -335,7 +285,6 @@ class TestVespaDocumentFactory:
         expected_types = [
             "EmailEvent",
             "CalendarEvent",
-            "ContactEvent",
             "DocumentEvent",
             "TodoEvent",
         ]
@@ -431,71 +380,38 @@ class TestParseEventByTopic:
         assert event.user_id == "test_user"
         assert event.event.id == "calendar_001"
 
-    def test_parse_contact_event(self):
-        """Test parsing contact event from raw data"""
-        raw_data = {
-            "user_id": "test_user",
-            "contact": {
-                "id": "contact_001",
-                "display_name": "John Doe",
-                "email_addresses": ["john@example.com"],
-                "phone_numbers": [{"type": "mobile", "number": "+1234567890"}],
-                "given_name": "John",
-                "family_name": "Doe",
-                "company": "Example Corp",
-                "job_title": "Developer",
-                "provider": "google",
-                "provider_contact_id": "google_contact_001",
-                "last_modified": "2023-01-01T00:00:00Z",
-                "addresses": [],
-                "organizations": [],
-                "birthdays": [],
-                "photos": [],
-                "groups": [],
-                "tags": ["work"],
-            },
-            "operation": "create",
-            "batch_id": "batch_001",
-            "last_updated": "2023-01-01T00:00:00Z",
-            "sync_timestamp": "2023-01-01T00:00:00Z",
-            "provider": "google",
-            "metadata": self.test_metadata.model_dump(),
-        }
-
-        event = parse_event_by_topic("contacts", raw_data, self.test_message_id)
-        assert isinstance(event, ContactEvent)
-        assert event.user_id == "test_user"
-        assert event.contact.id == "contact_001"
-
     def test_parse_document_event(self):
         """Test parsing document event from raw data"""
         raw_data = {
-            "user_id": "test_user",
+            "user_id": "test_user_123",
             "document": {
-                "id": "doc_001",
-                "title": "Test Doc",
+                "id": "doc_123",
+                "title": "Test Document",
                 "content": "Test content",
-                "content_type": "word",
-                "provider": "microsoft",
-                "provider_document_id": "ms_doc_001",
-                "owner_email": "owner@example.com",
-                "permissions": ["read"],
-                "tags": ["work"],
-                "metadata": {},
+                "content_type": "text/plain",
+                "provider": "google",
+                "file_id": "file_123",
+                "mime_type": "text/plain",
+                "size_bytes": 1000,
+                "created_at": "2023-01-01T00:00:00Z",
+                "updated_at": "2023-01-01T00:00:00Z",
+                "permissions": [],
+                "owners": [],
+                "web_view_link": "https://example.com",
+                "web_content_link": "https://example.com/download",
             },
             "operation": "create",
-            "batch_id": "batch_001",
+            "batch_id": "batch_123",
             "last_updated": "2023-01-01T00:00:00Z",
             "sync_timestamp": "2023-01-01T00:00:00Z",
-            "provider": "microsoft",
-            "content_type": "word",
-            "metadata": self.test_metadata.model_dump(),
+            "provider": "google",
+            "content_type": "word_documents",
         }
 
         event = parse_event_by_topic("word_documents", raw_data, self.test_message_id)
         assert isinstance(event, DocumentEvent)
-        assert event.user_id == "test_user"
-        assert event.document.id == "doc_001"
+        assert event.user_id == "test_user_123"
+        assert event.document.id == "doc_123"
 
     def test_parse_todo_event(self):
         """Test parsing todo event from raw data"""
