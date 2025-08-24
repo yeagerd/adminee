@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from services.common.http_errors import NotFoundError
 from services.user.auth.nextauth import get_current_user
-from services.user.schemas.preferences import (
+from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
     Language,

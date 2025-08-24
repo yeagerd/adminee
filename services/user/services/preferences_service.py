@@ -16,7 +16,7 @@ from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.models.preferences import UserPreferences
 from services.user.models.user import User
-from services.user.schemas.preferences import (
+from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
     NotificationPreferencesSchema,

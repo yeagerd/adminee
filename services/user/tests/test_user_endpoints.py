@@ -13,8 +13,8 @@ from fastapi import HTTPException, status
 
 from services.common.http_errors import NotFoundError
 from services.user.models.user import User
-from services.user.schemas.pagination import UserListResponse
-from services.user.schemas.user import (
+from services.api.v1.user.pagination import UserListResponse
+from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
@@ -202,7 +202,7 @@ class TestUserProfileEndpoints:
             assert retrieved_user.email == "integration@test.com"
 
             # Test updating user
-            from services.user.schemas.user import UserUpdate
+            from services.api.v1.user.user import UserUpdate
 
             update_data = UserUpdate(first_name="Updated")
             updated_user = await get_user_service().update_user(1, update_data)

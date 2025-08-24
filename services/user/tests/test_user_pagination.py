@@ -8,7 +8,7 @@ import pytest
 from common.pagination import PaginationConfig
 from common.pagination.base import CursorInfo
 
-from services.user.schemas.pagination import (
+from services.api.v1.user.pagination import (
     CursorValidationError,
     PaginationError,
     UserListRequest,

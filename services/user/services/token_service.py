@@ -21,7 +21,7 @@ from services.user.models.integration import (
 )
 from services.user.models.token import EncryptedToken, TokenType
 from services.user.models.user import User
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     InternalTokenResponse,
     InternalUserStatusResponse,
     ProviderRevocationResponse,
@@ -614,7 +614,7 @@ class TokenService:
                 )
 
             # Return a failed response similar to TokenRefreshResponse
-            from services.user.schemas.integration import (
+            from services.api.v1.user.integration import (
                 TokenRefreshResponse,
             )
 
