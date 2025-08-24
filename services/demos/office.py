@@ -33,7 +33,7 @@ from services.office.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.office.schemas import EmailMessage
+from services.api.v1.office.email import EmailMessage
 
 
 class OfficeDemoService:

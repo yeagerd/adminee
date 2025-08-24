@@ -51,11 +51,11 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [x] Break down the large schema file into logical modules
 - [x] Update `services/office/` imports to use `services.api.v1.office`
 - [ ] Update inter-service calls in other services that import office schemas
-  - [ ] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
-  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
-  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
-  - [ ] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api.v1.office`
-  - [ ] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
+  - [x] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
+  - [x] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [x] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [x] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api/v1.office`
+  - [x] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
   - [ ] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
   - [x] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
 - [x] Update office service tests and ensure they pass
@@ -63,17 +63,17 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 
 ## Phase 4: Meetings Service Models (Priority: Medium)
 
-- [ ] Move `services/meetings/schemas/` contents to `services/api/v1/meetings/`
-  - [ ] Move `booking_requests.py` schemas
-- [ ] Update `services/meetings/` imports to use `services.api.v1.meetings`
-- [ ] Update any inter-service calls that import meetings schemas
-  - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
+- [x] Move `services/meetings/schemas/` contents to `services/api/v1/meetings/`
+  - [x] Move `booking_requests.py` schemas
+- [x] Update `services/meetings/` imports to use `services.api.v1.meetings`
+- [x] Update any inter-service calls that import meetings schemas
+  - [x] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
   - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
-  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api.v1.meetings`
-  - [ ] **Office Service**: Update `services/office/api/calendar.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
+  - [x] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api/v1.meetings`
+  - [x] **Office Service**: Update `services/office/api/calendar.py` to use `CreateCalendarEventRequest` from `services.api/v1.office` (already handled in Phase 3)
   - [ ] **Office Tests**: Update `services/office/tests/test_validation.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
-  - [ ] Verify that no other services are making direct calls to meetings service internal models
-- [ ] Ensure meetings service tests pass
+  - [x] Verify that no other services are making direct calls to meetings service internal models
+- [x] Ensure meetings service tests pass
 - [ ] Update meetings service documentation
 
 ## Phase 5: Chat Service Models (Priority: Medium)

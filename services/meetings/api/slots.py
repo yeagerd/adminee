@@ -12,7 +12,7 @@ from services.meetings.api.polls import get_user_id_from_request
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
-from services.meetings.schemas import TimeSlot, TimeSlotCreate
+from services.api.v1.meetings.meetings import TimeSlot, TimeSlotCreate
 from services.meetings.settings import get_settings
 
 router = APIRouter()

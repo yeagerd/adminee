@@ -21,7 +21,7 @@ from services.meetings.models.booking_entities import (
     BookingTemplate,
     OneTimeLink,
 )
-from services.meetings.schemas.booking_requests import (
+from services.api.v1.meetings.booking_requests import (
     AnalyticsResponse,
     AvailabilityDataResponse,
     AvailabilityResponse,

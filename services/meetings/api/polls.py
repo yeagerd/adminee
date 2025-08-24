@@ -20,7 +20,7 @@ from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_async_session, get_session
 from services.meetings.models.meeting import ParticipantStatus, PollStatus
-from services.meetings.schemas import (
+from services.api.v1.meetings.meetings import (
     MeetingPoll,
     MeetingPollCreate,
     MeetingPollUpdate,
@@ -93,7 +93,7 @@ def get_poll(
 
         # Fetch responses for this poll
         from services.meetings.models import PollResponse as PollResponseModel
-        from services.meetings.schemas import PollResponse as PollResponseSchema
+        from services.api.v1.meetings.meetings import PollResponse as PollResponseSchema
 
         responses = session.query(PollResponseModel).filter_by(poll_id=poll_id).all()
         try:

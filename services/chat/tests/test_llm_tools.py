@@ -150,7 +150,8 @@ class TestLLMTools(BaseSelectiveHTTPIntegrationTest):
         from datetime import datetime, timezone
 
         from services.chat.tools.data_tools import DataTools
-        from services.office.schemas import CalendarEvent, Provider
+        from services.api.v1.office.calendar import CalendarEvent
+        from services.api.v1.office.models import Provider
 
         # Test the DataTools directly
         data_tools = DataTools("user123")

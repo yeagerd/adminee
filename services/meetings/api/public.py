@@ -10,7 +10,7 @@ from services.meetings.models import (
     get_session,
 )
 from services.meetings.models.meeting import ParticipantStatus
-from services.meetings.schemas import MeetingPoll, PollResponseCreate
+from services.api.v1.meetings.meetings import MeetingPoll, PollResponseCreate
 
 router = APIRouter()
 

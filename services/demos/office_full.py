@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Union
 import httpx
 
 # Import Office Service Pydantic models for proper response parsing
-from services.office.schemas import ApiResponse
+from services.api.v1.office.email import ApiResponse
 
 
 class OfficeServiceClient:

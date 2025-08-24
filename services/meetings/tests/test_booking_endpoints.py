@@ -466,7 +466,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
     ):
         """Test successful booking creation with proper transaction handling."""
         from services.meetings.models import get_session
-        from services.meetings.schemas.booking_requests import (
+        from services.api.v1.meetings.booking_requests import (
             CreatePublicBookingRequest,
         )
 
@@ -538,7 +538,7 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
     ):
         """Test booking creation when calendar event creation fails."""
         from services.meetings.models import get_session
-        from services.meetings.schemas.booking_requests import (
+        from services.api.v1.meetings.booking_requests import (
             CreatePublicBookingRequest,
         )
 
