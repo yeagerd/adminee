@@ -206,7 +206,14 @@ class TestSubscriptionConfig:
         assert "calendars" in vespa_subscriptions
         assert "contacts" in vespa_subscriptions
         assert "word_documents" in vespa_subscriptions
+        assert "sheet_documents" in vespa_subscriptions
+        assert "presentation_documents" in vespa_subscriptions
+        assert "task_documents" in vespa_subscriptions
         assert "todos" in vespa_subscriptions
+        assert "llm_chats" in vespa_subscriptions
+        assert "shipment_events" in vespa_subscriptions
+        assert "meeting_polls" in vespa_subscriptions
+        assert "bookings" in vespa_subscriptions
 
         # Check contact_discovery has expected topics
         contact_subscriptions = all_subscriptions["contact_discovery"]
@@ -253,6 +260,7 @@ class TestSubscriptionConfig:
         # Check that all expected topic names are present
         assert "emails" in topic_names
         assert "calendars" in topic_names
+        assert "contacts" in topic_names
         assert "word_documents" in topic_names
         assert "sheet_documents" in topic_names
         assert "presentation_documents" in topic_names

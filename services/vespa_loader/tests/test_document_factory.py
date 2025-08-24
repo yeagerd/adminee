@@ -285,6 +285,7 @@ class TestVespaDocumentFactory:
         expected_types = [
             "EmailEvent",
             "CalendarEvent",
+            "ContactEvent",
             "DocumentEvent",
             "TodoEvent",
         ]
@@ -390,6 +391,8 @@ class TestParseEventByTopic:
                 "content": "Test content",
                 "content_type": "text/plain",
                 "provider": "google",
+                "provider_document_id": "google_doc_123",
+                "owner_email": "owner@example.com",
                 "file_id": "file_123",
                 "mime_type": "text/plain",
                 "size_bytes": 1000,
@@ -399,6 +402,8 @@ class TestParseEventByTopic:
                 "owners": [],
                 "web_view_link": "https://example.com",
                 "web_content_link": "https://example.com/download",
+                "tags": [],
+                "metadata": {},
             },
             "operation": "create",
             "batch_id": "batch_123",
@@ -406,6 +411,7 @@ class TestParseEventByTopic:
             "sync_timestamp": "2023-01-01T00:00:00Z",
             "provider": "google",
             "content_type": "word_documents",
+            "metadata": self.test_metadata.model_dump(),
         }
 
         event = parse_event_by_topic("word_documents", raw_data, self.test_message_id)

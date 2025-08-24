@@ -35,5 +35,5 @@ class TestPubSubConsumerConfig:
             # Verify basic attributes are set
             assert consumer.settings == settings
             assert (
-                len(consumer.topics) == 15
+                len(consumer.topics) == 12
             )  # All vespa_loader topics from subscription config

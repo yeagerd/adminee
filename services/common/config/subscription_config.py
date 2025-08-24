@@ -45,6 +45,7 @@ class SubscriptionConfig:
     TOPIC_NAMES = {
         "emails": "emails",
         "calendars": "calendars",
+        "contacts": "contacts",
         "word_documents": "word_documents",
         "sheet_documents": "sheet_documents",
         "presentation_documents": "presentation_documents",
@@ -122,6 +123,11 @@ class SubscriptionConfig:
             "bookings": {
                 "subscription_name": "vespa-loader-bookings",
                 "batch_size": 40,
+                "ack_deadline_seconds": 120,
+            },
+            "contacts": {
+                "subscription_name": "vespa-loader-contacts",
+                "batch_size": 30,
                 "ack_deadline_seconds": 120,
             },
         },
