@@ -15,7 +15,7 @@ class DemoSettings(BaseSettings):
     """Settings for demo scripts with sensible defaults."""
 
     model_config = SettingsConfigDict(
-        env_file="../../.env",
+        env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -51,19 +51,19 @@ class DemoSettings(BaseSettings):
 
     # API Keys
     api_frontend_office_key: str = Field(
-        default="demo-office-key",
+        ...,
         description="Frontend API key for office service access",
     )
     api_frontend_user_key: str = Field(
-        default="demo-user-key",
+        ...,
         description="Frontend API key for user service access",
     )
     api_frontend_chat_key: str = Field(
-        default="demo-chat-key",
+        ...,
         description="Frontend API key for chat service access",
     )
     api_backfill_office_key: str = Field(
-        default="demo-backfill-key",
+        ...,
         description="Backfill API key for internal service communication",
     )
 
