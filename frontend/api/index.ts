@@ -3,6 +3,7 @@ export { BookingsClient } from './clients/bookings-client';
 export { ChatClient } from './clients/chat-client';
 export { MeetingsClient } from './clients/meetings-client';
 export { OfficeClient } from './clients/office-client';
+export { ContactsClient } from './clients/contacts-client';
 
 export { UserClient } from './clients/user-client';
 
@@ -23,9 +24,11 @@ import { OfficeClient } from './clients/office-client';
 
 import { ShipmentsClient } from './clients/shipments-client';
 import { UserClient } from './clients/user-client';
+import { ContactsClient } from './clients/contacts-client';
 export const bookingsApi = new BookingsClient();
 export const officeApi = new OfficeClient();
 export const chatApi = new ChatClient();
 export const userApi = new UserClient();
 export const meetingsApi = new MeetingsClient();
 export const shipmentsApi = new ShipmentsClient();
+export const contactsApi = new ContactsClient();

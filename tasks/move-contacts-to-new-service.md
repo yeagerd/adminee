@@ -142,12 +142,12 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Ensure all services use API key authentication for Contacts Service
 
 ### Phase 11: Update Frontend Integration
-- [ ] Update `frontend/api/clients/` to use Contacts Service endpoints
-- [ ] Create `frontend/api/clients/contacts-client.ts` for Contacts Service
-- [ ] Update `frontend/types/api/` to use Contacts Service schemas
-- [ ] Update Office Service frontend integration to use Contacts Service
-- [ ] Ensure contact management UI works with new service
-- [ ] Update contact search and filtering functionality
+- [x] Update `frontend/api/clients/` to use Contacts Service endpoints
+- [x] Create `frontend/api/clients/contacts-client.ts` for Contacts Service
+- [x] Update `frontend/types/api/` to use Contacts Service schemas
+- [x] Update Office Service frontend integration to use Contacts Service
+- [x] Ensure contact management UI works with new service
+- [x] Update contact search and filtering functionality
 
 ### Phase 12: Update Event Processing
 - [ ] Ensure Contacts Service can process all relevant event types
