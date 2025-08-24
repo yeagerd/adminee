@@ -48,14 +48,14 @@ class VespaDocumentType:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format expected by Vespa"""
         return {
-            "id": self.id,
+            "doc_id": self.id,  # Map 'id' to 'doc_id' for Vespa schema
             "user_id": self.user_id,
-            "type": self.type,
+            "source_type": self.type,  # Map 'type' to 'source_type' for Vespa schema
             "provider": self.provider,
-            "subject": self.subject,
-            "body": self.body,
-            "from": self.from_address,
-            "to": self.to_addresses,
+            "title": self.subject,  # Map 'subject' to 'title' for Vespa schema
+            "content": self.body,  # Map 'body' to 'content' for Vespa schema
+            "sender": self.from_address,  # Map 'from_address' to 'sender' for Vespa schema
+            "recipients": self.to_addresses,  # Map 'to_addresses' to 'recipients' for Vespa schema
             "thread_id": self.thread_id or "",
             "folder": self.folder or "",
             "created_at": self.created_at,

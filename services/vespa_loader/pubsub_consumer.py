@@ -18,7 +18,7 @@ from services.common.logging_config import get_logger
 from services.vespa_loader.document_factory import process_message
 from services.vespa_loader.ingest_service import ingest_document_service
 from services.vespa_loader.settings import Settings
-from services.vespa_loader.types import VespaDocumentType
+from services.vespa_loader.vespa_types import VespaDocumentType
 
 # PubSub types
 try:

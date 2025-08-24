@@ -33,8 +33,8 @@ from services.vespa_loader.content_normalizer import ContentNormalizer
 from services.vespa_loader.embeddings import EmbeddingGenerator
 from services.vespa_loader.ingest_service import ingest_document_service
 from services.vespa_loader.pubsub_consumer import PubSubConsumer
-from services.vespa_loader.types import VespaDocumentType
 from services.vespa_loader.vespa_client import VespaClient
+from services.vespa_loader.vespa_types import VespaDocumentType
 
 # Setup telemetry
 setup_telemetry("vespa-loader", "1.0.0")
@@ -315,7 +315,7 @@ async def ingest_document(
     """Ingest a document into Vespa"""
     try:
         # Convert Dict to VespaDocumentType
-        from services.vespa_loader.types import VespaDocumentType
+        from services.vespa_loader.vespa_types import VespaDocumentType
 
         # Create a VespaDocumentType from the input data
         vespa_document = VespaDocumentType(

@@ -21,6 +21,7 @@ class ChunkingStrategy(str, Enum):
     SEMANTIC_BREAKS = "semantic_breaks"
     FIXED_SIZE = "fixed_size"
     HYBRID = "hybrid"
+    EMAIL = "email"  # Specialized strategy for email content
 
 
 class ChunkType(str, Enum):
@@ -350,6 +351,27 @@ class DocumentChunkingConfig(BaseModel):
             max_empty_chunks=0,
             max_processing_time=30,
             batch_size=75,
+        )
+    )
+
+    email_document_rules: ChunkingRule = Field(
+        default_factory=lambda: ChunkingRule(
+            name="email_document_default",
+            strategy=ChunkingStrategy.EMAIL,  # Use specialized email chunking strategy
+            min_chunk_size=50,  # Reduced from 200 to handle smaller email units
+            max_chunk_size=1500,
+            target_chunk_size=800,
+            overlap_size=50,
+            preserve_sections=False,  # Emails don't have sections like documents
+            preserve_paragraphs=True,  # Preserve paragraph structure
+            preserve_sentences=False,
+            handle_tables=True,
+            handle_lists=True,
+            handle_images=False,  # Emails typically don't have embedded images
+            min_content_quality=0.6,  # Lower quality threshold for emails
+            max_empty_chunks=1,  # Allow some empty chunks for emails
+            max_processing_time=20,  # Faster processing for emails
+            batch_size=100,
         )
     )
 

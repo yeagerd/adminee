@@ -20,7 +20,7 @@ from services.vespa_loader.document_factory import (
     VespaDocumentFactory,
     parse_event_by_topic,
 )
-from services.vespa_loader.types import VespaDocumentType
+from services.vespa_loader.vespa_types import VespaDocumentType
 
 
 class TestVespaDocumentFactory:
@@ -290,6 +290,105 @@ class TestVespaDocumentFactory:
             "TodoEvent",
         ]
         assert supported_types == expected_types
+
+    def test_email_document_field_mappings(self):
+        """Test that email documents are created with correct field mappings for Vespa."""
+        from datetime import datetime, timezone
+
+        from services.common.events import EmailData, EmailEvent, EventMetadata
+
+        # Create a sample email event
+        email_data = EmailData(
+            id="email_test_123",
+            thread_id="thread_456",
+            subject="Test Email Subject",
+            body="This is a test email body with some content that should be chunked properly.",
+            from_address="sender@example.com",
+            to_addresses=["recipient@example.com"],
+            cc_addresses=[],
+            bcc_addresses=[],
+            received_date=datetime.now(timezone.utc),
+            sent_date=None,
+            labels=["INBOX"],
+            is_read=False,
+            is_starred=False,
+            has_attachments=False,
+            provider="gmail",
+            provider_message_id="gmail_123",
+            size_bytes=1024,
+            mime_type="text/plain",
+            headers={},
+        )
+
+        email_event = EmailEvent(
+            user_id="user_789",
+            email=email_data,
+            operation="create",
+            batch_id="batch_123",
+            last_updated=datetime.now(timezone.utc),
+            sync_timestamp=datetime.now(timezone.utc),
+            provider="gmail",
+            sync_type="sync",
+            metadata=EventMetadata(
+                source_service="office-service",
+                source_version="1.0.0",
+                correlation_id="test_123",
+            ),
+        )
+
+        # Create Vespa document
+        vespa_doc = VespaDocumentFactory.create_email_document(email_event)
+
+        # Convert to dict for Vespa indexing
+        doc_dict = vespa_doc.to_dict()
+
+        # Verify that the correct field mappings are used
+        assert "doc_id" in doc_dict, "Should have doc_id field for Vespa schema"
+        assert doc_dict["doc_id"] == "email_test_123", "doc_id should map from email.id"
+
+        assert (
+            "source_type" in doc_dict
+        ), "Should have source_type field for Vespa schema"
+        assert (
+            doc_dict["source_type"] == "email"
+        ), "source_type should map from email type"
+
+        assert "title" in doc_dict, "Should have title field for Vespa schema"
+        assert (
+            doc_dict["title"] == "Test Email Subject"
+        ), "title should map from email.subject"
+
+        assert "content" in doc_dict, "Should have content field for Vespa schema"
+        assert (
+            doc_dict["content"]
+            == "This is a test email body with some content that should be chunked properly."
+        ), "content should map from email.body"
+
+        assert "sender" in doc_dict, "Should have sender field for Vespa schema"
+        assert (
+            doc_dict["sender"] == "sender@example.com"
+        ), "sender should map from email.from_address"
+
+        assert "recipients" in doc_dict, "Should have recipients field for Vespa schema"
+        assert doc_dict["recipients"] == [
+            "recipient@example.com"
+        ], "recipients should map from email.to_addresses"
+
+        # Verify that the id field is NOT present (should be excluded)
+        assert "id" not in doc_dict, "id field should not be present in Vespa document"
+
+        # Verify other required fields
+        assert "user_id" in doc_dict, "Should have user_id field"
+        assert "provider" in doc_dict, "Should have provider field"
+        assert "thread_id" in doc_dict, "Should have thread_id field"
+        assert "folder" in doc_dict, "Should have folder field"
+        assert "created_at" in doc_dict, "Should have created_at field"
+        assert "updated_at" in doc_dict, "Should have updated_at field"
+        assert "metadata" in doc_dict, "Should have metadata field"
+        assert "content_chunks" in doc_dict, "Should have content_chunks field"
+        assert "quoted_content" in doc_dict, "Should have quoted_content field"
+        assert "thread_summary" in doc_dict, "Should have thread_summary field"
+        assert "search_text" in doc_dict, "Should have search_text field"
 
 
 class TestParseEventByTopic:

@@ -413,8 +413,13 @@ class VespaClient:
         }
 
         # Add any additional fields that might be present (but avoid duplicates)
+        # Exclude 'id' field as it's not in the Vespa schema
         for key, value in document.items():
-            if key not in vespa_doc["fields"] and value is not None:
+            if (
+                key not in vespa_doc["fields"]
+                and key != "id"  # Exclude 'id' field as it's not in Vespa schema
+                and value is not None
+            ):
                 vespa_doc["fields"][key] = value
 
         return vespa_doc

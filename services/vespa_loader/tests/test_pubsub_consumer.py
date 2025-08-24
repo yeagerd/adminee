@@ -135,7 +135,7 @@ class TestPubSubConsumer:
         self, mock_ingest_service, mock_consumer
     ):
         """Test that _process_message_immediate handles successful processing"""
-        from services.vespa_loader.types import VespaDocumentType
+        from services.vespa_loader.vespa_types import VespaDocumentType
 
         # Create a mock Vespa document
         mock_document = MagicMock(spec=VespaDocumentType)
@@ -163,7 +163,7 @@ class TestPubSubConsumer:
         self, mock_ingest_service, mock_consumer
     ):
         """Test that _process_message_immediate handles processing failures"""
-        from services.vespa_loader.types import VespaDocumentType
+        from services.vespa_loader.vespa_types import VespaDocumentType
 
         # Create a mock Vespa document
         mock_document = MagicMock(spec=VespaDocumentType)

@@ -41,9 +41,17 @@ class DocumentChunkingService:
         start_time = time.time()
         start_memory = self._get_memory_usage()
 
+        # Add debug logging
+        logger.debug(
+            f"Starting chunking for document {document_id} (type: {document_type})"
+        )
+        logger.debug(f"Content length: {len(content)} characters")
+        logger.debug(f"Metadata: {metadata}")
+
         try:
             # Get chunking rules for document type
             rules = self._get_chunking_rules(document_type)
+            logger.debug(f"Using chunking strategy: {rules.strategy}")
 
             # Choose chunking strategy
             if rules.strategy == ChunkingStrategy.HYBRID:
@@ -56,11 +64,16 @@ class DocumentChunkingService:
                 chunks = self._semantic_break_chunking(content, rules, metadata)
             elif rules.strategy == ChunkingStrategy.FIXED_SIZE:
                 chunks = self._fixed_size_chunking(content, rules, metadata)
+            elif rules.strategy == ChunkingStrategy.EMAIL:
+                chunks = self._email_chunking(content, rules, metadata)
             else:
                 raise ValueError(f"Unknown chunking strategy: {rules.strategy}")
 
+            logger.debug(f"Initial chunks created: {len(chunks)}")
+
             # Post-process chunks
             chunks = self._post_process_chunks(chunks, rules, metadata)
+            logger.debug(f"Chunks after post-processing: {len(chunks)}")
 
             # Create chunking result
             result = ChunkingResult(
@@ -140,8 +153,12 @@ class DocumentChunkingService:
         sections = self._extract_sections(content, metadata)
 
         for i, (section_title, section_content) in enumerate(sections):
-            if len(section_content.strip()) < rules.min_chunk_size:
-                # Skip very small sections
+            # Skip very small sections, UNLESS it's the only section we have
+            # This prevents having 0 chunks which breaks the system
+            if (
+                len(section_content.strip()) < rules.min_chunk_size
+                and len(sections) > 1
+            ):
                 continue
 
             # Create chunk for this section
@@ -170,6 +187,36 @@ class DocumentChunkingService:
             )
 
             chunks.append(chunk)
+
+        # If we still have no chunks, create one with the entire content
+        if not chunks and content.strip():
+            chunks.append(
+                DocumentChunk(
+                    parent_doc_id=(
+                        metadata.get("document_id", "unknown")
+                        if metadata
+                        else "unknown"
+                    ),
+                    chunk_sequence=1,
+                    chunk_type=ChunkType.SECTION,
+                    content=content.strip(),
+                    content_length=len(content.strip()),
+                    word_count=len(content.split()),
+                    title="Content",
+                    section_path=["content"],
+                    page_number=None,
+                    chunking_strategy=rules.strategy,
+                    chunk_size=rules.target_chunk_size,
+                    overlap_size=rules.overlap_size,
+                    start_offset=0,
+                    end_offset=len(content),
+                    previous_chunk_id=None,
+                    next_chunk_id=None,
+                    search_text=self._optimize_for_search(content),
+                    keywords=self._extract_keywords(content),
+                    embedding=None,
+                )
+            )
 
         return chunks
 
@@ -223,9 +270,13 @@ class DocumentChunkingService:
 
         # Split content into semantic units
         semantic_units = self._extract_semantic_units(content, metadata)
+        logger.debug(f"Extracted {len(semantic_units)} semantic units")
 
         for i, (unit_title, unit_content) in enumerate(semantic_units):
             if len(unit_content.strip()) < rules.min_chunk_size:
+                logger.debug(
+                    f"Skipping unit {i+1} (too small: {len(unit_content.strip())} chars)"
+                )
                 continue
 
             chunk = DocumentChunk(
@@ -253,7 +304,11 @@ class DocumentChunkingService:
             )
 
             chunks.append(chunk)
+            logger.debug(
+                f"Created chunk {i+1} with {len(unit_content.strip())} characters"
+            )
 
+        logger.debug(f"Created {len(chunks)} chunks from semantic units")
         return chunks
 
     def _fixed_size_chunking(
@@ -319,6 +374,164 @@ class DocumentChunkingService:
 
         return chunks
 
+    def _email_chunking(
+        self, content: str, rules: ChunkingRule, metadata: Optional[Dict[str, Any]]
+    ) -> List[DocumentChunk]:
+        """Specialized chunking for email content that handles headers and body separately."""
+        chunks = []
+
+        # Split content into headers and body
+        lines = content.split("\n")
+        header_end = 0
+
+        # Find where headers end (empty line or content that doesn't look like a header)
+        for i, line in enumerate(lines):
+            if line.strip() == "":
+                header_end = i
+                break
+            # Check if line looks like a header (contains colon)
+            if ":" in line and not line.strip().startswith(">"):
+                header_end = i + 1
+            else:
+                # If we hit content that doesn't look like a header, stop
+                if not line.strip().startswith(">") and len(line.strip()) > 0:
+                    header_end = i
+                    break
+
+        # Extract headers and body
+        headers = lines[:header_end]
+        body_lines = lines[header_end:]
+        body_content = "\n".join(body_lines).strip()
+
+        # Create chunk for headers (if they exist)
+        if headers and any(line.strip() for line in headers):
+            header_text = "\n".join(headers).strip()
+            header_chunk = DocumentChunk(
+                parent_doc_id=(
+                    metadata.get("document_id", "unknown") if metadata else "unknown"
+                ),
+                chunk_sequence=1,
+                chunk_type=ChunkType.SECTION,
+                content=header_text,
+                content_length=len(header_text),
+                word_count=len(header_text.split()),
+                title="Email Headers",
+                section_path=["headers"],
+                page_number=None,
+                chunking_strategy=rules.strategy,
+                chunk_size=rules.target_chunk_size,
+                overlap_size=rules.overlap_size,
+                start_offset=0,
+                end_offset=len(header_text),
+                previous_chunk_id=None,
+                next_chunk_id=None,
+                search_text=self._optimize_for_search(header_text),
+                keywords=self._extract_keywords(header_text),
+                embedding=None,
+            )
+            chunks.append(header_chunk)
+
+        # Chunk the body content
+        if body_content:
+            # Split body by paragraphs
+            paragraphs = body_content.split("\n\n")
+
+            # Filter out empty paragraphs
+            paragraphs = [p.strip() for p in paragraphs if p.strip()]
+
+            # If we have multiple paragraphs, create chunks for each
+            if len(paragraphs) > 1:
+                chunk_sequence = len(chunks) + 1
+                for i, paragraph in enumerate(paragraphs):
+                    chunk = DocumentChunk(
+                        parent_doc_id=(
+                            metadata.get("document_id", "unknown")
+                            if metadata
+                            else "unknown"
+                        ),
+                        chunk_sequence=chunk_sequence,
+                        chunk_type=ChunkType.MIXED,
+                        content=paragraph,
+                        content_length=len(paragraph),
+                        word_count=len(paragraph.split()),
+                        title=f"Email Body Section {chunk_sequence}",
+                        section_path=[f"body_section_{chunk_sequence}"],
+                        page_number=None,
+                        chunking_strategy=rules.strategy,
+                        chunk_size=rules.target_chunk_size,
+                        overlap_size=rules.overlap_size,
+                        start_offset=content.find(paragraph),
+                        end_offset=content.find(paragraph) + len(paragraph),
+                        previous_chunk_id=None,
+                        next_chunk_id=None,
+                        search_text=self._optimize_for_search(paragraph),
+                        keywords=self._extract_keywords(paragraph),
+                        embedding=None,
+                    )
+                    chunks.append(chunk)
+                    chunk_sequence += 1
+            else:
+                # Single paragraph - create one chunk
+                chunk_sequence = len(chunks) + 1
+                chunk = DocumentChunk(
+                    parent_doc_id=(
+                        metadata.get("document_id", "unknown")
+                        if metadata
+                        else "unknown"
+                    ),
+                    chunk_sequence=chunk_sequence,
+                    chunk_type=ChunkType.MIXED,
+                    content=body_content,
+                    content_length=len(body_content),
+                    word_count=len(body_content.split()),
+                    title="Email Body",
+                    section_path=["body"],
+                    page_number=None,
+                    chunking_strategy=rules.strategy,
+                    chunk_size=rules.target_chunk_size,
+                    overlap_size=rules.overlap_size,
+                    start_offset=content.find(body_content),
+                    end_offset=content.find(body_content) + len(body_content),
+                    previous_chunk_id=None,
+                    next_chunk_id=None,
+                    search_text=self._optimize_for_search(body_content),
+                    keywords=self._extract_keywords(body_content),
+                    embedding=None,
+                )
+                chunks.append(chunk)
+
+        # If we still have no chunks, create one with the entire content
+        if not chunks and content.strip():
+            chunks.append(
+                DocumentChunk(
+                    parent_doc_id=(
+                        metadata.get("document_id", "unknown")
+                        if metadata
+                        else "unknown"
+                    ),
+                    chunk_sequence=1,
+                    chunk_type=ChunkType.MIXED,
+                    content=content.strip(),
+                    content_length=len(content.strip()),
+                    word_count=len(content.strip().split()),
+                    title="Email Content",
+                    section_path=["email"],
+                    page_number=None,
+                    chunking_strategy=rules.strategy,
+                    chunk_size=rules.target_chunk_size,
+                    overlap_size=rules.overlap_size,
+                    start_offset=0,
+                    end_offset=len(content),
+                    previous_chunk_id=None,
+                    next_chunk_id=None,
+                    search_text=self._optimize_for_search(content),
+                    keywords=self._extract_keywords(content),
+                    embedding=None,
+                )
+            )
+
+        return chunks
+
     def _extract_sections(
         self, content: str, metadata: Optional[Dict[str, Any]]
     ) -> List[Tuple[str, str]]:
@@ -333,6 +546,21 @@ class DocumentChunkingService:
             r"^[A-Z][^.!?]*[.!?]?\n",  # Sentence-style headers
         ]
 
+        # Email-specific patterns
+        email_patterns = [
+            r"^From:.*$",  # From line
+            r"^To:.*$",  # To line
+            r"^Subject:.*$",  # Subject line
+            r"^Date:.*$",  # Date line
+            r"^Sent:.*$",  # Sent line
+            r"^On .* wrote:$",  # Quote start
+            r"^>.*$",  # Quoted content
+            r"^---.*$",  # Separator lines
+        ]
+
+        # Combine all patterns
+        all_patterns = header_patterns + email_patterns
+
         # Split content by headers
         lines = content.split("\n")
         current_section: List[str] = []
@@ -340,7 +568,7 @@ class DocumentChunkingService:
 
         for line in lines:
             # Check if line is a header
-            is_header = any(re.match(pattern, line) for pattern in header_patterns)
+            is_header = any(re.match(pattern, line) for pattern in all_patterns)
 
             if is_header and current_section:
                 # Save current section
@@ -353,6 +581,10 @@ class DocumentChunkingService:
         # Add final section
         if current_section:
             sections.append((current_title, "\n".join(current_section)))
+
+        # If no sections found, fall back to semantic units (useful for emails)
+        if not sections and metadata and metadata.get("document_type") == "email":
+            return self._extract_semantic_units(content, metadata)
 
         return sections
 
@@ -384,8 +616,12 @@ class DocumentChunkingService:
         """Extract semantic units from content."""
         units = []
 
-        # Split by paragraphs
+        # Split by paragraphs first
         paragraphs = content.split("\n\n")
+
+        # If no paragraphs found (common in emails), try splitting by single newlines
+        if len(paragraphs) <= 1:
+            paragraphs = content.split("\n")
 
         for i, paragraph in enumerate(paragraphs):
             if paragraph.strip():
@@ -394,6 +630,10 @@ class DocumentChunkingService:
                 title = sentences[0].strip() if sentences else f"Unit {i + 1}"
 
                 units.append((title, paragraph))
+
+        # If still no units found, treat the entire content as one unit
+        if not units and content.strip():
+            units.append(("Content", content.strip()))
 
         return units
 
@@ -406,13 +646,19 @@ class DocumentChunkingService:
         """Post-process chunks to improve quality and consistency."""
         processed_chunks = []
 
-        for chunk in chunks:
-            # Skip chunks that are too small
-            if chunk.content_length < rules.min_chunk_size:
+        for i, chunk in enumerate(chunks):
+            is_last_chunk = i == len(chunks) - 1
+
+            # Skip chunks that are too small, UNLESS it's the last chunk
+            # This prevents having 0 chunks and handles residual chunks
+            if chunk.content_length < rules.min_chunk_size and not is_last_chunk:
                 continue
 
-            # Skip chunks that are too low quality
-            if self._calculate_chunk_quality(chunk) < rules.min_content_quality:
+            # Skip chunks that are too low quality, UNLESS it's the last chunk
+            if (
+                self._calculate_chunk_quality(chunk) < rules.min_content_quality
+                and not is_last_chunk
+            ):
                 continue
 
             # Clean up content
@@ -427,6 +673,20 @@ class DocumentChunkingService:
             chunk.keywords = self._extract_keywords(chunk.content)
 
             processed_chunks.append(chunk)
+
+        # If we filtered out all chunks, keep at least one (the first one)
+        # This prevents having 0 chunks which breaks the system
+        if not processed_chunks and chunks:
+            first_chunk = chunks[0]
+            # Clean up content
+            first_chunk.content = self._clean_content(first_chunk.content)
+            first_chunk.content_length = len(first_chunk.content)
+            first_chunk.word_count = len(first_chunk.content.split())
+            # Update search text
+            first_chunk.search_text = self._optimize_for_search(first_chunk.content)
+            # Extract keywords
+            first_chunk.keywords = self._extract_keywords(first_chunk.content)
+            processed_chunks.append(first_chunk)
 
         # Re-sequence chunks
         for i, chunk in enumerate(processed_chunks):
@@ -552,6 +812,8 @@ class DocumentChunkingService:
             return self.config.sheet_document_rules
         elif document_type.lower() in ["presentation", "ppt", "pptx"]:
             return self.config.presentation_document_rules
+        elif document_type.lower() in ["email", "eml", "msg"]:
+            return self.config.email_document_rules
         else:
             # Default rules
             return ChunkingRule(

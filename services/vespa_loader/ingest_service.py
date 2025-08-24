@@ -17,7 +17,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.vespa_loader.types import DocumentIngestionResult, VespaDocumentType
+from services.vespa_loader.vespa_types import DocumentIngestionResult, VespaDocumentType
 
 
 async def ingest_document_service(

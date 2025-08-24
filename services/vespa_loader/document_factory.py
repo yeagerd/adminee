@@ -14,7 +14,7 @@ from services.common.events.document_events import DocumentData, DocumentEvent
 from services.common.events.email_events import EmailData, EmailEvent
 from services.common.events.todo_events import TodoData, TodoEvent
 from services.common.logging_config import get_logger
-from services.vespa_loader.types import VespaDocumentType
+from services.vespa_loader.vespa_types import VespaDocumentType
 
 logger = get_logger(__name__)
 
@@ -47,6 +47,7 @@ class VespaDocumentFactory:
             content=email.body or "",
             document_type="email",
             metadata={
+                "document_type": "email",  # Add document_type for chunking service
                 "provider": email.provider,
                 "subject": email.subject,
                 "thread_id": email.thread_id,
@@ -113,6 +114,7 @@ class VespaDocumentFactory:
             content=calendar_event.description or "",
             document_type="calendar",
             metadata={
+                "document_type": "calendar",  # Add document_type for chunking service
                 "provider": calendar_event.provider,
                 "title": calendar_event.title,
                 "calendar_id": calendar_event.calendar_id,
@@ -178,6 +180,7 @@ class VespaDocumentFactory:
             content=contact.notes or "",
             document_type="contact",
             metadata={
+                "document_type": "contact",  # Add document_type for chunking service
                 "provider": contact.provider,
                 "display_name": contact.display_name,
                 "email_addresses": contact.email_addresses,
@@ -247,6 +250,7 @@ class VespaDocumentFactory:
             content=document.content,
             document_type=document.content_type,
             metadata={
+                "document_type": document.content_type,  # Add document_type for chunking service
                 "provider": document.provider,
                 "content_type": document.content_type,
                 "title": document.title,
@@ -307,6 +311,7 @@ class VespaDocumentFactory:
             content=todo.description or "",
             document_type="todo",
             metadata={
+                "document_type": "todo",  # Add document_type for chunking service
                 "provider": todo.provider,
                 "title": todo.title,
                 "list_id": todo.list_id,
