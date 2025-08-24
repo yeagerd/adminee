@@ -1100,17 +1100,37 @@ class VespaBackfillDemo:
                                 thread_id=email.thread_id or "",
                                 subject=email.subject or "No Subject",
                                 body=email.body_text or email.body_html or "",
-                                from_address=str(email.from_address) if email.from_address else "",
-                                to_addresses=[str(addr) for addr in email.to_addresses] if email.to_addresses else [],
-                                cc_addresses=[str(addr) for addr in email.cc_addresses] if email.cc_addresses else [],
-                                bcc_addresses=[str(addr) for addr in email.bcc_addresses] if email.bcc_addresses else [],
+                                from_address=(
+                                    str(email.from_address)
+                                    if email.from_address
+                                    else ""
+                                ),
+                                to_addresses=(
+                                    [str(addr) for addr in email.to_addresses]
+                                    if email.to_addresses
+                                    else []
+                                ),
+                                cc_addresses=(
+                                    [str(addr) for addr in email.cc_addresses]
+                                    if email.cc_addresses
+                                    else []
+                                ),
+                                bcc_addresses=(
+                                    [str(addr) for addr in email.bcc_addresses]
+                                    if email.bcc_addresses
+                                    else []
+                                ),
                                 received_date=email.date or datetime.now(timezone.utc),
                                 sent_date=email.date,
                                 labels=email.labels or [],
                                 is_read=email.is_read,
                                 is_starred=False,  # EmailMessage doesn't have is_starred
                                 has_attachments=email.has_attachments,
-                                provider=email.provider.value if hasattr(email.provider, 'value') else str(email.provider),
+                                provider=(
+                                    email.provider.value
+                                    if hasattr(email.provider, "value")
+                                    else str(email.provider)
+                                ),
                                 provider_message_id=email.provider_message_id,
                                 size_bytes=None,  # EmailMessage doesn't have size_bytes
                                 mime_type=None,  # EmailMessage doesn't have mime_type
