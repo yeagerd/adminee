@@ -136,29 +136,29 @@ def normalize_google_email(
 
         # Extract body content
         body_text, body_html = _extract_gmail_body(payload)
-        
+
         # Use content splitting to separate visible content from quoted content
         from services.office.core.email_content_splitter import split_email_content
-        
+
         split_result = split_email_content(
-            html_content=body_html,
-            text_content=body_text
+            html_content=body_html, text_content=body_text
         )
-        
+
         # Extract visible content (non-quoted part) for the unquoted fields
         visible_content = split_result.get("visible_content", "")
         quoted_content = split_result.get("quoted_content", "")
-        
+
         # Determine which unquoted field to populate based on available content
         body_text_unquoted = None
         body_html_unquoted = None
-        
+
         if visible_content:
             if body_html:
                 # If we have HTML content, populate body_html_unquoted
                 body_html_unquoted = visible_content
                 # Also extract text version for body_text_unquoted
                 import re
+
                 body_text_unquoted = re.sub(r"<[^>]+>", "", visible_content)
                 body_text_unquoted = (
                     body_text_unquoted.replace("&nbsp;", " ")
@@ -170,12 +170,13 @@ def normalize_google_email(
             else:
                 # If we only have text content, populate body_text_unquoted
                 body_text_unquoted = visible_content
-        
+
         # Fallback to original content if splitting didn't work
         if not visible_content:
             if body_html:
                 # Simple HTML to text extraction as fallback
                 import re
+
                 visible_content = re.sub(r"<[^>]+>", "", body_html)
                 visible_content = (
                     visible_content.replace("&nbsp;", " ")
@@ -188,7 +189,7 @@ def normalize_google_email(
             else:
                 visible_content = body_text or ""
                 body_text_unquoted = visible_content
-        
+
         # Ensure we have some content
         if not visible_content:
             visible_content = snippet or "No content available"
@@ -298,29 +299,29 @@ def normalize_microsoft_email(
         )
 
         body_text, body_html = _extract_microsoft_body(body_data)
-        
+
         # Use content splitting to separate visible content from quoted content
         from services.office.core.email_content_splitter import split_email_content
-        
+
         split_result = split_email_content(
-            html_content=body_html,
-            text_content=body_text
+            html_content=body_html, text_content=body_text
         )
-        
+
         # Extract visible content (non-quoted part) for the unquoted fields
         visible_content = split_result.get("visible_content", "")
         quoted_content = split_result.get("quoted_content", "")
-        
+
         # Determine which unquoted field to populate based on available content
         body_text_unquoted = None
         body_html_unquoted = None
-        
+
         if visible_content:
             if body_html:
                 # If we have HTML content, populate body_html_unquoted
                 body_html_unquoted = visible_content
                 # Also extract text version for body_text_unquoted
                 import re
+
                 body_text_unquoted = re.sub(r"<[^>]+>", "", visible_content)
                 body_text_unquoted = (
                     body_text_unquoted.replace("&nbsp;", " ")
@@ -332,12 +333,13 @@ def normalize_microsoft_email(
             else:
                 # If we only have text content, populate body_text_unquoted
                 body_text_unquoted = visible_content
-        
+
         # Fallback to original content if splitting didn't work
         if not visible_content:
             if body_html:
                 # Simple HTML to text extraction as fallback
                 import re
+
                 visible_content = re.sub(r"<[^>]+>", "", body_html)
                 visible_content = (
                     visible_content.replace("&nbsp;", " ")
@@ -350,7 +352,7 @@ def normalize_microsoft_email(
             else:
                 visible_content = body_text or ""
                 body_text_unquoted = visible_content
-        
+
         # Ensure we have some content
         if not visible_content:
             visible_content = body_preview or "No content available"

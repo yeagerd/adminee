@@ -383,36 +383,60 @@ async def run_backfill_job(
                     try:
                         # Debug logging to see what we're actually getting
                         logger.debug(f"Processing email: type={type(email)}")
-                        
+
                         # Check if email is a dict (from cache) and reconstruct EmailMessage if needed
                         if isinstance(email, dict):
-                            logger.debug(f"Reconstructing EmailMessage from dict: {email.get('id', 'unknown')}")
+                            logger.debug(
+                                f"Reconstructing EmailMessage from dict: {email.get('id', 'unknown')}"
+                            )
                             from services.office.schemas import EmailMessage
+
                             try:
                                 email = EmailMessage(**email)
-                                logger.debug(f"Successfully reconstructed EmailMessage: {email.id}")
+                                logger.debug(
+                                    f"Successfully reconstructed EmailMessage: {email.id}"
+                                )
                             except Exception as e:
                                 logger.error(f"Failed to reconstruct EmailMessage: {e}")
                                 continue
-                        
-                        if hasattr(email, 'provider_message_id'):
-                            logger.debug(f"Email has provider_message_id: {email.provider_message_id}")
+
+                        if hasattr(email, "provider_message_id"):
+                            logger.debug(
+                                f"Email has provider_message_id: {email.provider_message_id}"
+                            )
                         else:
-                            logger.error(f"Email missing provider_message_id attribute: {email}")
-                            logger.error(f"Email type: {type(email)}, dir: {dir(email)}")
+                            logger.error(
+                                f"Email missing provider_message_id attribute: {email}"
+                            )
+                            logger.error(
+                                f"Email type: {type(email)}, dir: {dir(email)}"
+                            )
                             continue
-                        
+
                         # email should now be a proper EmailMessage object, so we can access fields directly
                         # Use the pre-split unquoted field (visible content only)
                         # Prefer text over HTML for Vespa ingestion
-                        body_content = email.body_text_unquoted or email.body_html_unquoted or email.snippet or ""
-                        
+                        body_content = (
+                            email.body_text_unquoted
+                            or email.body_html_unquoted
+                            or email.snippet
+                            or ""
+                        )
+
                         # Extract email addresses as strings
-                        from_address = email.from_address.email if email.from_address else ""
-                        to_addresses = [addr.email for addr in email.to_addresses if addr.email]
-                        cc_addresses = [addr.email for addr in email.cc_addresses if addr.email]
-                        bcc_addresses = [addr.email for addr in email.bcc_addresses if addr.email]
-                        
+                        from_address = (
+                            email.from_address.email if email.from_address else ""
+                        )
+                        to_addresses = [
+                            addr.email for addr in email.to_addresses if addr.email
+                        ]
+                        cc_addresses = [
+                            addr.email for addr in email.cc_addresses if addr.email
+                        ]
+                        bcc_addresses = [
+                            addr.email for addr in email.bcc_addresses if addr.email
+                        ]
+
                         email_data = EmailData(
                             id=email.provider_message_id,
                             thread_id=email.thread_id or "",

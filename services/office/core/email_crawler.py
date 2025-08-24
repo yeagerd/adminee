@@ -209,12 +209,14 @@ class EmailCrawler:
 
         # Calculate total batches and apply max_emails limit
         total_emails = await self._get_email_count()
-        
+
         # If max_emails is specified and smaller than total_emails, limit accordingly
         if max_emails and max_emails < total_emails:
             total_emails = max_emails
-            logger.info(f"Limited to {max_emails} emails (requested) out of {await self._get_email_count()} available")
-        
+            logger.info(
+                f"Limited to {max_emails} emails (requested) out of {await self._get_email_count()} available"
+            )
+
         total_batches = (total_emails + batch_size - 1) // batch_size
 
         # Skip completed batches
@@ -233,10 +235,15 @@ class EmailCrawler:
                         break  # We've reached the max_emails limit
                     # Limit this batch to the remaining emails
                     effective_batch_size = min(batch_size, remaining_emails)
-                
+
                 # Get batch of emails
                 emails = await self._get_email_batch(
-                    self.provider, batch_num, effective_batch_size, start_date, end_date, folders
+                    self.provider,
+                    batch_num,
+                    effective_batch_size,
+                    start_date,
+                    end_date,
+                    folders,
                 )
 
                 # Apply rate limiting
@@ -324,7 +331,7 @@ class EmailCrawler:
                         # The office service already provides normalized EmailMessage objects
                         # with pre-split content in the 'body' field
                         messages = data["data"]["messages"]
-                        
+
                         logger.debug(
                             f"Retrieved {len(messages)} normalized emails from {provider_str} using office service internal API"
                         )
