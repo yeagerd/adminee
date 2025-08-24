@@ -174,17 +174,23 @@ alembic -c services/office/alembic.ini upgrade head
 When you make changes to service APIs, you need to regenerate the OpenAPI schemas and TypeScript types:
 
 ```bash
-# 1. Generate OpenAPI schemas for all services
-./scripts/generate-openapi-schemas.sh
+# Generate everything (schemas + types) - RECOMMENDED
+./scripts/generate-api-schema.sh
 
-# 2. Generate TypeScript types from schemas
-cd frontend
-./scripts/generate-types.sh
+# Or use individual steps if needed:
+# 1. Generate OpenAPI schemas only
+./scripts/generate-api-schema.sh --schema-only
 
-# 3. Verify types are valid
-npm run typecheck
+# 2. Generate TypeScript types only
+./scripts/generate-api-schema.sh --types-only
 
-# Alternative: Use the complete workflow script
+# 3. Clean generated files only
+./scripts/generate-api-schema.sh --clean-only
+
+# 4. Verify types are valid
+cd frontend && npm run typecheck
+
+# Alternative: Use the legacy workflow script
 ./scripts/update-types.sh
 ```
 

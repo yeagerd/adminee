@@ -44,8 +44,7 @@ jobs:
 
       - name: Generate OpenAPI schemas
         run: |
-          source .venv/bin/activate
-          ./scripts/generate-openapi-schemas.sh
+          ./scripts/generate-api-schema.sh --schema-only
 
       - name: Clean existing types
         run: |
@@ -74,10 +73,12 @@ jobs:
             echo "The following files have been modified:"
             git diff --name-only
             echo ""
-            echo "Please run the following commands to update generated files:"
-            echo "  ./scripts/generate-openapi-schemas.sh"
-            echo "  cd frontend && npm run generate-types"
-            echo "  git add . && git commit -m 'Update generated files'"
+                      echo "Please run the following commands to update generated files:"
+          echo "  ./scripts/generate-api-schema.sh"
+          echo "  git add . && git commit -m 'Update generated files'"
+          echo ""
+          echo "Note: The generate-api-schema.sh script automatically cleans existing types"
+          echo "before generation, ensuring a fresh and consistent output."
             echo ""
             echo "This ensures that your PR includes the latest generated types and schemas."
             exit 1
