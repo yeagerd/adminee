@@ -228,13 +228,16 @@ class EmailCrawler:
         # Skip completed batches
         start_batch = resume_from // batch_size
 
+        # Track actual emails processed (including resume_from offset)
+        emails_processed = resume_from
+
         for batch_num in range(start_batch, total_batches):
             try:
                 # Calculate effective batch size for this batch
                 effective_batch_size = batch_size
                 if max_emails:
-                    # Calculate how many emails we've already processed
-                    processed_so_far = batch_num * batch_size
+                    # Calculate how many emails we've already processed (including resume_from)
+                    processed_so_far = emails_processed
                     # Calculate how many emails we can still process
                     remaining_emails = max_emails - processed_so_far
                     if remaining_emails <= 0:
@@ -251,6 +254,9 @@ class EmailCrawler:
                     end_date,
                     folders,
                 )
+
+                # Update the count of emails processed
+                emails_processed += len(emails)
 
                 # Apply rate limiting
                 if batch_num > start_batch:
