@@ -32,6 +32,7 @@ from services.contacts.schemas.contact import (
 )
 from services.contacts.services.contact_discovery_service import ContactDiscoveryService
 from services.contacts.services.contact_service import ContactService
+from services.contacts.services.office_integration_service import OfficeIntegrationService
 
 logger = get_logger(__name__)
 
@@ -53,9 +54,8 @@ async def get_contact_discovery_service() -> ContactDiscoveryService:
     return ContactDiscoveryService(pubsub_client)
 
 
-async def get_office_integration_service():
+async def get_office_integration_service() -> OfficeIntegrationService:
     """Get office integration service instance."""
-    from services.contacts.services.office_integration_service import OfficeIntegrationService
     return OfficeIntegrationService()
 
 
@@ -71,7 +71,7 @@ async def list_my_contacts(
     ),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service = Depends(get_office_integration_service),
+    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
     authenticated_service: str = Depends(service_permission_required(["read_contacts"])),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactListResponse:
@@ -86,15 +86,15 @@ async def list_my_contacts(
             source_services=source_services,
         )
 
-        # Enrich contacts with office integration data
-        enriched_contacts = await office_integration_service.enrich_contacts_with_office_data(
+        # Get office integration data for contacts
+        office_integration_data = await office_integration_service.get_office_integration_data(
             contacts, current_user_id
         )
 
         total = await contact_service.count_contacts(session=session, user_id=current_user_id)
 
         return ContactListResponse(
-            contacts=enriched_contacts,
+            contacts=contacts,
             total=total,
             limit=limit,
             offset=offset,
@@ -115,7 +115,7 @@ async def search_my_contacts(
     ),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service = Depends(get_office_integration_service),
+    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
     authenticated_service: str = Depends(service_permission_required(["search_contacts"])),
     current_user_id: str = Depends(get_current_user),
 ) -> List[EmailContactSearchResult]:
@@ -130,14 +130,14 @@ async def search_my_contacts(
             source_services=source_services,
         )
 
-        # Enrich contacts with office integration data
-        enriched_contacts = await office_integration_service.enrich_contacts_with_office_data(
+        # Get office integration data for contacts
+        office_integration_data = await office_integration_service.get_office_integration_data(
             contacts, current_user_id
         )
 
         # Convert to search results with relevance scores
         results = []
-        for contact in enriched_contacts:
+        for contact in contacts:
             result = EmailContactSearchResult(
                 contact=contact,
                 relevance_score=contact.relevance_score,
@@ -157,7 +157,7 @@ async def search_my_contacts(
 async def get_my_contact_stats(
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service = Depends(get_office_integration_service),
+    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
     authenticated_service: str = Depends(service_permission_required(["read_contact_stats"])),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactStatsResponse:
@@ -189,7 +189,7 @@ async def get_my_contact(
     contact_id: str = Path(..., description="Contact ID to retrieve"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service = Depends(get_office_integration_service),
+    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
     authenticated_service: str = Depends(service_permission_required(["read_contacts"])),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactResponse:
@@ -202,13 +202,12 @@ async def get_my_contact(
         if not contact:
             raise NotFoundError("Contact", contact_id)
 
-        # Enrich contact with office integration data
-        enriched_contacts = await office_integration_service.enrich_contacts_with_office_data(
+        # Get office integration data for contact
+        office_integration_data = await office_integration_service.get_office_integration_data(
             [contact], current_user_id
         )
-        enriched_contact = enriched_contacts[0] if enriched_contacts else contact
 
-        return ContactResponse(contact=enriched_contact, success=True)
+        return ContactResponse(contact=contact, success=True)
     except NotFoundError:
         raise
     except Exception as e:

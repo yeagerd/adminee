@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class OfficeIntegrationService:
     """Service for integrating with the Office Service to enrich contact data."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = get_settings()
         self.office_service_url = self.settings.OFFICE_SERVICE_URL
         self.api_key = self.settings.api_contacts_office_key
@@ -108,21 +108,21 @@ class OfficeIntegrationService:
             logger.error(f"Error searching office contacts for user {user_id}: {e}")
             return []
 
-    async def enrich_contacts_with_office_data(
-        self, contacts: List[Dict[str, Any]], user_id: str
-    ) -> List[Dict[str, Any]]:
+    async def get_office_integration_data(
+        self, contacts: List[Any], user_id: str
+    ) -> Dict[str, Dict[str, Any]]:
         """
-        Enrich contacts with office integration data.
+        Get office integration data for contacts.
 
         Args:
-            contacts: List of contacts to enrich
+            contacts: List of contacts to get office data for
             user_id: ID of the user
 
         Returns:
-            List of enriched contacts
+            Dictionary mapping contact email to office integration data
         """
         if not contacts:
-            return contacts
+            return {}
 
         try:
             # Get office contacts for this user
@@ -135,47 +135,39 @@ class OfficeIntegrationService:
                 if email:
                     office_contact_map[email.lower()] = office_contact
 
-            # Enrich each contact with office data
-            enriched_contacts = []
+            # Create integration data map
+            integration_data = {}
             for contact in contacts:
-                enriched_contact = contact.copy()
-                email = contact.get("email")
-                
+                email = contact.email_address
                 if email and email.lower() in office_contact_map:
                     office_contact = office_contact_map[email.lower()]
                     
-                    # Add office integration information
-                    enriched_contact["office_integration"] = {
+                    integration_data[email] = {
                         "provider": office_contact.get("provider"),
                         "last_synced": office_contact.get("last_synced"),
                         "source_service": "office",
                         "office_contact_id": office_contact.get("id"),
+                        "phone_numbers": office_contact.get("phone_numbers"),
+                        "addresses": office_contact.get("addresses"),
+                        "notes": office_contact.get("notes"),
                     }
-                    
-                    # Merge additional fields if they exist
-                    if "phone_numbers" in office_contact:
-                        enriched_contact["phone_numbers"] = office_contact["phone_numbers"]
-                    if "addresses" in office_contact:
-                        enriched_contact["addresses"] = office_contact["addresses"]
-                    if "notes" in office_contact:
-                        enriched_contact["notes"] = office_contact["notes"]
                 else:
-                    # Mark as not found in office service
-                    enriched_contact["office_integration"] = {
+                    integration_data[email] = {
                         "provider": None,
                         "last_synced": None,
                         "source_service": None,
                         "office_contact_id": None,
+                        "phone_numbers": None,
+                        "addresses": None,
+                        "notes": None,
                     }
 
-                enriched_contacts.append(enriched_contact)
-
-            return enriched_contacts
+            return integration_data
 
         except Exception as e:
-            logger.error(f"Error enriching contacts with office data for user {user_id}: {e}")
-            # Return original contacts if enrichment fails
-            return contacts
+            logger.error(f"Error getting office integration data for user {user_id}: {e}")
+            # Return empty dict if integration fails
+            return {}
 
     async def get_contact_sync_status(self, user_id: str) -> Dict[str, Any]:
         """
