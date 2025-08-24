@@ -303,7 +303,7 @@ class EmailCrawler:
                     data = response.json()
                     if data.get("success") and data.get("data", {}).get("messages"):
                         # The office service already provides normalized EmailMessage objects
-                        # Just return them directly - no need for conversion or fallback logic
+                        # with pre-split content in the 'body' field
                         messages = data["data"]["messages"]
                         
                         logger.debug(

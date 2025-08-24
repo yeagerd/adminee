@@ -382,13 +382,8 @@ async def run_backfill_job(
                 for email in email_batch:
                     try:
                         # email is now a proper EmailMessage object, so we can access fields directly
-                        # Get body content from normalized fields, with fallbacks
-                        body_content = (
-                            email.body_text or 
-                            email.body_html or 
-                            email.snippet or 
-                            ""
-                        )
+                        # Use the pre-split body field (visible content only)
+                        body_content = email.body or email.snippet or ""
                         
                         # Extract email addresses as strings
                         from_address = email.from_address.email if email.from_address else ""
