@@ -186,6 +186,16 @@ class TestChatRequestModel:
         assert request.message == "What's on my calendar tomorrow?"
 
 
+@pytest.mark.filterwarnings("ignore:ServiceManager is deprecated")
+@pytest.mark.filterwarnings("ignore:Support for class-based `config` is deprecated")
+@pytest.mark.filterwarnings("ignore:The `__fields__` attribute is deprecated")
+@pytest.mark.filterwarnings("ignore:The `__fields_set__` attribute is deprecated")
+@pytest.mark.filterwarnings(
+    "ignore:Accessing the 'model_computed_fields' attribute on the instance is deprecated"
+)
+@pytest.mark.filterwarnings(
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated"
+)
 class TestBrieflyAgentTimezone:
     """Test timezone integration in BrieflyAgent."""
 
@@ -246,6 +256,16 @@ class TestBrieflyAgentTimezone:
             assert "get_tool" in tool_names  # The GetTool that provides calendar access
 
 
+@pytest.mark.filterwarnings("ignore:ServiceManager is deprecated")
+@pytest.mark.filterwarnings("ignore:Support for class-based `config` is deprecated")
+@pytest.mark.filterwarnings("ignore:The `__fields__` attribute is deprecated")
+@pytest.mark.filterwarnings("ignore:The `__fields_set__` attribute is deprecated")
+@pytest.mark.filterwarnings(
+    "ignore:Accessing the 'model_computed_fields' attribute on the instance is deprecated"
+)
+@pytest.mark.filterwarnings(
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated"
+)
 class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
     """Test end-to-end timezone integration."""
 

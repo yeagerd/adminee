@@ -17,6 +17,16 @@ from services.chat.agents.llm_manager import FakeLLM
 from services.chat.service_client import ServiceClient
 
 
+@pytest.mark.filterwarnings("ignore:ServiceManager is deprecated")
+@pytest.mark.filterwarnings("ignore:Support for class-based `config` is deprecated")
+@pytest.mark.filterwarnings("ignore:The `__fields__` attribute is deprecated")
+@pytest.mark.filterwarnings("ignore:The `__fields_set__` attribute is deprecated")
+@pytest.mark.filterwarnings(
+    "ignore:Accessing the 'model_computed_fields' attribute on the instance is deprecated"
+)
+@pytest.mark.filterwarnings(
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated"
+)
 class TestBrieflyAgentContext:
     """Test conversation context loading and saving in BrieflyAgent."""
 

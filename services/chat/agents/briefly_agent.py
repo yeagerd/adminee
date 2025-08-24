@@ -11,7 +11,7 @@ Part of the single-agent workflow system.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, List, Optional, Sequence, Tuple, Union
 
 import pytz
@@ -99,11 +99,11 @@ class BrieflyAgent(FunctionAgent):
         """Create a context-aware system prompt with current date/time and thread-specific draft context."""
 
         # Generate fresh date/time each time for current context
-        now_utc = datetime.utcnow()
+        now_utc = datetime.now(timezone.utc)
         if self._user_timezone:
             try:
                 tz = pytz.timezone(self._user_timezone)
-                now_local = pytz.utc.localize(now_utc).astimezone(tz)
+                now_local = now_utc.astimezone(tz)
             except Exception:
                 now_local = now_utc
         else:
