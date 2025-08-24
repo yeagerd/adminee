@@ -20,6 +20,7 @@ from services.office.models.backfill import (
     BackfillStatus,
     BackfillStatusEnum,
 )
+from services.office.schemas import EmailMessage
 
 logger = get_logger(__name__)
 
@@ -377,34 +378,43 @@ async def run_backfill_job(
         ):
             # Convert email batch to EmailData objects and publish as individual EmailEvents
             try:
-                # Convert raw email data to EmailData objects and publish individually
+                # Convert normalized EmailMessage objects to EmailData objects and publish individually
                 for email in email_batch:
                     try:
+                        # email is now a proper EmailMessage object, so we can access fields directly
+                        # Get body content from normalized fields, with fallbacks
+                        body_content = (
+                            email.body_text or 
+                            email.body_html or 
+                            email.snippet or 
+                            ""
+                        )
+                        
+                        # Extract email addresses as strings
+                        from_address = email.from_address.email if email.from_address else ""
+                        to_addresses = [addr.email for addr in email.to_addresses if addr.email]
+                        cc_addresses = [addr.email for addr in email.cc_addresses if addr.email]
+                        bcc_addresses = [addr.email for addr in email.bcc_addresses if addr.email]
+                        
                         email_data = EmailData(
-                            id=email.get("id", ""),
-                            thread_id=email.get("threadId", ""),
-                            subject=email.get("subject", ""),
-                            body=email.get("body", ""),
-                            from_address=email.get("from", ""),
-                            to_addresses=email.get("to", []),
-                            cc_addresses=email.get("cc", []),
-                            bcc_addresses=email.get("bcc", []),
-                            received_date=_parse_email_date(email.get("receivedDate")),
-                            sent_date=(
-                                _parse_email_date(
-                                    email.get("sentDate"), fallback_to_now=False
-                                )
-                                if email.get("sentDate")
-                                else None
-                            ),
-                            labels=email.get("labels", []),
-                            is_read=email.get("isRead", False),
-                            is_starred=email.get("isStarred", False),
-                            has_attachments=email.get("hasAttachments", False),
+                            id=email.provider_message_id,
+                            thread_id=email.thread_id or "",
+                            subject=email.subject or "",
+                            body=body_content,
+                            from_address=from_address,
+                            to_addresses=to_addresses,
+                            cc_addresses=cc_addresses,
+                            bcc_addresses=bcc_addresses,
+                            received_date=email.date,
+                            sent_date=None,  # Not available in EmailMessage
+                            labels=email.labels,
+                            is_read=email.is_read,
+                            is_starred=False,  # Not available in EmailMessage
+                            has_attachments=email.has_attachments,
                             provider=request.provider,
-                            provider_message_id=email.get("id", ""),
-                            size_bytes=email.get("sizeBytes"),
-                            mime_type=email.get("mimeType"),
+                            provider_message_id=email.provider_message_id,
+                            size_bytes=None,  # Not available in EmailMessage
+                            mime_type=None,  # Not available in EmailMessage
                         )
 
                         # Create and publish EmailEvent
@@ -457,7 +467,7 @@ async def run_backfill_job(
                     except Exception as e:
                         logger.error(
                             f"Failed to convert or publish email data: {e}",
-                            extra={"email_id": email.get("id")},
+                            extra={"email_id": email.provider_message_id},
                         )
                         job.failed_emails += 1
                         continue

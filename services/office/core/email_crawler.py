@@ -10,6 +10,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
+from services.office.schemas import EmailMessage
 
 logger = get_logger(__name__)
 
@@ -97,7 +98,7 @@ class EmailCrawler:
         folders: Optional[List[str]] = None,
         resume_from: int = 0,
         max_emails: Optional[int] = None,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[List[EmailMessage], None]:
         """Crawl emails in batches with optional maximum limit"""
         try:
             total_processed = 0
@@ -191,7 +192,7 @@ class EmailCrawler:
         end_date: Optional[datetime],
         folders: Optional[List[str]],
         resume_from: int,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[List[EmailMessage], None]:
         """Crawl emails from the specified provider"""
         logger.info(
             f"Starting email crawl for user {self.user_id} with provider {self.provider}",
@@ -245,7 +246,7 @@ class EmailCrawler:
         start_date: Optional[datetime],
         end_date: Optional[datetime],
         folders: Optional[List[str]],
-    ) -> List[Dict[str, Any]]:
+    ) -> List[EmailMessage]:
         """Get a batch of emails from the specified provider using the office service's unified API"""
         try:
             import httpx
@@ -301,126 +302,14 @@ class EmailCrawler:
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("success") and data.get("data", {}).get("messages"):
-                        # The office service already provides normalized data - convert to backfill format
-                        emails = []
-                        for msg in data["data"]["messages"]:
-                            # Use content splitting to separate visible from quoted content
-                            from services.office.core.email_content_splitter import (
-                                split_email_content,
-                            )
-
-                            # Split content into visible and quoted parts
-                            split_result = split_email_content(
-                                html_content=msg.get("body_html"),
-                                text_content=msg.get("body_text"),
-                            )
-
-                            # Debug logging to see what we're getting
-                            logger.debug(
-                                f"Content splitting result for email {msg.get('id')}: {split_result}"
-                            )
-                            logger.debug(
-                                f"Original body_html length: {len(msg.get('body_html', '') or '')}"
-                            )
-                            logger.debug(
-                                f"Original body_text length: {len(msg.get('body_text', '') or '')}"
-                            )
-                            logger.debug(f"Message keys: {list(msg.keys())}")
-                            logger.debug(
-                                f"Safe message sample: {_safe_log_email_data(msg)}"
-                            )
-
-                            # Use visible content as primary body, quoted content for context
-                            visible_content = split_result.get("visible_content", "")
-                            quoted_content = split_result.get("quoted_content", "")
-                            thread_summary = split_result.get("thread_summary", {})
-
-                            # Fallback to original content if splitting failed
-                            if not visible_content:
-                                if msg.get("body_html"):
-                                    # Simple HTML to text extraction as fallback
-                                    import re
-
-                                    html_content = msg.get("body_html", "")
-                                    visible_content = re.sub(
-                                        r"<[^>]+>", "", html_content
-                                    )
-                                    visible_content = (
-                                        visible_content.replace("&nbsp;", " ")
-                                        .replace("&amp;", "&")
-                                        .replace("&lt;", "<")
-                                        .replace("&gt;", ">")
-                                    )
-                                    visible_content = re.sub(
-                                        r"\s+", " ", visible_content
-                                    ).strip()
-                                else:
-                                    visible_content = msg.get("body_text", "")
-
-                            # Ensure we have some content
-                            if not visible_content:
-                                visible_content = msg.get(
-                                    "snippet", "No content available"
-                                )
-
-                            # Extract sender email
-                            sender_email = ""
-                            if msg.get("from_address"):
-                                sender_email = msg.get("from_address", {}).get(
-                                    "email", ""
-                                )
-
-                            # Extract recipient emails
-                            recipient_emails = []
-                            if msg.get("to_addresses"):
-                                recipient_emails = [
-                                    addr.get("email", "")
-                                    for addr in msg.get("to_addresses", [])
-                                    if addr.get("email")
-                                ]
-
-                            # Convert normalized EmailMessage to backfill format with content splitting
-                            email = {
-                                "id": msg.get("provider_message_id", msg.get("id")),
-                                "user_id": self.user_id,
-                                "provider": provider_str,
-                                "type": "email",
-                                "subject": msg.get("subject", "No Subject"),
-                                "body": visible_content,  # Use visible content only
-                                "from": sender_email,
-                                "to": recipient_emails,
-                                "thread_id": msg.get("thread_id", ""),
-                                "folder": (
-                                    msg.get("labels", ["inbox"])[0]
-                                    if msg.get("labels")
-                                    else "inbox"
-                                ),
-                                "created_at": msg.get("date"),
-                                "updated_at": msg.get("date"),
-                                "quoted_content": quoted_content,  # Add quoted content for context
-                                "thread_summary": thread_summary,  # Add thread summary
-                                "metadata": {
-                                    "has_attachments": msg.get(
-                                        "has_attachments", False
-                                    ),
-                                    "is_read": msg.get("is_read", True),
-                                },
-                            }
-
-                            # Validate email data quality and log warnings for missing/empty fields
-                            self._validate_email_data_quality(
-                                email,
-                                msg.get(
-                                    "provider_message_id", msg.get("id", "unknown")
-                                ),
-                            )
-
-                            emails.append(email)
-
+                        # The office service already provides normalized EmailMessage objects
+                        # Just return them directly - no need for conversion or fallback logic
+                        messages = data["data"]["messages"]
+                        
                         logger.debug(
-                            f"Retrieved {len(emails)} real emails from {provider_str} using office service internal API"
+                            f"Retrieved {len(messages)} normalized emails from {provider_str} using office service internal API"
                         )
-                        return emails
+                        return messages
                     else:
                         logger.warning("Office service returned no emails or error")
                         if not data.get("success"):
