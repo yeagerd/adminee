@@ -19,18 +19,18 @@ from services.common.http_errors import (
 )
 from services.common.logging_config import get_logger, request_id_var
 from services.user.auth.service_auth import service_permission_required
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     InternalTokenRefreshRequest,
     InternalTokenRequest,
     InternalTokenResponse,
     InternalUserStatusResponse,
 )
-from services.user.schemas.preferences import (
+from services.api.v1.user.preferences import (
     PreferencesResetRequest,
     UserPreferencesResponse,
     UserPreferencesUpdate,
 )
-from services.user.schemas.user import (
+from services.api.v1.user.user import (
     EmailResolutionRequest,
     UserCreate,
     UserResponse,

@@ -24,7 +24,7 @@ from services.user.models.integration import (
     IntegrationProvider,
     IntegrationStatus,
 )
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationHealthResponse,

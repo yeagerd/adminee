@@ -39,7 +39,7 @@ from services.user.routers import (
     provider_router,
     users_router,
 )
-from services.user.schemas.health import (
+from services.api.v1.user.health import (
     ConfigurationStatus,
     DatabaseStatus,
     DependencyStatus,

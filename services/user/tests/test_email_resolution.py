@@ -11,7 +11,7 @@ import pytest
 
 from services.common.http_errors import NotFoundError, ValidationError
 from services.user.models.user import User
-from services.user.schemas.user import EmailResolutionRequest, EmailResolutionResponse
+from services.api.v1.user.user import EmailResolutionRequest, EmailResolutionResponse
 from services.user.services.user_service import UserService
 from services.user.utils.email_collision import EmailCollisionDetector
 
