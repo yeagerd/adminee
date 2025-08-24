@@ -78,7 +78,7 @@ jobs:
           echo "  ./scripts/generate-api-schema.sh"
           echo "  git add . && git commit -m 'Update generated files'"
           echo ""
-          echo "Note: The generate-types.sh script automatically cleans existing types"
+          echo "Note: The generate-api-schema.sh script automatically cleans existing types"
           echo "before generation, ensuring a fresh and consistent output."
             echo ""
             echo "This ensures that your PR includes the latest generated types and schemas."
