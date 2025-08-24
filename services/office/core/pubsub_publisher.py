@@ -28,7 +28,6 @@ except Exception:
 
 from services.common.events.base_events import EventMetadata
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
-from services.common.events.contact_events import ContactData, ContactEvent
 from services.common.events.email_events import EmailData, EmailEvent
 from services.common.logging_config import get_logger
 
@@ -48,15 +47,15 @@ class PubSubPublisher:
         self.topics = {
             "emails": "emails",
             "calendars": "calendars",
-            "contacts": "contacts",
             "word_documents": "word_documents",
-            "word_fragments": "word_fragments",
             "sheet_documents": "sheet_documents",
-            "sheet_fragments": "sheet_fragments",
             "presentation_documents": "presentation_documents",
-            "presentation_fragments": "presentation_fragments",
             "task_documents": "task_documents",
             "todos": "todos",
+            "llm_chats": "llm_chats",
+            "shipment_events": "shipment_events",
+            "meeting_polls": "meeting_polls",
+            "bookings": "bookings",
         }
 
         if PUBSUB_AVAILABLE:
@@ -235,75 +234,6 @@ class PubSubPublisher:
             logger.error(f"Failed to publish CalendarEvent to Pub/Sub: {e}")
             return False
 
-    async def publish_contact_event(
-        self,
-        contact_data: ContactData,
-        operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
-    ) -> bool:
-        """Publish a ContactEvent to Pub/Sub"""
-        if not self.publisher:
-            logger.warning("Pub/Sub publisher not available")
-            return False
-
-        try:
-            # Create event metadata
-            metadata = self._create_event_metadata(
-                source_service="office-service",
-                user_id=user_id,
-                correlation_id=correlation_id,
-            )
-
-            # Validate required user_id parameter
-            if not user_id:
-                logger.error(
-                    f"user_id is required for publishing ContactEvent {contact_data.id}"
-                )
-                return False
-
-            # Create ContactEvent
-            contact_event = ContactEvent(
-                metadata=metadata,
-                user_id=user_id,  # user_id is required, no fallback
-                contact=contact_data,
-                operation=operation,
-                batch_id=batch_id,
-                last_updated=datetime.now(timezone.utc),
-                sync_timestamp=datetime.now(timezone.utc),
-                provider=contact_data.provider,
-            )
-
-            # Convert to JSON
-            message_data = contact_event.model_dump_json().encode("utf-8")
-
-            # Publish to contacts topic
-            future = self.publisher.publish(
-                f"projects/{self.project_id}/topics/{self.topics['contacts']}",
-                message_data,
-            )
-            message_id = future.result()
-
-            logger.debug(
-                f"Published ContactEvent {contact_data.id} (operation: {operation}) to Pub/Sub: {message_id}"
-            )
-            return True
-
-        except google_exceptions.NotFound as e:
-            # Topic not found - this is a fatal error that should halt the process
-            logger.error(
-                f"FATAL: Pub/Sub topic '{self.topics['contacts']}' not found. Halting contact publishing. Error: {e}"
-            )
-            # Set publisher to None to prevent further attempts
-            self.publisher = None
-            raise RuntimeError(
-                f"Pub/Sub topic '{self.topics['contacts']}' not found. Please create the topic first."
-            ) from e
-        except Exception as e:
-            logger.error(f"Failed to publish ContactEvent to Pub/Sub: {e}")
-            return False
-
     async def publish_batch_emails(
         self,
         emails: List[EmailData],
@@ -382,61 +312,19 @@ class PubSubPublisher:
             logger.error(f"Failed to publish batch calendar events: {e}")
             raise
 
-    async def publish_batch_contacts(
-        self,
-        contacts: List[ContactData],
-        operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
-    ) -> List[bool]:
-        """Publish multiple ContactEvents in batch"""
-        try:
-            results = []
-
-            for contact in contacts:
-                try:
-                    success = await self.publish_contact_event(
-                        contact, operation, batch_id, user_id, correlation_id
-                    )
-                    results.append(success)
-                except RuntimeError as e:
-                    # Fatal error (e.g., topic not found) - halt the batch
-                    logger.error(f"Fatal error in batch contact publishing: {e}")
-                    # Return partial results and re-raise the fatal error
-                    return results
-                except Exception as e:
-                    logger.error(f"Failed to publish contact in batch: {e}")
-                    # Continue with other contacts
-                    results.append(False)
-                    continue
-
-            success_count = sum(results)
-            logger.info(
-                f"Published {success_count} out of {len(contacts)} ContactEvents to topic {self.topics['contacts']}"
-            )
-            return results
-
-        except Exception as e:
-            logger.error(f"Failed to publish batch contacts: {e}")
-            raise
-
     def set_topics(
         self,
         email_topic: Optional[str] = None,
         calendar_topic: Optional[str] = None,
-        contact_topic: Optional[str] = None,
     ) -> None:
         """Set custom topic names"""
         if email_topic:
             self.topics["emails"] = email_topic
         if calendar_topic:
             self.topics["calendars"] = calendar_topic
-        if contact_topic:
-            self.topics["contacts"] = contact_topic
 
         logger.info(
-            f"Set topics: email={self.topics['emails']}, calendar={self.topics['calendars']}, contact={self.topics['contacts']}"
+            f"Set topics: email={self.topics['emails']}, calendar={self.topics['calendars']}"
         )
 
     async def close(self) -> None:

@@ -14,10 +14,11 @@ from services.common.logging_config import (
 )
 from services.office.api.backfill import internal_router as backfill_internal_router
 from services.office.api.calendar import router as calendar_router
-from services.office.api.contacts import router as contacts_router
-from services.office.api.email import internal_router as email_internal_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
+from services.office.api.health import router as health_router
+from services.office.api.oauth import router as oauth_router
+from services.office.api.users import router as users_router
 from services.office.core.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
@@ -52,7 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
 app = FastAPI(
     title="Briefly Office Service",
-    description="Backend microservice for Google and Microsoft integrations including email, calendar, files, and contacts",
+    description="Backend microservice for Google and Microsoft integrations including email, calendar, and files",
     version="0.1.0",
     contact={
         "name": "Briefly Team",
@@ -74,7 +75,6 @@ app = FastAPI(
             "name": "files",
             "description": "File operations including upload, download, and management",
         },
-        {"name": "contacts", "description": "Contact management and operations"},
     ],
     debug=False,
     lifespan=lifespan,
@@ -90,11 +90,12 @@ register_briefly_exception_handlers(app)
 app.include_router(email_router, prefix="/v1")
 app.include_router(calendar_router, prefix="/v1")
 app.include_router(files_router, prefix="/v1")
-app.include_router(contacts_router, prefix="/v1")
+app.include_router(health_router, prefix="/v1")
+app.include_router(oauth_router, prefix="/v1")
+app.include_router(users_router, prefix="/v1")
 
 # Include internal routers (no prefix - direct access)
 app.include_router(backfill_internal_router)
-app.include_router(email_internal_router)
 
 
 @app.get("/")

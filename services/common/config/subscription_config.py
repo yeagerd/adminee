@@ -45,13 +45,9 @@ class SubscriptionConfig:
     TOPIC_NAMES = {
         "emails": "emails",
         "calendars": "calendars",
-        "contacts": "contacts",
         "word_documents": "word_documents",
-        "word_fragments": "word_fragments",
         "sheet_documents": "sheet_documents",
-        "sheet_fragments": "sheet_fragments",
         "presentation_documents": "presentation_documents",
-        "presentation_fragments": "presentation_fragments",
         "task_documents": "task_documents",
         "todos": "todos",
         "llm_chats": "llm_chats",
@@ -83,19 +79,9 @@ class SubscriptionConfig:
                 "batch_size": 20,
                 "ack_deadline_seconds": 120,
             },
-            "contacts": {
-                "subscription_name": "vespa-loader-contacts",
-                "batch_size": 100,
-                "ack_deadline_seconds": 120,
-            },
             "word_documents": {
                 "subscription_name": "vespa-loader-word-documents",
                 "batch_size": 10,
-                "ack_deadline_seconds": 180,
-            },
-            "word_fragments": {
-                "subscription_name": "vespa-loader-word-fragments",
-                "batch_size": 20,
                 "ack_deadline_seconds": 180,
             },
             "sheet_documents": {
@@ -103,19 +89,9 @@ class SubscriptionConfig:
                 "batch_size": 10,
                 "ack_deadline_seconds": 180,
             },
-            "sheet_fragments": {
-                "subscription_name": "vespa-loader-sheet-fragments",
-                "batch_size": 20,
-                "ack_deadline_seconds": 180,
-            },
             "presentation_documents": {
                 "subscription_name": "vespa-loader-presentation-documents",
                 "batch_size": 10,
-                "ack_deadline_seconds": 180,
-            },
-            "presentation_fragments": {
-                "subscription_name": "vespa-loader-presentation-fragments",
-                "batch_size": 20,
                 "ack_deadline_seconds": 180,
             },
             "task_documents": {
@@ -158,11 +134,6 @@ class SubscriptionConfig:
             "calendars": {
                 "subscription_name": "contact-discovery-calendars",
                 "batch_size": 50,
-                "ack_deadline_seconds": 60,
-            },
-            "contacts": {
-                "subscription_name": "contact-discovery-contacts",
-                "batch_size": 100,
                 "ack_deadline_seconds": 60,
             },
             "word_documents": {
@@ -208,11 +179,6 @@ class SubscriptionConfig:
             },
             "calendars": {
                 "subscription_name": "frontend-sse-calendars",
-                "batch_size": 10,
-                "ack_deadline_seconds": 30,
-            },
-            "contacts": {
-                "subscription_name": "frontend-sse-contacts",
                 "batch_size": 10,
                 "ack_deadline_seconds": 30,
             },
