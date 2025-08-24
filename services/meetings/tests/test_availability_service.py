@@ -436,7 +436,8 @@ class TestAvailabilityService(BaseMeetingsTest):
         slots = []
         for i in range(60):  # More than the weekly limit
             # Create slots within the same day by using minutes instead of hours
-            slot_start = base_date + timedelta(minutes=i * 30)  # 30-minute intervals
+            # But limit to 24 hours to ensure all slots stay within the same week
+            slot_start = base_date + timedelta(minutes=i * 15)  # 15-minute intervals to fit more slots in 24 hours
             slot_end = slot_start + timedelta(minutes=30)
             slots.append({"start": slot_start, "end": slot_end})
 
