@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional
 
 try:
     from google.api_core import (
-        exceptions as google_exceptions,  # type: ignore[import-not-found]
+        exceptions as google_exceptions,
     )
-    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+    from google.cloud import pubsub_v1
 
     PUBSUB_AVAILABLE = True
 except Exception:
@@ -444,7 +444,7 @@ class PubSubPublisher:
         """Close the pubsub client"""
         try:
             if self.publisher:
-                self.publisher.transport.close()  # type: ignore[attr-defined]
+                self.publisher.transport.close()
         except Exception:
             pass
         logger.info("PubSub publisher closed")

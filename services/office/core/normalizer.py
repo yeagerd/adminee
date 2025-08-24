@@ -191,8 +191,6 @@ def normalize_google_email(
         if not visible_content:
             if body_html:
                 # Simple HTML to text extraction as fallback
-                import re
-
                 visible_content = re.sub(r"<[^>]+>", "", body_html)
                 visible_content = (
                     visible_content.replace("&nbsp;", " ")
@@ -336,8 +334,6 @@ def normalize_microsoft_email(
                 # If we have HTML content and visible_content is actually HTML, populate body_html_unquoted
                 body_html_unquoted = visible_content
                 # Also extract text version for body_text_unquoted
-                import re
-
                 body_text_unquoted = re.sub(r"<[^>]+>", "", visible_content)
                 body_text_unquoted = (
                     body_text_unquoted.replace("&nbsp;", " ")
@@ -354,8 +350,6 @@ def normalize_microsoft_email(
         if not visible_content:
             if body_html:
                 # Simple HTML to text extraction as fallback
-                import re
-
                 visible_content = re.sub(r"<[^>]+>", "", body_html)
                 visible_content = (
                     visible_content.replace("&nbsp;", " ")
@@ -1120,7 +1114,7 @@ def merge_threads(threads: List[EmailThread]) -> List[EmailThread]:
         return []
 
     # Group threads by subject and participants
-    thread_groups: Dict[Tuple[str, frozenset], List[EmailThread]] = {}
+    thread_groups: Dict[Tuple[str, frozenset[str]], List[EmailThread]] = {}
 
     for thread in threads:
         # Create a key based on subject and participants

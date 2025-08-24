@@ -8,7 +8,7 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 
 import asyncio
 from datetime import datetime, timezone
-from typing import List, Optional, cast
+from typing import Any, List, Optional, cast
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 
@@ -175,7 +175,7 @@ async def get_files(
             )
 
         # Fetch files from each provider
-        all_files: List = []
+        all_files: List[Any] = []
         providers_used: List[str] = []
         provider_errors = {}
 
@@ -308,10 +308,8 @@ async def get_files(
         )
 
         # Build response data
-        files_list = cast(list, all_files if all_files is not None else [])
-        providers_list = cast(
-            list, providers_used if providers_used is not None else []
-        )
+        files_list = all_files if all_files is not None else []
+        providers_list = providers_used if providers_used is not None else []
         response_data = {
             "files": files_list,
             "providers": providers_list,
@@ -362,7 +360,7 @@ async def get_files(
         # Ensure all collection values are not None for mypy
         for k in ["files", "providers"]:
             if k in response_data and response_data[k] is None:
-                response_data[k] = []  # type: ignore[assignment]
+                response_data[k] = []
         return FileListResponse(
             success=True,
             data=[file.model_dump() for file in files_list],

@@ -127,7 +127,7 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
                     if data.get("exists"):
                         user_id = data.get("user_id")
                         logger.info(f"Resolved email {email} to user ID {user_id}")
-                        return user_id
+                        return str(user_id) if user_id is not None else None
                     else:
                         logger.warning(f"Email {email} not found in user service")
                         return None
