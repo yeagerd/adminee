@@ -5,15 +5,15 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 
 ## Phase 1: Infrastructure Setup and Common Models
 
-- [ ] Create `services/api/v1/` directory structure
-- [ ] Create `services/api/v1/__init__.py` with proper exports
-- [ ] Create `services/api/v1/pyproject.toml` for the new API package
-- [ ] Update root `pyproject.toml` to include the new API package as a dependency
-- [ ] Create `services/api/v1/README.md` documenting the new structure and usage patterns
-- [ ] Set up proper import paths and ensure the API package can be imported by all services
-- [ ] **Common Models**: Move `services/common/models/` contents to `services/api/v1/common/`
-- [ ] **Common Events**: Move `services/common/events/` schemas to `services/api/v1/common/events/`
-- [ ] **Common Pagination**: Move `services/common/pagination/` schemas to `services/api/v1/common/pagination/`
+- [x] Create `services/api/v1/` directory structure
+- [x] Create `services/api/v1/__init__.py` with proper exports
+- [x] Create `services/api/v1/pyproject.toml` for the new API package
+- [x] Update root `pyproject.toml` to include the new API package as a dependency
+- [x] Create `services/api/v1/README.md` documenting the new structure and usage patterns
+- [x] Set up proper import paths and ensure the API package can be imported by all services
+- [x] **Common Models**: Move `services/common/models/` contents to `services/api/v1/common/`
+- [x] **Common Events**: Move `services/common/events/` schemas to `services/api/v1/common/events/`
+- [x] **Common Pagination**: Move `services/common/pagination/` schemas to `services/api/v1/common/pagination/`
 - [ ] Update all services to use `services.api.v1.common` instead of `services.common`
 - [ ] Ensure common package tests pass
 - [ ] Update common package documentation
