@@ -29,10 +29,22 @@ class TestDemoAuthentication(BaseSelectiveHTTPIntegrationTest):
     def setup_method(self, method):
         """Set up test environment with HTTP call prevention."""
         super().setup_method(method)
+        # Mock the demo settings to prevent environment variable errors
+        self.settings_patcher = patch("services.demos.chat.get_settings")
+        self.mock_settings = self.settings_patcher.start()
+
+        # Create mock settings with required values
+        mock_settings_instance = MagicMock()
+        mock_settings_instance.api_frontend_office_key = "test_office_key"
+        mock_settings_instance.api_frontend_user_key = "test_user_key"
+        mock_settings_instance.api_frontend_chat_key = "test_chat_key"
+        mock_settings_instance.api_backfill_office_key = "test_backfill_key"
+        self.mock_settings.return_value = mock_settings_instance
 
     def teardown_method(self, method):
         """Clean up test environment."""
         super().teardown_method(method)
+        self.settings_patcher.stop()
 
     @pytest.fixture
     def demo_instance(self):

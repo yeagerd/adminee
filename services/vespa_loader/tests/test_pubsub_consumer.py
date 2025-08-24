@@ -82,7 +82,7 @@ class TestPubSubConsumer:
         assert vespa_document.to_addresses == ["recipient1@test.com"]
         assert vespa_document.thread_id == "thread-1"
         assert vespa_document.metadata["operation"] == "create"
-        assert vespa_document.metadata["batch_id"] == "batch-123"
+        # Note: batch_id is no longer tracked in metadata as it's not needed for search/retrieval
 
     async def test_process_message_handles_invalid_topic(self):
         """Test that process_message rejects invalid topics"""

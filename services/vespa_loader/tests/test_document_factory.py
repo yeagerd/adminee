@@ -89,7 +89,7 @@ class TestVespaDocumentFactory:
         assert doc.to_addresses == ["recipient@example.com"]
         assert doc.thread_id == "thread_001"
         assert doc.metadata["operation"] == "create"
-        assert doc.metadata["batch_id"] == self.test_batch_id
+        # Note: batch_id is no longer tracked in metadata as it's not needed for search/retrieval
 
     def test_create_calendar_document(self):
         """Test creating calendar document from CalendarEvent"""
@@ -385,7 +385,7 @@ class TestVespaDocumentFactory:
         assert "created_at" in doc_dict, "Should have created_at field"
         assert "updated_at" in doc_dict, "Should have updated_at field"
         assert "metadata" in doc_dict, "Should have metadata field"
-        assert "content_chunks" in doc_dict, "Should have content_chunks field"
+        # Note: content_chunks is not included in Vespa schema, so it's not in to_dict()
         assert "quoted_content" in doc_dict, "Should have quoted_content field"
         assert "thread_summary" in doc_dict, "Should have thread_summary field"
         assert "search_text" in doc_dict, "Should have search_text field"

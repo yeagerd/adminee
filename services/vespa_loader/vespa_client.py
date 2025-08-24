@@ -419,7 +419,8 @@ class VespaClient:
             if (
                 key not in vespa_doc["fields"]
                 and key != "id"  # Exclude 'id' field as it's not in Vespa schema
-                and key != "content_chunks"  # Exclude 'content_chunks' field as it's not supported by Vespa schema
+                and key
+                != "content_chunks"  # Exclude 'content_chunks' field as it's not supported by Vespa schema
                 and value is not None
             ):
                 vespa_doc["fields"][key] = value
