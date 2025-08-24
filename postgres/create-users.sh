@@ -16,7 +16,6 @@ MEETINGS_SERVICE_PASSWORD=${BRIEFLY_MEETINGS_SERVICE_PASSWORD:-briefly_meetings_
 SHIPMENTS_SERVICE_PASSWORD=${BRIEFLY_SHIPMENTS_SERVICE_PASSWORD:-briefly_shipments_pass}
 OFFICE_SERVICE_PASSWORD=${BRIEFLY_OFFICE_SERVICE_PASSWORD:-briefly_office_pass}
 CHAT_SERVICE_PASSWORD=${BRIEFLY_CHAT_SERVICE_PASSWORD:-briefly_chat_pass}
-CONTACTS_SERVICE_PASSWORD=${BRIEFLY_CONTACTS_SERVICE_PASSWORD:-briefly_contacts_pass}
 VECTOR_SERVICE_PASSWORD=${BRIEFLY_VECTOR_SERVICE_PASSWORD:-briefly_vector_pass}
 READONLY_PASSWORD=${BRIEFLY_READONLY_PASSWORD:-briefly_readonly_pass}
 
@@ -106,23 +105,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_chat_service;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_chat_service;
 
-    -- Contacts service user
-    DO \$\$
-    BEGIN
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_contacts_service') THEN
-            CREATE USER briefly_contacts_service WITH PASSWORD '$CONTACTS_SERVICE_PASSWORD';
-        END IF;
-    END
-    \$\$;
-    GRANT CONNECT ON DATABASE briefly_contacts TO briefly_contacts_service;
-    GRANT ALL PRIVILEGES ON DATABASE briefly_contacts TO briefly_contacts_service;
-    GRANT ALL ON SCHEMA public TO briefly_contacts_service;
-    GRANT CREATE ON SCHEMA public TO briefly_contacts_service;
-    -- Note: Tables and sequences will be created by migrations
-    -- Default privileges will apply to future objects
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_contacts_service;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_contacts_service;
-
     -- Vector service user
     DO \$\$
     BEGIN
@@ -153,7 +135,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_shipments TO briefly_readonly;
     GRANT CONNECT ON DATABASE briefly_office TO briefly_readonly;
     GRANT CONNECT ON DATABASE briefly_chat TO briefly_readonly;
-    GRANT CONNECT ON DATABASE briefly_contacts TO briefly_readonly;
     GRANT CONNECT ON DATABASE briefly_vector TO briefly_readonly;
     GRANT USAGE ON SCHEMA public TO briefly_readonly;
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO briefly_readonly;

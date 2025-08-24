@@ -34,6 +34,5 @@ create_database_if_not_exists "briefly_shipments"
 create_database_if_not_exists "briefly_office"
 create_database_if_not_exists "briefly_chat"
 create_database_if_not_exists "briefly_vector"
-create_database_if_not_exists "briefly_contacts"
 
 echo "All databases created successfully." 

@@ -217,7 +217,7 @@ cleanup() {
     done
     
     # Kill any remaining processes on our ports (only for services we started)
-    local ports_to_kill="3001 8001 8002 8003 8004 8005 9001 8006 8007"
+    local ports_to_kill="3001 8001 8002 8003 8004 8005 9001 8006"
     if [ "$SKIP_FRONTEND" = false ]; then
         ports_to_kill="$ports_to_kill 3000"
     fi
@@ -257,9 +257,6 @@ start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 900
 # Start Vespa Query Service
 start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
 
-# Start Contacts Service
-start_python_service "contacts-service" "services.contacts.main:app" 8007
-
 # Start Gateway
 echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
 ./scripts/gateway-start.sh &
@@ -286,7 +283,6 @@ wait_for_service "Shipments Service" "http://localhost:8004/health" &
 wait_for_service "Meetings Service" "http://localhost:8005/health" &
 wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
 wait_for_service "Vespa Query Service" "http://localhost:8006/health" &
-wait_for_service "Contacts Service" "http://localhost:8007/health" &
 
 if [ "$SKIP_FRONTEND" = false ]; then
     wait_for_service "Frontend" "http://localhost:3000" &
@@ -312,7 +308,6 @@ echo -e "   Shipments Service: ${GREEN}http://localhost:8004${NC}"
 echo -e "   Meetings Service: ${GREEN}http://localhost:8005${NC}"
 echo -e "   Vespa Loader Service: ${GREEN}http://localhost:9001${NC}"
 echo -e "   Vespa Query Service: ${GREEN}http://localhost:8006${NC}"
-echo -e "   Contacts Service: ${GREEN}http://localhost:8007${NC}"
 echo ""
 echo -e "${BLUE}🔗 Quick Links:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
