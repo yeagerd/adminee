@@ -765,11 +765,9 @@ npm run typecheck
 ```bash
 # 1. Make your API changes
 # 2. Test your service locally
-# 3. Generate updated schemas
+# 3. Generate updated schema and types
 ./scripts/generate-openapi-schemas.sh
-
-# 4. Generate TypeScript types
-cd frontend && ./scripts/generate-types.sh
+cd frontend && npm run generate-types
 
 # 5. Verify types are valid
 npm run typecheck
