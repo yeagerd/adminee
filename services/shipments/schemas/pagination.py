@@ -5,10 +5,10 @@ This module defines shipments-specific pagination schemas that extend the
 common pagination schemas.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from common.pagination.schemas import CursorPaginationRequest, CursorPaginationResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PackageCursorPaginationRequest(CursorPaginationRequest):
@@ -31,12 +31,44 @@ class PackageCursorPaginationRequest(CursorPaginationRequest):
 class PackageCursorPaginationResponse(CursorPaginationResponse):
     """Response schema for package cursor-based pagination."""
 
-    # Override items to be packages
+    # Override items to be packages - properly override parent field
     packages: List[dict] = Field(description="List of packages")
 
-    # Remove items field from parent class
-    class Config:
-        fields = {"items": {"exclude": True}}
+    # Override the items field from parent class to use packages data
+    items: List[dict] = Field(default_factory=list, description="List of packages")
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Ensure items field is synchronized with packages
+        if "packages" in data:
+            self.items = data["packages"]
+
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        # Override to maintain API contract - output 'packages' field, not 'items'
+        data = super().model_dump(**kwargs)
+        # Remove items field to maintain API contract
+        if "items" in data:
+            del data["items"]
+        return data
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        # Ensure items and packages fields stay synchronized without infinite recursion
+        if name == "packages":
+            # Set packages first, then update items to avoid recursion
+            super().__setattr__(name, value)
+            if hasattr(self, "_items_initialized"):
+                super().__setattr__("items", value)
+        elif name == "items":
+            # Set items first, then update users to avoid recursion
+            super().__setattr__(name, value)
+            if hasattr(self, "_items_initialized"):
+                super().__setattr__("packages", value)
+        else:
+            super().__setattr__(name, value)
+
+        # Mark items as initialized after first set
+        if name in ["packages", "items"]:
+            self._items_initialized = True
 
 
 class PackageSearchRequest(BaseModel):

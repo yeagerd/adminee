@@ -491,13 +491,7 @@ class VespaBackfillDemo:
         }
 
         try:
-            # Get initial Vespa stats before backfill
-            logger.info("Collecting initial Vespa statistics...")
-            before_stats = await self.get_user_vespa_stats()
-            results["vespa_stats"]["before"] = before_stats
-            self.print_vespa_stats(before_stats, "INITIAL VESPA STATISTICS")
-
-            # Resolve email to user ID
+            # Resolve email to user ID first
             logger.info(f"Resolving email {self.user_email} to user ID...")
             user_id = await self._resolve_email_to_user_id(self.user_email)
             if not user_id:
@@ -510,6 +504,12 @@ class VespaBackfillDemo:
             # Store both email and user ID for use in different contexts
             original_email = self.user_email
             self.user_id = user_id
+
+            # Get initial Vespa stats after user ID resolution
+            logger.info("Collecting initial Vespa statistics...")
+            before_stats = await self.get_user_vespa_stats()
+            results["vespa_stats"]["before"] = before_stats
+            self.print_vespa_stats(before_stats, "INITIAL VESPA STATISTICS")
 
             # Check OAuth integration status before proceeding
             logger.info("Checking OAuth integration status...")
@@ -1083,6 +1083,7 @@ class VespaBackfillDemo:
                 start_date=self.start_date,
                 end_date=self.end_date,
                 folders=self.folders,
+                max_emails=self.max_emails_per_user,
             ):
                 try:
                     # Convert email dictionaries to EmailData objects and add trace_id

@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BackfillStatusEnum(str, Enum):
@@ -58,8 +58,7 @@ class BackfillRequest(BaseModel):
         None, description="User email (for internal endpoints)"
     )
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class BackfillResponse(BaseModel):
@@ -69,8 +68,7 @@ class BackfillResponse(BaseModel):
     status: BackfillStatusEnum = Field(..., description="Status of the job")
     message: str = Field(..., description="Human-readable message")
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class BackfillStatus(BaseModel):
@@ -94,8 +92,7 @@ class BackfillStatus(BaseModel):
         None, description="Error message if job failed"
     )
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class BackfillJobSummary(BaseModel):
@@ -112,8 +109,7 @@ class BackfillJobSummary(BaseModel):
         ..., description="Total emails that failed across all jobs"
     )
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class EmailBatch(BaseModel):
@@ -124,5 +120,4 @@ class EmailBatch(BaseModel):
     total_batches: int = Field(..., description="Total number of batches")
     is_last_batch: bool = Field(..., description="Whether this is the final batch")
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
