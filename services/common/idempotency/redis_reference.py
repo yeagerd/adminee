@@ -364,6 +364,8 @@ class RedisReferencePattern:
         """Custom JSON serializer for datetime objects."""
         if isinstance(obj, datetime):
             return obj.isoformat()
+        elif hasattr(obj, "isoformat"):
+            return obj.isoformat()
         else:
             return str(obj)
 
