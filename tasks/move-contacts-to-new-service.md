@@ -150,11 +150,11 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Update contact search and filtering functionality
 
 ### Phase 12: Update Event Processing
-- [ ] Ensure Contacts Service can process all relevant event types
-- [ ] Update event processing to store contacts in database
-- [ ] Maintain PubSub integration for contact updates
-- [ ] Ensure Vespa integration continues to work
-- [ ] Update event consumers to use new contact data structure
+- [x] Ensure Contacts Service can process all relevant event types
+- [x] Update event processing to store contacts in database
+- [x] Maintain PubSub integration for contact updates
+- [x] Ensure Vespa integration continues to work
+- [x] Update event consumers to use new contact data structure
 
 ### Phase 13: Update Tests
 - [ ] Move contact tests to `services/contacts/tests/`

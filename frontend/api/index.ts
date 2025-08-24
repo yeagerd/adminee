@@ -1,9 +1,9 @@
 // Export base classes
 export { BookingsClient } from './clients/bookings-client';
 export { ChatClient } from './clients/chat-client';
+export { ContactsClient } from './clients/contacts-client';
 export { MeetingsClient } from './clients/meetings-client';
 export { OfficeClient } from './clients/office-client';
-export { ContactsClient } from './clients/contacts-client';
 
 export { UserClient } from './clients/user-client';
 
@@ -22,9 +22,9 @@ import { ChatClient } from './clients/chat-client';
 import { MeetingsClient } from './clients/meetings-client';
 import { OfficeClient } from './clients/office-client';
 
+import { ContactsClient } from './clients/contacts-client';
 import { ShipmentsClient } from './clients/shipments-client';
 import { UserClient } from './clients/user-client';
-import { ContactsClient } from './clients/contacts-client';
 export const bookingsApi = new BookingsClient();
 export const officeApi = new OfficeClient();
 export const chatApi = new ChatClient();
