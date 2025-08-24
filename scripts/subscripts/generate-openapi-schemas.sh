@@ -31,8 +31,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Project root directory
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Project root directory - use git to find the repo root
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$script_dir/../.." && pwd)")"
 
 # Service configuration
 # Services to exclude from OpenAPI generation (no meaningful schemas or not FastAPI apps)
@@ -43,7 +44,7 @@ discover_services() {
     local services=()
     local paths=()
     
-    for service_dir in services/*/; do
+    for service_dir in "$PROJECT_ROOT"/services/*/; do
         if [[ -d "$service_dir" ]]; then
             local service_name=$(basename "$service_dir")
             
@@ -365,14 +366,30 @@ main() {
         set -x
     fi
     
-    # Check if Python and FastAPI are available
+    # Check if Python is available
     if ! command -v python &> /dev/null; then
         print_status "error" "Python is not installed or not in PATH"
         exit 1
     fi
     
+    # Try to activate virtual environment if it exists
+    if [[ -f "$PROJECT_ROOT/.venv/bin/activate" ]]; then
+        print_status "info" "Activating virtual environment..."
+        source "$PROJECT_ROOT/.venv/bin/activate"
+        print_status "success" "Virtual environment activated"
+    elif [[ -f "$PROJECT_ROOT/.venv/Scripts/activate" ]]; then
+        print_status "info" "Activating virtual environment (Windows)..."
+        source "$PROJECT_ROOT/.venv/Scripts/activate"
+        print_status "success" "Virtual environment activated"
+    else
+        print_status "warning" "No virtual environment found at .venv/"
+        print_status "info" "Continuing with system Python..."
+    fi
+    
+    # Check if FastAPI is available
     if ! python -c "import fastapi" &> /dev/null; then
         print_status "error" "FastAPI is not installed. Please install it first."
+        print_status "info" "Try: cd $PROJECT_ROOT && uv sync --all-packages --all-extras --active"
         exit 1
     fi
     

@@ -306,6 +306,16 @@ if [ "$SKIP_VALIDATION" = "false" ]; then
     validate_schemas
 fi
 
+# Clean existing types to ensure a fresh generation
+echo "🧹 Cleaning existing types..."
+if [ -d "types/api" ]; then
+    rm -rf types/api
+    echo "✅ Removed existing types directory"
+else
+    echo "ℹ️  No existing types directory found"
+fi
+fi
+
 # Create types directory structure
 echo "📁 Creating types directory structure..."
 mkdir -p "$TYPES_OUTPUT_DIR/shared"
