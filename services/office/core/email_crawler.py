@@ -10,7 +10,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
-from services.office.schemas import EmailMessage
+from services.office.schemas import EmailMessage, EmailMessageList
 
 logger = get_logger(__name__)
 
@@ -163,6 +163,11 @@ class EmailCrawler:
                 if response.status_code == 200:
                     data = response.json()
                     count = data.get("total_count", 0)
+                    # Ensure count is an integer
+                    if isinstance(count, (int, float)):
+                        count = int(count)
+                    else:
+                        count = 0
                     logger.info(
                         f"Got email count for user {self.user_id} with provider {provider_str}: {count}",
                         extra={
@@ -273,7 +278,14 @@ class EmailCrawler:
         end_date: Optional[datetime],
         folders: Optional[List[str]],
     ) -> List[EmailMessage]:
-        """Get a batch of emails from the specified provider using the office service's unified API"""
+        """Get a batch of emails from the specified provider using the office service's unified API
+        
+        The method reconstructs the EmailMessageList response structure from the API
+        and returns the normalized EmailMessage objects.
+        
+        Returns:
+            List[EmailMessage]: Normalized EmailMessage objects ready for processing.
+        """
         try:
             import httpx
 
@@ -327,21 +339,21 @@ class EmailCrawler:
 
                 if response.status_code == 200:
                     data = response.json()
-                    if data.get("success") and data.get("data", {}).get("messages"):
-                        # The office service already provides normalized EmailMessage objects
-                        # with pre-split content in the 'body' field
-                        messages = data["data"]["messages"]
-
+                    
+                    # Reconstruct EmailMessageList from the API response
+                    email_list = EmailMessageList(**data)
+                    
+                    if email_list.success and email_list.data and email_list.data.messages:
                         logger.debug(
-                            f"Retrieved {len(messages)} normalized emails from {provider_str} using office service internal API"
+                            f"Retrieved {len(email_list.data.messages)} emails from {provider_str} using office service internal API"
                         )
-                        return messages
+                        return email_list.data.messages
                     else:
-                        logger.warning("Office service returned no emails or error")
-                        if not data.get("success"):
-                            logger.error(
-                                f"Office service error: {data.get('error', 'Unknown error')}"
-                            )
+                        if not email_list.success:
+                            error_msg = email_list.error.get("message", "Unknown error") if email_list.error else "Unknown error"
+                            logger.error(f"Office service error: {error_msg}")
+                        else:
+                            logger.warning("Office service returned no emails")
                         return []
                 else:
                     logger.error(
