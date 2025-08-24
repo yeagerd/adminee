@@ -442,7 +442,7 @@ const serviceRoutes = {
     '/api/v1/calendar': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
-    '/api/v1/contacts': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/contacts': process.env.CONTACTS_SERVICE_URL || 'http://127.0.0.1:8007',
     '/api/v1/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
     '/api/v1/shipments': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
     '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
@@ -510,6 +510,10 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
                 // Vespa query service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_VESPA_QUERY_KEY || '');
                 logger.debug(`Setting API key for vespa query service: ${process.env.API_FRONTEND_VESPA_QUERY_KEY ? 'present' : 'missing'}`);
+            } else if (targetUrl.includes('8007')) {
+                // Contacts service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_CONTACTS_KEY || '');
+                logger.debug(`Setting API key for contacts service: ${process.env.API_FRONTEND_CONTACTS_KEY ? 'present' : 'missing'}`);
             } else {
                 logger.warn(`No API key assigned for target URL: ${targetUrl}`);
             }
@@ -673,8 +677,10 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
 
     if (path.startsWith('/api/v1/chat')) {
         targetService = serviceRoutes['/api/v1/chat'];
-    } else if (path.startsWith('/api/v1/calendar') || path.startsWith('/api/v1/email') || path.startsWith('/api/v1/files') || path.startsWith('/api/v1/contacts')) {
+    } else if (path.startsWith('/api/v1/calendar') || path.startsWith('/api/v1/email') || path.startsWith('/api/v1/files')) {
         targetService = serviceRoutes['/api/v1/calendar'];
+    } else if (path.startsWith('/api/v1/contacts')) {
+        targetService = serviceRoutes['/api/v1/contacts'];
     } else if (path.startsWith('/api/v1/meetings')) {
         targetService = serviceRoutes['/api/v1/meetings'];
     } else if (path.startsWith('/api/v1/bookings')) {
