@@ -352,7 +352,7 @@ def make_get_current_user_with_claims(
         # Fall back to JWT token if no gateway headers
         if not credentials:
             logger_instance.warning("No authentication credentials provided")
-            raise AuthError(message="Authentication required")
+            raise HTTPException(status_code=401, detail="Authentication required")
 
         try:
             token_claims = await verify_jwt_token(credentials.credentials)
@@ -363,10 +363,10 @@ def make_get_current_user_with_claims(
             return token_claims
         except AuthError as e:
             logger_instance.warning(f"JWT authentication failed: {e.message}")
-            raise AuthError(message=e.message)
+            raise HTTPException(status_code=401, detail=e.message)
         except Exception as e:
             logger_instance.error(f"Unexpected JWT authentication error: {e}")
-            raise AuthError(message="Authentication failed")
+            raise HTTPException(status_code=401, detail="Authentication failed")
 
     return get_current_user_with_claims
 
