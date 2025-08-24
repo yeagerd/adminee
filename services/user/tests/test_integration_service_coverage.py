@@ -97,7 +97,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
         mock_access_token.expires_at = None  # Valid token
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_access_token
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
         result = (
             await self.service._validate_and_correct_integration_status_with_session(
@@ -178,7 +178,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
         # Mock no tokens
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None  # No tokens
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
         result = (
             await self.service._validate_and_correct_integration_status_with_session(
@@ -316,7 +316,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
         mock_access_token.expires_at = None  # Valid token
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_access_token
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
         # Test that validation respects the INACTIVE status
         result = (
@@ -350,7 +350,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
         mock_access_token.expires_at = None  # Valid token
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_access_token
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
         # Test that validation respects the INACTIVE status
         result = (
@@ -379,7 +379,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
             # Mock the execute method
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = None  # No tokens
-            mock_session.execute.return_value = mock_result
+            mock_session.execute = AsyncMock(return_value=mock_result)
 
             result = await self.service._get_token_metadata(integration_id=1)
 
@@ -398,7 +398,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
             # Mock the execute method
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = None  # No integration found
-            mock_session.execute.return_value = mock_result
+            mock_session.execute = AsyncMock(return_value=mock_result)
 
             result = await self.service._get_error_count(integration_id=999)
             assert result == 0
@@ -426,7 +426,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
             # Mock user not found
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = None  # User not found
-            mock_session.execute.return_value = mock_result
+            mock_session.execute = AsyncMock(return_value=mock_result)
 
             with pytest.raises(Exception):  # Should raise NotFoundError
                 await self.service.get_user_integrations("nonexistent_user")
