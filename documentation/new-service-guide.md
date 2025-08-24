@@ -724,6 +724,7 @@ cd frontend
 ```
 
 **What this does:**
+- Automatically cleans existing types before generation
 - Creates TypeScript types for all services
 - Generates client classes for API calls
 - Updates `frontend/types/api/index.ts`
@@ -733,14 +734,19 @@ cd frontend
 Use the unified script for the entire process:
 
 ```bash
-./scripts/update-types.sh
+./scripts/generate-api-schema.sh
 ```
 
 This script:
 1. Generates OpenAPI schemas for all services
-2. Copies schemas to frontend directory
-3. Generates TypeScript types
-4. Runs type validation
+2. Generates TypeScript types from schemas
+3. Runs type validation
+4. Handles cleanup automatically
+
+**Alternative:** Use the legacy script if you need more control:
+```bash
+./scripts/update-types.sh
+```
 
 ### **Verification**
 
@@ -766,11 +772,10 @@ npm run typecheck
 # 1. Make your API changes
 # 2. Test your service locally
 # 3. Generate updated schema and types
-./scripts/generate-openapi-schemas.sh
-cd frontend && npm run generate-types
+./scripts/generate-api-schema.sh
 
 # 5. Verify types are valid
-npm run typecheck
+cd frontend && npm run typecheck
 
 # 6. Commit changes
 git add .
@@ -807,6 +812,11 @@ frontend/types/api/
    - Run `npm run typecheck` to see specific errors
    - Check for missing or incorrect type definitions
    - Verify OpenAPI schema is valid JSON
+
+4. **CI fails with "Generated files are out of date":**
+   - The `generate-types.sh` script automatically cleans existing types
+   - Simply run `./scripts/generate-types.sh` again to regenerate
+   - No need to manually remove `frontend/types/api` directory
 
 ### **Best Practices**
 
