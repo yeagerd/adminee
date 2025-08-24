@@ -433,28 +433,261 @@ test = [
 ]
 ```
 
-## 9. API Key Authentication
+## 9. Authentication and Authorization
 
-### Inter-Service Communication
+### **Key Principle: "What You Can Do" vs "Who You Are"**
 
-Use API keys for service-to-service authentication:
+**❌ DON'T**: Use caller-based authentication (e.g., `require_frontend_auth`, `require_user_service_auth`)
+**✅ DO**: Use permission-based authentication with granular permissions (e.g., `read_users`, `write_users`)
+
+**Why**: Caller-based auth is about **who** is calling, but should be about **what** they can do. This creates security vulnerabilities and makes permission management difficult.
+
+### **Using Common Authentication Helpers**
+
+**ALWAYS** use the common authentication modules instead of duplicating code:
 
 ```python
-from fastapi import Header, HTTPException
+# ✅ CORRECT: Use common api_key_auth
+from services.common.api_key_auth import (
+    APIKeyConfig,
+    make_service_permission_required,
+    make_verify_service_authentication,
+)
 
-async def verify_api_key(
-    x_api_key: str = Header(..., alias="X-API-Key")
-) -> str:
-    if x_api_key != settings.api_frontend_your_service_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return x_api_key
+# ✅ CORRECT: Use common jwt_auth
+from services.common.jwt_auth import (
+    make_get_current_user,
+    make_verify_jwt_token,
+)
+```
 
-@router.post("/")
-async def create_item(
-    item: ItemCreate,
-    api_key: str = Depends(verify_api_key)
+### **API Key Authentication (Service-to-Service)**
+
+Use the common `api_key_auth.py` helper for permission-based authentication:
+
+```python
+# In your service's auth.py
+from services.common.api_key_auth import (
+    APIKeyConfig,
+    make_service_permission_required,
+    make_verify_service_authentication,
+)
+from your_service.settings import get_settings
+
+# Define permissions, not callers
+API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
+    "api_frontend_your_service_key": APIKeyConfig(
+        client="frontend",
+        service="your-service-access",
+        permissions=[
+            "read_items",      # What they can do
+            "write_items",     # What they can do
+            "delete_items",    # What they can do
+        ],
+        settings_key="api_frontend_your_service_key",
+    ),
+    "api_chat_your_service_key": APIKeyConfig(
+        client="chat-service",
+        service="your-service-access",
+        permissions=[
+            "read_items",      # Read-only access
+        ],
+        settings_key="api_chat_your_service_key",
+    ),
+}
+
+# Service-level permissions fallback
+SERVICE_PERMISSIONS = {
+    "your-service-access": [
+        "read_items",
+        "write_items", 
+        "delete_items",
+    ],
+}
+
+# Create FastAPI dependencies
+verify_service_authentication = make_verify_service_authentication(
+    API_KEY_CONFIGS, get_settings
+)
+
+def service_permission_required(
+    required_permissions: List[str],
+) -> Callable[[Request], Any]:
+    return make_service_permission_required(
+        required_permissions,
+        API_KEY_CONFIGS,
+        get_settings,
+        SERVICE_PERMISSIONS,
+    )
+```
+
+**Usage in endpoints**:
+```python
+@router.get("/items")
+async def list_items(
+    authenticated_service: str = Depends(service_permission_required(["read_items"]))
 ):
-    # Your logic here
+    # Only services with read_items permission can access
+    pass
+
+@router.post("/items")
+async def create_item(
+    authenticated_service: str = Depends(service_permission_required(["write_items"]))
+):
+    # Only services with write_items permission can access
+    pass
+```
+
+### **JWT Authentication (User Operations)**
+
+Use the common `jwt_auth.py` helper for user authentication:
+
+```python
+# In your service's auth.py
+from services.common.jwt_auth import (
+    make_get_current_user,
+    make_get_current_user_with_claims,
+)
+from your_service.settings import get_settings
+
+# Create JWT authentication functions using your service's settings
+get_current_user = make_get_current_user(get_settings)
+get_current_user_with_claims = make_get_current_user_with_claims(get_settings)
+```
+
+**Usage in endpoints**:
+```python
+@router.get("/me/items")
+async def list_my_items(
+    current_user_id: str = Depends(get_current_user)
+):
+    # User is authenticated via JWT, user_id comes from token
+    pass
+
+@router.post("/me/items")
+async def create_my_item(
+    item: ItemCreate,
+    current_user_id: str = Depends(get_current_user)
+):
+    # User is authenticated via JWT
+    pass
+```
+
+### **Dual Authentication Pattern**
+
+For public endpoints that need both user identity AND service permissions:
+
+```python
+@router.get("/me/items")
+async def list_my_items(
+    authenticated_service: str = Depends(service_permission_required(["read_items"])),
+    current_user_id: str = Depends(get_current_user),
+):
+    # 1. API key validates service permissions
+    # 2. JWT validates user identity
+    # 3. User can only access their own data
+    pass
+```
+
+### **Internal vs Public Endpoints**
+
+**Public Endpoints** (`/v1/*`):
+- Require JWT authentication for user identity
+- Require API key authentication for service permissions
+- Use `/me/` pattern (no user_id in path/query)
+- User data comes from JWT token
+
+**Internal Endpoints** (`/internal/*`):
+- Require API key authentication only
+- Accept `user_id` parameter for service-to-service calls
+- Used for background jobs and service integration
+
+```python
+# Public endpoint - user gets their own data
+@router.get("/v1/me/items")
+async def list_my_items(
+    authenticated_service: str = Depends(service_permission_required(["read_items"])),
+    current_user_id: str = Depends(get_current_user),
+):
+    return await get_items_for_user(current_user_id)
+
+# Internal endpoint - service can get any user's data
+@router.get("/internal/items")
+async def list_user_items(
+    user_id: str = Query(...),
+    authenticated_service: str = Depends(service_permission_required(["read_items"])),
+):
+    return await get_items_for_user(user_id)
+```
+
+### **Settings Configuration**
+
+Add JWT settings to your service's `settings.py`:
+
+```python
+# JWT Configuration
+jwt_verify_signature: bool = Field(
+    default=True, description="Whether to verify JWT signatures"
+)
+nextauth_issuer: str = Field(
+    default="nextauth", description="NextAuth JWT issuer"
+)
+nextauth_audience: Optional[str] = Field(
+    default=None, description="NextAuth JWT audience"
+)
+nextauth_jwt_key: Optional[str] = Field(
+    default=None, description="NextAuth JWT secret key"
+)
+```
+
+### **Permission Design Guidelines**
+
+1. **Use descriptive permission names**: `read_users`, `write_users`, `delete_users`
+2. **Group related permissions**: `user_management` could include all user operations
+3. **Follow least privilege**: Chat service only needs `read_users`, not `write_users`
+4. **Be specific**: `read_user_preferences` is better than just `read_users`
+
+### **Migration from Caller-Based Auth**
+
+If you have existing caller-based authentication:
+
+```python
+# ❌ OLD: Caller-based
+async def require_frontend_auth(request: Request) -> str:
+    # ... validation logic
+
+# ✅ NEW: Permission-based
+def service_permission_required(required_permissions: List[str]):
+    return make_service_permission_required(
+        required_permissions,
+        API_KEY_CONFIGS,
+        get_settings,
+        SERVICE_PERMISSIONS,
+    )
+
+# Usage
+@router.get("/items")
+async def list_items(
+    authenticated_service: str = Depends(service_permission_required(["read_items"]))
+):
+    pass
+```
+
+### **Testing Authentication**
+
+Test both API key and JWT authentication:
+
+```python
+def test_api_key_permissions():
+    # Test different API keys have correct permissions
+    pass
+
+def test_jwt_authentication():
+    # Test JWT validation and user extraction
+    pass
+
+def test_user_isolation():
+    # Test users can only access their own data
     pass
 ```
 
