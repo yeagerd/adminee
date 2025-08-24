@@ -1,0 +1,229 @@
+# API Model Consolidation Task List
+
+## Overview
+Move all Pydantic models from individual services into `services/api/v1/` to enable inter-service communication using shared API schemas instead of direct imports. This will create a clean separation between internal service models and external API contracts.
+
+## Phase 1: Infrastructure Setup
+
+- [ ] Create `services/api/v1/` directory structure
+- [ ] Create `services/api/v1/__init__.py` with proper exports
+- [ ] Create `services/api/v1/pyproject.toml` for the new API package
+- [ ] Update root `pyproject.toml` to include the new API package as a dependency
+- [ ] Create `services/api/v1/README.md` documenting the new structure and usage patterns
+- [ ] Set up proper import paths and ensure the API package can be imported by all services
+
+## Phase 2: User Service Models (Priority: High - Most Referenced)
+
+- [ ] Move `services/user/schemas/` contents to `services/api/v1/user/`
+  - [ ] Move `user.py` schemas
+  - [ ] Move `integration.py` schemas  
+  - [ ] Move `preferences.py` schemas
+  - [ ] Move `pagination.py` schemas
+  - [ ] Move `health.py` schemas
+- [ ] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
+- [ ] Update any inter-service calls that import user schemas to use the new API package
+  - [ ] **No direct schema imports found** - all user schema imports are internal to the user service
+  - [ ] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.database`
+  - [ ] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation
+  - [ ] **Office Service**: Update `services/office/core/pubsub_publisher.py` to use shared user schemas for user_id validation if any user-related schemas are added
+  - [ ] **Office Service**: Update `services/office/core/token_manager.py` to use shared user schemas for token validation responses
+  - [ ] **Office Service**: Update `services/office/core/api_client_factory.py` to use shared user schemas for user profile responses
+  - [ ] **Office Service**: Update `services/office/api/email.py` to use shared user schemas for integration responses
+  - [ ] **Office Service**: Update `services/office/api/backfill.py` to use shared user schemas for user existence responses
+  - [ ] **Meetings Service**: Update `services/meetings/services/booking_availability.py` to use shared user schemas if user validation schemas are needed
+  - [ ] **Meetings Service**: Update `services/meetings/services/email_integration.py` to use shared user schemas for integration responses
+  - [ ] **Chat Service**: Update `services/chat/tools/data_tools.py` to use shared user schemas for integration responses
+  - [ ] **Vespa Services**: Update `services/vespa_loader/` and `services/vespa_query/` to use shared user schemas for user validation responses
+  - [ ] **Demo Services**: Update demo services to use shared user schemas for user service responses
+  - [ ] Verify that no other services are making direct calls to user service internal models
+- [ ] Ensure user service tests still pass with new import structure
+- [ ] Update user service documentation to reflect new API structure
+
+## Phase 3: Office Service Models (Priority: High - Core Integration Service)
+
+- [ ] Move `services/office/schemas/` contents to `services/api/v1/office/`
+  - [ ] Move all schema files from the monolithic `__init__.py`
+  - [ ] Break down the large schema file into logical modules
+- [ ] Update `services/office/` imports to use `services.api.v1.office`
+- [ ] Update inter-service calls in other services that import office schemas
+  - [ ] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
+  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [ ] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api.v1.office`
+  - [ ] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
+  - [ ] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
+  - [ ] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
+- [ ] Update office service tests and ensure they pass
+- [ ] Update office service documentation
+
+## Phase 4: Meetings Service Models (Priority: Medium)
+
+- [ ] Move `services/meetings/schemas/` contents to `services/api/v1/meetings/`
+  - [ ] Move `booking_requests.py` schemas
+- [ ] Update `services/meetings/` imports to use `services.api.v1.meetings`
+- [ ] Update any inter-service calls that import meetings schemas
+  - [ ] **No direct schema imports found** - all meetings schema imports are internal to the meetings service
+  - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
+  - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
+  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api.v1.meetings`
+  - [ ] **Office Service**: Update `services/office/api/calendar.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
+  - [ ] **Office Tests**: Update `services/office/tests/test_validation.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
+  - [ ] Verify that no other services are making direct calls to meetings service internal models
+- [ ] Ensure meetings service tests pass
+- [ ] Update meetings service documentation
+
+## Phase 5: Chat Service Models (Priority: Medium)
+
+- [ ] Move `services/chat/schemas/` contents to `services/api/v1/chat/`
+  - [ ] Move `office_responses.py` schemas
+- [ ] Move any other schema files that exist
+- [ ] Update `services/chat/` imports to use `services.api.v1.chat`
+- [ ] Update inter-service calls that import chat schemas
+  - [ ] **No direct schema imports found** - all chat schema imports are internal to the chat service
+  - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `LLMChatMessageData` from `services.api.v1.chat` instead of local definition
+  - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.chat`
+  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `LLMChatMessageData` from `services.api.v1.chat`
+  - [ ] **Demos**: Update `services/demos/chat.py` to use shared chat schemas for type annotations and validation
+  - [ ] **Demos**: Update `services/demos/vespa_search.py` to use shared chat schemas if any chat-related schemas are needed
+  - [ ] **Demos**: Update `services/demos/vespa_synthetic.py` to use shared chat schemas if any chat-related schemas are needed
+  - [ ] Verify that no other services are making direct calls to chat service internal models
+- [ ] Ensure chat service tests pass
+- [ ] Update chat service documentation
+
+## Phase 6: Shipments Service Models (Priority: Medium)
+
+- [ ] Move `services/shipments/schemas/` contents to `services/api/v1/shipments/`
+  - [ ] Move `pagination.py` schemas
+  - [ ] Move `email_parser.py` schemas
+- [ ] Update `services/shipments/` imports to use `services.api.v1.shipments`
+- [ ] Update inter-service calls that import shipments schemas
+  - [ ] **No direct schema imports found** - all shipments schema imports are internal to the shipments service
+  - [ ] **Common Pagination**: Update `services/shipments/schemas/pagination.py` to import from `services.api.v1.common.pagination` instead of `common.pagination.schemas`
+  - [ ] **Frontend Integration**: Update any frontend API calls that use shipments schemas to use the new shared API package
+  - [ ] **Gateway Integration**: Ensure the gateway can properly route requests using the new shared shipments schemas
+  - [ ] Verify that no other services are making direct calls to shipments service internal models
+- [ ] Ensure shipments service tests pass
+- [ ] Update shipments service documentation
+
+## Phase 7: Email Sync Service Models (Priority: Low)
+
+- [ ] Move `services/email_sync/models/` contents to `services/api/v1/email_sync/`
+- [ ] Update `services/email_sync/` imports to use `services.api.v1.email_sync`
+- [ ] Update any inter-service calls that import email sync schemas
+  - [ ] **No direct schema imports found** - all email sync schema imports are internal to the email sync service
+  - [ ] **No models directory content** - the email sync service models directory is empty
+  - [ ] **Meetings Service Integration**: Update `services/meetings/api/email.py` to use shared email sync schemas for API key validation if any are added
+  - [ ] **Common Config**: Update `services/common/config/subscription_config.py` to reference the new email sync API package structure
+  - [ ] **Frontend Integration**: Update any frontend API calls that use email sync schemas to use the new shared API package
+  - [ ] **Gateway Integration**: Ensure the gateway can properly route requests using the new shared email sync schemas
+  - [ ] Verify that no other services are making direct calls to email sync service internal models
+- [ ] Ensure email sync service tests pass
+- [ ] Update email sync service documentation
+
+## Phase 8: Vespa Services Models (Priority: Low)
+
+- [ ] Move `services/vespa_loader/models/` contents to `services/api/v1/vespa/`
+- [ ] Move `services/vespa_query/` schemas if they exist
+- [ ] Update vespa services to use `services.api.v1.vespa`
+- [ ] Update inter-service calls that import vespa schemas
+  - [ ] **Vespa Loader Models**: Update `services/vespa_loader/services/document_chunking_service.py` to use `DocumentChunkingConfig` from `services.api.v1.vespa` instead of local models
+  - [ ] **Vespa Loader Tests**: Update `services/vespa_loader/tests/test_document_chunking_service.py` to import from `services.api.v1.vespa`
+  - [ ] **Vespa Loader Tests**: Update `services/vespa_loader/tests/test_document_factory.py` to import `VespaDocumentType` from `services.api.v1.vespa`
+  - [ ] **Vespa Loader Tests**: Update `services/vespa_loader/tests/test_ingest_service.py` to import `VespaDocumentType` from `services.api.v1.vespa`
+  - [ ] **Vespa Loader Tests**: Update `services/vespa_loader/tests/test_pubsub_consumer.py` to import `VespaDocumentType` from `services.api.v1.vespa`
+  - [ ] **Chat Service**: Update `services/chat/tools/search_tools.py` to use shared vespa schemas for search functionality if any are added
+  - [ ] **Demo Services**: Update `services/demos/vespa_search.py` to use shared vespa schemas for search functionality if any are added
+  - [ ] **Demo Services**: Update `services/demos/vespa_synthetic.py` to use shared vespa schemas for search functionality if any are added
+  - [ ] **Demo Services**: Update `services/demos/vespa_backfill.py` to use shared vespa schemas for search functionality if any are added
+  - [ ] **Common Tests**: Update `services/common/tests/test_event_driven_architecture_integration.py` to import `DocumentChunkingService` from `services.api.v1.vespa`
+  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `VespaDocumentFactory` from `services.api.v1.vespa`
+  - [ ] Verify that no other services are making direct calls to vespa service internal models
+- [ ] Ensure vespa service tests pass
+- [ ] Update vespa service documentation
+
+## Phase 9: Common Models and Shared Schemas
+
+- [ ] Move `services/common/models/` contents to `services/api/v1/common/`
+- [ ] Move `services/common/events/` schemas to `services/api/v1/common/events/`
+- [ ] Update all services to use `services.api.v1.common` instead of `services.common`
+- [ ] Ensure common package tests pass
+- [ ] Update common package documentation
+
+## Phase 10: Frontend Type Generation Updates
+
+- [ ] Update `frontend/scripts/generate-types.sh` to generate types from the new API package structure
+- [ ] Ensure the script can find and process schemas from `services/api/v1/`
+- [ ] Test that generated TypeScript types are correct and complete
+- [ ] Update frontend API clients if needed to use new type structure
+- [ ] Verify that frontend builds and tests pass with new types
+
+## Phase 11: Inter-Service Call Updates
+
+- [ ] Audit all `from services.` imports across the codebase
+- [ ] Update imports to use the new API package structure
+- [ ] Ensure no service imports internal models from other services
+- [ ] Update any service clients or HTTP calls to use the shared API schemas
+- [ ] Verify that all inter-service communication uses the API layer
+
+## Phase 12: Testing and Validation
+
+- [ ] Run full test suite for all services to ensure no regressions
+- [ ] Run mypy type checking on all services to catch any import issues
+- [ ] Verify that OpenAPI schema generation still works correctly
+- [ ] Test that frontend can still communicate with all services
+- [ ] Validate that inter-service communication works as expected
+
+## Phase 13: Documentation and Cleanup
+
+- [ ] Update all service README files to reflect new import patterns
+- [ ] Update API documentation to show the new shared schema structure
+- [ ] Remove old schema directories from individual services
+- [ ] Update any deployment scripts or Docker configurations if needed
+- [ ] Create migration guide for developers
+
+## Phase 14: Build and Configuration Updates
+
+- [ ] **Root pyproject.toml**: Update to include new `services/api/v1` package in UV workspace members
+- [ ] **Root pyproject.toml**: Add `services/api/v1` to setuptools packages find configuration
+- [ ] **Root pyproject.toml**: Update mypy exclude patterns to handle new API package structure
+- [ ] **install.sh**: Update to ensure new API package is properly installed during setup
+- [ ] **noxfile.py**: Update typecheck sessions to handle new API package structure
+- [ ] **noxfile.py**: Update test sessions to ensure new API package is available
+- [ ] **scripts/generate-openapi-schemas.sh**: Update service discovery to include new API package
+- [ ] **scripts/generate-openapi-schemas.sh**: Update excluded services list to handle new structure
+- [ ] **scripts/update-types.sh**: Update service discovery to handle new API package structure
+- [ ] **scripts/update-types.sh**: Update excluded services list for frontend type generation
+- [ ] **scripts/validate-types.sh**: Update validation logic for new API package structure
+- [ ] **scripts/start-all-services.sh**: Update service startup to ensure new API package is available
+- [ ] **scripts/fix-imports.sh**: Update import fixing patterns for new API package structure
+- [ ] **Frontend scripts**: Update `frontend/scripts/generate-types.sh` to handle new API package structure
+- [ ] **Service pyproject.toml files**: Update all service pyproject.toml files to depend on new API package
+- [ ] **Docker configurations**: Update any Docker files to include new API package
+  - [ ] **Dockerfile.user-service**: Add `COPY services/api/v1/ ./services/api/v1/` and install with `uv pip install --system -e services/api/v1`
+  - [ ] **Dockerfile.office-service**: Add `COPY services/api/v1/ ./services/api/v1/` and install with `uv pip install --system -e services/api/v1`
+  - [ ] **Dockerfile.chat-service**: Add `COPY services/api/v1/ ./services/api/v1/` and install with `uv pip install --system -e services/api/v1`
+  - [ ] **Dockerfile.vespa-query**: Add `COPY services/api/v1/ ./services/api/v1/` and install with `uv pip install --system -e services/api/v1`
+  - [ ] **docker-compose.yml**: Ensure all services have access to the new API package volume mounts
+- [ ] **CI/CD configurations**: Update GitHub Actions or other CI/CD files to handle new structure
+  - [ ] **.github/workflows/ci.yml**: Update service discovery logic to include new API package in schema validation
+  - [ ] **.github/workflows/ci.yml**: Update excluded services list to handle new structure (remove `common` from excluded services)
+  - [ ] **.github/workflows/ci.yml**: Update OpenAPI schema generation to handle new API package structure
+  - [ ] **.github/workflows/autofix.yml**: Ensure UV sync includes new API package dependencies
+  - [ ] **cloudbuild.yaml**: Update Docker build steps to include new API package in all service builds
+
+## Phase 15: Final Validation
+
+- [ ] Run end-to-end tests to ensure system still works
+- [ ] Verify that all services can start up correctly
+- [ ] Check that database migrations and models still work
+- [ ] Validate that the gateway can still route requests properly
+- [ ] Final review of the new architecture
+
+## Notes
+
+- Each phase should be completed and tested before moving to the next
+- After each service migration, commit changes and ensure tests pass
+- The goal is to have zero direct imports between service internal models
+- All inter-service communication should use the shared API schemas
+- Frontend type generation should continue to work seamlessly
+- This refactoring should not break existing API contracts or frontend functionality
