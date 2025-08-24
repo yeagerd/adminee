@@ -103,7 +103,7 @@ class EmailCrawler:
         try:
             total_processed = 0
             async for batch in self._crawl_emails(
-                batch_size, start_date, end_date, folders, resume_from
+                batch_size, start_date, end_date, folders, resume_from, max_emails
             ):
                 # Check if we've reached the max_emails limit
                 if max_emails and total_processed >= max_emails:
@@ -192,6 +192,7 @@ class EmailCrawler:
         end_date: Optional[datetime],
         folders: Optional[List[str]],
         resume_from: int,
+        max_emails: Optional[int] = None,
     ) -> AsyncGenerator[List[EmailMessage], None]:
         """Crawl emails from the specified provider"""
         logger.info(
@@ -206,8 +207,14 @@ class EmailCrawler:
             },
         )
 
-        # Calculate total batches
+        # Calculate total batches and apply max_emails limit
         total_emails = await self._get_email_count()
+        
+        # If max_emails is specified and smaller than total_emails, limit accordingly
+        if max_emails and max_emails < total_emails:
+            total_emails = max_emails
+            logger.info(f"Limited to {max_emails} emails (requested) out of {await self._get_email_count()} available")
+        
         total_batches = (total_emails + batch_size - 1) // batch_size
 
         # Skip completed batches
@@ -215,9 +222,21 @@ class EmailCrawler:
 
         for batch_num in range(start_batch, total_batches):
             try:
+                # Calculate effective batch size for this batch
+                effective_batch_size = batch_size
+                if max_emails:
+                    # Calculate how many emails we've already processed
+                    processed_so_far = batch_num * batch_size
+                    # Calculate how many emails we can still process
+                    remaining_emails = max_emails - processed_so_far
+                    if remaining_emails <= 0:
+                        break  # We've reached the max_emails limit
+                    # Limit this batch to the remaining emails
+                    effective_batch_size = min(batch_size, remaining_emails)
+                
                 # Get batch of emails
                 emails = await self._get_email_batch(
-                    self.provider, batch_num, batch_size, start_date, end_date, folders
+                    self.provider, batch_num, effective_batch_size, start_date, end_date, folders
                 )
 
                 # Apply rate limiting
