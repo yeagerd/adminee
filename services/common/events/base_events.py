@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class EventMetadata(BaseModel):
@@ -53,7 +53,8 @@ class BaseEvent(BaseModel):
 
     metadata: EventMetadata = Field(..., description="Event metadata")
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def add_trace_context(
         self, trace_id: str, span_id: str, parent_span_id: Optional[str] = None

@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ChunkingStrategy(str, Enum):
@@ -98,7 +98,8 @@ class DocumentChunk(BaseModel):
         description="When this chunk was last updated",
     )
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def to_vespa_document(self, user_id: str, provider: str) -> Dict[str, Any]:
         """Convert to Vespa document format."""
@@ -195,7 +196,8 @@ class ChunkingRule(BaseModel):
         default=100, description="Number of chunks to process in a batch"
     )
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class ChunkingResult(BaseModel):
@@ -239,7 +241,8 @@ class ChunkingResult(BaseModel):
         description="When chunking was completed",
     )
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def get_chunk_by_sequence(self, sequence: int) -> Optional[DocumentChunk]:
         """Get a chunk by its sequence number."""
@@ -399,4 +402,5 @@ class DocumentChunkingConfig(BaseModel):
         default=365, description="Days to retain chunk data"
     )
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}

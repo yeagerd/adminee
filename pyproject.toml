@@ -148,11 +148,13 @@ timeout = 5
 timeout_method = "thread"
 addopts = "--strict-markers"
 asyncio_mode = "auto"
-filterwarnings = "ignore:Support for class-based `config` is deprecated, use ConfigDict instead.*"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited",
 ]
 
 [dependency-groups]

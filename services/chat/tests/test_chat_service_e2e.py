@@ -47,16 +47,6 @@ def test_env():
         yield env_vars
 
 
-@pytest.mark.filterwarnings("ignore:ServiceManager is deprecated")
-@pytest.mark.filterwarnings("ignore:Support for class-based `config` is deprecated")
-@pytest.mark.filterwarnings("ignore:The `__fields__` attribute is deprecated")
-@pytest.mark.filterwarnings("ignore:The `__fields_set__` attribute is deprecated")
-@pytest.mark.filterwarnings(
-    "ignore:Accessing the 'model_computed_fields' attribute on the instance is deprecated"
-)
-@pytest.mark.filterwarnings(
-    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated"
-)
 class TestChatServiceE2E(BaseChatTest):
     @classmethod
     def setup_class(cls):
