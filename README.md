@@ -146,13 +146,11 @@ nox -s format                # Format check
 nox -s typecheck             # Standard
 nox -s typecheck_strict      # Strict mode
 
-# OpenAPI Schema Generation
-./scripts/generate-openapi-schemas.sh        # Generate schemas for all services
-./scripts/generate-openapi-schemas.sh chat   # Generate schema for specific service
+# OpenAPI Schema Generation and Frontend Type Generation
+./scripts/generate-openapi-schemas.sh
+cd frontend && npm run generate-types
+git add . && git commit -m 'Update generated files'
 
-# Frontend Type Generation
-cd frontend
-./scripts/generate-types.sh                  # Generate TypeScript types from schemas
 npm run typecheck                           # Verify generated types are valid
 
 # Complete Type Update Workflow
