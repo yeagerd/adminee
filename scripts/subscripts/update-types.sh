@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Project root directory - use git to find the repo root
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$script_dir/.." && pwd)")"
+PROJECT_ROOT="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$script_dir/../.." && pwd)")"
 
 # Verify we have a valid project root
 if [[ ! -d "$PROJECT_ROOT/services" ]] || [[ ! -d "$PROJECT_ROOT/frontend" ]]; then
