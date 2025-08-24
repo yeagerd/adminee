@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 security = HTTPBearer(auto_error=False)
 
 
-def make_verify_jwt_token(get_settings: Callable[[], Any]) -> Callable[[str], Dict[str, Any]]:
+def make_verify_jwt_token(get_settings: Callable[[], Any]) -> Callable[[str], Any]:
     """
     Create a JWT verification function that uses the service's settings.
     
@@ -188,7 +188,7 @@ async def get_current_user_from_gateway_headers(request: Request) -> Optional[st
 
 def make_get_current_user_flexible(
     get_settings: Callable[[], Any]
-) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], str]:
+) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
     Create a flexible authentication function that supports both gateway headers and JWT tokens.
     
@@ -252,7 +252,7 @@ def make_get_current_user_flexible(
 
 def make_get_current_user(
     get_settings: Callable[[], Any]
-) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], str]:
+) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
     Create a get_current_user dependency that supports both gateway headers and JWT tokens.
     
@@ -292,7 +292,7 @@ def make_get_current_user(
 
 def make_get_current_user_with_claims(
     get_settings: Callable[[], Any]
-) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Dict[str, Any]]:
+) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
     Create a get_current_user_with_claims dependency that supports both gateway headers and JWT tokens.
     
