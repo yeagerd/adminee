@@ -70,7 +70,7 @@ class ContactService:
         try:
             result = await session.execute(
                 select(Contact).where(
-                    Contact.id == contact_id, Contact.user_id == user_id
+                    Contact.id == contact_id, Contact.user_id == user_id  # type: ignore
                 )
             )
             return result.scalar_one_or_none()
@@ -85,7 +85,7 @@ class ContactService:
         try:
             result = await session.execute(
                 select(Contact).where(
-                    Contact.user_id == user_id, Contact.email_address == email.lower()
+                    Contact.user_id == user_id, Contact.email_address == email.lower()  # type: ignore
                 )
             )
             return result.scalar_one_or_none()
@@ -302,7 +302,7 @@ class ContactService:
 
             service_counts: Dict[str, int] = {}
             for contact in source_services_data:
-                if contact.source_services:
+                if hasattr(contact, "source_services") and contact.source_services:
                     for service in contact.source_services:
                         service_counts[service] = service_counts.get(service, 0) + 1
 
