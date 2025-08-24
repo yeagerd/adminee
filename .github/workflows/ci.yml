@@ -45,7 +45,7 @@ jobs:
       - name: Generate OpenAPI schemas
         run: |
           source .venv/bin/activate
-          ./scripts/generate-openapi-schemas.sh
+          ./scripts/generate-api-schema.sh --schema-only
 
       - name: Clean existing types
         run: |
