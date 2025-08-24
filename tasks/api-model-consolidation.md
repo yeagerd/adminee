@@ -3,7 +3,7 @@
 ## Overview
 Move all Pydantic models from individual services into `services/api/v1/` to enable inter-service communication using shared API schemas instead of direct imports. This will create a clean separation between internal service models and external API contracts.
 
-## Phase 1: Infrastructure Setup
+## Phase 1: Infrastructure Setup and Common Models
 
 - [ ] Create `services/api/v1/` directory structure
 - [ ] Create `services/api/v1/__init__.py` with proper exports
@@ -11,6 +11,12 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Update root `pyproject.toml` to include the new API package as a dependency
 - [ ] Create `services/api/v1/README.md` documenting the new structure and usage patterns
 - [ ] Set up proper import paths and ensure the API package can be imported by all services
+- [ ] **Common Models**: Move `services/common/models/` contents to `services/api/v1/common/`
+- [ ] **Common Events**: Move `services/common/events/` schemas to `services/api/v1/common/events/`
+- [ ] **Common Pagination**: Move `services/common/pagination/` schemas to `services/api/v1/common/pagination/`
+- [ ] Update all services to use `services.api.v1.common` instead of `services.common`
+- [ ] Ensure common package tests pass
+- [ ] Update common package documentation
 
 ## Phase 2: User Service Models (Priority: High - Most Referenced)
 
@@ -22,8 +28,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [ ] Move `health.py` schemas
 - [ ] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
 - [ ] Update any inter-service calls that import user schemas to use the new API package
-  - [ ] **No direct schema imports found** - all user schema imports are internal to the user service
-  - [ ] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.database`
+  - [ ] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.schemas`
   - [ ] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation
   - [ ] **Office Service**: Update `services/office/core/pubsub_publisher.py` to use shared user schemas for user_id validation if any user-related schemas are added
   - [ ] **Office Service**: Update `services/office/core/token_manager.py` to use shared user schemas for token validation responses
@@ -62,7 +67,6 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [ ] Move `booking_requests.py` schemas
 - [ ] Update `services/meetings/` imports to use `services.api.v1.meetings`
 - [ ] Update any inter-service calls that import meetings schemas
-  - [ ] **No direct schema imports found** - all meetings schema imports are internal to the meetings service
   - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
   - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
   - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api.v1.meetings`
@@ -79,7 +83,6 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Move any other schema files that exist
 - [ ] Update `services/chat/` imports to use `services.api.v1.chat`
 - [ ] Update inter-service calls that import chat schemas
-  - [ ] **No direct schema imports found** - all chat schema imports are internal to the chat service
   - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `LLMChatMessageData` from `services.api.v1.chat` instead of local definition
   - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.chat`
   - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `LLMChatMessageData` from `services.api.v1.chat`
@@ -97,7 +100,6 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [ ] Move `email_parser.py` schemas
 - [ ] Update `services/shipments/` imports to use `services.api.v1.shipments`
 - [ ] Update inter-service calls that import shipments schemas
-  - [ ] **No direct schema imports found** - all shipments schema imports are internal to the shipments service
   - [ ] **Common Pagination**: Update `services/shipments/schemas/pagination.py` to import from `services.api.v1.common.pagination` instead of `common.pagination.schemas`
   - [ ] **Frontend Integration**: Update any frontend API calls that use shipments schemas to use the new shared API package
   - [ ] **Gateway Integration**: Ensure the gateway can properly route requests using the new shared shipments schemas
@@ -110,7 +112,6 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Move `services/email_sync/models/` contents to `services/api/v1/email_sync/`
 - [ ] Update `services/email_sync/` imports to use `services.api.v1.email_sync`
 - [ ] Update any inter-service calls that import email sync schemas
-  - [ ] **No direct schema imports found** - all email sync schema imports are internal to the email sync service
   - [ ] **No models directory content** - the email sync service models directory is empty
   - [ ] **Meetings Service Integration**: Update `services/meetings/api/email.py` to use shared email sync schemas for API key validation if any are added
   - [ ] **Common Config**: Update `services/common/config/subscription_config.py` to reference the new email sync API package structure
@@ -141,15 +142,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Ensure vespa service tests pass
 - [ ] Update vespa service documentation
 
-## Phase 9: Common Models and Shared Schemas
-
-- [ ] Move `services/common/models/` contents to `services/api/v1/common/`
-- [ ] Move `services/common/events/` schemas to `services/api/v1/common/events/`
-- [ ] Update all services to use `services.api.v1.common` instead of `services.common`
-- [ ] Ensure common package tests pass
-- [ ] Update common package documentation
-
-## Phase 10: Frontend Type Generation Updates
+## Phase 9: Frontend Type Generation Updates
 
 - [ ] Update `frontend/scripts/generate-types.sh` to generate types from the new API package structure
 - [ ] Ensure the script can find and process schemas from `services/api/v1/`
@@ -157,7 +150,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Update frontend API clients if needed to use new type structure
 - [ ] Verify that frontend builds and tests pass with new types
 
-## Phase 11: Inter-Service Call Updates
+## Phase 10: Inter-Service Call Updates
 
 - [ ] Audit all `from services.` imports across the codebase
 - [ ] Update imports to use the new API package structure
@@ -165,7 +158,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Update any service clients or HTTP calls to use the shared API schemas
 - [ ] Verify that all inter-service communication uses the API layer
 
-## Phase 12: Testing and Validation
+## Phase 11: Testing and Validation
 
 - [ ] Run full test suite for all services to ensure no regressions
 - [ ] Run mypy type checking on all services to catch any import issues
@@ -173,7 +166,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Test that frontend can still communicate with all services
 - [ ] Validate that inter-service communication works as expected
 
-## Phase 13: Documentation and Cleanup
+## Phase 12: Documentation and Cleanup
 
 - [ ] Update all service README files to reflect new import patterns
 - [ ] Update API documentation to show the new shared schema structure
@@ -181,7 +174,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Update any deployment scripts or Docker configurations if needed
 - [ ] Create migration guide for developers
 
-## Phase 14: Build and Configuration Updates
+## Phase 13: Build and Configuration Updates
 
 - [ ] **Root pyproject.toml**: Update to include new `services/api/v1` package in UV workspace members
 - [ ] **Root pyproject.toml**: Add `services/api/v1` to setuptools packages find configuration
@@ -211,7 +204,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [ ] **.github/workflows/autofix.yml**: Ensure UV sync includes new API package dependencies
   - [ ] **cloudbuild.yaml**: Update Docker build steps to include new API package in all service builds
 
-## Phase 15: Final Validation
+## Phase 14: Final Validation
 
 - [ ] Run end-to-end tests to ensure system still works
 - [ ] Verify that all services can start up correctly
@@ -227,3 +220,4 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - All inter-service communication should use the shared API schemas
 - Frontend type generation should continue to work seamlessly
 - This refactoring should not break existing API contracts or frontend functionality
+- **Important**: Common schemas (Phase 1) must be completed before other phases since they are dependencies for other services
