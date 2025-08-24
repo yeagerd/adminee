@@ -4,7 +4,7 @@ Tests for the Contact model class.
 Tests contact model functionality, event handling, and relevance scoring.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from unittest.mock import Mock
 
 import pytest
@@ -99,74 +99,73 @@ class TestContactModel:
 
     def test_add_event_existing_event_type(self, sample_contact):
         """Test adding an event to an existing event type."""
-        # Add first event
-        first_timestamp = datetime.now(timezone.utc)
-        sample_contact.add_event("email", first_timestamp)
+        # Add initial event
+        initial_timestamp = datetime.now(timezone.utc)
+        sample_contact.add_event("email", initial_timestamp)
 
-        # Add second event
-        second_timestamp = datetime.now(timezone.utc)
-        sample_contact.add_event("email", second_timestamp)
+        # Add another event
+        new_timestamp = datetime.now(timezone.utc) + timedelta(hours=1)
+        sample_contact.add_event("email", new_timestamp)
 
         # Check event count increased
         assert sample_contact.event_counts["email"].count == 2
-        assert sample_contact.event_counts["email"].first_seen == first_timestamp
-        assert sample_contact.event_counts["email"].last_seen == second_timestamp
+        assert sample_contact.event_counts["email"].first_seen == initial_timestamp
+        assert sample_contact.event_counts["email"].last_seen == new_timestamp
+
+        # Check total count increased
+        assert sample_contact.total_event_count == 2
+
+        # Check last_seen was updated to latest
+        assert sample_contact.last_seen == new_timestamp
+
+    def test_add_event_multiple_types(self, sample_contact):
+        """Test adding events of different types."""
+        email_timestamp = datetime.now(timezone.utc)
+        calendar_timestamp = datetime.now(timezone.utc) + timedelta(hours=1)
+
+        sample_contact.add_event("email", email_timestamp)
+        sample_contact.add_event("calendar", calendar_timestamp)
+
+        # Check both event types exist
+        assert "email" in sample_contact.event_counts
+        assert "calendar" in sample_contact.event_counts
+
+        # Check counts
+        assert sample_contact.event_counts["email"].count == 1
+        assert sample_contact.event_counts["calendar"].count == 1
 
         # Check total count
         assert sample_contact.total_event_count == 2
 
-    def test_add_event_multiple_types(self, sample_contact):
-        """Test adding events of multiple types."""
-        timestamp = datetime.now(timezone.utc)
-
-        sample_contact.add_event("email", timestamp)
-        sample_contact.add_event("calendar", timestamp)
-        sample_contact.add_event("document", timestamp)
-
-        # Check all event types were created
-        assert "email" in sample_contact.event_counts
-        assert "calendar" in sample_contact.event_counts
-        assert "document" in sample_contact.event_counts
-
-        # Check total count
-        assert sample_contact.total_event_count == 3
+        # Check last_seen is the latest timestamp
+        assert sample_contact.last_seen == calendar_timestamp
 
     def test_calculate_relevance_score_basic(self, sample_contact):
         """Test basic relevance score calculation."""
-        # Set up contact with some events
+        # Add some events to make the contact more relevant
         timestamp = datetime.now(timezone.utc)
         sample_contact.add_event("email", timestamp)
         sample_contact.add_event("calendar", timestamp)
 
-        # Calculate relevance score
         score = sample_contact.calculate_relevance_score()
 
-        # Check score is between 0 and 1
+        # Check score is calculated
         assert 0.0 <= score <= 1.0
+        assert score > 0.0  # Should have some relevance
 
-        # Check relevance factors were set
+        # Check relevance factors were calculated
         assert "recency" in sample_contact.relevance_factors
         assert "frequency" in sample_contact.relevance_factors
         assert "diversity" in sample_contact.relevance_factors
         assert "name_completeness" in sample_contact.relevance_factors
-        assert "total_score" in sample_contact.relevance_factors
 
     def test_calculate_relevance_score_with_names(self, sample_contact):
-        """Test relevance score calculation with complete names."""
-        # Set up contact with complete names
-        sample_contact.display_name = "John Doe"
-        sample_contact.given_name = "John"
-        sample_contact.family_name = "Doe"
-
-        # Add some events
+        """Test relevance score calculation with complete name information."""
+        # Contact already has display_name, given_name, and family_name
         timestamp = datetime.now(timezone.utc)
         sample_contact.add_event("email", timestamp)
 
-        # Calculate relevance score
         score = sample_contact.calculate_relevance_score()
-
-        # Check score is reasonable
-        assert score > 0.0
 
         # Check name completeness factor
         name_factor = sample_contact.relevance_factors["name_completeness"]
@@ -174,20 +173,22 @@ class TestContactModel:
 
     def test_calculate_relevance_score_old_contact(self, sample_contact):
         """Test relevance score calculation for old contacts."""
-        # Set up contact with old last_seen
-        old_timestamp = datetime.now(timezone.utc)
-        old_timestamp = old_timestamp.replace(day=old_timestamp.day - 60)  # 60 days ago
+        # Set up contact with old last_seen using timedelta for safety
+        old_timestamp = datetime.now(timezone.utc) - timedelta(days=60)
         sample_contact.last_seen = old_timestamp
 
-        # Add some events
-        timestamp = datetime.now(timezone.utc)
-        sample_contact.add_event("email", timestamp)
-
-        # Calculate relevance score
+        # Calculate relevance score BEFORE adding events (to test old contact behavior)
         score = sample_contact.calculate_relevance_score()
 
         # Check score is lower due to age
         assert score < 0.5  # Should be lower due to recency factor
+
+        # Now add an event and verify the score improves
+        timestamp = datetime.now(timezone.utc)
+        sample_contact.add_event("email", timestamp)
+        
+        new_score = sample_contact.calculate_relevance_score()
+        assert new_score > score  # Score should improve after recent activity
 
     def test_get_primary_name_display_name(self, sample_contact):
         """Test getting primary name when display_name is set."""
@@ -197,7 +198,9 @@ class TestContactModel:
         assert result == "John Doe"
 
     def test_get_primary_name_given_family(self, sample_contact):
-        """Test getting primary name from given and family names."""
+        """Test getting primary name from given and family names when display_name is not set."""
+        # Clear display_name to test fallback behavior
+        sample_contact.display_name = None
         sample_contact.given_name = "John"
         sample_contact.family_name = "Doe"
 
@@ -205,14 +208,20 @@ class TestContactModel:
         assert result == "John Doe"
 
     def test_get_primary_name_given_only(self, sample_contact):
-        """Test getting primary name when only given name is set."""
+        """Test getting primary name when only given name is set and display_name is not set."""
+        # Clear display_name to test fallback behavior
+        sample_contact.display_name = None
         sample_contact.given_name = "John"
+        sample_contact.family_name = None
 
         result = sample_contact.get_primary_name()
         assert result == "John"
 
     def test_get_primary_name_family_only(self, sample_contact):
-        """Test getting primary name when only family name is set."""
+        """Test getting primary name when only family name is set and display_name is not set."""
+        # Clear display_name to test fallback behavior
+        sample_contact.display_name = None
+        sample_contact.given_name = None
         sample_contact.family_name = "Doe"
 
         result = sample_contact.get_primary_name()

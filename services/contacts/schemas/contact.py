@@ -9,6 +9,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from services.contacts.models.contact import Contact
+
 
 class EmailContactUpdate(BaseModel):
     """Update model for email contacts."""
@@ -25,8 +27,6 @@ class EmailContactUpdate(BaseModel):
 
 class EmailContactSearchResult(BaseModel):
     """Search result for email contacts."""
-
-    from services.contacts.models.contact import Contact
 
     contact: Contact
     relevance_score: float
@@ -51,8 +51,6 @@ class ContactCreate(BaseModel):
 class ContactResponse(BaseModel):
     """Response model for contacts."""
 
-    from services.contacts.models.contact import Contact
-
     contact: Contact
     success: bool = True
     message: Optional[str] = None
@@ -60,8 +58,6 @@ class ContactResponse(BaseModel):
 
 class ContactListResponse(BaseModel):
     """Response model for contact lists."""
-
-    from services.contacts.models.contact import Contact
 
     contacts: List[Contact]
     total: int
@@ -80,10 +76,8 @@ class ContactSearchRequest(BaseModel):
         default=20, ge=1, le=100, description="Maximum number of results"
     )
     offset: int = Field(default=0, ge=0, description="Number of results to skip")
-    tags: Optional[List[str]] = Field(None, description="Filter by tags")
-    source_services: Optional[List[str]] = Field(
-        None, description="Filter by source services"
-    )
+    tags: Optional[List[str]] = None
+    source_services: Optional[List[str]] = None
 
 
 class ContactStatsResponse(BaseModel):
