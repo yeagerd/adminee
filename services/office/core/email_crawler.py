@@ -279,10 +279,10 @@ class EmailCrawler:
         folders: Optional[List[str]],
     ) -> List[EmailMessage]:
         """Get a batch of emails from the specified provider using the office service's unified API
-        
+
         The method reconstructs the EmailMessageList response structure from the API
         and returns the normalized EmailMessage objects.
-        
+
         Returns:
             List[EmailMessage]: Normalized EmailMessage objects ready for processing.
         """
@@ -339,18 +339,26 @@ class EmailCrawler:
 
                 if response.status_code == 200:
                     data = response.json()
-                    
+
                     # Reconstruct EmailMessageList from the API response
                     email_list = EmailMessageList(**data)
-                    
-                    if email_list.success and email_list.data and email_list.data.messages:
+
+                    if (
+                        email_list.success
+                        and email_list.data
+                        and email_list.data.messages
+                    ):
                         logger.debug(
                             f"Retrieved {len(email_list.data.messages)} emails from {provider_str} using office service internal API"
                         )
                         return email_list.data.messages
                     else:
                         if not email_list.success:
-                            error_msg = email_list.error.get("message", "Unknown error") if email_list.error else "Unknown error"
+                            error_msg = (
+                                email_list.error.get("message", "Unknown error")
+                                if email_list.error
+                                else "Unknown error"
+                            )
                             logger.error(f"Office service error: {error_msg}")
                         else:
                             logger.warning("Office service returned no emails")

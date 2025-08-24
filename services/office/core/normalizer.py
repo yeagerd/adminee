@@ -29,18 +29,18 @@ logger = get_logger(__name__)
 def _is_html_content(content: str) -> bool:
     """
     Check if content appears to be HTML by looking for HTML tags.
-    
+
     Args:
         content: Content to check
-        
+
     Returns:
         True if content contains HTML tags, False otherwise
     """
     if not content:
         return False
-    
+
     # Look for HTML tags (simple but effective)
-    html_pattern = re.compile(r'<[^>]+>')
+    html_pattern = re.compile(r"<[^>]+>")
     return bool(html_pattern.search(content))
 
 

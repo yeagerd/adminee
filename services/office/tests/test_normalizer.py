@@ -7,14 +7,15 @@ and populate the appropriate fields based on the actual content type, not just t
 of body_html.
 """
 
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from services.office.core.normalizer import (
+    _is_html_content,
     normalize_google_email,
     normalize_microsoft_email,
-    _is_html_content,
 )
 from services.office.schemas import Provider
 
@@ -28,15 +29,17 @@ class TestHTMLContentDetection:
         assert _is_html_content("<p>Hello <strong>world</strong>!</p>") is True
         assert _is_html_content("<html><body>Content</body></html>") is True
         assert _is_html_content("<div>Text</div>") is True
-        
+
         # Test text content
         assert _is_html_content("Hello world!") is False
         assert _is_html_content("Plain text email") is False
         assert _is_html_content("") is False
-        
+
         # Test edge cases
         assert _is_html_content("Hello <world>!") is True  # Contains HTML-like tags
-        assert _is_html_content("Hello &amp; world!") is False  # HTML entities but no tags
+        assert (
+            _is_html_content("Hello &amp; world!") is False
+        )  # HTML entities but no tags
 
 
 class TestGoogleEmailNormalizer:
@@ -57,26 +60,26 @@ class TestGoogleEmailNormalizer:
                     {"name": "To", "value": "recipient@example.com"},
                     {"name": "Date", "value": "Mon, 1 Jan 2024 12:00:00 +0000"},
                 ],
-                "body": {
-                    "data": "SGVsbG8gd29ybGQ="  # Base64 encoded "Hello world"
-                },
+                "body": {"data": "SGVsbG8gd29ybGQ="},  # Base64 encoded "Hello world"
                 "parts": [
                     {
                         "mimeType": "text/html",
                         "body": {
                             "data": "PHA+SGVsbG8gPHN0cm9uZz53b3JsZDwvc3Ryb25nPiE8L3A+"  # Base64 encoded "<p>Hello <strong>world</strong>!</p>"
-                        }
+                        },
                     }
-                ]
-            }
+                ],
+            },
         }
 
         # Mock the email content splitter to return HTML content
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "<p>Hello <strong>world</strong>!</p>",
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_google_email(raw_data, "account@example.com")
@@ -103,26 +106,26 @@ class TestGoogleEmailNormalizer:
                     {"name": "To", "value": "recipient@example.com"},
                     {"name": "Date", "value": "Mon, 1 Jan 2024 12:00:00 +0000"},
                 ],
-                "body": {
-                    "data": "SGVsbG8gd29ybGQ="  # Base64 encoded "Hello world"
-                },
+                "body": {"data": "SGVsbG8gd29ybGQ="},  # Base64 encoded "Hello world"
                 "parts": [
                     {
                         "mimeType": "text/html",
                         "body": {
                             "data": "PHA+SGVsbG8gPHN0cm9uZz53b3JsZDwvc3Ryb25nPiE8L3A+"  # Base64 encoded "<p>Hello <strong>world</strong>!</p>"
-                        }
+                        },
                     }
-                ]
-            }
+                ],
+            },
         }
 
         # Mock the email content splitter to return TEXT content (this was the bug!)
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "Hello world!",  # Text content, not HTML
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_google_email(raw_data, "account@example.com")
@@ -149,18 +152,18 @@ class TestGoogleEmailNormalizer:
                     {"name": "To", "value": "recipient@example.com"},
                     {"name": "Date", "value": "Mon, 1 Jan 2024 12:00:00 +0000"},
                 ],
-                "body": {
-                    "data": "SGVsbG8gd29ybGQ="  # Base64 encoded "Hello world"
-                }
-            }
+                "body": {"data": "SGVsbG8gd29ybGQ="},  # Base64 encoded "Hello world"
+            },
         }
 
         # Mock the email content splitter to return text content
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "Hello world!",
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_google_email(raw_data, "account@example.com")
@@ -190,31 +193,30 @@ class TestMicrosoftEmailNormalizer:
             "categories": [],
             "importance": "normal",
             "from": {
-                "emailAddress": {
-                    "address": "sender@example.com",
-                    "name": "Sender"
-                }
+                "emailAddress": {"address": "sender@example.com", "name": "Sender"}
             },
             "toRecipients": [
                 {
                     "emailAddress": {
                         "address": "recipient@example.com",
-                        "name": "Recipient"
+                        "name": "Recipient",
                     }
                 }
             ],
             "body": {
                 "contentType": "html",
-                "content": "<p>Hello <strong>world</strong>!</p>"
-            }
+                "content": "<p>Hello <strong>world</strong>!</p>",
+            },
         }
 
         # Mock the email content splitter to return HTML content
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "<p>Hello <strong>world</strong>!</p>",
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_microsoft_email(raw_data, "account@example.com")
@@ -240,31 +242,30 @@ class TestMicrosoftEmailNormalizer:
             "categories": [],
             "importance": "normal",
             "from": {
-                "emailAddress": {
-                    "address": "sender@example.com",
-                    "name": "Sender"
-                }
+                "emailAddress": {"address": "sender@example.com", "name": "Sender"}
             },
             "toRecipients": [
                 {
                     "emailAddress": {
                         "address": "recipient@example.com",
-                        "name": "Recipient"
+                        "name": "Recipient",
                     }
                 }
             ],
             "body": {
                 "contentType": "html",
-                "content": "<p>Hello <strong>world</strong>!</p>"
-            }
+                "content": "<p>Hello <strong>world</strong>!</p>",
+            },
         }
 
         # Mock the email content splitter to return TEXT content (this was the bug!)
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "Hello world!",  # Text content, not HTML
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_microsoft_email(raw_data, "account@example.com")
@@ -290,31 +291,27 @@ class TestMicrosoftEmailNormalizer:
             "categories": [],
             "importance": "normal",
             "from": {
-                "emailAddress": {
-                    "address": "sender@example.com",
-                    "name": "Sender"
-                }
+                "emailAddress": {"address": "sender@example.com", "name": "Sender"}
             },
             "toRecipients": [
                 {
                     "emailAddress": {
                         "address": "recipient@example.com",
-                        "name": "Recipient"
+                        "name": "Recipient",
                     }
                 }
             ],
-            "body": {
-                "contentType": "text",
-                "content": "Hello world!"
-            }
+            "body": {"contentType": "text", "content": "Hello world!"},
         }
 
         # Mock the email content splitter to return text content
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "Hello world!",
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_microsoft_email(raw_data, "account@example.com")
@@ -345,18 +342,18 @@ class TestNormalizerEdgeCases:
                     {"name": "To", "value": "recipient@example.com"},
                     {"name": "Date", "value": "Mon, 1 Jan 2024 12:00:00 +0000"},
                 ],
-                "body": {
-                    "data": "SGVsbG8gd29ybGQ="  # Base64 encoded "Hello world"
-                }
-            }
+                "body": {"data": "SGVsbG8gd29ybGQ="},  # Base64 encoded "Hello world"
+            },
         }
 
         # Mock the email content splitter to return empty content
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "",
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_google_email(raw_data, "account@example.com")
@@ -380,18 +377,18 @@ class TestNormalizerEdgeCases:
                     {"name": "To", "value": "recipient@example.com"},
                     {"name": "Date", "value": "Mon, 1 Jan 2024 12:00:00 +0000"},
                 ],
-                "body": {
-                    "data": "SGVsbG8gd29ybGQ="  # Base64 encoded "Hello world"
-                }
-            }
+                "body": {"data": "SGVsbG8gd29ybGQ="},  # Base64 encoded "Hello world"
+            },
         }
 
         # Mock the email content splitter to return mixed content
-        with patch("services.office.core.email_content_splitter.split_email_content") as mock_split:
+        with patch(
+            "services.office.core.email_content_splitter.split_email_content"
+        ) as mock_split:
             mock_split.return_value = {
                 "visible_content": "Hello <world>!",  # Contains HTML-like characters
                 "quoted_content": "",
-                "thread_summary": {}
+                "thread_summary": {},
             }
 
             result = normalize_google_email(raw_data, "account@example.com")

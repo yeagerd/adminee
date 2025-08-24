@@ -11,9 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
-    from google.api_core import (
-        exceptions as google_exceptions,
-    )
+    from google.api_core import exceptions as google_exceptions
     from google.cloud import pubsub_v1
 
     PUBSUB_AVAILABLE = True
