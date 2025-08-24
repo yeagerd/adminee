@@ -912,7 +912,9 @@ class TestFetchProviderEmails:
 
         # Mock API client
         mock_client = AsyncMock()
-        mock_client.get_messages = AsyncMock(return_value={"messages": [{"id": "test123"}]})
+        mock_client.get_messages = AsyncMock(
+            return_value={"messages": [{"id": "test123"}]}
+        )
         mock_client.get_message = AsyncMock(
             return_value={"id": "test123", "payload": {}}
         )
