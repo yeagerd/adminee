@@ -1,5 +1,5 @@
 /* generated using openapi-typescript-codegen -- do no edit */
-/* istanbul ignore file */
+import type { HTTPValidationError, ValidationError } from "../shared";/* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
 
@@ -7,7 +7,6 @@ export type { AvailabilityDataResponse } from './models/AvailabilityDataResponse
 export type { AvailabilityResponse } from './models/AvailabilityResponse';
 export type { CreatePublicBookingRequest } from './models/CreatePublicBookingRequest';
 export type { EmailResponseRequest } from './models/EmailResponseRequest';
-export type { HTTPValidationError } from './models/HTTPValidationError';
 export type { MeetingPoll } from './models/MeetingPoll';
 export type { MeetingPollCreate } from './models/MeetingPollCreate';
 export type { MeetingPollUpdate } from './models/MeetingPollUpdate';
@@ -23,4 +22,3 @@ export type { QuestionField } from './models/QuestionField';
 export type { SuccessResponse } from './models/SuccessResponse';
 export type { TimeSlot } from './models/TimeSlot';
 export type { TimeSlotCreate } from './models/TimeSlotCreate';
-export type { ValidationError } from './models/ValidationError';

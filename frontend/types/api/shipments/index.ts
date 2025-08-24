@@ -1,5 +1,5 @@
 /* generated using openapi-typescript-codegen -- do no edit */
-/* istanbul ignore file */
+import type { HTTPValidationError, ValidationError } from "../shared";/* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
 
@@ -9,7 +9,6 @@ export type { DataCollectionResponse } from './models/DataCollectionResponse';
 export type { EmailData } from './models/EmailData';
 export type { EmailParseRequest } from './models/EmailParseRequest';
 export type { EmailParseResponse } from './models/EmailParseResponse';
-export type { HTTPValidationError } from './models/HTTPValidationError';
 export type { LabelCreate } from './models/LabelCreate';
 export type { LabelOut } from './models/LabelOut';
 export type { LabelUpdate } from './models/LabelUpdate';
@@ -22,4 +21,3 @@ export type { ParsedTrackingInfo } from './models/ParsedTrackingInfo';
 export type { TrackingData } from './models/TrackingData';
 export type { TrackingEventCreate } from './models/TrackingEventCreate';
 export type { TrackingEventOut } from './models/TrackingEventOut';
-export type { ValidationError } from './models/ValidationError';
