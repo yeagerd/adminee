@@ -34,7 +34,28 @@ class VespaDocumentFactory:
     @staticmethod
     def create_email_document(event: EmailEvent) -> VespaDocumentType:
         """Create a Vespa document from an EmailEvent"""
+        from services.vespa_loader.services.document_chunking_service import (
+            DocumentChunkingService,
+        )
+
         email = event.email
+
+        # Create chunks using the chunking service
+        chunking_service = DocumentChunkingService()
+        chunking_result = chunking_service.chunk_document(
+            document_id=email.id,
+            content=email.body or "",
+            document_type="email",
+            metadata={
+                "provider": email.provider,
+                "subject": email.subject,
+                "thread_id": email.thread_id,
+            },
+        )
+
+        # Extract chunk content for Vespa indexing
+        content_chunks = [chunk.content for chunk in chunking_result.chunks]
+
         return VespaDocumentType(
             id=email.id,
             user_id=event.user_id,
@@ -50,7 +71,6 @@ class VespaDocumentFactory:
             updated_at=email.sent_date,
             metadata={
                 "operation": event.operation,
-                "batch_id": event.batch_id,
                 "last_updated": (
                     event.last_updated.isoformat() if event.last_updated else None
                 ),
@@ -65,8 +85,13 @@ class VespaDocumentFactory:
                 "size_bytes": email.size_bytes,
                 "mime_type": email.mime_type,
                 "headers": email.headers or {},
+                "chunking_info": {
+                    "total_chunks": chunking_result.total_chunks,
+                    "chunking_strategy": chunking_result.chunking_strategy.value,
+                    "average_chunk_size": chunking_result.average_chunk_size,
+                },
             },
-            content_chunks=[],
+            content_chunks=content_chunks,
             quoted_content="",
             thread_summary={},
             search_text="",
@@ -75,7 +100,28 @@ class VespaDocumentFactory:
     @staticmethod
     def create_calendar_document(event: CalendarEvent) -> VespaDocumentType:
         """Create a Vespa document from a CalendarEvent"""
+        from services.vespa_loader.services.document_chunking_service import (
+            DocumentChunkingService,
+        )
+
         calendar_event = event.event
+
+        # Create chunks using the chunking service
+        chunking_service = DocumentChunkingService()
+        chunking_result = chunking_service.chunk_document(
+            document_id=calendar_event.id,
+            content=calendar_event.description or "",
+            document_type="calendar",
+            metadata={
+                "provider": calendar_event.provider,
+                "title": calendar_event.title,
+                "calendar_id": calendar_event.calendar_id,
+            },
+        )
+
+        # Extract chunk content for Vespa indexing
+        content_chunks = [chunk.content for chunk in chunking_result.chunks]
+
         return VespaDocumentType(
             id=calendar_event.id,
             user_id=event.user_id,
@@ -89,9 +135,9 @@ class VespaDocumentFactory:
             folder=calendar_event.calendar_id,
             created_at=calendar_event.start_time,
             updated_at=calendar_event.end_time,
+            content_chunks=content_chunks,
             metadata={
                 "operation": event.operation,
-                "batch_id": event.batch_id,
                 "last_updated": (
                     event.last_updated.isoformat() if event.last_updated else None
                 ),
@@ -108,13 +154,39 @@ class VespaDocumentFactory:
                 "attachments": calendar_event.attachments,
                 "color_id": calendar_event.color_id,
                 "html_link": calendar_event.html_link,
+                "chunking_info": {
+                    "total_chunks": chunking_result.total_chunks,
+                    "chunking_strategy": chunking_result.chunking_strategy.value,
+                    "average_chunk_size": chunking_result.average_chunk_size,
+                },
             },
         )
 
     @staticmethod
     def create_contact_document(event: ContactEvent) -> VespaDocumentType:
         """Create a Vespa document from a ContactEvent"""
+        from services.vespa_loader.services.document_chunking_service import (
+            DocumentChunkingService,
+        )
+
         contact = event.contact
+
+        # Create chunks using the chunking service
+        chunking_service = DocumentChunkingService()
+        chunking_result = chunking_service.chunk_document(
+            document_id=contact.id,
+            content=contact.notes or "",
+            document_type="contact",
+            metadata={
+                "provider": contact.provider,
+                "display_name": contact.display_name,
+                "email_addresses": contact.email_addresses,
+            },
+        )
+
+        # Extract chunk content for Vespa indexing
+        content_chunks = [chunk.content for chunk in chunking_result.chunks]
+
         return VespaDocumentType(
             id=contact.id,
             user_id=event.user_id,
@@ -128,9 +200,9 @@ class VespaDocumentFactory:
             folder="",
             created_at=None,
             updated_at=contact.last_modified,
+            content_chunks=content_chunks,
             metadata={
                 "operation": event.operation,
-                "batch_id": event.batch_id,
                 "last_updated": (
                     event.last_updated.isoformat() if event.last_updated else None
                 ),
@@ -151,6 +223,11 @@ class VespaDocumentFactory:
                 "photos": contact.photos,
                 "groups": contact.groups,
                 "tags": contact.tags,
+                "chunking_info": {
+                    "total_chunks": chunking_result.total_chunks,
+                    "chunking_strategy": chunking_result.chunking_strategy.value,
+                    "average_chunk_size": chunking_result.average_chunk_size,
+                },
             },
         )
 
@@ -195,7 +272,6 @@ class VespaDocumentFactory:
             content_chunks=content_chunks,  # Populate the existing chunks field
             metadata={
                 "operation": event.operation,
-                "batch_id": event.batch_id,
                 "last_updated": (
                     event.last_updated.isoformat() if event.last_updated else None
                 ),
@@ -218,7 +294,28 @@ class VespaDocumentFactory:
     @staticmethod
     def create_todo_document(event: TodoEvent) -> VespaDocumentType:
         """Create a Vespa document from a TodoEvent"""
+        from services.vespa_loader.services.document_chunking_service import (
+            DocumentChunkingService,
+        )
+
         todo = event.todo
+
+        # Create chunks using the chunking service
+        chunking_service = DocumentChunkingService()
+        chunking_result = chunking_service.chunk_document(
+            document_id=todo.id,
+            content=todo.description or "",
+            document_type="todo",
+            metadata={
+                "provider": todo.provider,
+                "title": todo.title,
+                "list_id": todo.list_id,
+            },
+        )
+
+        # Extract chunk content for Vespa indexing
+        content_chunks = [chunk.content for chunk in chunking_result.chunks]
+
         return VespaDocumentType(
             id=todo.id,
             user_id=event.user_id,
@@ -232,9 +329,9 @@ class VespaDocumentFactory:
             folder=todo.list_id or "",
             created_at=None,
             updated_at=todo.due_date,
+            content_chunks=content_chunks,
             metadata={
                 "operation": event.operation,
-                "batch_id": event.batch_id,
                 "last_updated": (
                     event.last_updated.isoformat() if event.last_updated else None
                 ),
@@ -255,6 +352,11 @@ class VespaDocumentFactory:
                 "list_id": todo.list_id,
                 "provider_todo_id": todo.provider_todo_id,
                 "tags": todo.tags,
+                "chunking_info": {
+                    "total_chunks": chunking_result.total_chunks,
+                    "chunking_strategy": chunking_result.chunking_strategy.value,
+                    "average_chunk_size": chunking_result.average_chunk_size,
+                },
             },
         )
 

@@ -38,15 +38,11 @@ class Settings(BaseSettings):
         default="http://localhost:8080", validation_alias="VESPA_ENDPOINT"
     )
     vespa_timeout: int = Field(default=30, validation_alias="VESPA_TIMEOUT")
-    vespa_batch_size: int = Field(default=100, validation_alias="VESPA_BATCH_SIZE")
 
     # Embedding configuration
     embedding_model: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2",
         validation_alias="EMBEDDING_MODEL",
-    )
-    embedding_batch_size: int = Field(
-        default=32, validation_alias="EMBEDDING_BATCH_SIZE"
     )
     embedding_timeout: int = Field(default=60, validation_alias="EMBEDDING_TIMEOUT")
 
@@ -60,12 +56,6 @@ class Settings(BaseSettings):
     enable_email_header_cleaning: bool = Field(
         default=True, validation_alias="ENABLE_EMAIL_HEADER_CLEANING"
     )
-
-    # Batch processing
-    max_concurrent_batches: int = Field(
-        default=5, validation_alias="MAX_CONCURRENT_BATCHES"
-    )
-    batch_timeout: int = Field(default=300, validation_alias="BATCH_TIMEOUT")
 
     # Retry configuration
     max_retries: int = Field(default=3, validation_alias="MAX_RETRIES")

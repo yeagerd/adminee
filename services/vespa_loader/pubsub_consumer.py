@@ -242,7 +242,6 @@ class PubSubConsumer:
 
             logger.info(f"Starting consumer for topic: {topic_name}")
             logger.info(f"Subscription path: {subscription_path}")
-            logger.info(f"Batch size: {config['batch_size']}")
 
             # Use the subscribe method with callbacks instead of polling
             subscription = self.subscriber.subscribe(
