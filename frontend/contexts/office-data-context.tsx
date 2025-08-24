@@ -1,7 +1,7 @@
 "use client";
 
-import { officeApi } from '@/api';
-import type { Contact, ContactList } from '@/types/api/office';
+import { officeApi, contactsApi } from '@/api';
+import type { Contact } from '@/types/api/contacts';
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 interface OfficeDataContextType {
@@ -36,9 +36,30 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setError(null);
         try {
             lastQueryRef.current = { providers, q: opts?.q, company: opts?.company, limit: opts?.limit };
-            const resp = await officeApi.getContacts(providers, opts?.limit ?? 200, opts?.q, opts?.company, opts?.noCache);
-            if (resp.success && resp.data) {
-                setContacts(resp.data || []);
+            
+            // Use the new contacts API for fetching contacts
+            // Convert old provider-based logic to new source_services logic
+            let sourceServices: string[] | undefined;
+            if (providers && providers.length > 0) {
+                // Map old providers to new source services
+                sourceServices = providers.map(provider => {
+                    if (provider === 'google' || provider === 'microsoft') {
+                        return 'office';
+                    }
+                    return provider;
+                });
+            }
+
+            const resp = await contactsApi.getContacts(
+                opts?.limit ?? 200,
+                0, // offset
+                undefined, // tags
+                sourceServices,
+                opts?.q // query
+            );
+            
+            if (resp.success) {
+                setContacts(resp.contacts || []);
             } else {
                 setError('Failed to fetch contacts');
             }
