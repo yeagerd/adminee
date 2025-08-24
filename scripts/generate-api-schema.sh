@@ -19,7 +19,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCHEMA_ONLY=false
 TYPES_ONLY=false
 CLEAN_ONLY=false
-VERBOSE=false
+VERBOSE=true
 
 # Function to print colored output
 print_status() {
@@ -42,7 +42,7 @@ show_usage() {
     echo "  -s, --schema-only  Generate OpenAPI schemas only"
     echo "  -t, --types-only   Generate TypeScript types only"
     echo "  -c, --clean-only   Clean generated files only"
-    echo "  -v, --verbose      Enable verbose output"
+    echo "  -q, --quiet        Disable verbose output"
     echo
     echo "Default behavior (no flags): Generate schemas, types, validation, and version matrix"
     echo
@@ -51,7 +51,7 @@ show_usage() {
     echo "  $0 --schema-only      # Generate OpenAPI schemas only"
     echo "  $0 --types-only       # Generate TypeScript types only"
     echo "  $0 --clean-only       # Clean generated files only"
-    echo "  $0 --verbose          # Full workflow with verbose output"
+    echo "  $0 --quiet            # Full workflow with quiet output"
 }
 
 # Function to parse command line arguments
@@ -74,8 +74,8 @@ parse_args() {
                 CLEAN_ONLY=true
                 shift
                 ;;
-            -v|--verbose)
-                VERBOSE=true
+            -q|--quiet)
+                VERBOSE=false
                 shift
                 ;;
             *)
