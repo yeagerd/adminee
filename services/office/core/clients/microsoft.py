@@ -128,6 +128,13 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
 
+        # Select all the fields we need for proper email normalization
+        params["$select"] = (
+            "id,conversationId,subject,bodyPreview,body,from,toRecipients,"
+            "ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,"
+            "hasAttachments,categories,importance"
+        )
+
         if search:
             params["$search"] = search
 
@@ -166,6 +173,14 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        
+        # Select all the fields we need for proper email normalization
+        params["$select"] = (
+            "id,conversationId,subject,bodyPreview,body,from,toRecipients,"
+            "ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,"
+            "hasAttachments,categories,importance"
+        )
+        
         if filter:
             params["$filter"] = filter
         if search:

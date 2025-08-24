@@ -381,7 +381,28 @@ async def run_backfill_job(
                 # Convert normalized EmailMessage objects to EmailData objects and publish individually
                 for email in email_batch:
                     try:
-                        # email is now a proper EmailMessage object, so we can access fields directly
+                        # Debug logging to see what we're actually getting
+                        logger.debug(f"Processing email: type={type(email)}")
+                        
+                        # Check if email is a dict (from cache) and reconstruct EmailMessage if needed
+                        if isinstance(email, dict):
+                            logger.debug(f"Reconstructing EmailMessage from dict: {email.get('id', 'unknown')}")
+                            from services.office.schemas import EmailMessage
+                            try:
+                                email = EmailMessage(**email)
+                                logger.debug(f"Successfully reconstructed EmailMessage: {email.id}")
+                            except Exception as e:
+                                logger.error(f"Failed to reconstruct EmailMessage: {e}")
+                                continue
+                        
+                        if hasattr(email, 'provider_message_id'):
+                            logger.debug(f"Email has provider_message_id: {email.provider_message_id}")
+                        else:
+                            logger.error(f"Email missing provider_message_id attribute: {email}")
+                            logger.error(f"Email type: {type(email)}, dir: {dir(email)}")
+                            continue
+                        
+                        # email should now be a proper EmailMessage object, so we can access fields directly
                         # Use the pre-split unquoted field (visible content only)
                         # Prefer text over HTML for Vespa ingestion
                         body_content = email.body_text_unquoted or email.body_html_unquoted or email.snippet or ""
