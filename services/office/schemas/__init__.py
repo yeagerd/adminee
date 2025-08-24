@@ -36,7 +36,8 @@ class EmailMessage(BaseModel):
     snippet: Optional[str] = None
     body_text: Optional[str] = None
     body_html: Optional[str] = None
-    body: Optional[str] = None  # Visible content only (non-quoted part)
+    body_text_unquoted: Optional[str] = None  # Visible text content only (non-quoted part)
+    body_html_unquoted: Optional[str] = None  # Visible HTML content only (non-quoted part)
     from_address: Optional[EmailAddress] = None
     to_addresses: List[EmailAddress] = []
     cc_addresses: List[EmailAddress] = []
