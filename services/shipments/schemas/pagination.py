@@ -31,18 +31,18 @@ class PackageCursorPaginationRequest(CursorPaginationRequest):
 class PackageCursorPaginationResponse(CursorPaginationResponse):
     """Response schema for package cursor-based pagination."""
 
-        # Override items to be packages - properly override parent field
+    # Override items to be packages - properly override parent field
     packages: List[dict] = Field(description="List of packages")
-    
+
     # Override the items field from parent class to use packages data
     items: List[dict] = Field(default_factory=list, description="List of packages")
-    
+
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         # Ensure items field is synchronized with packages
         if "packages" in data:
             self.items = data["packages"]
-    
+
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         # Override to maintain API contract - output 'packages' field, not 'items'
         data = super().model_dump(**kwargs)
@@ -50,22 +50,22 @@ class PackageCursorPaginationResponse(CursorPaginationResponse):
         if "items" in data:
             del data["items"]
         return data
-    
+
     def __setattr__(self, name: str, value: Any) -> None:
         # Ensure items and packages fields stay synchronized without infinite recursion
         if name == "packages":
             # Set packages first, then update items to avoid recursion
             super().__setattr__(name, value)
-            if hasattr(self, '_items_initialized'):
+            if hasattr(self, "_items_initialized"):
                 super().__setattr__("items", value)
         elif name == "items":
             # Set items first, then update users to avoid recursion
             super().__setattr__(name, value)
-            if hasattr(self, '_items_initialized'):
+            if hasattr(self, "_items_initialized"):
                 super().__setattr__("packages", value)
         else:
             super().__setattr__(name, value)
-        
+
         # Mark items as initialized after first set
         if name in ["packages", "items"]:
             self._items_initialized = True
