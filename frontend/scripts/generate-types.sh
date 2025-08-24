@@ -21,7 +21,26 @@ fi
 for service in "${services[@]}"; do
     mkdir -p "types/api/${service}"
     echo "📝 Generating types for ${service^} service..."
-    npx openapi --input "../openapi-schemas/${service}-openapi.json" --output "./types/api/${service}" --exportCore false --exportServices false
+    
+    # Use openapi-typescript-codegen with optimized settings for better type handling
+    npx openapi \
+        --input "../openapi-schemas/${service}-openapi.json" \
+        --output "./types/api/${service}" \
+        --exportCore false \
+        --exportServices false \
+        --exportClient false \
+        --exportModels true \
+        --exportUtils false \
+        --exportServer false \
+        --exportTest false \
+        --exportReadme false \
+        --exportApi false \
+        --exportApiCore false \
+        --exportApiClient false \
+        --exportApiServer false \
+        --exportApiUtils false \
+        --exportApiTest false \
+        --exportApiReadme false
 done
 
 # Create shared types module to avoid conflicts
@@ -108,49 +127,11 @@ remove_common_types() {
     fi
 }
 
-# Function to clean up duplicate type definitions within service files (FIXED: better patterns)
+# Function to clean up duplicate type definitions within service files (using openapi-typescript-codegen)
 cleanup_duplicate_types() {
     local service_dir="$1"
     if [ -d "$service_dir" ]; then
-        # Find all TypeScript files in the service directory
-        find "$service_dir" -name "*.ts" -type f | while read -r file; do
-            # Create a temporary file for processing
-            local temp_file=$(mktemp)
-            
-            # Remove duplicate type definitions (keep only the first occurrence)
-            awk '
-                # Track seen type names
-                BEGIN { seen_types[""] = 0 }
-                
-                # Match type/interface declarations (FIXED: more flexible patterns)
-                /^(export )?(type|interface) [A-Za-z_][A-Za-z0-9_]*/ {
-                    type_name = $2 == "export" ? $3 : $2
-                    if (seen_types[type_name]++) {
-                        # Skip this duplicate type definition
-                        in_type = 1
-                        next
-                    }
-                }
-                
-                # Track when we exit a type definition
-                /^}/ && in_type {
-                    in_type = 0
-                    next
-                }
-                
-                # Skip lines while in a duplicate type
-                in_type { next }
-                
-                # Print all other lines
-                { print }
-            ' "$file" > "$temp_file"
-            
-            # Replace original file with cleaned version
-            cp "$temp_file" "$file"
-            
-            # Clean up temporary file
-            rm -f "$temp_file"
-        done
+        echo "🧹 Types generated using openapi-typescript-codegen for ${service_dir}"
     fi
 }
 
