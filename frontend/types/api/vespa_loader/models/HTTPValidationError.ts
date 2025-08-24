@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ValidationError = {
-    loc: Array<(string | number)>;
-    msg: string;
-    type: string;
+import type { ValidationError } from './ValidationError';
+export type HTTPValidationError = {
+    detail?: Array<ValidationError>;
 };
+
