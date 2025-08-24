@@ -109,9 +109,12 @@ class TestAuditLogger(BaseUserManagementTest):
     async def test_log_audit_event_success(self):
         """Test successful audit event logging."""
         # Mock the actual database operations by patching the entire log_audit_event method
+        from unittest.mock import AsyncMock
+
         with patch.object(
-            self.audit_service, "log_audit_event", return_value=self.mock_audit_log
+            self.audit_service, "log_audit_event", new_callable=AsyncMock
         ) as mock_log:
+            mock_log.return_value = self.mock_audit_log
             result = await self.audit_service.log_audit_event(
                 action="test_action",
                 resource_type="test_resource",
@@ -137,10 +140,13 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_log_audit_event_user_not_found(self):
         """Test audit logging when user is not found."""
+        from unittest.mock import AsyncMock
+
         # Test that the method handles user not found gracefully
         with patch.object(
-            self.audit_service, "log_audit_event", return_value=self.mock_audit_log
+            self.audit_service, "log_audit_event", new_callable=AsyncMock
         ) as mock_log:
+            mock_log.return_value = self.mock_audit_log
             result = await self.audit_service.log_audit_event(
                 action="test_action",
                 resource_type="test_resource",
@@ -157,9 +163,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_log_audit_event_system_event(self):
         """Test logging system events (no user)."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
-            self.audit_service, "log_audit_event", return_value=self.mock_audit_log
+            self.audit_service, "log_audit_event", new_callable=AsyncMock
         ) as mock_log:
+            mock_log.return_value = self.mock_audit_log
             result = await self.audit_service.log_audit_event(
                 action="system_backup",
                 resource_type="system",
@@ -176,9 +185,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_log_audit_event_database_error(self):
         """Test audit logging with database error."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
             self.audit_service,
             "log_audit_event",
+            new_callable=AsyncMock,
             side_effect=ServiceError("Database error"),
         ):
             with pytest.raises(ServiceError) as exc_info:
@@ -192,7 +204,11 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_log_user_action(self):
         """Test logging user-specific actions."""
-        with patch.object(self.audit_service, "log_audit_event") as mock_log:
+        from unittest.mock import AsyncMock
+
+        with patch.object(
+            self.audit_service, "log_audit_event", new_callable=AsyncMock
+        ) as mock_log:
             await self.audit_service.log_user_action(
                 user_id="user_123",
                 action="user_login",
@@ -215,7 +231,11 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_log_system_action(self):
         """Test logging system-level actions."""
-        with patch.object(self.audit_service, "log_audit_event") as mock_log:
+        from unittest.mock import AsyncMock
+
+        with patch.object(
+            self.audit_service, "log_audit_event", new_callable=AsyncMock
+        ) as mock_log:
             await self.audit_service.log_system_action(
                 action="system_maintenance",
                 details={"maintenance_type": "database_cleanup"},
@@ -232,7 +252,11 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_log_security_event(self):
         """Test logging security-related events."""
-        with patch.object(self.audit_service, "log_audit_event") as mock_log:
+        from unittest.mock import AsyncMock
+
+        with patch.object(
+            self.audit_service, "log_audit_event", new_callable=AsyncMock
+        ) as mock_log:
             await self.audit_service.log_security_event(
                 user_id="user_123",
                 action="suspicious_activity",
@@ -259,9 +283,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_query_audit_logs_basic(self):
         """Test basic audit log querying."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
-            self.audit_service, "query_audit_logs", return_value=[self.mock_audit_log]
+            self.audit_service, "query_audit_logs", new_callable=AsyncMock
         ) as mock_query:
+            mock_query.return_value = [self.mock_audit_log]
             logs = await self.audit_service.query_audit_logs(
                 user_id="test_user_123", limit=10
             )
@@ -273,12 +300,15 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_query_audit_logs_with_date_range(self):
         """Test audit log querying with date range filters."""
+        from unittest.mock import AsyncMock
+
         start_date = datetime.now(timezone.utc) - timedelta(days=7)
         end_date = datetime.now(timezone.utc)
 
         with patch.object(
-            self.audit_service, "query_audit_logs", return_value=[]
+            self.audit_service, "query_audit_logs", new_callable=AsyncMock
         ) as mock_query:
+            mock_query.return_value = []
             logs = await self.audit_service.query_audit_logs(
                 start_date=start_date, end_date=end_date, limit=50
             )
@@ -291,9 +321,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_query_audit_logs_database_error(self):
         """Test audit log querying with database error."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
             self.audit_service,
             "query_audit_logs",
+            new_callable=AsyncMock,
             side_effect=ServiceError("Query failed"),
         ):
             with pytest.raises(ServiceError) as exc_info:
@@ -304,7 +337,11 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_get_user_activity_summary(self):
         """Test user activity summary generation."""
-        with patch.object(self.audit_service, "query_audit_logs") as mock_query:
+        from unittest.mock import AsyncMock
+
+        with patch.object(
+            self.audit_service, "query_audit_logs", new_callable=AsyncMock
+        ) as mock_query:
             # Mock recent activity
             mock_logs = [
                 Mock(action="user_login", created_at=datetime.now(timezone.utc)),
@@ -330,9 +367,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_get_user_activity_summary_error(self):
         """Test user activity summary with query error."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
             self.audit_service,
             "query_audit_logs",
+            new_callable=AsyncMock,
             side_effect=ServiceError("Query failed"),
         ):
             with pytest.raises(ServiceError) as exc_info:
@@ -347,6 +387,8 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_get_security_events(self):
         """Test security event querying."""
+        from unittest.mock import AsyncMock
+
         mock_events = [
             Mock(
                 action="suspicious_activity",
@@ -356,8 +398,9 @@ class TestAuditLogger(BaseUserManagementTest):
         ]
 
         with patch.object(
-            self.audit_service, "get_security_events", return_value=mock_events
+            self.audit_service, "get_security_events", new_callable=AsyncMock
         ) as mock_get:
+            mock_get.return_value = mock_events
             events = await self.audit_service.get_security_events(days=30)
 
             mock_get.assert_called_once_with(days=30)
@@ -367,9 +410,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_cleanup_old_logs_success(self):
         """Test successful cleanup of old audit logs."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
-            self.audit_service, "cleanup_old_logs", return_value=150
+            self.audit_service, "cleanup_old_logs", new_callable=AsyncMock
         ) as mock_cleanup:
+            mock_cleanup.return_value = 150
             deleted_count = await self.audit_service.cleanup_old_logs(retention_days=90)
 
             mock_cleanup.assert_called_once_with(retention_days=90)
@@ -378,9 +424,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_cleanup_old_logs_none_to_delete(self):
         """Test cleanup when no old logs exist."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
-            self.audit_service, "cleanup_old_logs", return_value=0
+            self.audit_service, "cleanup_old_logs", new_callable=AsyncMock
         ) as mock_cleanup:
+            mock_cleanup.return_value = 0
             deleted_count = await self.audit_service.cleanup_old_logs(
                 retention_days=365
             )
@@ -391,7 +440,11 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_generate_compliance_report(self):
         """Test compliance report generation."""
-        with patch.object(self.audit_service, "query_audit_logs") as mock_query:
+        from unittest.mock import AsyncMock
+
+        with patch.object(
+            self.audit_service, "query_audit_logs", new_callable=AsyncMock
+        ) as mock_query:
             # Mock audit data for report
             mock_logs = [
                 Mock(
@@ -429,9 +482,12 @@ class TestAuditLogger(BaseUserManagementTest):
     @pytest.mark.asyncio
     async def test_generate_compliance_report_error(self):
         """Test compliance report generation with error."""
+        from unittest.mock import AsyncMock
+
         with patch.object(
             self.audit_service,
             "query_audit_logs",
+            new_callable=AsyncMock,
             side_effect=ServiceError("Query failed"),
         ):
             with pytest.raises(ServiceError) as exc_info:

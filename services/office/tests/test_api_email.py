@@ -697,7 +697,9 @@ class TestSendEmailEndpoint:
         mock_factory.create_client.assert_called_once_with("test_user", "google")
 
     @pytest.mark.asyncio
-    async def test_get_email_message_invalid_id_format(self, client, auth_headers):
+    async def test_get_email_message_invalid_id_format(
+        self, client, auth_headers, mock_cache_manager
+    ):
         """Test invalid message ID format."""
         response = client.get("/v1/email/messages/invalid_id", headers=auth_headers)
         assert response.status_code == 422  # ValidationError now returns 422
@@ -910,16 +912,12 @@ class TestFetchProviderEmails:
 
         # Mock API client
         mock_client = AsyncMock()
-
-        async def get_messages(*args, **kwargs):
-            return {"messages": [{"id": "test123"}]}
-
-        mock_client.get_messages = get_messages
-
-        async def get_message(*args, **kwargs):
-            return {"id": "test123", "payload": {}}
-
-        mock_client.get_message = get_message
+        mock_client.get_messages = AsyncMock(
+            return_value={"messages": [{"id": "test123"}]}
+        )
+        mock_client.get_message = AsyncMock(
+            return_value={"id": "test123", "payload": {}}
+        )
         mock_factory = AsyncMock()
         mock_factory.create_client = AsyncMock(return_value=mock_client)
         mock_api_client_factory.return_value = mock_factory
