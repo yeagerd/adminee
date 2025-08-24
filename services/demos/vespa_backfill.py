@@ -98,18 +98,8 @@ class VespaBackfillDemo:
         self.vespa_endpoint = config.get("vespa_endpoint", "http://localhost:8080")
         self.search_engine = SearchEngine(self.vespa_endpoint)
 
-        # API keys from common settings
-        self.api_keys = {
-            "office": getattr(
-                self.settings, "api_frontend_office_key", "test-FRONTEND_OFFICE_KEY"
-            ),
-            "user": getattr(
-                self.settings, "api_frontend_user_key", "test-FRONTEND_USER_KEY"
-            ),
-            "backfill": getattr(
-                self.settings, "api_backfill_office_key", "test-BACKFILL-OFFICE-KEY"
-            ),
-        }
+        # API keys from demo settings
+        self.api_keys = self.settings.get_api_keys()
 
         # Keep user ID separate from email; resolved later
         self.user_id: Optional[str] = None
