@@ -144,7 +144,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 
 ## Phase 9: Frontend Type Generation Updates
 
-- [ ] Update `frontend/scripts/generate-types.sh` to generate types from the new API package structure
+- [x] Update type generation workflow - using `scripts/subscripts/update-types.sh` instead of unused `frontend/scripts/generate-types.sh`
 - [ ] Ensure the script can find and process schemas from `services/api/v1/`
 - [ ] Test that generated TypeScript types are correct and complete
 - [ ] Update frontend API clients if needed to use new type structure
@@ -189,7 +189,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] **scripts/validate-types.sh**: Update validation logic for new API package structure
 - [ ] **scripts/start-all-services.sh**: Update service startup to ensure new API package is available
 - [ ] **scripts/fix-imports.sh**: Update import fixing patterns for new API package structure
-- [ ] **Frontend scripts**: Update `frontend/scripts/generate-types.sh` to handle new API package structure
+- [x] **Frontend scripts**: Removed unused `frontend/scripts/generate-types.sh` - using `scripts/subscripts/update-types.sh` instead
 - [ ] **Service pyproject.toml files**: Update all service pyproject.toml files to depend on new API package
 - [ ] **Docker configurations**: Update any Docker files to include new API package
   - [ ] **Dockerfile.user-service**: Add `COPY services/api/v1/ ./services/api/v1/` and install with `uv pip install --system -e services/api/v1`
