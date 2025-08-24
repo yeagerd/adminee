@@ -7,7 +7,7 @@ Provides RESTful API for contact CRUD operations, search, and statistics.
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.common.http_errors import NotFoundError, ValidationError
@@ -25,6 +25,7 @@ from services.contacts.schemas.contact import (
 )
 from services.contacts.services.contact_discovery_service import ContactDiscoveryService
 from services.contacts.services.contact_service import ContactService
+from services.contacts.auth import require_frontend_auth, require_user_service_auth
 
 logger = get_logger(__name__)
 
@@ -52,6 +53,7 @@ async def list_contacts(
     source_services: Optional[List[str]] = Query(None, description="Filter by source services"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ) -> ContactListResponse:
     """List contacts for a user with optional filtering."""
     try:
@@ -84,6 +86,7 @@ async def get_contact(
     user_id: str = Query(..., description="User ID who owns the contact"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ) -> ContactResponse:
     """Get a specific contact by ID."""
     try:
@@ -107,6 +110,7 @@ async def create_contact(
     contact_data: ContactCreate,
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ) -> ContactResponse:
     """Create a new contact."""
     try:
@@ -129,6 +133,7 @@ async def update_contact(
     update_data: EmailContactUpdate = ...,
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ) -> ContactResponse:
     """Update an existing contact."""
     try:
@@ -158,6 +163,7 @@ async def delete_contact(
     user_id: str = Query(..., description="User ID who owns the contact"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ):
     """Delete a contact."""
     try:
@@ -185,6 +191,7 @@ async def search_contacts(
     source_services: Optional[List[str]] = Query(None, description="Filter by source services"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ) -> List[EmailContactSearchResult]:
     """Search contacts for a user by query."""
     try:
@@ -218,6 +225,7 @@ async def get_contact_stats(
     user_id: str = Query(..., description="User ID to get stats for"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(require_frontend_auth),
 ) -> ContactStatsResponse:
     """Get contact statistics for a user."""
     try:

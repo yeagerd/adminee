@@ -44,15 +44,15 @@ class Settings(BaseSettings):
         ...,  # Required field - no default to prevent production mistakes
         description="Office service API key to access this Contacts service",
     )
-    api_contacts_chat_key: str = Field(
+    api_chat_contacts_key: str = Field(
         ...,  # Required field - no default to prevent production mistakes
         description="Chat service API key to access this Contacts service",
     )
-    api_contacts_meetings_key: str = Field(
+    api_meetings_contacts_key: str = Field(
         ...,  # Required field - no default to prevent production mistakes
         description="Meetings service API key to access this Contacts service",
     )
-    api_contacts_shipments_key: str = Field(
+    api_shipments_contacts_key: str = Field(
         ...,  # Required field - no default to prevent production mistakes
         description="Shipments service API key to access this Contacts service",
     )

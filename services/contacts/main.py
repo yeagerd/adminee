@@ -117,6 +117,8 @@ async def health_check() -> Dict[str, Any]:
         config_issues.append("API_FRONTEND_CONTACTS_KEY not configured")
     if not get_settings().api_contacts_user_key:
         config_issues.append("API_CONTACTS_USER_KEY not configured")
+    if not get_settings().api_chat_contacts_key:
+        config_issues.append("API_CHAT_CONTACTS_KEY not configured")
 
     config_status = "ok" if not config_issues else "error"
 

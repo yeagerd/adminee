@@ -166,18 +166,13 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Test service-to-service authentication
 - [x] Ensure all existing contact functionality is covered
 
-### Phase 14: Revise API keys
-
-- [ x] Add `API_CONTACTS_CHAT_KEY` to `.example.env`
-- [x] Add `API_CONTACTS_MEETINGS_KEY` to `.example.env`
-- [x] Add `API_CONTACTS_SHIPMENTS_KEY` to `.example.env`
 
 ### Phase 14: Update Documentation
-- [ ] Update `documentation/new-service-guide.md` if needed
-- [ ] Create `services/contacts/README.md` with service documentation
-- [ ] Update API documentation for contact endpoints
-- [ ] Update service architecture documentation
-- [ ] Update deployment and configuration guides
+- [x] Update `documentation/new-service-guide.md` if needed
+- [x] Create `services/contacts/README.md` with service documentation
+- [x] Update API documentation for contact endpoints
+- [x] Update service architecture documentation
+- [x] Update deployment and configuration guides
 
 ### Phase 15: Cleanup User Service
 - [ ] Remove `services/user/services/contact_discovery_service.py`
