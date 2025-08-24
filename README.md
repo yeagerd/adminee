@@ -155,6 +155,9 @@ cd frontend
 ./scripts/generate-types.sh                  # Generate TypeScript types from schemas
 npm run typecheck                           # Verify generated types are valid
 
+# Complete Type Update Workflow
+./scripts/update-types.sh                   # Full workflow: schemas + types + verification
+
 # Add dependencies
 uv add fastapi               # Add to root
 uv add sqlalchemy --project services/user  # Add to service
@@ -167,6 +170,36 @@ uv sync --all-packages --all-extras --active
 alembic -c services/user/alembic.ini upgrade head
 alembic -c services/chat/alembic.ini upgrade head
 alembic -c services/office/alembic.ini upgrade head
+
+### API and Type Management
+
+When you make changes to service APIs, you need to regenerate the OpenAPI schemas and TypeScript types:
+
+```bash
+# 1. Generate OpenAPI schemas for all services
+./scripts/generate-openapi-schemas.sh
+
+# 2. Generate TypeScript types from schemas
+cd frontend
+./scripts/generate-types.sh
+
+# 3. Verify types are valid
+npm run typecheck
+
+# Alternative: Use the complete workflow script
+./scripts/update-types.sh
+```
+
+**When to regenerate:**
+- After adding new API endpoints
+- After modifying request/response models
+- After changing authentication patterns
+- After updating service dependencies
+
+**Generated files:**
+- OpenAPI schemas: `services/*/openapi/schema.json`
+- TypeScript types: `frontend/types/api/`
+- Frontend index: `frontend/types/api/index.ts`
 ```
 
 ### Service-Specific Setup

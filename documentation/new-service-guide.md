@@ -691,7 +691,135 @@ def test_user_isolation():
     pass
 ```
 
-## 10. Service Discovery
+## 11. OpenAPI Schema and Type Generation
+
+### **Overview**
+
+When you create or modify API endpoints, you need to regenerate the OpenAPI schemas and TypeScript types to keep the frontend in sync with your backend changes.
+
+### **OpenAPI Schema Generation**
+
+Generate OpenAPI schemas for your service:
+
+```bash
+# Generate schemas for all services
+./scripts/generate-openapi-schemas.sh
+
+# Generate schema for specific service only
+./scripts/generate-openapi-schemas.sh your-service-name
+```
+
+**What this does:**
+- Runs your FastAPI app to generate OpenAPI schema
+- Saves schema to `services/your-service/openapi/schema.json`
+- Copies schema to `openapi-schemas/your-service-openapi.json`
+
+### **TypeScript Type Generation**
+
+Generate TypeScript types from OpenAPI schemas:
+
+```bash
+cd frontend
+./scripts/generate-types.sh
+```
+
+**What this does:**
+- Creates TypeScript types for all services
+- Generates client classes for API calls
+- Updates `frontend/types/api/index.ts`
+
+### **Complete Workflow Script**
+
+Use the unified script for the entire process:
+
+```bash
+./scripts/update-types.sh
+```
+
+This script:
+1. Generates OpenAPI schemas for all services
+2. Copies schemas to frontend directory
+3. Generates TypeScript types
+4. Runs type validation
+
+### **Verification**
+
+After generating types, verify they're valid:
+
+```bash
+cd frontend
+npm run typecheck
+```
+
+### **When to Regenerate**
+
+**Always regenerate after:**
+- Adding new API endpoints
+- Modifying request/response models
+- Changing authentication patterns
+- Updating service dependencies
+- Refactoring API structure
+
+**Example workflow after API changes:**
+
+```bash
+# 1. Make your API changes
+# 2. Test your service locally
+# 3. Generate updated schemas
+./scripts/generate-openapi-schemas.sh
+
+# 4. Generate TypeScript types
+cd frontend && ./scripts/generate-types.sh
+
+# 5. Verify types are valid
+npm run typecheck
+
+# 6. Commit changes
+git add .
+git commit -m "feat: add new API endpoint with updated types"
+```
+
+### **Generated File Structure**
+
+```
+frontend/types/api/
+├── index.ts                    # Main export file
+├── your-service/              # Your service types
+│   ├── models/                # Request/response models
+│   ├── services/              # API client classes
+│   └── index.ts               # Service-specific exports
+└── other-services/            # Other service types
+```
+
+### **Troubleshooting**
+
+**Common issues and solutions:**
+
+1. **Schema generation fails:**
+   - Ensure your service starts without errors
+   - Check that FastAPI app is properly configured
+   - Verify all dependencies are installed
+
+2. **Type conflicts:**
+   - Check `frontend/types/api/index.ts` for duplicate exports
+   - Use aliases for conflicting service names
+   - Ensure unique model names across services
+
+3. **Type validation fails:**
+   - Run `npm run typecheck` to see specific errors
+   - Check for missing or incorrect type definitions
+   - Verify OpenAPI schema is valid JSON
+
+### **Best Practices**
+
+1. **Always regenerate after API changes** - Don't skip this step
+2. **Test types before committing** - Run `npm run typecheck`
+3. **Use descriptive model names** - Avoid generic names like "Item"
+4. **Keep schemas up to date** - Regenerate when adding new endpoints
+5. **Document breaking changes** - Update frontend developers about API changes
+```
+
+## 12. Service Discovery
 
 ### Gateway Integration
 
@@ -712,7 +840,7 @@ Use unique ports to avoid conflicts:
 - Meetings Service: 8005
 - **Your Service: 8006** (or next available)
 
-## 11. Monitoring and Observability
+## 13. Monitoring and Observability
 
 ### Logging Best Practices
 
