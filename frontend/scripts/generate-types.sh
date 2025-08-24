@@ -155,7 +155,7 @@ cleanup_duplicate_types "types/api/shipments"
 
 # Create main index file with namespaced exports to avoid conflicts
 echo "📄 Creating main index file with namespaced exports..."
-cat > types/api/index.ts << 'EOF'
+cat > types/api/index.ts << EOF
 // Auto-generated TypeScript types from OpenAPI schemas
 // Generated on: $(date)
 
