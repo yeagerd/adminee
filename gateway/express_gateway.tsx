@@ -436,14 +436,19 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Service routing configuration
-const serviceRoutes: Record<string, string> = {
-    '/api/v1/chat': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8001',
-    '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8002',
-    '/api/v1/office': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+const serviceRoutes = {
+    '/api/v1/users': process.env.USER_SERVICE_URL || 'http://127.0.0.1:8001',
+    '/api/v1/chat': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
+    '/api/v1/calendar': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/contacts': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
     '/api/v1/shipments': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
-    '/api/v1/user': process.env.USER_SERVICE_URL || 'http://127.0.0.1:8005',
-    '/api/v1/vespa-loader': process.env.VESPA_LOADER_SERVICE_URL || 'http://127.0.0.1:8006',
-    '/api/v1/vespa-query': process.env.VESPA_QUERY_SERVICE_URL || 'http://127.0.0.1:8007',
+    '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
+    '/api/v1/bookings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
+    '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
+    '/api/v1/search': process.env.VESPA_QUERY_URL || 'http://127.0.0.1:8006',
 };
 
 // Create proxy middleware factory
@@ -594,25 +599,28 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
 };
 
 // Apply service-specific routes with appropriate rate limiting and path rewrites
-app.use('/api/v1/users', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/user'], { '^/api/v1/user': '/v1/user' }));
+app.use('/api/v1/users', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/users'], { '^/api/v1/users': '/v1/users' }));
+app.use('/api/v1/users/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/users'], { '^/api/v1/users': '/v1/users' }));
 app.use('/api/v1/chat', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/v1/chat'], { '^/api/v1/chat': '/v1/chat' }));
 app.use('/api/v1/chat/*', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/v1/chat'], { '^/api/v1/chat': '/v1/chat' }));
-app.use('/api/v1/calendar', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/office' }));
-app.use('/api/v1/calendar/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/office' }));
-app.use('/api/v1/email', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/office' }));
-app.use('/api/v1/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/office' }));
-app.use('/api/v1/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/office' }));
-app.use('/api/v1/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/office' }));
-app.use('/api/v1/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/chat'], { '^/api/v1/chat': '/v1/chat/drafts' }));
-app.use('/api/v1/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/chat'], { '^/api/v1/chat': '/v1/chat/drafts' }));
+app.use('/api/v1/calendar', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/calendar'], { '^/api/v1/calendar': '/v1/calendar' }));
+app.use('/api/v1/calendar/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/calendar'], { '^/api/v1/calendar': '/v1/calendar' }));
+app.use('/api/v1/email', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/email'], { '^/api/v1/email': '/v1/email' }));
+app.use('/api/v1/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/email'], { '^/api/v1/email': '/v1/email' }));
+app.use('/api/v1/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/files'], { '^/api/v1/files': '/v1/files' }));
+app.use('/api/v1/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/files'], { '^/api/v1/files': '/v1/files' }));
+app.use('/api/v1/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/drafts'], { '^/api/v1/drafts': '/v1/chat/drafts' }));
+app.use('/api/v1/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/drafts'], { '^/api/v1/drafts': '/v1/chat/drafts' }));
 app.use('/api/v1/meetings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
 app.use('/api/v1/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
-app.use('/api/v1/bookings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/bookings' }));
-app.use('/api/v1/bookings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/bookings' }));
-app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/public/polls' }));
-app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/public/polls' }));
+app.use('/api/v1/bookings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings': '/api/v1/bookings' }));
+app.use('/api/v1/bookings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/bookings'], { '^/api/v1/bookings': '/api/v1/bookings' }));
+app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
+app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
 app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
+app.use('/api/v1/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts/' }));
+app.use('/api/v1/contacts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts' }));
 
 // Catch-all for undefined routes
 app.use('*', (req, res) => {
@@ -640,16 +648,16 @@ const server = app.listen(PORT, () => {
     logWithContext('info', `Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
     logWithContext('info', `Environment: ${process.env.NODE_ENV || 'development'}`);
     logWithContext('info', 'Service Routing:');
-    logWithContext('info', `  /api/v1/users    → ${serviceRoutes['/api/v1/user']}`);
+    logWithContext('info', `  /api/v1/users    → ${serviceRoutes['/api/v1/users']}`);
     logWithContext('info', `  /api/v1/chat     → ${serviceRoutes['/api/v1/chat']}`);
-    logWithContext('info', `  /api/v1/calendar → ${serviceRoutes['/api/v1/office']}`);
-    logWithContext('info', `  /api/v1/email    → ${serviceRoutes['/api/v1/office']}`);
-    logWithContext('info', `  /api/v1/files    → ${serviceRoutes['/api/v1/office']}`);
-    logWithContext('info', `  /api/v1/contacts → Removed`);
-    logWithContext('info', `  /api/v1/drafts     → ${serviceRoutes['/api/v1/chat']}`);
+    logWithContext('info', `  /api/v1/calendar → ${serviceRoutes['/api/v1/calendar']}`);
+    logWithContext('info', `  /api/v1/email    → ${serviceRoutes['/api/v1/email']}`);
+    logWithContext('info', `  /api/v1/files    → ${serviceRoutes['/api/v1/files']}`);
+    logWithContext('info', `  /api/v1/contacts → ${serviceRoutes['/api/v1/contacts']}`);
+    logWithContext('info', `  /api/v1/drafts     → ${serviceRoutes['/api/v1/drafts']}`);
     logWithContext('info', `  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
-    logWithContext('info', `  /api/v1/bookings → ${serviceRoutes['/api/v1/meetings']}`);
-    logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/meetings']}`);
+    logWithContext('info', `  /api/v1/bookings → ${serviceRoutes['/api/v1/bookings']}`);
+    logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
     logWithContext('info', `  /api/v1/shipments → ${serviceRoutes['/api/v1/shipments']}`);
 });
 
@@ -661,18 +669,18 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
     const url = new URL(request.url || '', `http://${request.headers.host}`);
     const path = url.pathname;
 
-    let targetService = serviceRoutes['/api/v1/user']; // Default to user service
+    let targetService = serviceRoutes['/api/v1/users']; // Default to user service
 
     if (path.startsWith('/api/v1/chat')) {
         targetService = serviceRoutes['/api/v1/chat'];
-    } else if (path.startsWith('/api/v1/calendar') || path.startsWith('/api/v1/email') || path.startsWith('/api/v1/files')) {
-        targetService = serviceRoutes['/api/v1/office'];
+    } else if (path.startsWith('/api/v1/calendar') || path.startsWith('/api/v1/email') || path.startsWith('/api/v1/files') || path.startsWith('/api/v1/contacts')) {
+        targetService = serviceRoutes['/api/v1/calendar'];
     } else if (path.startsWith('/api/v1/meetings')) {
         targetService = serviceRoutes['/api/v1/meetings'];
     } else if (path.startsWith('/api/v1/bookings')) {
-        targetService = serviceRoutes['/api/v1/meetings'];
+        targetService = serviceRoutes['/api/v1/bookings'];
     } else if (path.startsWith('/api/v1/public/polls')) {
-        targetService = serviceRoutes['/api/v1/meetings'];
+        targetService = serviceRoutes['/api/v1/public/polls'];
     } else if (path.startsWith('/api/v1/shipments')) {
         targetService = serviceRoutes['/api/v1/shipments'];
     }
