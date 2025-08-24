@@ -58,13 +58,13 @@ async def ingest_document_service(
         vespa_document = document_data.to_dict()
 
         # Normalize content
-        if vespa_document.get("body") and content_normalizer:
-            vespa_document["body"] = content_normalizer.normalize(
-                vespa_document["body"]
+        if vespa_document.get("content") and content_normalizer:
+            vespa_document["content"] = content_normalizer.normalize(
+                vespa_document["content"]
             )
 
         # Generate embeddings if content exists
-        content = vespa_document.get("body")
+        content = vespa_document.get("content")
         if content and embedding_generator:
             try:
                 embedding = await embedding_generator.generate_embedding(content)
