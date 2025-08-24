@@ -237,9 +237,15 @@ main() {
     
     # Check for conflicting flags
     local flag_count=0
-    [[ "$SCHEMA_ONLY" == "true" ]] && ((flag_count++))
-    [[ "$TYPES_ONLY" == "true" ]] && ((flag_count++))
-    [[ "$CLEAN_ONLY" == "true" ]] && ((flag_count++))
+    if [[ "$SCHEMA_ONLY" == "true" ]]; then
+        flag_count=$((flag_count + 1))
+    fi
+    if [[ "$TYPES_ONLY" == "true" ]]; then
+        flag_count=$((flag_count + 1))
+    fi
+    if [[ "$CLEAN_ONLY" == "true" ]]; then
+        flag_count=$((flag_count + 1))
+    fi
     
     if [[ $flag_count -gt 1 ]]; then
         print_status "error" "Only one operation flag can be specified at a time"
