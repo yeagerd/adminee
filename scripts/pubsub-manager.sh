@@ -139,7 +139,6 @@ create_topics() {
         # Core data types
         "emails"
         "calendars" 
-        "contacts"
         # Office document types
         "word_documents"
         "word_fragments"
@@ -181,7 +180,6 @@ create_subscriptions() {
     local router_subs=(
         "email-router-subscription:emails"
         "calendar-router-subscription:calendars"
-        "contact-router-subscription:contacts"
     )
     
     for sub_info in "${router_subs[@]}"; do
@@ -204,7 +202,6 @@ create_subscriptions() {
     local vespa_subs=(
         "vespa-loader-emails:emails"
         "vespa-loader-calendars:calendars"
-        "vespa-loader-contacts:contacts"
     )
     
     for sub_info in "${vespa_subs[@]}"; do
