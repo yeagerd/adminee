@@ -2,6 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+export { ApiError } from './core/ApiError';
+export { CancelablePromise, CancelError } from './core/CancelablePromise';
+export { OpenAPI } from './core/OpenAPI';
+export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { CarrierConfigOut } from './models/CarrierConfigOut';
 export type { DataCollectionRequest } from './models/DataCollectionRequest';
@@ -23,3 +27,11 @@ export type { TrackingData } from './models/TrackingData';
 export type { TrackingEventCreate } from './models/TrackingEventCreate';
 export type { TrackingEventOut } from './models/TrackingEventOut';
 export type { ValidationError } from './models/ValidationError';
+
+export { CarriersService } from './services/CarriersService';
+export { DefaultService } from './services/DefaultService';
+export { EventsService } from './services/EventsService';
+export { LabelsService } from './services/LabelsService';
+export { PackageEventsService } from './services/PackageEventsService';
+export { PackagesService } from './services/PackagesService';
+export { ShipmentsService } from './services/ShipmentsService';

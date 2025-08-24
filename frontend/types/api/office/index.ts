@@ -2,6 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+export { ApiError } from './core/ApiError';
+export { CancelablePromise, CancelError } from './core/CancelablePromise';
+export { OpenAPI } from './core/OpenAPI';
+export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { _ContactCreatePayload } from './models/_ContactCreatePayload';
 export type { _ContactUpdatePayload } from './models/_ContactUpdatePayload';
@@ -49,3 +53,11 @@ export type { TypedApiResponse_AvailabilityResponse_ } from './models/TypedApiRe
 export type { TypedApiResponse_CalendarEventResponse_ } from './models/TypedApiResponse_CalendarEventResponse_';
 export type { TypedApiResponse_List_CalendarEvent__ } from './models/TypedApiResponse_List_CalendarEvent__';
 export type { ValidationError } from './models/ValidationError';
+
+export { CalendarService } from './services/CalendarService';
+export { ContactsService } from './services/ContactsService';
+export { DefaultService } from './services/DefaultService';
+export { EmailService } from './services/EmailService';
+export { FilesService } from './services/FilesService';
+export { InternalBackfillService } from './services/InternalBackfillService';
+export { InternalEmailService } from './services/InternalEmailService';
