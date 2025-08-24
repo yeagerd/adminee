@@ -910,8 +910,16 @@ class TestFetchProviderEmails:
 
         # Mock API client
         mock_client = AsyncMock()
-        mock_client.get_messages.return_value = {"messages": [{"id": "test123"}]}
-        mock_client.get_message.return_value = {"id": "test123", "payload": {}}
+
+        async def get_messages(*args, **kwargs):
+            return {"messages": [{"id": "test123"}]}
+
+        mock_client.get_messages = get_messages
+
+        async def get_message(*args, **kwargs):
+            return {"id": "test123", "payload": {}}
+
+        mock_client.get_message = get_message
         mock_factory = AsyncMock()
         mock_factory.create_client = AsyncMock(return_value=mock_client)
         mock_api_client_factory.return_value = mock_factory
