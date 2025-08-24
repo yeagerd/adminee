@@ -214,12 +214,13 @@ class EmailCrawler:
 
         # Calculate total batches and apply max_emails limit
         total_emails = await self._get_email_count()
+        original_total = total_emails  # Store original total for logging
 
         # If max_emails is specified and smaller than total_emails, limit accordingly
         if max_emails and max_emails < total_emails:
             total_emails = max_emails
             logger.info(
-                f"Limited to {max_emails} emails (requested) out of {await self._get_email_count()} available"
+                f"Limited to {max_emails} emails (requested) out of {original_total} available"
             )
 
         total_batches = (total_emails + batch_size - 1) // batch_size
