@@ -10,6 +10,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
+from services.office.schemas import EmailMessage, EmailMessageList
 
 logger = get_logger(__name__)
 
@@ -97,12 +98,12 @@ class EmailCrawler:
         folders: Optional[List[str]] = None,
         resume_from: int = 0,
         max_emails: Optional[int] = None,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[List[EmailMessage], None]:
         """Crawl emails in batches with optional maximum limit"""
         try:
             total_processed = 0
             async for batch in self._crawl_emails(
-                batch_size, start_date, end_date, folders, resume_from
+                batch_size, start_date, end_date, folders, resume_from, max_emails
             ):
                 # Check if we've reached the max_emails limit
                 if max_emails and total_processed >= max_emails:
@@ -162,6 +163,11 @@ class EmailCrawler:
                 if response.status_code == 200:
                     data = response.json()
                     count = data.get("total_count", 0)
+                    # Ensure count is an integer
+                    if isinstance(count, (int, float)):
+                        count = int(count)
+                    else:
+                        count = 0
                     logger.info(
                         f"Got email count for user {self.user_id} with provider {provider_str}: {count}",
                         extra={
@@ -191,7 +197,8 @@ class EmailCrawler:
         end_date: Optional[datetime],
         folders: Optional[List[str]],
         resume_from: int,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        max_emails: Optional[int] = None,
+    ) -> AsyncGenerator[List[EmailMessage], None]:
         """Crawl emails from the specified provider"""
         logger.info(
             f"Starting email crawl for user {self.user_id} with provider {self.provider}",
@@ -205,19 +212,51 @@ class EmailCrawler:
             },
         )
 
-        # Calculate total batches
+        # Calculate total batches and apply max_emails limit
         total_emails = await self._get_email_count()
+        original_total = total_emails  # Store original total for logging
+
+        # If max_emails is specified and smaller than total_emails, limit accordingly
+        if max_emails and max_emails < total_emails:
+            total_emails = max_emails
+            logger.info(
+                f"Limited to {max_emails} emails (requested) out of {original_total} available"
+            )
+
         total_batches = (total_emails + batch_size - 1) // batch_size
 
         # Skip completed batches
         start_batch = resume_from // batch_size
 
+        # Track actual emails processed (including resume_from offset)
+        emails_processed = resume_from
+
         for batch_num in range(start_batch, total_batches):
             try:
+                # Calculate effective batch size for this batch
+                effective_batch_size = batch_size
+                if max_emails:
+                    # Calculate how many emails we've already processed (including resume_from)
+                    processed_so_far = emails_processed
+                    # Calculate how many emails we can still process
+                    remaining_emails = max_emails - processed_so_far
+                    if remaining_emails <= 0:
+                        break  # We've reached the max_emails limit
+                    # Limit this batch to the remaining emails
+                    effective_batch_size = min(batch_size, remaining_emails)
+
                 # Get batch of emails
                 emails = await self._get_email_batch(
-                    self.provider, batch_num, batch_size, start_date, end_date, folders
+                    self.provider,
+                    batch_num,
+                    effective_batch_size,
+                    start_date,
+                    end_date,
+                    folders,
                 )
+
+                # Update the count of emails processed
+                emails_processed += len(emails)
 
                 # Apply rate limiting
                 if batch_num > start_batch:
@@ -245,8 +284,15 @@ class EmailCrawler:
         start_date: Optional[datetime],
         end_date: Optional[datetime],
         folders: Optional[List[str]],
-    ) -> List[Dict[str, Any]]:
-        """Get a batch of emails from the specified provider using the office service's unified API"""
+    ) -> List[EmailMessage]:
+        """Get a batch of emails from the specified provider using the office service's unified API
+
+        The method reconstructs the EmailMessageList response structure from the API
+        and returns the normalized EmailMessage objects.
+
+        Returns:
+            List[EmailMessage]: Normalized EmailMessage objects ready for processing.
+        """
         try:
             import httpx
 
@@ -300,133 +346,29 @@ class EmailCrawler:
 
                 if response.status_code == 200:
                     data = response.json()
-                    if data.get("success") and data.get("data", {}).get("messages"):
-                        # The office service already provides normalized data - convert to backfill format
-                        emails = []
-                        for msg in data["data"]["messages"]:
-                            # Use content splitting to separate visible from quoted content
-                            from services.office.core.email_content_splitter import (
-                                split_email_content,
-                            )
 
-                            # Split content into visible and quoted parts
-                            split_result = split_email_content(
-                                html_content=msg.get("body_html"),
-                                text_content=msg.get("body_text"),
-                            )
+                    # Reconstruct EmailMessageList from the API response
+                    email_list = EmailMessageList(**data)
 
-                            # Debug logging to see what we're getting
-                            logger.debug(
-                                f"Content splitting result for email {msg.get('id')}: {split_result}"
-                            )
-                            logger.debug(
-                                f"Original body_html length: {len(msg.get('body_html', '') or '')}"
-                            )
-                            logger.debug(
-                                f"Original body_text length: {len(msg.get('body_text', '') or '')}"
-                            )
-                            logger.debug(f"Message keys: {list(msg.keys())}")
-                            logger.debug(
-                                f"Safe message sample: {_safe_log_email_data(msg)}"
-                            )
-
-                            # Use visible content as primary body, quoted content for context
-                            visible_content = split_result.get("visible_content", "")
-                            quoted_content = split_result.get("quoted_content", "")
-                            thread_summary = split_result.get("thread_summary", {})
-
-                            # Fallback to original content if splitting failed
-                            if not visible_content:
-                                if msg.get("body_html"):
-                                    # Simple HTML to text extraction as fallback
-                                    import re
-
-                                    html_content = msg.get("body_html", "")
-                                    visible_content = re.sub(
-                                        r"<[^>]+>", "", html_content
-                                    )
-                                    visible_content = (
-                                        visible_content.replace("&nbsp;", " ")
-                                        .replace("&amp;", "&")
-                                        .replace("&lt;", "<")
-                                        .replace("&gt;", ">")
-                                    )
-                                    visible_content = re.sub(
-                                        r"\s+", " ", visible_content
-                                    ).strip()
-                                else:
-                                    visible_content = msg.get("body_text", "")
-
-                            # Ensure we have some content
-                            if not visible_content:
-                                visible_content = msg.get(
-                                    "snippet", "No content available"
-                                )
-
-                            # Extract sender email
-                            sender_email = ""
-                            if msg.get("from_address"):
-                                sender_email = msg.get("from_address", {}).get(
-                                    "email", ""
-                                )
-
-                            # Extract recipient emails
-                            recipient_emails = []
-                            if msg.get("to_addresses"):
-                                recipient_emails = [
-                                    addr.get("email", "")
-                                    for addr in msg.get("to_addresses", [])
-                                    if addr.get("email")
-                                ]
-
-                            # Convert normalized EmailMessage to backfill format with content splitting
-                            email = {
-                                "id": msg.get("provider_message_id", msg.get("id")),
-                                "user_id": self.user_id,
-                                "provider": provider_str,
-                                "type": "email",
-                                "subject": msg.get("subject", "No Subject"),
-                                "body": visible_content,  # Use visible content only
-                                "from": sender_email,
-                                "to": recipient_emails,
-                                "thread_id": msg.get("thread_id", ""),
-                                "folder": (
-                                    msg.get("labels", ["inbox"])[0]
-                                    if msg.get("labels")
-                                    else "inbox"
-                                ),
-                                "created_at": msg.get("date"),
-                                "updated_at": msg.get("date"),
-                                "quoted_content": quoted_content,  # Add quoted content for context
-                                "thread_summary": thread_summary,  # Add thread summary
-                                "metadata": {
-                                    "has_attachments": msg.get(
-                                        "has_attachments", False
-                                    ),
-                                    "is_read": msg.get("is_read", True),
-                                },
-                            }
-
-                            # Validate email data quality and log warnings for missing/empty fields
-                            self._validate_email_data_quality(
-                                email,
-                                msg.get(
-                                    "provider_message_id", msg.get("id", "unknown")
-                                ),
-                            )
-
-                            emails.append(email)
-
+                    if (
+                        email_list.success
+                        and email_list.data
+                        and email_list.data.messages
+                    ):
                         logger.debug(
-                            f"Retrieved {len(emails)} real emails from {provider_str} using office service internal API"
+                            f"Retrieved {len(email_list.data.messages)} emails from {provider_str} using office service internal API"
                         )
-                        return emails
+                        return email_list.data.messages
                     else:
-                        logger.warning("Office service returned no emails or error")
-                        if not data.get("success"):
-                            logger.error(
-                                f"Office service error: {data.get('error', 'Unknown error')}"
+                        if not email_list.success:
+                            error_msg = (
+                                email_list.error.get("message", "Unknown error")
+                                if email_list.error
+                                else "Unknown error"
                             )
+                            logger.error(f"Office service error: {error_msg}")
+                        else:
+                            logger.warning("Office service returned no emails")
                         return []
                 else:
                     logger.error(

@@ -8,7 +8,7 @@ Provides functions to normalize API responses from different providers
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from services.common.logging_config import get_logger
@@ -24,6 +24,24 @@ from services.office.schemas import (
 )
 
 logger = get_logger(__name__)
+
+
+def _is_html_content(content: str) -> bool:
+    """
+    Check if content appears to be HTML by looking for HTML tags.
+
+    Args:
+        content: Content to check
+
+    Returns:
+        True if content contains HTML tags, False otherwise
+    """
+    if not content:
+        return False
+
+    # Look for HTML tags (simple but effective)
+    html_pattern = re.compile(r"<[^>]+>")
+    return bool(html_pattern.search(content))
 
 
 def _safe_log_raw_data(raw_data: Dict[str, Any], max_content_length: int = 100) -> str:
@@ -137,6 +155,60 @@ def normalize_google_email(
         # Extract body content
         body_text, body_html = _extract_gmail_body(payload)
 
+        # Use content splitting to separate visible content from quoted content
+        from services.office.core.email_content_splitter import split_email_content
+
+        split_result = split_email_content(
+            html_content=body_html, text_content=body_text
+        )
+
+        # Extract visible content (non-quoted part) for the unquoted fields
+        visible_content = split_result.get("visible_content", "")
+        quoted_content = split_result.get("quoted_content", "")
+
+        # Determine which unquoted field to populate based on available content
+        body_text_unquoted = None
+        body_html_unquoted = None
+
+        if visible_content:
+            if body_html and _is_html_content(visible_content):
+                # If we have HTML content and visible_content is actually HTML, populate body_html_unquoted
+                body_html_unquoted = visible_content
+                # Also extract text version for body_text_unquoted
+                body_text_unquoted = re.sub(r"<[^>]+>", "", visible_content)
+                body_text_unquoted = (
+                    body_text_unquoted.replace("&nbsp;", " ")
+                    .replace("&amp;", "&")
+                    .replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                )
+                body_text_unquoted = re.sub(r"\s+", " ", body_text_unquoted).strip()
+            else:
+                # If visible_content is text (either from text emails or HTML-to-text conversion), populate body_text_unquoted
+                body_text_unquoted = visible_content
+
+        # Fallback to original content if splitting didn't work
+        if not visible_content:
+            if body_html:
+                # Simple HTML to text extraction as fallback
+                visible_content = re.sub(r"<[^>]+>", "", body_html)
+                visible_content = (
+                    visible_content.replace("&nbsp;", " ")
+                    .replace("&amp;", "&")
+                    .replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                )
+                visible_content = re.sub(r"\s+", " ", visible_content).strip()
+                body_text_unquoted = visible_content
+            else:
+                visible_content = body_text or ""
+                body_text_unquoted = visible_content
+
+        # Ensure we have some content
+        if not visible_content:
+            visible_content = snippet or "No content available"
+            body_text_unquoted = visible_content
+
         # Determine read status (UNREAD label absence means read)
         is_read = "UNREAD" not in label_ids
 
@@ -153,6 +225,8 @@ def normalize_google_email(
             snippet=snippet,
             body_text=body_text,
             body_html=body_html,
+            body_text_unquoted=body_text_unquoted,  # the non-quoted email body content
+            body_html_unquoted=body_html_unquoted,  # the non-quoted email HTML content
             from_address=from_address,
             to_addresses=to_addresses,
             cc_addresses=cc_addresses,
@@ -240,6 +314,60 @@ def normalize_microsoft_email(
 
         body_text, body_html = _extract_microsoft_body(body_data)
 
+        # Use content splitting to separate visible content from quoted content
+        from services.office.core.email_content_splitter import split_email_content
+
+        split_result = split_email_content(
+            html_content=body_html, text_content=body_text
+        )
+
+        # Extract visible content (non-quoted part) for the unquoted fields
+        visible_content = split_result.get("visible_content", "")
+        quoted_content = split_result.get("quoted_content", "")
+
+        # Determine which unquoted field to populate based on available content
+        body_text_unquoted = None
+        body_html_unquoted = None
+
+        if visible_content:
+            if body_html and _is_html_content(visible_content):
+                # If we have HTML content and visible_content is actually HTML, populate body_html_unquoted
+                body_html_unquoted = visible_content
+                # Also extract text version for body_text_unquoted
+                body_text_unquoted = re.sub(r"<[^>]+>", "", visible_content)
+                body_text_unquoted = (
+                    body_text_unquoted.replace("&nbsp;", " ")
+                    .replace("&amp;", "&")
+                    .replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                )
+                body_text_unquoted = re.sub(r"\s+", " ", body_text_unquoted).strip()
+            else:
+                # If visible_content is text (either from text emails or HTML-to-text conversion), populate body_text_unquoted
+                body_text_unquoted = visible_content
+
+        # Fallback to original content if splitting didn't work
+        if not visible_content:
+            if body_html:
+                # Simple HTML to text extraction as fallback
+                visible_content = re.sub(r"<[^>]+>", "", body_html)
+                visible_content = (
+                    visible_content.replace("&nbsp;", " ")
+                    .replace("&amp;", "&")
+                    .replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                )
+                visible_content = re.sub(r"\s+", " ", visible_content).strip()
+                body_text_unquoted = visible_content
+            else:
+                visible_content = body_text or ""
+                body_text_unquoted = visible_content
+
+        # Ensure we have some content
+        if not visible_content:
+            visible_content = body_preview or "No content available"
+            body_text_unquoted = visible_content
+
         # Determine read status
         is_read = raw_data.get("isRead", False)
 
@@ -262,6 +390,8 @@ def normalize_microsoft_email(
             snippet=body_preview,
             body_text=body_text,
             body_html=body_html,
+            body_text_unquoted=body_text_unquoted,  # the non-quoted email body content
+            body_html_unquoted=body_html_unquoted,  # the non-quoted email HTML content
             from_address=from_address,
             to_addresses=to_addresses,
             cc_addresses=cc_addresses,
@@ -984,7 +1114,7 @@ def merge_threads(threads: List[EmailThread]) -> List[EmailThread]:
         return []
 
     # Group threads by subject and participants
-    thread_groups: Dict[Tuple[str, frozenset], List[EmailThread]] = {}
+    thread_groups: Dict[Tuple[str, frozenset[str]], List[EmailThread]] = {}
 
     for thread in threads:
         # Create a key based on subject and participants

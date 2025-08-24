@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from services.office.core.clients.base import BaseAPIClient
 from services.office.models import Provider
@@ -50,7 +50,7 @@ class GoogleAPIClient(BaseAPIClient):
         if page_token:
             params["pageToken"] = page_token
         response = await self.get("/people/v1/people/me/connections", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_contact(
         self,
@@ -59,14 +59,14 @@ class GoogleAPIClient(BaseAPIClient):
     ) -> Dict[str, Any]:
         params = {"personFields": person_fields}
         response = await self.get(f"/people/v1/{resource_name}", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_contact(self, person: Dict[str, Any]) -> Dict[str, Any]:
         # people.createContact uses POST to /people/v1/people:createContact
         response = await self.post(
             "/people/v1/people:createContact", json_data={"person": person}
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def update_contact(
         self,
@@ -80,7 +80,7 @@ class GoogleAPIClient(BaseAPIClient):
             params=params,
             json_data={"person": person},
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def delete_contact(self, resource_name: str) -> None:
         await self.delete(f"/people/v1/{resource_name}:deleteContact")
@@ -110,7 +110,7 @@ class GoogleAPIClient(BaseAPIClient):
             params["q"] = query
 
         response = await self.get("/gmail/v1/users/me/messages", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_message(
         self, message_id: str, format: str = "full"
@@ -129,7 +129,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.get(
             f"/gmail/v1/users/me/messages/{message_id}", params=params
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def send_message(self, message_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -144,13 +144,13 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.post(
             "/gmail/v1/users/me/messages/send", json_data=message_data
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def send_draft(self, draft_id: str) -> Dict[str, Any]:
         response = await self.post(
             f"/gmail/v1/users/me/drafts/{draft_id}/send", json_data={}
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_labels(self) -> Dict[str, Any]:
         """
@@ -160,7 +160,7 @@ class GoogleAPIClient(BaseAPIClient):
             Dictionary containing labels list
         """
         response = await self.get("/gmail/v1/users/me/labels")
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_messages_from_label(
         self,
@@ -187,7 +187,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.get(
             "/gmail/v1/users/me/messages", params={"labelIds": label_id, **params}
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     # Google Calendar API methods
     async def get_calendar_list(self) -> Dict[str, Any]:
@@ -198,7 +198,7 @@ class GoogleAPIClient(BaseAPIClient):
             Dictionary containing calendar list
         """
         response = await self.get("/calendar/v3/users/me/calendarList")
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_events(
         self,
@@ -236,7 +236,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.get(
             f"/calendar/v3/calendars/{calendar_id}/events", params=params
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_event(
         self, calendar_id: str, event_data: Dict[str, Any]
@@ -254,7 +254,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.post(
             f"/calendar/v3/calendars/{calendar_id}/events", json_data=event_data
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def update_event(
         self, calendar_id: str, event_id: str, event_data: Dict[str, Any]
@@ -274,7 +274,7 @@ class GoogleAPIClient(BaseAPIClient):
             f"/calendar/v3/calendars/{calendar_id}/events/{event_id}",
             json_data=event_data,
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         """
@@ -319,7 +319,7 @@ class GoogleAPIClient(BaseAPIClient):
             )
 
         response = await self.get("/drive/v3/files", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_file(
         self, file_id: str, fields: Optional[str] = None
@@ -343,7 +343,7 @@ class GoogleAPIClient(BaseAPIClient):
             )
 
         response = await self.get(f"/drive/v3/files/{file_id}", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def search_files(self, query: str, max_results: int = 100) -> Dict[str, Any]:
         """
@@ -391,7 +391,7 @@ class GoogleAPIClient(BaseAPIClient):
             params["labelIds"] = label_ids
 
         response = await self.get("/gmail/v1/users/me/threads", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_thread(self, thread_id: str, format: str = "full") -> Dict[str, Any]:
         """
@@ -408,7 +408,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.get(
             f"/gmail/v1/users/me/threads/{thread_id}", params=params
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_messages_with_threads(
         self,
@@ -443,7 +443,7 @@ class GoogleAPIClient(BaseAPIClient):
         )
 
         response = await self.get("/gmail/v1/users/me/messages", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_draft(
         self, raw_message_b64: str, thread_id: Optional[str] = None
@@ -453,11 +453,11 @@ class GoogleAPIClient(BaseAPIClient):
         if thread_id:
             payload["message"]["threadId"] = thread_id
         response = await self.post("/gmail/v1/users/me/drafts", json_data=payload)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_draft(self, draft_id: str) -> Dict[str, Any]:
         response = await self.get(f"/gmail/v1/users/me/drafts/{draft_id}")
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def update_draft(
         self, draft_id: str, raw_message_b64: str, thread_id: Optional[str] = None
@@ -468,7 +468,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.put(
             f"/gmail/v1/users/me/drafts/{draft_id}", json_data=payload
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def delete_draft(self, draft_id: str) -> None:
         await self.delete(f"/gmail/v1/users/me/drafts/{draft_id}")
@@ -480,4 +480,4 @@ class GoogleAPIClient(BaseAPIClient):
         if page_token:
             params["pageToken"] = page_token
         response = await self.get("/gmail/v1/users/me/drafts", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())

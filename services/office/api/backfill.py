@@ -20,6 +20,7 @@ from services.office.models.backfill import (
     BackfillStatus,
     BackfillStatusEnum,
 )
+from services.office.schemas import EmailMessage
 
 logger = get_logger(__name__)
 
@@ -126,7 +127,7 @@ async def _resolve_email_to_user_id(email: str) -> Optional[str]:
                     if data.get("exists"):
                         user_id = data.get("user_id")
                         logger.info(f"Resolved email {email} to user ID {user_id}")
-                        return user_id
+                        return str(user_id) if user_id is not None else None
                     else:
                         logger.warning(f"Email {email} not found in user service")
                         return None
@@ -377,34 +378,84 @@ async def run_backfill_job(
         ):
             # Convert email batch to EmailData objects and publish as individual EmailEvents
             try:
-                # Convert raw email data to EmailData objects and publish individually
+                # Convert normalized EmailMessage objects to EmailData objects and publish individually
                 for email in email_batch:
                     try:
-                        email_data = EmailData(
-                            id=email.get("id", ""),
-                            thread_id=email.get("threadId", ""),
-                            subject=email.get("subject", ""),
-                            body=email.get("body", ""),
-                            from_address=email.get("from", ""),
-                            to_addresses=email.get("to", []),
-                            cc_addresses=email.get("cc", []),
-                            bcc_addresses=email.get("bcc", []),
-                            received_date=_parse_email_date(email.get("receivedDate")),
-                            sent_date=(
-                                _parse_email_date(
-                                    email.get("sentDate"), fallback_to_now=False
+                        # Debug logging to see what we're actually getting
+                        logger.debug(f"Processing email: type={type(email)}")
+
+                        # Check if email is a dict (from cache) and reconstruct EmailMessage if needed
+                        if isinstance(email, dict):
+                            logger.debug(
+                                f"Reconstructing EmailMessage from dict: {email.get('id', 'unknown')}"
+                            )
+                            from services.office.schemas import EmailMessage
+
+                            try:
+                                email = EmailMessage(**email)
+                                logger.debug(
+                                    f"Successfully reconstructed EmailMessage: {email.id}"
                                 )
-                                if email.get("sentDate")
-                                else None
-                            ),
-                            labels=email.get("labels", []),
-                            is_read=email.get("isRead", False),
-                            is_starred=email.get("isStarred", False),
-                            has_attachments=email.get("hasAttachments", False),
+                            except Exception as e:
+                                logger.error(f"Failed to reconstruct EmailMessage: {e}")
+                                continue
+
+                        if hasattr(email, "provider_message_id"):
+                            logger.debug(
+                                f"Email has provider_message_id: {email.provider_message_id}"
+                            )
+                        else:
+                            logger.error(
+                                f"Email missing provider_message_id attribute: {email}"
+                            )
+                            logger.error(
+                                f"Email type: {type(email)}, dir: {dir(email)}"
+                            )
+                            continue
+
+                        # email should now be a proper EmailMessage object, so we can access fields directly
+                        # Use the pre-split unquoted field (visible content only)
+                        # Prefer text over HTML for Vespa ingestion
+                        body_content = (
+                            email.body_text_unquoted
+                            or email.body_html_unquoted
+                            or email.snippet
+                            or ""
+                        )
+
+                        # Extract email addresses as strings
+                        from_address = (
+                            email.from_address.email if email.from_address else ""
+                        )
+                        to_addresses = [
+                            addr.email for addr in email.to_addresses if addr.email
+                        ]
+                        cc_addresses = [
+                            addr.email for addr in email.cc_addresses if addr.email
+                        ]
+                        bcc_addresses = [
+                            addr.email for addr in email.bcc_addresses if addr.email
+                        ]
+
+                        email_data = EmailData(
+                            id=email.provider_message_id,
+                            thread_id=email.thread_id or "",
+                            subject=email.subject or "",
+                            body=body_content,
+                            from_address=from_address,
+                            to_addresses=to_addresses,
+                            cc_addresses=cc_addresses,
+                            bcc_addresses=bcc_addresses,
+                            received_date=email.date,
+                            sent_date=None,  # Not available in EmailMessage
+                            labels=email.labels,
+                            is_read=email.is_read,
+                            is_starred=False,  # Not available in EmailMessage
+                            has_attachments=email.has_attachments,
                             provider=request.provider,
-                            provider_message_id=email.get("id", ""),
-                            size_bytes=email.get("sizeBytes"),
-                            mime_type=email.get("mimeType"),
+                            provider_message_id=email.provider_message_id,
+                            size_bytes=None,  # Not available in EmailMessage
+                            mime_type=None,  # Not available in EmailMessage
                         )
 
                         # Create and publish EmailEvent
@@ -457,7 +508,7 @@ async def run_backfill_job(
                     except Exception as e:
                         logger.error(
                             f"Failed to convert or publish email data: {e}",
-                            extra={"email_id": email.get("id")},
+                            extra={"email_id": email.provider_message_id},
                         )
                         job.failed_emails += 1
                         continue

@@ -35,7 +35,7 @@ class CacheManager:
             async with self._connection_lock:
                 if self._redis is None:
                     try:
-                        self._redis = redis.from_url(
+                        self._redis = redis.from_url(  # type: ignore[no-untyped-call]
                             get_settings().REDIS_URL,
                             encoding="utf-8",
                             decode_responses=True,
@@ -157,7 +157,7 @@ class CacheManager:
 
             deleted_count = await redis_client.delete(*keys)
             logger.debug(f"Deleted {deleted_count} keys matching pattern: {pattern}")
-            return deleted_count
+            return int(deleted_count)
 
         except Exception as e:
             logger.error(f"Failed to delete keys matching pattern '{pattern}': {e}")
@@ -176,7 +176,7 @@ class CacheManager:
         try:
             redis_client = await self._get_redis()
             exists_count = await redis_client.exists(key)
-            return exists_count > 0
+            return bool(exists_count > 0)
 
         except Exception as e:
             logger.error(f"Failed to check existence of cache key '{key}': {e}")
@@ -201,7 +201,7 @@ class CacheManager:
             elif ttl == -1:  # Key exists but has no expiry
                 return None
             else:
-                return ttl
+                return int(ttl)
 
         except Exception as e:
             logger.error(f"Failed to get TTL for cache key '{key}': {e}")

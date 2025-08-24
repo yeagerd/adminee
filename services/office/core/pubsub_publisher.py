@@ -10,21 +10,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-try:
-    from google.api_core import (
-        exceptions as google_exceptions,  # type: ignore[import-not-found]
-    )
-    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
-
-    PUBSUB_AVAILABLE = True
-except Exception:
-    PUBSUB_AVAILABLE = False
-    from services.common.logging_config import get_logger
-
-    logger = get_logger(__name__)
-    logger.warning(
-        "Google Cloud Pub/Sub not available. Install with: pip install google-cloud-pubsub"
-    )
+from google.api_core import exceptions as google_exceptions
+from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
 from services.common.events.base_events import EventMetadata
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
@@ -43,7 +30,7 @@ class PubSubPublisher:
     ):
         self.project_id = project_id
         self.emulator_host = emulator_host
-        self.publisher = None
+        self.publisher: pubsub_v1.PublisherClient | None = None
         # New data-type focused topic names
         self.topics = {
             "emails": "emails",
@@ -60,8 +47,7 @@ class PubSubPublisher:
             "bookings": "bookings",
         }
 
-        if PUBSUB_AVAILABLE:
-            self._initialize_publisher()
+        self._initialize_publisher()
 
     def _initialize_publisher(self) -> None:
         """Initialize the Pub/Sub publisher client"""
@@ -81,8 +67,8 @@ class PubSubPublisher:
     def _create_event_metadata(
         self,
         source_service: str = "office-service",
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> EventMetadata:
         """Create event metadata with proper tracing and context"""
         return EventMetadata(
@@ -100,9 +86,9 @@ class PubSubPublisher:
         self,
         email_data: EmailData,
         operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        batch_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> bool:
         """Publish an EmailEvent to Pub/Sub"""
         if not self.publisher:
@@ -170,9 +156,9 @@ class PubSubPublisher:
         self,
         calendar_data: CalendarEventData,
         operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        batch_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> bool:
         """Publish a CalendarEvent to Pub/Sub"""
         if not self.publisher:
@@ -240,9 +226,9 @@ class PubSubPublisher:
         self,
         contact_data: ContactData,
         operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        batch_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> bool:
         """Publish a ContactEvent to Pub/Sub"""
         if not self.publisher:
@@ -307,12 +293,12 @@ class PubSubPublisher:
 
     async def publish_batch_emails(
         self,
-        emails: List[EmailData],
+        emails: list[EmailData],
         operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
-    ) -> List[bool]:
+        batch_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> list[bool]:
         """Publish multiple EmailEvents in batch"""
         try:
             results = []
@@ -346,12 +332,12 @@ class PubSubPublisher:
 
     async def publish_batch_calendar_events(
         self,
-        events: List[CalendarEventData],
+        events: list[CalendarEventData],
         operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
-    ) -> List[bool]:
+        batch_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> list[bool]:
         """Publish multiple CalendarEvents in batch"""
         try:
             results = []
@@ -385,12 +371,12 @@ class PubSubPublisher:
 
     async def publish_batch_contacts(
         self,
-        contacts: List[ContactData],
+        contacts: list[ContactData],
         operation: str = "create",
-        batch_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
-    ) -> List[bool]:
+        batch_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> list[bool]:
         """Publish multiple contacts in batch"""
         try:
             results = []
@@ -424,9 +410,9 @@ class PubSubPublisher:
 
     def set_topics(
         self,
-        email_topic: Optional[str] = None,
-        calendar_topic: Optional[str] = None,
-        contacts_topic: Optional[str] = None,
+        email_topic: str | None = None,
+        calendar_topic: str | None = None,
+        contacts_topic: str | None = None,
     ) -> None:
         """Set custom topic names"""
         if email_topic:
@@ -444,7 +430,7 @@ class PubSubPublisher:
         """Close the pubsub client"""
         try:
             if self.publisher:
-                self.publisher.transport.close()  # type: ignore[attr-defined]
+                self.publisher.transport.close()
         except Exception:
             pass
         logger.info("PubSub publisher closed")

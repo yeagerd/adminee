@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from services.common.logging_config import get_logger
 from services.office.core.clients.base import BaseAPIClient
@@ -78,7 +78,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         if search:
             params["$search"] = search
         response = await self.get("/me/contacts", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_contact(
         self, contact_id: str, select: Optional[str] = None
@@ -87,11 +87,11 @@ class MicrosoftAPIClient(BaseAPIClient):
         if select:
             params["$select"] = select
         response = await self.get(f"/me/contacts/{contact_id}", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_contact(self, contact_data: Dict[str, Any]) -> Dict[str, Any]:
         response = await self.post("/me/contacts", json_data=contact_data)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def update_contact(
         self, contact_id: str, contact_data: Dict[str, Any]
@@ -99,7 +99,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.patch(
             f"/me/contacts/{contact_id}", json_data=contact_data
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def delete_contact(self, contact_id: str) -> None:
         await self.delete(f"/me/contacts/{contact_id}")
@@ -128,6 +128,13 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
 
+        # Select all the fields we need for proper email normalization
+        params["$select"] = (
+            "id,conversationId,subject,bodyPreview,body,from,toRecipients,"
+            "ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,"
+            "hasAttachments,categories,importance"
+        )
+
         if search:
             params["$search"] = search
 
@@ -140,7 +147,7 @@ class MicrosoftAPIClient(BaseAPIClient):
                 params["$orderby"] = "receivedDateTime desc"
 
         response = await self.get("/me/messages", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_messages_from_folder(
         self,
@@ -166,6 +173,14 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
+
+        # Select all the fields we need for proper email normalization
+        params["$select"] = (
+            "id,conversationId,subject,bodyPreview,body,from,toRecipients,"
+            "ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,"
+            "hasAttachments,categories,importance"
+        )
+
         if filter:
             params["$filter"] = filter
         if search:
@@ -178,7 +193,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get(
             f"/me/mailFolders/{folder_id}/messages", params=params
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_message(
         self, message_id: str, select: Optional[str] = None
@@ -198,7 +213,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             params["$select"] = select
 
         response = await self.get(f"/me/messages/{message_id}", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def send_message(self, message_data: Dict[str, Any]) -> None:
         """
@@ -217,7 +232,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing mailbox list
         """
         response = await self.get("/me/mailFolders")
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     # Microsoft Calendar API methods
     async def get_calendars(self) -> Dict[str, Any]:
@@ -228,7 +243,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing calendar list
         """
         response = await self.get("/me/calendars")
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_events(
         self,
@@ -296,7 +311,7 @@ class MicrosoftAPIClient(BaseAPIClient):
                 params["$filter"] = f"end/dateTime le '{escaped_end_time}'"
 
         response = await self.get(endpoint, params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_event(
         self, event_data: Dict[str, Any], calendar_id: Optional[str] = None
@@ -315,7 +330,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             f"/me/calendars/{calendar_id}/events" if calendar_id else "/me/events"
         )
         response = await self.post(endpoint, json_data=event_data)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def update_event(
         self,
@@ -340,7 +355,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             else f"/me/events/{event_id}"
         )
         response = await self.patch(endpoint, json_data=event_data)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def delete_event(
         self, event_id: str, calendar_id: Optional[str] = None
@@ -396,7 +411,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             params["$skiptoken"] = skip_token
 
         response = await self.get("/me/drive/root/children", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_drive_item(
         self, item_id: str, select: Optional[str] = None
@@ -416,7 +431,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             params["$select"] = select
 
         response = await self.get(f"/me/drive/items/{item_id}", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def search_drive_items(self, query: str, top: int = 100) -> Dict[str, Any]:
         """
@@ -431,7 +446,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         params = {"$top": top}
         response = await self.get(f"/me/drive/root/search(q='{query}')", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_recent_files(self, top: int = 100) -> Dict[str, Any]:
         """
@@ -445,7 +460,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         params = {"$top": top}
         response = await self.get("/me/drive/recent", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     # User profile methods
     async def get_user_profile(self) -> Dict[str, Any]:
@@ -456,7 +471,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing user profile data
         """
         response = await self.get("/me")
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     # Microsoft Graph Email Conversation API methods
     async def get_conversations(
@@ -490,7 +505,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             params["$orderby"] = "lastDeliveredDateTime desc"
 
         response = await self.get("/me/conversations", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def get_conversation_messages(
         self,
@@ -527,14 +542,14 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get(
             f"/me/conversations/{conversation_id}/messages", params=params
         )
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_draft_message(
         self, message_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Create a new draft message in Drafts folder."""
         response = await self.post("/me/messages", json_data=message_data)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def create_reply_draft(
         self, message_id: str, reply_all: bool = False
@@ -548,7 +563,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.post(endpoint, json_data={})
         # Some Graph endpoints respond 202 Accepted with no body; return draft id via Location header if present
         try:
-            return response.json()
+            return cast(Dict[str, Any], response.json())
         except Exception:
             draft_id: Optional[str] = None
             location = (
@@ -566,7 +581,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         )
         # Some Graph endpoints respond 202 Accepted with no body; return draft id via Location header if present
         try:
-            return response.json()
+            return cast(Dict[str, Any], response.json())
         except Exception:
             draft_id: Optional[str] = None
             location = (
@@ -585,7 +600,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         self, draft_id: str, patch_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         response = await self.patch(f"/me/messages/{draft_id}", json_data=patch_data)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def delete_draft_message(self, draft_id: str) -> None:
         await self.delete(f"/me/messages/{draft_id}")
@@ -601,7 +616,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             "$orderby": "receivedDateTime desc",
         }
         response = await self.get("/me/messages", params=params)
-        return response.json()
+        return cast(Dict[str, Any], response.json())
 
     async def send_draft_message(self, draft_id: str) -> None:
         await self.post(f"/me/messages/{draft_id}/send", json_data={})
