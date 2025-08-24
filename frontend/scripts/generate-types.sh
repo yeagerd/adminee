@@ -9,6 +9,15 @@ echo "🚀 Generating TypeScript types from OpenAPI schemas..."
 # Change to frontend directory
 cd "$(dirname "$0")/.."
 
+# Clean existing types to ensure a fresh generation
+echo "🧹 Cleaning existing types..."
+if [ -d "types/api" ]; then
+    rm -rf types/api
+    echo "✅ Removed existing types directory"
+else
+    echo "ℹ️  No existing types directory found"
+fi
+
 # Create types directory structure
 mkdir -p types/api/{chat,contacts,meetings,office,user,shipments,vespa_loader,vespa_query}
 
