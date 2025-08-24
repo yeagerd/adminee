@@ -12,6 +12,7 @@ from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 from services.common.events import (
     BaseEvent,
     CalendarEvent,
+    ContactEvent,
     DocumentEvent,
     EmailEvent,
     TodoEvent,
@@ -182,6 +183,22 @@ class PubSubClient:
         )
         return self.publish_message(topic_name, event)
 
+    def publish_contact_event(
+        self, event: ContactEvent, topic_name: str = "contacts"
+    ) -> str:
+        """Publish contact event with type safety."""
+        logger.info(
+            "Publishing contact event",
+            extra={
+                "user_id": event.user_id,
+                "contact_id": event.contact.id,
+                "operation": event.operation,
+                "batch_id": event.batch_id,
+                "topic_name": topic_name,
+            },
+        )
+        return self.publish_message(topic_name, event)
+
     def publish_document_event(
         self, event: DocumentEvent, topic_name: str = "word_documents"
     ) -> str:
@@ -212,42 +229,16 @@ class PubSubClient:
         )
         return self.publish_message(topic_name, event)
 
-    # Legacy methods for backward compatibility
-    def publish_email_data(
-        self, email_data: Dict[str, Any], topic_name: str = "emails"
-    ) -> str:
-        """Publish email data to the specified topic (legacy method)."""
-        logger.warning(
-            "Using legacy publish_email_data method. Consider using typed events.",
-            extra={"topic_name": topic_name},
-        )
-        return self.publish_message(topic_name, email_data)
-
-    def publish_calendar_data(
-        self, calendar_data: Dict[str, Any], topic_name: str = "calendars"
-    ) -> str:
-        """Publish calendar data to the specified topic (legacy method)."""
-        logger.warning(
-            "Using legacy publish_calendar_data method. Consider using typed events.",
-            extra={"topic_name": topic_name},
-        )
-        return self.publish_message(topic_name, calendar_data)
-
-    def publish_document_data(
-        self, document_data: Dict[str, Any], topic_name: str = "word_documents"
-    ) -> str:
-        """Publish document data to the specified topic (legacy method)."""
-        logger.warning(
-            "Using legacy publish_document_data method. Consider using typed events.",
-            extra={"topic_name": topic_name},
-        )
-        return self.publish_message(topic_name, document_data)
-
     def close(self) -> None:
-        """Close the publisher client."""
+        """Close the publisher client and release resources."""
         if self.publisher:
-            self.publisher.close()
-            logger.info("PubSub publisher client closed")
+            try:
+                # Close the underlying transport channel to release network resources
+                self.publisher.transport.channel.close()
+                logger.info("PubSub publisher client closed")
+            except Exception as e:
+                logger.error(f"Error closing PubSub publisher client: {e}")
+                logger.error(f"Error type: {type(e).__name__}")
 
 
 class PubSubConsumer:
