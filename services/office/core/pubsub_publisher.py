@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from google.api_core import exceptions as google_exceptions
-from google.cloud import pubsub_v1
+from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
 from services.common.events.base_events import EventMetadata
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
