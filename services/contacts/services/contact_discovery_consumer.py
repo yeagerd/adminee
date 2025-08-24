@@ -7,7 +7,7 @@ for database persistence in the Contacts Service.
 
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Awaitable
 
 try:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
@@ -55,7 +55,7 @@ class ContactDiscoveryConsumer:
 
     def _get_processor_for_topic(
         self, topic_name: str
-    ) -> Optional[Callable[[Dict[str, Any], AsyncSession], None]]:
+    ) -> Optional[Callable[[Dict[str, Any], AsyncSession], Awaitable[None]]]:
         """Get the appropriate processor method for a topic."""
         if topic_name == "emails":
             return self._process_email_event
@@ -134,7 +134,7 @@ class ContactDiscoveryConsumer:
         self,
         topic_name: str,
         subscription_path: str,
-        process_func: Callable[[Dict[str, Any], AsyncSession], None],
+        process_func: Callable[[Dict[str, Any], AsyncSession], Awaitable[None]],
     ) -> None:
         """Start consuming from a specific topic subscription."""
 

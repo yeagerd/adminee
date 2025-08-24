@@ -104,10 +104,11 @@ async def health_check() -> Dict[str, Any]:
 
         from services.contacts.database import get_async_session
 
-        async with get_async_session() as session:
+        async for session in get_async_session():
             db_start = time.time()
             await session.execute(text("SELECT 1"))
             db_response_time = round((time.time() - db_start) * 1000, 2)
+            break  # We only need one session for the health check
     except Exception as e:
         db_status = "error"
         db_error = str(e) if get_settings().DEBUG else "Database unavailable"

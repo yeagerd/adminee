@@ -11,7 +11,8 @@ from typing import Any, Dict, List, Optional, Set
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlalchemy import func, select, desc, and_
+from sqlmodel import select as sqlmodel_select
 
 from services.common.events import (
     CalendarEvent,
@@ -58,8 +59,8 @@ class ContactDiscoveryService:
                 for to_addr in event.email.to_addresses:
                     # Current model has to_addresses as list of strings
                     if isinstance(to_addr, str):
-                        email = to_addr
-                        name = None
+                        email: Optional[str] = to_addr
+                        name: Optional[str] = None
                     else:
                         # Fallback for backward compatibility
                         email = (
@@ -71,7 +72,7 @@ class ContactDiscoveryService:
                             to_addr.get("name") if isinstance(to_addr, dict) else None
                         )
 
-                    if email:
+                    if email and isinstance(email, str):
                         contacts_to_process.append(
                             {
                                 "email": email,
@@ -87,24 +88,24 @@ class ContactDiscoveryService:
                 for cc_addr in event.email.cc_addresses:
                     # Current model has cc_addresses as list of strings
                     if isinstance(cc_addr, str):
-                        email = cc_addr
-                        name = None
+                        cc_email: Optional[str] = cc_addr
+                        cc_name: Optional[str] = None
                     else:
                         # Fallback for backward compatibility
-                        email = (
+                        cc_email = (
                             cc_addr.get("email")
                             if isinstance(cc_addr, dict)
                             else str(cc_addr)
                         )
-                        name = (
+                        cc_name = (
                             cc_addr.get("name") if isinstance(cc_addr, dict) else None
                         )
 
-                    if email:
+                    if cc_email and isinstance(cc_email, str):
                         contacts_to_process.append(
                             {
-                                "email": email,
-                                "name": name,
+                                "email": cc_email,
+                                "name": cc_name,
                                 "event_type": "email",
                                 "timestamp": event.last_updated
                                 or datetime.now(timezone.utc),
@@ -559,13 +560,13 @@ class ContactDiscoveryService:
             from services.common.events.contact_events import ContactData, ContactEvent
 
             contact_data = ContactData(
-                id=contact.id,
+                id=contact.id or str(uuid4()),
                 display_name=contact.display_name or contact.email_address,
                 given_name=contact.given_name,
                 family_name=contact.family_name,
                 email_addresses=[contact.email_address],
                 provider="contact_discovery",
-                provider_contact_id=contact.id,
+                provider_contact_id=contact.id or str(uuid4()),
                 notes=contact.notes,
                 last_modified=contact.updated_at,
             )
@@ -605,7 +606,7 @@ class ContactDiscoveryService:
         try:
             result = await session.execute(
                 select(Contact).where(
-                    Contact.user_id == user_id, Contact.email_address == email.lower()
+                    and_(Contact.user_id == user_id, Contact.email_address == email.lower())  # type: ignore
                 )
             )
             return result.scalar_one_or_none()
@@ -620,8 +621,8 @@ class ContactDiscoveryService:
         try:
             result = await session.execute(
                 select(Contact)
-                .where(Contact.user_id == user_id)
-                .order_by(Contact.relevance_score.desc())
+                .where(Contact.user_id == user_id)  # type: ignore
+                .order_by(desc(Contact.relevance_score))  # type: ignore
                 .limit(limit)
             )
             return list(result.scalars().all())
@@ -641,15 +642,17 @@ class ContactDiscoveryService:
             result = await session.execute(
                 select(Contact)
                 .where(
-                    Contact.user_id == user_id,
-                    (
-                        Contact.email_address.ilike(f"%{query_lower}%")
-                        | Contact.display_name.ilike(f"%{query_lower}%")
-                        | Contact.given_name.ilike(f"%{query_lower}%")
-                        | Contact.family_name.ilike(f"%{query_lower}%")
-                    ),
+                    and_(
+                        Contact.user_id == user_id,  # type: ignore
+                        (
+                            Contact.email_address.ilike(f"%{query_lower}%")  # type: ignore
+                            | Contact.display_name.ilike(f"%{query_lower}%")  # type: ignore
+                            | Contact.given_name.ilike(f"%{query_lower}%")  # type: ignore
+                            | Contact.family_name.ilike(f"%{query_lower}%")  # type: ignore
+                        ),
+                    )
                 )
-                .order_by(Contact.relevance_score.desc())
+                .order_by(desc(Contact.relevance_score))  # type: ignore
                 .limit(limit)
             )
             return list(result.scalars().all())
@@ -731,7 +734,7 @@ class ContactDiscoveryService:
         """Get contact statistics for a user."""
         try:
             result = await session.execute(
-                select(Contact).where(Contact.user_id == user_id)
+                select(Contact).where(Contact.user_id == user_id)  # type: ignore
             )
             user_contacts = result.scalars().all()
 

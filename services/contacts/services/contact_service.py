@@ -8,7 +8,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import func, select
+from sqlalchemy import func, select, desc, or_, and_
+from sqlmodel import select as sqlmodel_select
 
 from services.common.http_errors import NotFoundError, ValidationError
 from services.contacts.models.contact import Contact
@@ -103,28 +104,28 @@ class ContactService:
     ) -> List[Contact]:
         """List contacts for a user with optional filtering."""
         try:
-            query = select(Contact).where(Contact.user_id == user_id)
+            query = select(Contact).where(Contact.user_id == user_id)  # type: ignore
 
             # Apply filters
             if tags:
                 # Filter by tags (contacts must have at least one of the specified tags)
                 tag_conditions = []
                 for tag in tags:
-                    tag_conditions.append(Contact.tags.contains([tag]))
-                query = query.where(func.or_(*tag_conditions))
+                    tag_conditions.append(Contact.tags.contains([tag]))  # type: ignore
+                query = query.where(or_(*tag_conditions))  # type: ignore
 
             if source_services:
                 # Filter by source services (contacts must have at least one of the specified services)
                 service_conditions = []
                 for service in source_services:
                     service_conditions.append(
-                        Contact.source_services.contains([service])
+                        Contact.source_services.contains([service])  # type: ignore
                     )
-                query = query.where(func.or_(*service_conditions))
+                query = query.where(or_(*service_conditions))  # type: ignore
 
             # Order by relevance score and apply pagination
             query = (
-                query.order_by(Contact.relevance_score.desc())
+                query.order_by(desc(Contact.relevance_score))  # type: ignore
                 .offset(offset)
                 .limit(limit)
             )
@@ -140,7 +141,7 @@ class ContactService:
         """Count total contacts for a user."""
         try:
             result = await session.execute(
-                select(func.count(Contact.id)).where(Contact.user_id == user_id)
+                select(func.count()).where(Contact.user_id == user_id)  # type: ignore
             )
             return result.scalar() or 0
         except Exception as e:
@@ -165,32 +166,34 @@ class ContactService:
 
             query_lower = query.lower()
             base_query = select(Contact).where(
-                Contact.user_id == user_id,
-                (
-                    Contact.email_address.ilike(f"%{query_lower}%")
-                    | Contact.display_name.ilike(f"%{query_lower}%")
-                    | Contact.given_name.ilike(f"%{query_lower}%")
-                    | Contact.family_name.ilike(f"%{query_lower}%")
-                ),
+                and_(
+                    Contact.user_id == user_id,  # type: ignore
+                    (
+                        Contact.email_address.ilike(f"%{query_lower}%")  # type: ignore
+                        | Contact.display_name.ilike(f"%{query_lower}%")  # type: ignore
+                        | Contact.given_name.ilike(f"%{query_lower}%")  # type: ignore
+                        | Contact.family_name.ilike(f"%{query_lower}%")  # type: ignore
+                    ),
+                )
             )
 
             # Apply filters
             if tags:
                 tag_conditions = []
                 for tag in tags:
-                    tag_conditions.append(Contact.tags.contains([tag]))
-                base_query = base_query.where(func.or_(*tag_conditions))
+                    tag_conditions.append(Contact.tags.contains([tag]))  # type: ignore
+                base_query = base_query.where(or_(*tag_conditions))  # type: ignore
 
             if source_services:
                 service_conditions = []
                 for service in source_services:
                     service_conditions.append(
-                        Contact.source_services.contains([service])
+                        Contact.source_services.contains([service])  # type: ignore
                     )
-                base_query = base_query.where(func.or_(*service_conditions))
+                base_query = base_query.where(or_(*service_conditions))  # type: ignore
 
             # Order by relevance score and apply limit
-            base_query = base_query.order_by(Contact.relevance_score.desc()).limit(
+            base_query = base_query.order_by(desc(Contact.relevance_score)).limit(  # type: ignore
                 limit
             )
 
@@ -285,22 +288,23 @@ class ContactService:
 
             # Get total events
             result = await session.execute(
-                select(func.sum(Contact.total_event_count)).where(
-                    Contact.user_id == user_id
+                select(func.coalesce(func.sum(Contact.total_event_count), 0)).where(
+                    Contact.user_id == user_id  # type: ignore
                 )
             )
             total_events = result.scalar() or 0
 
             # Get contacts by source service
             result = await session.execute(
-                select(Contact.source_services).where(Contact.user_id == user_id)
+                select(Contact).where(Contact.user_id == user_id)  # type: ignore
             )
             source_services_data = result.scalars().all()
 
             service_counts: Dict[str, int] = {}
-            for services in source_services_data:
-                for service in services:
-                    service_counts[service] = service_counts.get(service, 0) + 1
+            for contact in source_services_data:
+                if contact.source_services:
+                    for service in contact.source_services:
+                        service_counts[service] = service_counts.get(service, 0) + 1
 
             return {
                 "total_contacts": total_contacts,

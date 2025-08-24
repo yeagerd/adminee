@@ -5,9 +5,9 @@ Provides RESTful API for contact CRUD operations, search, and statistics.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.common.http_errors import NotFoundError, ValidationError
@@ -135,11 +135,11 @@ async def create_contact(
         raise HTTPException(status_code=500, detail="Failed to create contact")
 
 
-@router.put("/{contact_id}", response_model=ContactResponse)
+@router.put("/{contact_id}")
 async def update_contact(
     contact_id: str = Path(..., description="Contact ID to update"),
     user_id: str = Query(..., description="User ID who owns the contact"),
-    update_data: EmailContactUpdate = ...,
+    update_data: EmailContactUpdate = Body(...),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
     authenticated_service: str = Depends(require_frontend_auth),
@@ -175,7 +175,7 @@ async def delete_contact(
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
     authenticated_service: str = Depends(require_frontend_auth),
-):
+) -> Dict[str, Any]:
     """Delete a contact."""
     try:
         success = await contact_service.delete_contact(

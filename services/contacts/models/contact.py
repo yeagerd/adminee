@@ -30,7 +30,7 @@ class EmailContactEventCount(SQLModel, table=False):
 class Contact(SQLModel, table=True):
     """Contact database model with event type counters and last_seen tracking."""
 
-    __tablename__: str = "contacts"
+    __tablename__ = "contacts"  # type: ignore[assignment]
 
     id: Optional[str] = Field(
         default=None, primary_key=True, description="Unique contact ID"
