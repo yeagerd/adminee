@@ -1,0 +1,137 @@
+schema base_document {
+    document base_document {
+        # Common identification fields
+        field user_id type string {
+            indexing: attribute
+            attribute: fast-search
+        }
+        
+        field doc_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field provider type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Content fields
+        field title type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field content type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field search_text type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        # Timestamp fields
+        field created_at type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field updated_at type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field last_updated type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field sync_timestamp type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Operation tracking
+        field operation type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field batch_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Metadata
+        field tags type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field metadata type map<string, string> {
+            indexing: summary
+        }
+        
+        # Vector embedding for semantic search
+        field embedding type tensor<float>(x[384]) {
+            indexing: attribute
+            attribute {
+                distance-metric: angular
+            }
+        }
+        
+        # Parent-child relationship for fragments
+        field parent_doc_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field fragment_sequence type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+    }
+    
+    fieldset default {
+        fields: title, content, search_text
+    }
+    
+    rank-profile hybrid inherits default {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(title, content, search_text) + 0.7 * closeness(field, embedding)
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding)
+    }
+    
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(title) + bm25(content) + bm25(search_text)
+        }
+    }
+    
+    rank-profile semantic inherits default {
+        first-phase {
+            expression: closeness(field, embedding)
+        }
+    }
+    
+    rank-profile recency inherits default {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.4 * nativeRank(title, content, search_text) + 0.4 * closeness(field, embedding) + 0.2 * freshness(updated_at)
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding) freshness(updated_at)
+    }
+}

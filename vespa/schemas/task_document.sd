@@ -1,0 +1,119 @@
+schema task_document {
+    document task_document inherits base_document {
+        # Task document specific fields
+        field status type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field priority type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field due_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field completed_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field assignee_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field creator_email type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field parent_todo_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field subtask_ids type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field list_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field provider_todo_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        # Task metadata
+        field estimated_hours type float {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field actual_hours type float {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field dependencies type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field attachments type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field time_logs type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        # Override content_type for Task documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "task"
+        }
+    }
+    
+    fieldset task_search {
+        fields: title, content, search_text, assignee_email, creator_email, tags
+    }
+    
+    rank-profile task_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text) + 0.65 * closeness(field, embedding) + 0.1 * freshness(due_date)
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding) freshness(due_date)
+    }
+    
+    rank-profile task_priority inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(title, content, search_text) + 0.5 * closeness(field, embedding) + 0.3 * priority_score
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding) priority_score
+    }
+    
+    rank-profile task_due_soon inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(title, content, search_text) + 0.5 * closeness(field, embedding) + 0.3 * freshness(due_date)
+        }
+        match-features: nativeRank(title, content, search_text) closeness(field, embedding) freshness(due_date)
+    }
+}

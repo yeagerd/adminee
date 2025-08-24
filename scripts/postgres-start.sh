@@ -284,6 +284,7 @@ echo "- briefly_meetings (Meetings service)"
 echo "- briefly_shipments (Shipments service)"
 echo "- briefly_office (Office service)"
 echo "- briefly_chat (Chat service)"
+
 echo "- briefly_vector (Vector service)"
 echo ""
 echo "🔑 Service-specific users:"

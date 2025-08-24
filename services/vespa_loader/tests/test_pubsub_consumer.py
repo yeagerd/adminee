@@ -1,8 +1,10 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.common.events.email_events import EmailBackfillEvent, EmailData
+from services.common.events.base_events import EventMetadata
+from services.common.events.email_events import EmailData, EmailEvent
+from services.vespa_loader.document_factory import process_message
 from services.vespa_loader.pubsub_consumer import PubSubConsumer
 
 
@@ -20,13 +22,11 @@ class TestPubSubConsumer:
         mock_settings.pubsub_emulator_host = "localhost:8085"
 
         consumer = PubSubConsumer(mock_settings)
-        consumer.email_processor = MagicMock()
-        consumer._ingest_document = AsyncMock()
         return consumer
 
     @pytest.fixture
-    def sample_email_backfill_event(self):
-        """Create a sample EmailBackfillEvent for testing"""
+    def sample_email_event(self):
+        """Create a sample EmailEvent for testing"""
         return {
             "metadata": {
                 "source_service": "test-service",
@@ -35,168 +35,154 @@ class TestPubSubConsumer:
                 "timestamp": "2025-08-20T10:00:00Z",
             },
             "user_id": "test-user-123",
-            "provider": "microsoft",
-            "emails": [
-                {
-                    "id": "email-1",
-                    "thread_id": "thread-1",
-                    "subject": "Test Email 1",
-                    "body": "Test body 1",
-                    "from_address": "sender1@test.com",
-                    "to_addresses": ["recipient1@test.com"],
-                    "cc_addresses": [],
-                    "bcc_addresses": [],
-                    "received_date": "2025-08-20T10:00:00Z",
-                    "sent_date": "2025-08-20T09:55:00Z",
-                    "labels": ["INBOX"],
-                    "is_read": True,
-                    "is_starred": False,
-                    "has_attachments": False,
-                    "provider": "microsoft",
-                    "provider_message_id": "msg-1",
-                    "size_bytes": 1024,
-                    "mime_type": "text/plain",
-                    "headers": {},
-                },
-                {
-                    "id": "email-2",
-                    "thread_id": "thread-2",
-                    "subject": "Test Email 2",
-                    "body": "Test body 2",
-                    "from_address": "sender2@test.com",
-                    "to_addresses": ["recipient2@test.com"],
-                    "cc_addresses": [],
-                    "bcc_addresses": [],
-                    "received_date": "2025-08-20T11:00:00Z",
-                    "sent_date": "2025-08-20T10:55:00Z",
-                    "labels": ["SENT"],
-                    "is_read": False,
-                    "is_starred": True,
-                    "has_attachments": True,
-                    "provider": "microsoft",
-                    "provider_message_id": "msg-2",
-                    "size_bytes": 2048,
-                    "mime_type": "text/html",
-                    "headers": {},
-                },
-            ],
-            "batch_size": 2,
-            "sync_type": "backfill",
-            "start_date": "2025-08-20T00:00:00Z",
-            "end_date": "2025-08-20T23:59:59Z",
-            "folder": "INBOX",
-            "total_emails": 2,
-            "processed_count": 2,
-        }
-
-    async def test_process_email_message_with_email_backfill_event(
-        self, mock_consumer, sample_email_backfill_event
-    ):
-        """Test that EmailBackfillEvent is processed correctly"""
-        # Parse the raw data into a typed EmailBackfillEvent first
-        from services.common.events.email_events import EmailBackfillEvent
-
-        typed_event = EmailBackfillEvent(**sample_email_backfill_event)
-
-        # Process the typed email backfill event
-        await mock_consumer._process_email_message(typed_event)
-
-        # Verify that _ingest_document was called twice (once for each email)
-        assert mock_consumer._ingest_document.call_count == 2
-
-        # Verify the first email was processed with correct data
-        first_call = mock_consumer._ingest_document.call_args_list[0]
-        first_email_data = first_call[0][0]  # First argument of first call
-
-        assert first_email_data.id == "email-1"
-        assert first_email_data.user_id == "test-user-123"  # Should be added from event
-        assert first_email_data.subject == "Test Email 1"
-        assert first_email_data.from_address == "sender1@test.com"
-        assert first_email_data.to_addresses == ["recipient1@test.com"]
-
-        # Verify the second email was processed with correct data
-        second_call = mock_consumer._ingest_document.call_args_list[1]
-        second_email_data = second_call[0][0]  # First argument of second call
-
-        assert second_email_data.id == "email-2"
-        assert (
-            second_email_data.user_id == "test-user-123"
-        )  # Should be added from event
-        assert second_email_data.subject == "Test Email 2"
-        assert second_email_data.from_address == "sender2@test.com"
-        assert second_email_data.to_addresses == ["recipient2@test.com"]
-
-    async def test_process_email_message_adds_user_id_when_missing(
-        self, mock_consumer, sample_email_backfill_event
-    ):
-        """Test that user_id is properly used from the event level"""
-        # Parse the raw data into a typed EmailBackfillEvent first
-        from services.common.events.email_events import EmailBackfillEvent
-
-        typed_event = EmailBackfillEvent(**sample_email_backfill_event)
-
-        # Process the event
-        await mock_consumer._process_email_message(typed_event)
-
-        # Verify that _ingest_document was called with the user_id from the event
-        first_call = mock_consumer._ingest_document.call_args_list[0]
-        first_email_data = first_call[0][0]
-
-        assert first_email_data.user_id == "test-user-123"
-
-    async def test_process_email_message_handles_missing_emails_array(
-        self, mock_consumer
-    ):
-        """Test that invalid events without emails array are rejected"""
-        # This test is no longer relevant since we now require typed EmailBackfillEvent
-        # The validation happens at the PubSub message parsing level
-        pass
-
-    async def test_process_email_message_handles_empty_emails_array(
-        self, mock_consumer
-    ):
-        """Test that empty emails array is handled gracefully"""
-        event_with_empty_emails = {
-            "metadata": {
-                "source_service": "test-service",
-                "source_version": "1.0.0",
-                "event_id": "test-event-123",
-                "timestamp": "2025-08-20T10:00:00Z",
+            "email": {
+                "id": "email-1",
+                "thread_id": "thread-1",
+                "subject": "Test Email 1",
+                "body": "Test body 1",
+                "from_address": "sender1@test.com",
+                "to_addresses": ["recipient1@test.com"],
+                "cc_addresses": [],
+                "bcc_addresses": [],
+                "received_date": "2025-08-20T10:00:00Z",
+                "sent_date": "2025-08-20T09:55:00Z",
+                "labels": ["INBOX"],
+                "is_read": True,
+                "is_starred": False,
+                "has_attachments": False,
+                "provider": "microsoft",
+                "provider_message_id": "msg-1",
+                "size_bytes": 1024,
+                "mime_type": "text/plain",
+                "headers": {},
             },
-            "user_id": "test-user-123",
+            "operation": "create",
+            "batch_id": "batch-123",
+            "last_updated": "2025-08-20T10:00:00Z",
+            "sync_timestamp": "2025-08-20T10:00:00Z",
+            "sync_type": "backfill",
             "provider": "microsoft",
-            "emails": [],  # Empty array
-            "batch_size": 0,
         }
 
-        # Parse as typed EmailBackfillEvent
-        from services.common.events.email_events import EmailBackfillEvent
+    async def test_process_message_creates_email_document(self, sample_email_event):
+        """Test that process_message creates email document correctly"""
+        # Test the process_message function directly
+        vespa_document = process_message(
+            "emails", sample_email_event, "test-message-123"
+        )
 
-        typed_event = EmailBackfillEvent(**event_with_empty_emails)
+        # Verify document structure
+        assert vespa_document.id == "email-1"
+        assert vespa_document.user_id == "test-user-123"
+        assert vespa_document.type == "email"
+        assert vespa_document.provider == "microsoft"
+        assert vespa_document.subject == "Test Email 1"
+        assert vespa_document.body == "Test body 1"
+        assert vespa_document.from_address == "sender1@test.com"
+        assert vespa_document.to_addresses == ["recipient1@test.com"]
+        assert vespa_document.thread_id == "thread-1"
+        assert vespa_document.metadata["operation"] == "create"
+        # Note: batch_id is no longer tracked in metadata as it's not needed for search/retrieval
 
-        # Should not raise an error, just process nothing
-        await mock_consumer._process_email_message(typed_event)
+    async def test_process_message_handles_invalid_topic(self):
+        """Test that process_message rejects invalid topics"""
+        raw_data = {"user_id": "test-user", "data": "test"}
 
-        # Verify that _ingest_document was not called
-        mock_consumer._ingest_document.assert_not_called()
+        with pytest.raises(ValueError, match="Unsupported topic: invalid_topic"):
+            process_message("invalid_topic", raw_data, "test-message-123")
 
-    async def test_process_email_message_continues_on_individual_email_failure(
-        self, mock_consumer, sample_email_backfill_event
+    async def test_process_message_handles_invalid_data(self):
+        """Test that process_message handles invalid data gracefully"""
+        invalid_data = {"invalid": "data"}
+
+        with pytest.raises(Exception):
+            process_message("emails", invalid_data, "test-message-123")
+
+    async def test_consumer_initialization(self, mock_consumer):
+        """Test that PubSubConsumer initializes correctly"""
+        assert mock_consumer.settings is not None
+        assert mock_consumer.topics is not None
+        assert mock_consumer.running is False
+        assert mock_consumer.processed_count == 0
+        assert mock_consumer.error_count == 0
+
+    async def test_consumer_stats(self, mock_consumer):
+        """Test that consumer statistics are tracked correctly"""
+        stats = mock_consumer.get_stats()
+
+        assert "running" in stats
+        assert "processed_count" in stats
+        assert "error_count" in stats
+        assert "subscriptions" in stats
+        assert "subscription_details" in stats
+
+        assert stats["running"] is False
+        assert stats["processed_count"] == 0
+        assert stats["error_count"] == 0
+
+    async def test_consumer_topics_configuration(self, mock_consumer):
+        """Test that consumer configures topics correctly"""
+        # The consumer should have topics configured from SubscriptionConfig
+        assert isinstance(mock_consumer.topics, dict)
+
+        # Check that topics have the expected structure
+        for topic_name, config in mock_consumer.topics.items():
+            assert "subscription_name" in config
+            assert isinstance(config["subscription_name"], str)
+
+    @patch("services.vespa_loader.pubsub_consumer.ingest_document_service")
+    async def test_process_message_immediate_handles_success(
+        self, mock_ingest_service, mock_consumer
     ):
-        """Test that processing continues even if individual emails fail"""
-        # Parse the raw data into a typed EmailBackfillEvent first
-        from services.common.events.email_events import EmailBackfillEvent
+        """Test that _process_message_immediate handles successful processing"""
+        from services.vespa_loader.vespa_types import VespaDocumentType
 
-        typed_event = EmailBackfillEvent(**sample_email_backfill_event)
+        # Create a mock Vespa document
+        mock_document = MagicMock(spec=VespaDocumentType)
+        mock_document.id = "test-doc-123"
+        mock_document.type = "email"
+        mock_document.user_id = "test-user-123"
 
-        # Make the first email fail
-        mock_consumer._ingest_document.side_effect = [
-            Exception("First email failed"),  # First call fails
-            {"status": "success"},  # Second call succeeds
-        ]
+        # Create a mock message
+        mock_message = MagicMock()
+        mock_message.message_id = "test-message-123"
 
-        # Should not raise an exception, should continue processing
-        await mock_consumer._process_email_message(typed_event)
+        # Mock the ingest_document_service to succeed
+        mock_ingest_service.return_value = {"status": "success"}
 
-        # Verify that _ingest_document was called twice despite the first failure
-        assert mock_consumer._ingest_document.call_count == 2
+        # Process the message
+        await mock_consumer._process_message_immediate(mock_document, mock_message)
+
+        # Verify that the message was acknowledged
+        mock_message.ack.assert_called_once()
+        assert mock_consumer.processed_count == 1
+        assert mock_consumer.error_count == 0
+
+    @patch("services.vespa_loader.pubsub_consumer.ingest_document_service")
+    async def test_process_message_immediate_handles_failure(
+        self, mock_ingest_service, mock_consumer
+    ):
+        """Test that _process_message_immediate handles processing failures"""
+        from services.vespa_loader.vespa_types import VespaDocumentType
+
+        # Create a mock Vespa document
+        mock_document = MagicMock(spec=VespaDocumentType)
+        mock_document.id = "test-doc-123"
+        mock_document.type = "email"
+        mock_document.user_id = "test-user-123"
+
+        # Create a mock message
+        mock_message = MagicMock()
+        mock_message.message_id = "test-message-123"
+
+        # Mock the ingest_document_service to fail
+        mock_ingest_service.side_effect = Exception("Processing failed")
+
+        # Process the message
+        await mock_consumer._process_message_immediate(mock_document, mock_message)
+
+        # Verify that the message was not acknowledged
+        mock_message.ack.assert_not_called()
+        mock_message.nack.assert_called_once()
+        assert mock_consumer.processed_count == 0
+        assert mock_consumer.error_count == 1

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
-from services.common.events import EmailBackfillEvent, EmailData, EventMetadata
+from services.common.events import EmailData, EmailEvent, EventMetadata
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
 from services.office.core.auth import verify_backfill_api_key
@@ -298,13 +298,13 @@ async def cancel_internal_backfill_job(
             BackfillStatusEnum.COMPLETED,
             BackfillStatusEnum.FAILED,
             BackfillStatusEnum.CANCELLED,
-        ]:
+        ]:  # Use enum values
             raise HTTPException(
                 status_code=400, detail=f"Cannot cancel job with status: {job.status}"
             )
 
         # Cancel the job
-        job.status = BackfillStatusEnum.CANCELLED
+        job.status = BackfillStatusEnum.CANCELLED  # Use enum value
         job.end_time = datetime.now(timezone.utc)
 
         logger.info(f"Cancelled internal backfill job {job_id}")
@@ -375,10 +375,9 @@ async def run_backfill_job(
             resume_from=resume_from,
             max_emails=request.max_emails,
         ):
-            # Convert email batch to EmailData objects and publish as batch
+            # Convert email batch to EmailData objects and publish as individual EmailEvents
             try:
-                # Convert raw email data to EmailData objects
-                email_data_objects = []
+                # Convert raw email data to EmailData objects and publish individually
                 for email in email_batch:
                     try:
                         email_data = EmailData(
@@ -407,64 +406,71 @@ async def run_backfill_job(
                             size_bytes=email.get("sizeBytes"),
                             mime_type=email.get("mimeType"),
                         )
-                        email_data_objects.append(email_data)
+
+                        # Create and publish EmailEvent
+                        email_event = EmailEvent(
+                            user_id=internal_user_id,
+                            email=email_data,
+                            operation="create",  # Backfill creates new emails
+                            batch_id=job_id,  # Use job_id as batch_id for correlation
+                            last_updated=datetime.now(timezone.utc),
+                            sync_timestamp=datetime.now(timezone.utc),
+                            provider=request.provider,
+                            sync_type="backfill",
+                            metadata=EventMetadata(  # type: ignore[call-arg]
+                                source_service="office-service",
+                                source_version="1.0.0",
+                                user_id=internal_user_id,
+                                correlation_id=job_id,
+                            ),
+                        )
+
+                        # Add correlation ID for tracking
+                        email_event.add_correlation_id(job_id)
+
+                        # Publish the individual email event
+                        message_id = pubsub_client.publish_email_event(email_event)
+                        processed_count += 1
+                        job.processed_emails = processed_count
+
+                        # Update progress
+                        if request.max_emails:
+                            job.progress = min(
+                                100.0, (processed_count / request.max_emails) * 100
+                            )
+                        else:
+                            job.progress = min(
+                                100.0, (processed_count / total_emails) * 100
+                            )
+
+                        logger.debug(
+                            f"Published EmailEvent to PubSub",
+                            extra={
+                                "job_id": job_id,
+                                "email_id": email_data.id,
+                                "message_id": message_id,
+                                "processed_count": processed_count,
+                                "progress": job.progress,
+                            },
+                        )
+
                     except Exception as e:
                         logger.error(
-                            f"Failed to convert email data: {e}",
+                            f"Failed to convert or publish email data: {e}",
                             extra={"email_id": email.get("id")},
                         )
                         job.failed_emails += 1
                         continue
 
-                if email_data_objects:
-                    # Create and publish EmailBackfillEvent
-                    backfill_event = EmailBackfillEvent(
-                        user_id=internal_user_id,
-                        provider=request.provider,
-                        emails=email_data_objects,
-                        batch_size=len(email_data_objects),
-                        sync_type="backfill",
-                        start_date=request.start_date,
-                        end_date=request.end_date,
-                        folder=request.folders[0] if request.folders else None,
-                        total_emails=total_emails,
-                        processed_count=processed_count,
-                        metadata=EventMetadata(  # type: ignore[call-arg]
-                            source_service="office-service",
-                            source_version="1.0.0",
-                            user_id=internal_user_id,
-                            correlation_id=job_id,
-                        ),
-                    )
-
-                    # Add correlation ID for tracking
-                    backfill_event.add_correlation_id(job_id)
-
-                    # Publish the batch event
-                    message_id = pubsub_client.publish_email_backfill(backfill_event)
-                    processed_count += len(email_data_objects)
-                    job.processed_emails = processed_count
-
-                    # Update progress
-                    if request.max_emails:
-                        job.progress = min(
-                            100.0, (processed_count / request.max_emails) * 100
-                        )
-                    else:
-                        job.progress = min(
-                            100.0, (processed_count / total_emails) * 100
-                        )
-
-                    logger.info(
-                        f"Published email batch to PubSub",
-                        extra={
-                            "job_id": job_id,
-                            "batch_size": len(email_data_objects),
-                            "message_id": message_id,
-                            "processed_count": processed_count,
-                            "progress": job.progress,
-                        },
-                    )
+                logger.info(
+                    f"Published email batch to PubSub",
+                    extra={
+                        "job_id": job_id,
+                        "batch_size": len(email_batch),
+                        "processed_count": processed_count,
+                        "progress": job.progress,
+                    },
+                )
 
             except Exception as e:
                 logger.error(

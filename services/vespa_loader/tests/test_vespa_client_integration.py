@@ -493,6 +493,87 @@ class TestVespaClientIntegration(BaseSelectiveHTTPIntegrationTest):
                 doc_id.count(":") == 4
             )  # Correct format: id:briefly:briefly_document:g=user:doc
 
+    def test_prepare_email_document_for_indexing(self):
+        """Test that email documents are properly prepared for Vespa indexing."""
+        # Create a Vespa client instance
+        client = VespaClient("http://localhost:8080")
+
+        # Create a sample email document (after field mapping)
+        email_document = {
+            "doc_id": "email_test_123",
+            "user_id": "user_789",
+            "source_type": "email",
+            "provider": "gmail",
+            "title": "Test Email Subject",
+            "content": "This is a test email body with some content.",
+            "search_text": "This is a test email body with some content.",
+            "sender": "sender@example.com",
+            "recipients": ["recipient@example.com"],
+            "thread_id": "thread_456",
+            "folder": "INBOX",
+            "created_at": "2025-08-24T10:00:00Z",
+            "updated_at": "2025-08-24T10:00:00Z",
+            "quoted_content": "",
+            "thread_summary": {},
+            "metadata": {"operation": "create"},
+            # This field should be excluded during preparation
+            "id": "should_be_excluded",
+        }
+
+        # Prepare document for indexing
+        prepared_doc = client._prepare_document_for_indexing(email_document)
+
+        # Verify that the document has the correct structure
+        assert "fields" in prepared_doc, "Prepared document should have 'fields' key"
+        fields = prepared_doc["fields"]
+
+        # Verify that required fields are present
+        assert "doc_id" in fields, "Should have doc_id field"
+        assert fields["doc_id"] == "email_test_123", "doc_id should be preserved"
+
+        assert "user_id" in fields, "Should have user_id field"
+        assert fields["user_id"] == "user_789", "user_id should be preserved"
+
+        assert "source_type" in fields, "Should have source_type field"
+        assert fields["source_type"] == "email", "source_type should be preserved"
+
+        assert "title" in fields, "Should have title field"
+        assert fields["title"] == "Test Email Subject", "title should be preserved"
+
+        assert "content" in fields, "Should have content field"
+        assert (
+            fields["content"] == "This is a test email body with some content."
+        ), "content should be preserved"
+
+        # Verify that the 'id' field is NOT present (should be excluded)
+        assert "id" not in fields, "id field should be excluded from Vespa document"
+
+        # Verify that other fields are preserved
+        assert "provider" in fields, "Should have provider field"
+        assert "sender" in fields, "Should have sender field"
+        assert "recipients" in fields, "Should have recipients field"
+        assert "thread_id" in fields, "Should have thread_id field"
+        assert "folder" in fields, "Should have folder field"
+        assert "created_at" in fields, "Should have created_at field"
+        assert "updated_at" in fields, "Should have updated_at field"
+        assert "quoted_content" in fields, "Should have quoted_content field"
+        assert "thread_summary" in fields, "Should have thread_summary field"
+        assert "metadata" in fields, "Should have metadata field"
+
+        # Verify that timestamps are converted to Unix timestamps
+        assert isinstance(
+            fields["created_at"], int
+        ), "created_at should be converted to Unix timestamp"
+        assert isinstance(
+            fields["updated_at"], int
+        ), "updated_at should be converted to Unix timestamp"
+
+        # Verify that metadata is properly cleaned
+        assert isinstance(fields["metadata"], dict), "metadata should be a dictionary"
+        assert (
+            fields["metadata"]["operation"] == "create"
+        ), "metadata should preserve operation"
+
 
 if __name__ == "__main__":
     # Run tests

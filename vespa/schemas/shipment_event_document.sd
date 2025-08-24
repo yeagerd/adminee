@@ -1,0 +1,117 @@
+schema shipment_event_document {
+    document shipment_event_document inherits base_document {
+        # Shipment event specific fields
+        field shipment_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field tracking_number type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field carrier type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field event_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field event_timestamp type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field location type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field status type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field description type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field estimated_delivery type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field actual_delivery type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field recipient_name type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field recipient_address type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field package_details type map<string, string> {
+            indexing: summary
+        }
+        
+        field delivery_attempts type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field signature_required type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field signature_received type string {
+            indexing: summary
+        }
+        
+        field metadata type map<string, string> {
+            indexing: summary
+        }
+        
+        # Override content_type for shipment event documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "shipment_event"
+        }
+    }
+    
+    fieldset shipment_event_search {
+        fields: title, content, search_text, tracking_number, carrier, location, description, recipient_name
+    }
+    
+    rank-profile shipment_event_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, tracking_number, description)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, tracking_number, description) + 0.65 * closeness(field, embedding) + 0.1 * freshness(event_timestamp)
+        }
+        match-features: nativeRank(title, content, search_text, tracking_number, description) closeness(field, embedding) freshness(event_timestamp)
+    }
+    
+    rank-profile shipment_tracking inherits hybrid {
+        first-phase {
+            expression: nativeRank(tracking_number, carrier, location, description)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(tracking_number, carrier, location, description) + 0.6 * closeness(field, embedding) + 0.1 * freshness(event_timestamp)
+        }
+        match-features: nativeRank(tracking_number, carrier, location, description) closeness(field, embedding) freshness(event_timestamp)
+    }
+}

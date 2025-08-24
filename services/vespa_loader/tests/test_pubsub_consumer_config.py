@@ -34,7 +34,6 @@ class TestPubSubConsumerConfig:
 
             # Verify basic attributes are set
             assert consumer.settings == settings
-            assert consumer.email_processor is not None
             assert (
-                len(consumer.topics) == 3
-            )  # email-backfill, calendar-updates, contact-updates
+                len(consumer.topics) == 12
+            )  # All vespa_loader topics from subscription config

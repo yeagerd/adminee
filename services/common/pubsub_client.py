@@ -11,13 +11,10 @@ from google.cloud import pubsub_v1  # type: ignore[attr-defined]
 
 from services.common.events import (
     BaseEvent,
-    CalendarBatchEvent,
-    CalendarUpdateEvent,
-    ContactBatchEvent,
-    ContactUpdateEvent,
-    EmailBackfillEvent,
-    EmailBatchEvent,
-    EmailUpdateEvent,
+    CalendarEvent,
+    DocumentEvent,
+    EmailEvent,
+    TodoEvent,
 )
 from services.common.logging_config import get_logger
 from services.common.telemetry import get_tracer
@@ -154,110 +151,62 @@ class PubSubClient:
                 span.record_exception(e)
                 raise
 
-    def publish_email_backfill(
-        self, event: EmailBackfillEvent, topic_name: str = "email-backfill"
-    ) -> str:
-        """Publish email backfill event with type safety."""
+    # New event publishing methods for event-driven architecture
+    def publish_email_event(self, event: EmailEvent, topic_name: str = "emails") -> str:
+        """Publish email event with type safety."""
         logger.info(
-            "Publishing email backfill event",
-            extra={
-                "user_id": event.user_id,
-                "provider": event.provider,
-                "batch_size": event.batch_size,
-                "sync_type": event.sync_type,
-                "topic_name": topic_name,
-            },
-        )
-        return self.publish_message(topic_name, event)
-
-    def publish_email_update(
-        self, event: EmailUpdateEvent, topic_name: str = "email-updates"
-    ) -> str:
-        """Publish email update event with type safety."""
-        logger.info(
-            "Publishing email update event",
+            "Publishing email event",
             extra={
                 "user_id": event.user_id,
                 "email_id": event.email.id,
-                "update_type": event.update_type,
-                "topic_name": topic_name,
-            },
-        )
-        return self.publish_message(topic_name, event)
-
-    def publish_email_batch(
-        self, event: EmailBatchEvent, topic_name: str = "email-batch"
-    ) -> str:
-        """Publish email batch event with type safety."""
-        logger.info(
-            "Publishing email batch event",
-            extra={
-                "user_id": event.user_id,
-                "provider": event.provider,
-                "batch_size": len(event.emails),
                 "operation": event.operation,
+                "batch_id": event.batch_id,
                 "topic_name": topic_name,
             },
         )
         return self.publish_message(topic_name, event)
 
-    def publish_calendar_update(
-        self, event: CalendarUpdateEvent, topic_name: str = "calendar-updates"
+    def publish_calendar_event(
+        self, event: CalendarEvent, topic_name: str = "calendars"
     ) -> str:
-        """Publish calendar update event with type safety."""
+        """Publish calendar event with type safety."""
         logger.info(
-            "Publishing calendar update event",
+            "Publishing calendar event",
             extra={
                 "user_id": event.user_id,
                 "event_id": event.event.id,
-                "update_type": event.update_type,
-                "topic_name": topic_name,
-            },
-        )
-        return self.publish_message(topic_name, event)
-
-    def publish_calendar_batch(
-        self, event: CalendarBatchEvent, topic_name: str = "calendar-batch"
-    ) -> str:
-        """Publish calendar batch event with type safety."""
-        logger.info(
-            "Publishing calendar batch event",
-            extra={
-                "user_id": event.user_id,
-                "provider": event.provider,
-                "batch_size": len(event.events),
                 "operation": event.operation,
+                "batch_id": event.batch_id,
                 "topic_name": topic_name,
             },
         )
         return self.publish_message(topic_name, event)
 
-    def publish_contact_update(
-        self, event: ContactUpdateEvent, topic_name: str = "contact-updates"
+    def publish_document_event(
+        self, event: DocumentEvent, topic_name: str = "word_documents"
     ) -> str:
-        """Publish contact update event with type safety."""
+        """Publish document event with type safety."""
         logger.info(
-            "Publishing contact update event",
+            "Publishing document event",
             extra={
                 "user_id": event.user_id,
-                "contact_id": event.contact.id,
-                "update_type": event.update_type,
-                "topic_name": topic_name,
-            },
-        )
-        return self.publish_message(topic_name, event)
-
-    def publish_contact_batch(
-        self, event: ContactBatchEvent, topic_name: str = "contact-batch"
-    ) -> str:
-        """Publish contact batch event with type safety."""
-        logger.info(
-            "Publishing contact batch event",
-            extra={
-                "user_id": event.user_id,
-                "provider": event.provider,
-                "batch_size": len(event.contacts),
+                "document_id": event.document.id,
                 "operation": event.operation,
+                "content_type": event.content_type,
+                "topic_name": topic_name,
+            },
+        )
+        return self.publish_message(topic_name, event)
+
+    def publish_todo_event(self, event: TodoEvent, topic_name: str = "todos") -> str:
+        """Publish todo event with type safety."""
+        logger.info(
+            "Publishing todo event",
+            extra={
+                "user_id": event.user_id,
+                "todo_id": event.todo.id,
+                "operation": event.operation,
+                "batch_id": event.batch_id,
                 "topic_name": topic_name,
             },
         )
@@ -265,7 +214,7 @@ class PubSubClient:
 
     # Legacy methods for backward compatibility
     def publish_email_data(
-        self, email_data: Dict[str, Any], topic_name: str = "email-backfill"
+        self, email_data: Dict[str, Any], topic_name: str = "emails"
     ) -> str:
         """Publish email data to the specified topic (legacy method)."""
         logger.warning(
@@ -275,7 +224,7 @@ class PubSubClient:
         return self.publish_message(topic_name, email_data)
 
     def publish_calendar_data(
-        self, calendar_data: Dict[str, Any], topic_name: str = "calendar-updates"
+        self, calendar_data: Dict[str, Any], topic_name: str = "calendars"
     ) -> str:
         """Publish calendar data to the specified topic (legacy method)."""
         logger.warning(
@@ -284,15 +233,15 @@ class PubSubClient:
         )
         return self.publish_message(topic_name, calendar_data)
 
-    def publish_contact_data(
-        self, contact_data: Dict[str, Any], topic_name: str = "contact-updates"
+    def publish_document_data(
+        self, document_data: Dict[str, Any], topic_name: str = "word_documents"
     ) -> str:
-        """Publish contact data to the specified topic (legacy method)."""
+        """Publish document data to the specified topic (legacy method)."""
         logger.warning(
-            "Using legacy publish_contact_data method. Consider using typed events.",
+            "Using legacy publish_document_data method. Consider using typed events.",
             extra={"topic_name": topic_name},
         )
-        return self.publish_message(topic_name, contact_data)
+        return self.publish_message(topic_name, document_data)
 
     def close(self) -> None:
         """Close the publisher client."""

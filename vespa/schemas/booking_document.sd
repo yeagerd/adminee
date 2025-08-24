@@ -1,0 +1,129 @@
+schema booking_document {
+    document booking_document inherits base_document {
+        # Booking specific fields
+        field booking_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field resource_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field resource_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field resource_name type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field start_time type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field end_time type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field duration_minutes type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field status type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field booking_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field attendees type array<string> {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field organizer type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field purpose type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field notes type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field recurring_pattern type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field recurring_end_date type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field cancellation_reason type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field metadata type map<string, string> {
+            indexing: summary
+        }
+        
+        # Override content_type for booking documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "booking"
+        }
+    }
+    
+    fieldset booking_search {
+        fields: title, content, search_text, resource_name, purpose, notes, organizer, attendees
+    }
+    
+    rank-profile booking_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, resource_name, purpose)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, resource_name, purpose) + 0.65 * closeness(field, embedding) + 0.1 * freshness(start_time)
+        }
+        match-features: nativeRank(title, content, search_text, resource_name, purpose) closeness(field, embedding) freshness(start_time)
+    }
+    
+    rank-profile booking_upcoming inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, resource_name, purpose)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(title, content, search_text, resource_name, purpose) + 0.6 * closeness(field, embedding) + 0.2 * freshness(start_time)
+        }
+        match-features: nativeRank(title, content, search_text, resource_name, purpose) closeness(field, embedding) freshness(start_time)
+    }
+    
+    rank-profile booking_resource inherits hybrid {
+        first-phase {
+            expression: nativeRank(resource_name, resource_type, purpose, notes)
+        }
+        second-phase {
+            expression: 0.3 * nativeRank(resource_name, resource_type, purpose, notes) + 0.6 * closeness(field, embedding) + 0.1 * freshness(start_time)
+        }
+        match-features: nativeRank(resource_name, resource_type, purpose, notes) closeness(field, embedding) freshness(start_time)
+    }
+}

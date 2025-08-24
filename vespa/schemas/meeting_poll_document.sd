@@ -1,0 +1,108 @@
+schema meeting_poll_document {
+    document meeting_poll_document inherits base_document {
+        # Meeting poll specific fields
+        field poll_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field meeting_id type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field poll_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field question type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field options type array<string> {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        
+        field responses type array<map<string, string>> {
+            indexing: summary
+        }
+        
+        field total_responses type int {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field is_active type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field is_anonymous type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field allow_multiple_votes type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field created_by type string {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field created_at type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field expires_at type long {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field results_visible type bool {
+            indexing: attribute | summary
+            attribute: fast-search
+        }
+        
+        field metadata type map<string, string> {
+            indexing: summary
+        }
+        
+        # Override content_type for meeting poll documents
+        field content_type type string {
+            indexing: attribute | summary
+            attribute: fast-search
+            default: "meeting_poll"
+        }
+    }
+    
+    fieldset meeting_poll_search {
+        fields: title, content, search_text, question, options, created_by
+    }
+    
+    rank-profile meeting_poll_hybrid inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, question)
+        }
+        second-phase {
+            expression: 0.25 * nativeRank(title, content, search_text, question) + 0.65 * closeness(field, embedding) + 0.1 * freshness(created_at)
+        }
+        match-features: nativeRank(title, content, search_text, question) closeness(field, embedding) freshness(created_at)
+    }
+    
+    rank-profile meeting_poll_active inherits hybrid {
+        first-phase {
+            expression: nativeRank(title, content, search_text, question)
+        }
+        second-phase {
+            expression: 0.2 * nativeRank(title, content, search_text, question) + 0.5 * closeness(field, embedding) + 0.3 * is_active_score
+        }
+        match-features: nativeRank(title, content, search_text, question) closeness(field, embedding) is_active_score
+    }
+}
