@@ -177,6 +177,10 @@ def cleanup_duplicate_types(file_path):
         with open(file_path, 'r') as f:
             content = f.read()
         
+        # Handle empty files
+        if not content.strip():
+            return True
+        
         # Split content into lines for processing
         lines = content.split('\n')
         result_lines = []
@@ -194,33 +198,75 @@ def cleanup_duplicate_types(file_path):
                 
                 if type_name in seen_types:
                     # This is a duplicate - skip until we find the end
-                    i += 1
+                    print(f'Found duplicate type: {type_name} in {file_path}', file=sys.stderr)
                     
-                    # Skip lines until we find the end of this type definition
+                    # Count braces starting from the current line
                     brace_count = 0
                     if '{' in line:
                         brace_count += line.count('{')
                     
+                    # If no opening brace on this line, check the next line
+                    if brace_count == 0:
+                        i += 1
+                        if i < len(lines):
+                            next_line = lines[i]
+                            if '{' in next_line:
+                                brace_count += next_line.count('{')
+                    
+                    # Skip lines until we find the end of this type definition
+                    # Handle both multi-line and single-line type definitions
                     while i < len(lines) and brace_count > 0:
                         current_line = lines[i]
                         brace_count += current_line.count('{')
                         brace_count -= current_line.count('}')
                         i += 1
+                        
+                        # Safety check to prevent infinite loops
+                        if i > len(lines) + 1000:  # Arbitrary limit to prevent infinite loops
+                            print(f'Warning: Possible infinite loop detected for type {type_name} in {file_path}', file=sys.stderr)
+                            break
                     
-                    # Also check for semicolon (single-line types)
+                    # If we still have unclosed braces, we've reached the end of the file
+                    # This indicates a malformed type definition
+                    if brace_count > 0:
+                        print(f'Warning: Unclosed braces in type definition for {type_name} in {file_path}', file=sys.stderr)
+                    
+                    # Check if we ended with a semicolon (single-line types)
                     if i < len(lines) and ';' in lines[i-1]:
                         continue
+                    
+                    # If we didn't find a semicolon, we might have reached the end of the file
+                    # or encountered a malformed type definition. Skip to the next line.
+                    if i >= len(lines):
+                        break
                     
                     continue
                 else:
                     # First occurrence - keep it
                     seen_types.add(type_name)
             
-            result_lines.append(line)
+            # Only add the line if we haven't already processed it as part of a duplicate
+            # and if we're not currently in the middle of processing a duplicate
+            if i < len(lines):
+                result_lines.append(line)
             i += 1
         
         # Clean up empty lines and write the cleaned content back
         cleaned_lines = [line for line in result_lines if line.strip() or line == '']
+        
+        # Ensure we don't write empty files
+        if not cleaned_lines:
+            print(f'Warning: File {file_path} would be empty after cleanup, skipping', file=sys.stderr)
+            return True
+        
+        # Validate that the cleaned content is not significantly shorter than expected
+        if len(cleaned_lines) < len(lines) * 0.5:  # If we removed more than 50% of lines, something might be wrong
+            print(f'Warning: File {file_path} had significant content removed ({len(cleaned_lines)}/{len(lines)} lines), reviewing...', file=sys.stderr)
+            # Revert to original content if too much was removed
+            with open(file_path, 'w') as f:
+                f.write(content)
+            return False
+        
         with open(file_path, 'w') as f:
             f.write('\n'.join(cleaned_lines))
             
@@ -246,10 +292,14 @@ def cleanup_service_directory(service_dir):
     print(f'Processing {len(ts_files)} TypeScript files in {service_dir}')
     
     success = True
+    processed_count = 0
     for ts_file in ts_files:
-        if not cleanup_duplicate_types(str(ts_file)):
+        if cleanup_duplicate_types(str(ts_file)):
+            processed_count += 1
+        else:
             success = False
     
+    print(f'Successfully processed {processed_count}/{len(ts_files)} files')
     return success
 
 # Process the service directory
