@@ -61,7 +61,7 @@ class VespaDocumentType:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "metadata": self.metadata or {},
-            "content_chunks": self.content_chunks or [],
+            # Note: content_chunks is not included as it's not supported by the Vespa schema
             "quoted_content": self.quoted_content or "",
             "thread_summary": self.thread_summary or {},
             "search_text": self.search_text or "",
