@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Optional
 from google.api_core import exceptions as google_exceptions
 from google.cloud import pubsub_v1
 
-
 from services.common.events.base_events import EventMetadata
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
 from services.common.events.contact_events import ContactData, ContactEvent
