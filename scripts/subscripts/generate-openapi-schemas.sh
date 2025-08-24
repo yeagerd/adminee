@@ -31,8 +31,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Project root directory
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Project root directory - use git to find the repo root
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$script_dir/.." && pwd)")"
 
 # Service configuration
 # Services to exclude from OpenAPI generation (no meaningful schemas or not FastAPI apps)
@@ -43,7 +44,7 @@ discover_services() {
     local services=()
     local paths=()
     
-    for service_dir in services/*/; do
+    for service_dir in "$PROJECT_ROOT"/services/*/; do
         if [[ -d "$service_dir" ]]; then
             local service_name=$(basename "$service_dir")
             
