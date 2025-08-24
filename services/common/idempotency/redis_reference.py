@@ -1,5 +1,7 @@
 import datetime
+
 import redis
+
 
 class RedisReferencePattern:
     def __init__(self, redis_client: redis.Redis):

@@ -8,9 +8,9 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     Field,
+    ValidationInfo,
     field_validator,
     model_validator,
-    ValidationInfo,
 )
 
 
@@ -68,7 +68,9 @@ class BookingSettings(BaseModel):
     )
 
     @field_validator("max_advance_days")
-    def validate_advance_window(cls: "BookingSettings", v: int, values: "ValidationInfo") -> int:
+    def validate_advance_window(
+        cls: "BookingSettings", v: int, values: "ValidationInfo"
+    ) -> int:
         if "advance_days" in values.data and v < values.data["advance_days"]:
             raise ValueError(
                 "max_advance_days must be greater than or equal to advance_days"

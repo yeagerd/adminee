@@ -26,12 +26,22 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
         self.mock_aiohttp_instance = self.mock_aiohttp_class.return_value
 
         # Configure the mock session methods to be async and return a context manager
-        self.mock_aiohttp_instance.post.return_value.__aenter__.return_value.status = 200
-        self.mock_aiohttp_instance.post.return_value.__aenter__.return_value.json = AsyncMock(return_value={"id": "test_id", "status": "success"})
+        self.mock_aiohttp_instance.post.return_value.__aenter__.return_value.status = (
+            200
+        )
+        self.mock_aiohttp_instance.post.return_value.__aenter__.return_value.json = (
+            AsyncMock(return_value={"id": "test_id", "status": "success"})
+        )
         self.mock_aiohttp_instance.get.return_value.__aenter__.return_value.status = 200
-        self.mock_aiohttp_instance.get.return_value.__aenter__.return_value.json = AsyncMock(return_value={"id": "test_id", "fields": {}})
-        self.mock_aiohttp_instance.delete.return_value.__aenter__.return_value.status = 200
-        self.mock_aiohttp_instance.delete.return_value.__aenter__.return_value.json = AsyncMock(return_value={"id": "test_id", "status": "success"})
+        self.mock_aiohttp_instance.get.return_value.__aenter__.return_value.json = (
+            AsyncMock(return_value={"id": "test_id", "fields": {}})
+        )
+        self.mock_aiohttp_instance.delete.return_value.__aenter__.return_value.status = (
+            200
+        )
+        self.mock_aiohttp_instance.delete.return_value.__aenter__.return_value.json = (
+            AsyncMock(return_value={"id": "test_id", "status": "success"})
+        )
 
         # Also patch the VespaClient.start method to prevent real session creation
         self.vespa_start_patcher = patch("vespa_loader.vespa_client.VespaClient.start")

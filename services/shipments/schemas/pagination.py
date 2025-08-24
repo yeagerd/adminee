@@ -8,7 +8,7 @@ common pagination schemas.
 from typing import List, Optional
 
 from common.pagination.schemas import CursorPaginationRequest, CursorPaginationResponse
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PackageCursorPaginationRequest(CursorPaginationRequest):

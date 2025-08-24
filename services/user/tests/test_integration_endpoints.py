@@ -5,10 +5,10 @@ Tests the new /me/integrations endpoints that are used by the frontend.
 The old user-specific APIs have been deprecated and removed.
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import status
 
 from services.user.models.integration import (
