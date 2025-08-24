@@ -233,8 +233,9 @@ class PubSubClient:
         """Close the publisher client and release resources."""
         if self.publisher:
             try:
-                # Close the underlying transport channel to release network resources
-                self.publisher.transport.channel.close()
+                # Use the proper public API to close the publisher
+                # This avoids accessing internal implementation details
+                self.publisher.close()
                 logger.info("PubSub publisher client closed")
             except Exception as e:
                 logger.error(f"Error closing PubSub publisher client: {e}")
