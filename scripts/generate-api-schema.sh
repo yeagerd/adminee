@@ -143,35 +143,31 @@ clean_generated() {
 generate_types() {
     print_status "info" "Generating TypeScript types from OpenAPI schemas..."
     
-    # Store current directory and ensure we return to it even on failure
-    local original_dir="$(pwd)"
+    # Use a subshell to isolate directory changes and preserve global error handling
+    (
+        if ! cd frontend; then
+            print_status "error" "Failed to change to frontend directory"
+            exit 1
+        fi
+        
+        if [[ "$VERBOSE" == "true" ]]; then
+            if ! ../scripts/subscripts/update-types.sh; then
+                print_status "error" "Type generation failed"
+                exit 1
+            fi
+        else
+            # Always show errors, even in quiet mode
+            if ! ../scripts/subscripts/update-types.sh > /dev/null; then
+                print_status "error" "Type generation failed"
+                exit 1
+            fi
+        fi
+    )
     
-    if ! cd frontend; then
-        print_status "error" "Failed to change to frontend directory"
+    # Check if the subshell succeeded
+    if [[ $? -ne 0 ]]; then
         return 1
     fi
-    
-    # Use a trap to ensure we return to the original directory on exit
-    trap 'cd "$original_dir"' EXIT
-    
-    if [[ "$VERBOSE" == "true" ]]; then
-        if ! ../scripts/subscripts/update-types.sh; then
-            print_status "error" "Type generation failed"
-            return 1
-        fi
-    else
-        # Always show errors, even in quiet mode
-        if ! ../scripts/subscripts/update-types.sh > /dev/null; then
-            print_status "error" "Type generation failed"
-            return 1
-        fi
-    fi
-    
-    # Remove the trap since we're about to exit normally
-    trap - EXIT
-    
-    # Return to original directory
-    cd "$original_dir"
     
     print_status "success" "TypeScript types generated successfully"
 }
