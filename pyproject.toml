@@ -38,6 +38,7 @@ dev = [
 # UV workspace configuration
 [tool.uv.workspace]
 members = [
+    "services/api/v1",
     "services/common",
     "services/chat",
     "services/user",
