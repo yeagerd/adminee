@@ -17,7 +17,7 @@ from services.office.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.office.schemas import Provider
+from services.api.v1.office.models import Provider
 
 
 class TestHTMLContentDetection:

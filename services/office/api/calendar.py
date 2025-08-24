@@ -25,8 +25,8 @@ from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import normalize_google_calendar_event
-from services.office.models import Provider
-from services.office.schemas import (
+from services.api.v1.office.models import Provider
+from services.api.v1.office.calendar import (
     ApiResponse,
     AvailabilityApiResponse,
     AvailabilityResponse,

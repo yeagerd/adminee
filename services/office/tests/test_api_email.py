@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from services.office.app.main import app
 from services.office.models import Provider
-from services.office.schemas import EmailAddress, EmailMessage, SendEmailRequest
+from services.api.v1.office.email import EmailAddress, EmailMessage, SendEmailRequest
 
 
 @pytest.fixture(autouse=True)
@@ -1176,7 +1176,8 @@ class TestEmailFoldersEndpoint:
     @pytest.fixture
     def mock_email_folder(self):
         """Create a mock EmailFolder for testing."""
-        from services.office.schemas import EmailFolder, Provider
+        from services.api.v1.office.email import EmailFolder
+        from services.api.v1.office.models import Provider
 
         return EmailFolder(
             label="inbox",

@@ -12,15 +12,21 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from services.common.logging_config import get_logger
-from services.office.models import Provider
-from services.office.schemas import (
-    CalendarEvent,
-    Contact,
-    ContactPhone,
-    DriveFile,
+from services.api.v1.office.models import Provider
+from services.api.v1.office.email import (
     EmailAddress,
     EmailMessage,
     EmailThread,
+)
+from services.api.v1.office.calendar import (
+    CalendarEvent,
+)
+from services.api.v1.office.contacts import (
+    Contact,
+    ContactPhone,
+)
+from services.api.v1.office.files import (
+    DriveFile,
 )
 
 logger = get_logger(__name__)

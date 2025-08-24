@@ -17,8 +17,8 @@ from services.office.core.normalizer import (
     normalize_google_contact,
     normalize_microsoft_contact,
 )
-from services.office.models import Provider
-from services.office.schemas import (
+from services.api.v1.office.models import Provider
+from services.api.v1.office.contacts import (
     Contact,
     ContactCreateResponse,
     ContactDeleteResponse,

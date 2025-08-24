@@ -20,7 +20,7 @@ from services.office.models.backfill import (
     BackfillStatus,
     BackfillStatusEnum,
 )
-from services.office.schemas import EmailMessage
+from services.api.v1.office.email import EmailMessage
 
 logger = get_logger(__name__)
 
@@ -389,7 +389,7 @@ async def run_backfill_job(
                             logger.debug(
                                 f"Reconstructing EmailMessage from dict: {email.get('id', 'unknown')}"
                             )
-                            from services.office.schemas import EmailMessage
+                            from services.api.v1.office.email import EmailMessage
 
                             try:
                                 email = EmailMessage(**email)

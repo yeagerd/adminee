@@ -10,7 +10,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
-from services.office.schemas import EmailMessage, EmailMessageList
+from services.api.v1.office.email import EmailMessage, EmailMessageList
 
 logger = get_logger(__name__)
 

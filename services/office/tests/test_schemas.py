@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from services.office.models import Provider
-from services.office.schemas import (
+from services.api.v1.office.email import (
     ApiError,
     ApiResponse,
     CalendarEvent,

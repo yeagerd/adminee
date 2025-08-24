@@ -23,7 +23,8 @@ from services.office.core.normalizer import (
     normalize_microsoft_conversation,
     normalize_thread_id,
 )
-from services.office.schemas import EmailAddress, EmailMessage, EmailThread, Provider
+from services.api.v1.office.email import EmailAddress, EmailMessage, EmailThread
+from services.api.v1.office.models import Provider
 
 
 class TestThreadIDParsing:

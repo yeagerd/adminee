@@ -24,8 +24,8 @@ from services.office.core.normalizer import (
     normalize_google_drive_file,
     normalize_microsoft_drive_file,
 )
-from services.office.models import Provider
-from services.office.schemas import (
+from services.api.v1.office.models import Provider
+from services.api.v1.office.files import (
     ApiResponse,
     FileDetailResponse,
     FileListResponse,

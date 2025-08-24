@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from services.office.app.main import app
 from services.office.models import Provider
-from services.office.schemas import CalendarEvent
+from services.api.v1.office.calendar import CalendarEvent
 
 
 @pytest.fixture(autouse=True)

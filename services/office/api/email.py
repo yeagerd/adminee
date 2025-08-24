@@ -33,8 +33,8 @@ from services.office.core.normalizer import (
     normalize_microsoft_email,
 )
 from services.office.core.settings import get_settings
-from services.office.models import Provider
-from services.office.schemas import (
+from services.api.v1.office.models import Provider
+from services.api.v1.office.email import (
     EmailDraftCreateRequest,
     EmailDraftResponse,
     EmailDraftResult,
