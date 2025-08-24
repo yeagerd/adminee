@@ -383,14 +383,23 @@ class PubSubPublisher:
             logger.error(f"Failed to publish batch calendar events: {e}")
             raise
 
-    async def publish_batch_contacts(self, contacts: list[ContactData]) -> list[bool]:
+    async def publish_batch_contacts(
+        self,
+        contacts: List[ContactData],
+        operation: str = "create",
+        batch_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> List[bool]:
         """Publish multiple contacts in batch"""
         try:
             results = []
 
             for contact in contacts:
                 try:
-                    success = await self.publish_contact(contact)
+                    success = await self.publish_contact(
+                        contact, operation, batch_id, user_id, correlation_id
+                    )
                     results.append(success)
                 except RuntimeError as e:
                     # Fatal error (e.g., topic not found) - halt the batch
