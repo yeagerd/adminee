@@ -4,6 +4,7 @@ Tests for document indexing operations to catch ID corruption and field mapping 
 
 import asyncio
 import json
+from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,13 +24,16 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
         # Add aiohttp patching to prevent real HTTP calls
         self.aiohttp_patcher = patch("aiohttp.ClientSession")
         self.mock_aiohttp_class = self.aiohttp_patcher.start()
+        self.mock_aiohttp_instance = self.mock_aiohttp_class.return_value
 
         # Create a proper mock session that returns async context managers
         class MockSession:
-            def __init__(self, test_instance):
+            def __init__(self, test_instance: "TestDocumentIndexing") -> None:
                 self.test_instance = test_instance
+                # Track documents for more realistic behavior
+                self.documents: Dict[str, Dict[str, Any]] = {}
 
-            def post(self, url, json=None):
+            def post(self, url: str, json: Optional[Dict[str, Any]] = None) -> Any:
                 # For indexing, return success response with proper ID format
                 if "/document/v1/" in url:
                     # Extract user_id and doc_id from URL for realistic ID generation
@@ -38,13 +42,17 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
                     doc_id = parts[-1]
                     vespa_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
 
+                    # Store document for later retrieval
+                    if json and "fields" in json:
+                        self.documents[f"{user_id}:{doc_id}"] = json["fields"]
+
                     return self.test_instance.mock_response(
                         200, {"id": vespa_id, "status": "success"}
                     )
                 else:
                     return self.test_instance.mock_response()
 
-            def get(self, url):
+            def get(self, url: str) -> Any:
                 # For document retrieval, return document data
                 if "/document/v1/" in url:
                     parts = url.split("/")
@@ -52,29 +60,29 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
                     doc_id = parts[-1]
                     vespa_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
 
+                    # Get stored document or return default
+                    doc_key = f"{user_id}:{doc_id}"
+                    fields = self.documents.get(doc_key, {})
+
                     return self.test_instance.mock_response(
                         200,
-                        {
-                            "id": vespa_id,
-                            "fields": {
-                                "user_id": user_id,
-                                "doc_id": doc_id,
-                                "title": "Test Document",
-                                "content": "Test content",
-                                "search_text": "test document",
-                            },
-                        },
+                        {"id": vespa_id, "fields": fields},
                     )
                 else:
                     return self.test_instance.mock_response()
 
-            def delete(self, url):
-                # For deletion, return success response
+            def delete(self, url: str) -> Any:
+                # For deletion, return success response with proper ID format
                 if "/document/v1/" in url:
                     parts = url.split("/")
                     user_id = parts[-2]
                     doc_id = parts[-1]
                     vespa_id = f"id:briefly:briefly_document:g={user_id}:{doc_id}"
+
+                    # Remove from stored documents
+                    doc_key = f"{user_id}:{doc_id}"
+                    if doc_key in self.documents:
+                        del self.documents[doc_key]
 
                     return self.test_instance.mock_response(
                         200, {"id": vespa_id, "status": "success"}
@@ -82,6 +90,7 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
                 else:
                     return self.test_instance.mock_response()
 
+        # Replace the mock instance with our custom session
         self.mock_aiohttp_instance = MockSession(self)
         self.mock_aiohttp_class.return_value = self.mock_aiohttp_instance
 
@@ -101,7 +110,7 @@ class TestDocumentIndexing(BaseSelectiveHTTPIntegrationTest):
         class MockResponse:
             def __init__(self, status=200, json_data=None, text_data=""):
                 self.status = status
-                self.json_data = json_data or {"id": "test_id", "status": "success"}
+                self.json_data = json_data or {"id": "fallback_id", "status": "success"}
                 self.text_data = text_data
 
             async def __aenter__(self):

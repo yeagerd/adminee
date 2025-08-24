@@ -3,7 +3,15 @@ from datetime import datetime, time, timezone
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 
 # Base Models
@@ -12,7 +20,7 @@ class BusinessHoursConfig(BaseModel):
     end: str = Field(default="", description="End time in HH:MM format")
     enabled: bool = Field(True, description="Whether this day is enabled for bookings")
 
-    @validator("start", "end")
+    @field_validator("start", "end")
     def validate_time_format(cls: "BusinessHoursConfig", v: str) -> str:
         try:
             hour, minute = map(int, v.split(":"))
@@ -59,15 +67,17 @@ class BookingSettings(BaseModel):
         default_factory=list, description="List of holiday dates in YYYY-MM-DD format"
     )
 
-    @validator("max_advance_days")
-    def validate_advance_window(cls: "BookingSettings", v: int, values: dict) -> int:
-        if "advance_days" in values and v < values["advance_days"]:
+    @field_validator("max_advance_days")
+    def validate_advance_window(
+        cls: "BookingSettings", v: int, values: "ValidationInfo"
+    ) -> int:
+        if "advance_days" in values.data and v < values.data["advance_days"]:
             raise ValueError(
                 "max_advance_days must be greater than or equal to advance_days"
             )
         return v
 
-    @validator("holiday_exclusions")
+    @field_validator("holiday_exclusions")
     def validate_holiday_format(cls: "BookingSettings", v: List[str]) -> List[str]:
         for date_str in v:
             try:
@@ -109,7 +119,7 @@ class QuestionField(BaseModel):
         None, description="Validation rule (e.g., email, phone, url)"
     )
 
-    @validator("id")
+    @field_validator("id")
     def validate_id_format(cls: "QuestionField", v: str) -> str:
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", v):
             raise ValueError(
@@ -117,7 +127,7 @@ class QuestionField(BaseModel):
             )
         return v
 
-    @validator("type")
+    @field_validator("type")
     def validate_question_type(cls: "QuestionField", v: str) -> str:
         valid_types = ["text", "email", "textarea", "select", "phone", "number", "url"]
         if v not in valid_types:
@@ -166,7 +176,7 @@ class CreateBookingLinkRequest(BaseModel):
     )
     email_followup: bool = Field(False, description="Whether to send follow-up emails")
 
-    @validator("slug")
+    @field_validator("slug")
     def validate_slug(
         cls: "CreateBookingLinkRequest", v: Optional[str]
     ) -> Optional[str]:
@@ -179,7 +189,7 @@ class CreateBookingLinkRequest(BaseModel):
                 raise ValueError("Slug must be at least 3 characters long")
         return v
 
-    @validator("title")
+    @field_validator("title")
     def validate_title(cls: "CreateBookingLinkRequest", v: str) -> str:
         # Check for potentially harmful content
         harmful_patterns = ["<script", "javascript:", "onclick", "onload"]
@@ -203,7 +213,7 @@ class UpdateBookingLinkRequest(BaseModel):
     )
     is_active: Optional[bool] = Field(None, description="Whether the link is active")
 
-    @validator("title")
+    @field_validator("title")
     def validate_title(
         cls: "UpdateBookingLinkRequest", v: Optional[str]
     ) -> Optional[str]:
@@ -226,7 +236,7 @@ class CreateOneTimeLinkRequest(BaseModel):
         7, ge=1, le=365, description="Days until the link expires"
     )
 
-    @validator("recipient_name")
+    @field_validator("recipient_name")
     def validate_recipient_name(cls: "CreateOneTimeLinkRequest", v: str) -> str:
         harmful_patterns = ["<script", "javascript:", "onclick", "onload"]
         for pattern in harmful_patterns:
@@ -251,17 +261,17 @@ class CreatePublicBookingRequest(BaseModel):
         default_factory=dict, description="Answers to template questions"
     )
 
-    @validator("start")
+    @field_validator("start")
     def validate_start_time(cls: "CreatePublicBookingRequest", v: datetime) -> datetime:
         if v < datetime.now(timezone.utc):
             raise ValueError("Start time cannot be in the past")
         return v
 
-    @validator("end")
+    @field_validator("end")
     def validate_end_after_start(
-        cls: "CreatePublicBookingRequest", v: datetime, values: dict
+        cls: "CreatePublicBookingRequest", v: datetime, values: "ValidationInfo"
     ) -> datetime:
-        if "start" in values and v <= values["start"]:
+        if "start" in values.data and v <= values.data["start"]:
             raise ValueError("End time must be after start time")
         return v
 
@@ -287,7 +297,7 @@ class CreateTemplateRequest(BaseModel):
         False, description="Whether to enable follow-up emails"
     )
 
-    @validator("name")
+    @field_validator("name")
     def validate_template_name(cls: "CreateTemplateRequest", v: str) -> str:
         harmful_patterns = ["<script", "javascript:", "onclick", "onload"]
         for pattern in harmful_patterns:
@@ -307,7 +317,7 @@ class UpdateTemplateRequest(BaseModel):
     questions: Optional[List[QuestionField]] = Field(None)
     email_followup_enabled: Optional[bool] = Field(None)
 
-    @validator("name")
+    @field_validator("name")
     def validate_template_name(
         cls: "UpdateTemplateRequest", v: Optional[str]
     ) -> Optional[str]:
