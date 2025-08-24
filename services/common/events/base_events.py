@@ -48,7 +48,7 @@ class EventMetadata(BaseModel):
     )
 
     @field_serializer("timestamp")
-    def serialize_timestamp(self, dt: datetime, _info):
+    def serialize_timestamp(self, dt: datetime, _info: Any) -> str:
         return dt.isoformat()
 
 
