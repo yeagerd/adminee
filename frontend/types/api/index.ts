@@ -5,13 +5,13 @@
 export * from './chat';
 
 // Service-specific types (only unique models and services)
-export type { Contact, ContactCreate, ContactListResponse, ContactResponse, ContactStatsResponse, EmailContactEventCount, EmailContactSearchResult, EmailContactUpdate } from './contacts';
 export { ContactsService, InternalService } from './contacts';
+export type { Contact, ContactCreate, ContactListResponse, ContactResponse, ContactStatsResponse, EmailContactEventCount, EmailContactSearchResult, EmailContactUpdate } from './contacts';
 
-export type { AvailabilityResponse } from './meetings';
 export { BookingsService, EmailService, InvitationsService, PollsService, PublicService, SlotsService } from './meetings';
+export type { AvailabilityResponse } from './meetings';
 
-export { CalendarService, ContactsService as OfficeContactsService, EmailService as OfficeEmailService, FilesService, InternalBackfillService, InternalEmailService } from './office';
+export { CalendarService, FilesService, InternalBackfillService, InternalEmailService, ContactsService as OfficeContactsService, EmailService as OfficeEmailService } from './office';
 
 export { DefaultService as UserDefaultService } from './user';
 
