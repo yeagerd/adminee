@@ -1,11 +1,10 @@
 import type {
-    Contact,
     ContactCreate,
     ContactListResponse,
     ContactResponse,
     ContactStatsResponse,
     EmailContactSearchResult,
-    EmailContactUpdate,
+    EmailContactUpdate
 } from '../../types/api/contacts';
 import { GatewayClient } from './gateway-client';
 
@@ -23,15 +22,15 @@ export class ContactsClient extends GatewayClient {
         const params = new URLSearchParams();
         params.append('limit', limit.toString());
         params.append('offset', offset.toString());
-        
+
         if (tags && tags.length > 0) {
             tags.forEach(tag => params.append('tags', tag));
         }
-        
+
         if (source_services && source_services.length > 0) {
             source_services.forEach(service => params.append('source_services', service));
         }
-        
+
         if (query) {
             params.append('query', query);
         }
@@ -51,11 +50,11 @@ export class ContactsClient extends GatewayClient {
         const params = new URLSearchParams();
         params.append('query', query);
         params.append('limit', limit.toString());
-        
+
         if (tags && tags.length > 0) {
             tags.forEach(tag => params.append('tags', tag));
         }
-        
+
         if (source_services && source_services.length > 0) {
             source_services.forEach(service => params.append('source_services', service));
         }
