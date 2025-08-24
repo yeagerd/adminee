@@ -1,6 +1,6 @@
 "use client";
 
-import { officeApi, contactsApi } from '@/api';
+import { contactsApi } from '@/api';
 import type { Contact } from '@/types/api/contacts';
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
@@ -36,7 +36,7 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setError(null);
         try {
             lastQueryRef.current = { providers, q: opts?.q, company: opts?.company, limit: opts?.limit };
-            
+
             // Use the new contacts API for fetching contacts
             // Convert old provider-based logic to new source_services logic
             let sourceServices: string[] | undefined;
@@ -57,7 +57,7 @@ export const OfficeDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 sourceServices,
                 opts?.q // query
             );
-            
+
             if (resp.success) {
                 setContacts(resp.contacts || []);
             } else {
