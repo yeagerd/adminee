@@ -108,7 +108,7 @@ schema todo_document {
         }
     }
     
-    rank-profile todo_relevance inherits relevance {
+    rank-profile todo_relevance inherits hybrid {
         first-phase {
             expression: nativeRank(title, content, search_text)
         }
@@ -117,7 +117,7 @@ schema todo_document {
         }
     }
     
-    rank-profile todo_freshness inherits freshness {
+    rank-profile todo_freshness inherits recency {
         first-phase {
             expression: nativeRank(title, content, search_text)
         }
