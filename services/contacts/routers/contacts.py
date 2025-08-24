@@ -32,7 +32,9 @@ from services.contacts.schemas.contact import (
 )
 from services.contacts.services.contact_discovery_service import ContactDiscoveryService
 from services.contacts.services.contact_service import ContactService
-from services.contacts.services.office_integration_service import OfficeIntegrationService
+from services.contacts.services.office_integration_service import (
+    OfficeIntegrationService,
+)
 
 logger = get_logger(__name__)
 
@@ -71,8 +73,12 @@ async def list_my_contacts(
     ),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
-    authenticated_service: str = Depends(service_permission_required(["read_contacts"])),
+    office_integration_service: OfficeIntegrationService = Depends(
+        get_office_integration_service
+    ),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contacts"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactListResponse:
     """List contacts for the currently authenticated user with optional filtering."""
@@ -87,11 +93,15 @@ async def list_my_contacts(
         )
 
         # Get office integration data for contacts
-        office_integration_data = await office_integration_service.get_office_integration_data(
-            contacts, current_user_id
+        office_integration_data = (
+            await office_integration_service.get_office_integration_data(
+                contacts, current_user_id
+            )
         )
 
-        total = await contact_service.count_contacts(session=session, user_id=current_user_id)
+        total = await contact_service.count_contacts(
+            session=session, user_id=current_user_id
+        )
 
         return ContactListResponse(
             contacts=contacts,
@@ -115,8 +125,12 @@ async def search_my_contacts(
     ),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
-    authenticated_service: str = Depends(service_permission_required(["search_contacts"])),
+    office_integration_service: OfficeIntegrationService = Depends(
+        get_office_integration_service
+    ),
+    authenticated_service: str = Depends(
+        service_permission_required(["search_contacts"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> List[EmailContactSearchResult]:
     """Search contacts for the currently authenticated user by query."""
@@ -131,8 +145,10 @@ async def search_my_contacts(
         )
 
         # Get office integration data for contacts
-        office_integration_data = await office_integration_service.get_office_integration_data(
-            contacts, current_user_id
+        office_integration_data = (
+            await office_integration_service.get_office_integration_data(
+                contacts, current_user_id
+            )
         )
 
         # Convert to search results with relevance scores
@@ -157,8 +173,12 @@ async def search_my_contacts(
 async def get_my_contact_stats(
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
-    authenticated_service: str = Depends(service_permission_required(["read_contact_stats"])),
+    office_integration_service: OfficeIntegrationService = Depends(
+        get_office_integration_service
+    ),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contact_stats"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactStatsResponse:
     """Get contact statistics for the currently authenticated user."""
@@ -168,8 +188,10 @@ async def get_my_contact_stats(
         )
 
         # Get office integration sync status
-        office_sync_status = await office_integration_service.get_contact_sync_status(current_user_id)
-        
+        office_sync_status = await office_integration_service.get_contact_sync_status(
+            current_user_id
+        )
+
         # Add office integration info to stats
         stats["office_integration"] = office_sync_status
 
@@ -189,8 +211,12 @@ async def get_my_contact(
     contact_id: str = Path(..., description="Contact ID to retrieve"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    office_integration_service: OfficeIntegrationService = Depends(get_office_integration_service),
-    authenticated_service: str = Depends(service_permission_required(["read_contacts"])),
+    office_integration_service: OfficeIntegrationService = Depends(
+        get_office_integration_service
+    ),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contacts"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactResponse:
     """Get a specific contact by ID for the currently authenticated user."""
@@ -203,8 +229,10 @@ async def get_my_contact(
             raise NotFoundError("Contact", contact_id)
 
         # Get office integration data for contact
-        office_integration_data = await office_integration_service.get_office_integration_data(
-            [contact], current_user_id
+        office_integration_data = (
+            await office_integration_service.get_office_integration_data(
+                [contact], current_user_id
+            )
         )
 
         return ContactResponse(contact=contact, success=True)
@@ -220,14 +248,16 @@ async def create_my_contact(
     contact_data: ContactCreate,
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["write_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["write_contacts"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactResponse:
     """Create a new contact for the currently authenticated user."""
     try:
         # Ensure the contact is created for the current user
         contact_data.user_id = current_user_id
-        
+
         contact = await contact_service.create_contact(
             session=session, contact_data=contact_data
         )
@@ -248,7 +278,9 @@ async def update_my_contact(
     update_data: EmailContactUpdate = Body(...),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["write_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["write_contacts"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> ContactResponse:
     """Update an existing contact for the currently authenticated user."""
@@ -280,7 +312,9 @@ async def delete_my_contact(
     contact_id: str = Path(..., description="Contact ID to delete"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["write_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["write_contacts"])
+    ),
     current_user_id: str = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Delete a contact for the currently authenticated user."""

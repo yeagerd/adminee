@@ -65,7 +65,9 @@ async def list_contacts_internal(
     ),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["read_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contacts"])
+    ),
 ) -> ContactListResponse:
     """List contacts for a user with optional filtering (internal service access)."""
     request_id = request_id_var.get()
@@ -108,7 +110,9 @@ async def search_contacts_internal(
     ),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["search_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["search_contacts"])
+    ),
 ) -> List[EmailContactSearchResult]:
     """Search contacts for a user by query (internal service access)."""
     request_id = request_id_var.get()
@@ -149,7 +153,9 @@ async def get_contact_stats_internal(
     user_id: str = Query(..., description="User ID to get stats for"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["read_contact_stats"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contact_stats"])
+    ),
 ) -> ContactStatsResponse:
     """Get contact statistics for a user (internal service access)."""
     request_id = request_id_var.get()
@@ -179,7 +185,9 @@ async def get_contact_internal(
     user_id: str = Query(..., description="User ID who owns the contact"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["read_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contacts"])
+    ),
 ) -> ContactResponse:
     """Get a specific contact by ID (internal service access)."""
     request_id = request_id_var.get()
@@ -208,7 +216,9 @@ async def create_contact_internal(
     contact_data: ContactCreate,
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["write_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["write_contacts"])
+    ),
 ) -> ContactResponse:
     """Create a new contact (internal service access)."""
     request_id = request_id_var.get()
@@ -238,7 +248,9 @@ async def update_contact_internal(
     update_data: EmailContactUpdate = Body(...),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["write_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["write_contacts"])
+    ),
 ) -> ContactResponse:
     """Update an existing contact (internal service access)."""
     request_id = request_id_var.get()
@@ -275,7 +287,9 @@ async def delete_contact_internal(
     user_id: str = Query(..., description="User ID who owns the contact"),
     session: AsyncSession = Depends(get_async_session),
     contact_service: ContactService = Depends(get_contact_service),
-    authenticated_service: str = Depends(service_permission_required(["write_contacts"])),
+    authenticated_service: str = Depends(
+        service_permission_required(["write_contacts"])
+    ),
 ) -> Dict[str, Any]:
     """Delete a contact (internal service access)."""
     request_id = request_id_var.get()

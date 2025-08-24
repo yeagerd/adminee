@@ -113,34 +113,40 @@ def service_permission_required(
 async def require_user_service_auth(request: Request) -> str:
     """Require authentication from User Service (legacy)."""
     from services.contacts.auth.legacy_auth import require_service_auth
+
     return await require_service_auth("user", request)
 
 
 async def require_office_service_auth(request: Request) -> str:
     """Require authentication from Office Service (legacy)."""
     from services.contacts.auth.legacy_auth import require_service_auth
+
     return await require_service_auth("office", request)
 
 
 async def require_chat_service_auth(request: Request) -> str:
     """Require authentication from Chat Service (legacy)."""
     from services.contacts.auth.legacy_auth import require_service_auth
+
     return await require_service_auth("chat", request)
 
 
 async def require_meetings_service_auth(request: Request) -> str:
     """Require authentication from Meetings Service (legacy)."""
     from services.contacts.auth.legacy_auth import require_service_auth
+
     return await require_service_auth("meetings", request)
 
 
 async def require_shipments_service_auth(request: Request) -> str:
     """Require authentication from Shipments Service (legacy)."""
     from services.contacts.auth.legacy_auth import require_service_auth
+
     return await require_service_auth("shipments", request)
 
 
 async def require_frontend_auth(request: Request) -> str:
     """Require authentication from Frontend (legacy)."""
     from services.contacts.auth.legacy_auth import require_service_auth
+
     return await require_service_auth("frontend", request)

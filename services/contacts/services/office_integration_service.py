@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
+
 from services.common.logging_config import get_logger
 from services.contacts.settings import get_settings
 
@@ -141,7 +142,7 @@ class OfficeIntegrationService:
                 email = contact.email_address
                 if email and email.lower() in office_contact_map:
                     office_contact = office_contact_map[email.lower()]
-                    
+
                     integration_data[email] = {
                         "provider": office_contact.get("provider"),
                         "last_synced": office_contact.get("last_synced"),
@@ -165,7 +166,9 @@ class OfficeIntegrationService:
             return integration_data
 
         except Exception as e:
-            logger.error(f"Error getting office integration data for user {user_id}: {e}")
+            logger.error(
+                f"Error getting office integration data for user {user_id}: {e}"
+            )
             # Return empty dict if integration fails
             return {}
 

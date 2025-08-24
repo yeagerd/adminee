@@ -194,7 +194,7 @@ def make_get_current_user_flexible(
     get_settings: Callable[[], Any],
 ) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
-    Create a flexible authentication function that supports both gateway headers 
+    Create a flexible authentication function that supports both gateway headers
     and JWT tokens.
 
     Args:
@@ -259,7 +259,7 @@ def make_get_current_user(
     get_settings: Callable[[], Any],
 ) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
-    Create a get_current_user dependency that supports both gateway headers 
+    Create a get_current_user dependency that supports both gateway headers
     and JWT tokens.
 
     Args:
@@ -300,7 +300,7 @@ def make_get_current_user_with_claims(
     get_settings: Callable[[], Any],
 ) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
-    Create a get_current_user_with_claims dependency that supports both gateway 
+    Create a get_current_user_with_claims dependency that supports both gateway
     headers and JWT tokens.
 
     Args:

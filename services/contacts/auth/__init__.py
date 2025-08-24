@@ -5,6 +5,13 @@ Provides permission-based API key authentication and JWT validation.
 Uses the common api_key_auth and jwt_auth implementations for consistency.
 """
 
+from services.common.jwt_auth import (
+    get_current_user_from_gateway_headers,
+    make_get_current_user,
+    make_get_current_user_with_claims,
+    require_user_ownership,
+    verify_user_ownership,
+)
 from services.contacts.auth.auth import (
     require_chat_service_auth,
     require_frontend_auth,
@@ -14,13 +21,6 @@ from services.contacts.auth.auth import (
     require_user_service_auth,
     service_permission_required,
     verify_service_authentication,
-)
-from services.common.jwt_auth import (
-    get_current_user_from_gateway_headers,
-    make_get_current_user,
-    make_get_current_user_with_claims,
-    require_user_ownership,
-    verify_user_ownership,
 )
 from services.contacts.settings import get_settings
 
