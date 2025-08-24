@@ -9,7 +9,9 @@ from services.vespa_loader.models.document_chunking import (
     ChunkType,
     DocumentChunkingConfig,
 )
-from services.vespa_loader.services.document_chunking_service import DocumentChunkingService
+from services.vespa_loader.services.document_chunking_service import (
+    DocumentChunkingService,
+)
 
 
 class TestDocumentChunkingService:

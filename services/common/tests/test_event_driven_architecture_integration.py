@@ -14,7 +14,9 @@ import pytest
 
 from services.common.idempotency.idempotency_service import IdempotencyService
 from services.common.idempotency.redis_reference import RedisReferencePattern
-from services.vespa_loader.services.document_chunking_service import DocumentChunkingService
+from services.vespa_loader.services.document_chunking_service import (
+    DocumentChunkingService,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -95,6 +95,3 @@ class DocumentEvent(BaseEvent):
         super().model_post_init(__context)
         if not self.metadata.source_service:
             self.metadata.source_service = "office-service"
-
-
-
