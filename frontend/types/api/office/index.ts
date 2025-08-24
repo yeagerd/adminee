@@ -1,5 +1,5 @@
 /* generated using openapi-typescript-codegen -- do no edit */
-import type { HTTPValidationError, ValidationError } from "../shared";/* istanbul ignore file */
+/* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
 
@@ -39,6 +39,7 @@ export type { EmailThreadListData } from './models/EmailThreadListData';
 export type { FileDetailResponse } from './models/FileDetailResponse';
 export type { FileListResponse } from './models/FileListResponse';
 export type { FileSearchResponse } from './models/FileSearchResponse';
+export type { HTTPValidationError } from './models/HTTPValidationError';
 export { Provider } from './models/Provider';
 export { ProviderEnum } from './models/ProviderEnum';
 export type { SendEmailRequest } from './models/SendEmailRequest';
@@ -47,3 +48,4 @@ export type { TimeRange } from './models/TimeRange';
 export type { TypedApiResponse_AvailabilityResponse_ } from './models/TypedApiResponse_AvailabilityResponse_';
 export type { TypedApiResponse_CalendarEventResponse_ } from './models/TypedApiResponse_CalendarEventResponse_';
 export type { TypedApiResponse_List_CalendarEvent__ } from './models/TypedApiResponse_List_CalendarEvent__';
+export type { ValidationError } from './models/ValidationError';

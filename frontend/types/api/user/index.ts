@@ -1,5 +1,5 @@
 /* generated using openapi-typescript-codegen -- do no edit */
-import type { HTTPValidationError, ValidationError } from "../shared";/* istanbul ignore file */
+/* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
 
@@ -12,6 +12,7 @@ export { DataRetentionPeriod } from './models/DataRetentionPeriod';
 export { DateFormat } from './models/DateFormat';
 export type { DependencyStatus } from './models/DependencyStatus';
 export type { ExternalUserInfo } from './models/ExternalUserInfo';
+export type { HTTPValidationError } from './models/HTTPValidationError';
 export type { IntegrationDisconnectRequest } from './models/IntegrationDisconnectRequest';
 export type { IntegrationDisconnectResponse } from './models/IntegrationDisconnectResponse';
 export type { IntegrationErrorSummary } from './models/IntegrationErrorSummary';
@@ -55,3 +56,4 @@ export type { UserListResponse } from './models/UserListResponse';
 export type { UserPreferencesResponse } from './models/UserPreferencesResponse';
 export type { UserPreferencesUpdate } from './models/UserPreferencesUpdate';
 export type { UserResponse } from './models/UserResponse';
+export type { ValidationError } from './models/ValidationError';

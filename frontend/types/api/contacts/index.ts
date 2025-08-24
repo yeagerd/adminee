@@ -1,5 +1,5 @@
 /* generated using openapi-typescript-codegen -- do no edit */
-import type { HTTPValidationError, ValidationError } from "../shared";/* istanbul ignore file */
+/* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
 
@@ -11,3 +11,5 @@ export type { ContactStatsResponse } from './models/ContactStatsResponse';
 export type { EmailContactEventCount } from './models/EmailContactEventCount';
 export type { EmailContactSearchResult } from './models/EmailContactSearchResult';
 export type { EmailContactUpdate } from './models/EmailContactUpdate';
+export type { HTTPValidationError } from './models/HTTPValidationError';
+export type { ValidationError } from './models/ValidationError';
