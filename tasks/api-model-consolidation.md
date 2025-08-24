@@ -78,19 +78,19 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 
 ## Phase 5: Chat Service Models (Priority: Medium)
 
-- [ ] Move `services/chat/schemas/` contents to `services/api/v1/chat/`
-  - [ ] Move `office_responses.py` schemas
-- [ ] Move any other schema files that exist
-- [ ] Update `services/chat/` imports to use `services.api.v1.chat`
-- [ ] Update inter-service calls that import chat schemas
-  - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `LLMChatMessageData` from `services.api.v1.chat` instead of local definition
-  - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.chat`
-  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `LLMChatMessageData` from `services.api.v1.chat`
-  - [ ] **Demos**: Update `services/demos/chat.py` to use shared chat schemas for type annotations and validation
-  - [ ] **Demos**: Update `services/demos/vespa_search.py` to use shared chat schemas if any chat-related schemas are needed
-  - [ ] **Demos**: Update `services/demos/vespa_synthetic.py` to use shared chat schemas if any chat-related schemas are needed
-  - [ ] Verify that no other services are making direct calls to chat service internal models
-- [ ] Ensure chat service tests pass
+- [x] Move `services/chat/schemas/` contents to `services/api/v1/chat/`
+  - [x] Move `office_responses.py` schemas
+- [x] Move any other schema files that exist
+- [x] Update `services/chat/` imports to use `services.api.v1.chat`
+- [x] Update inter-service calls that import chat schemas
+  - [x] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `LLMChatMessageData` from `services.api.v1.chat` instead of local definition
+  - [x] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api/v1.chat`
+  - [x] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `LLMChatMessageData` from `services.api.v1.chat`
+  - [x] **Demos**: Update `services/demos/chat.py` to use shared chat schemas for type annotations and validation
+  - [x] **Demos**: Update `services/demos/vespa_search.py` to use shared chat schemas if any chat-related schemas are needed
+  - [x] **Demos**: Update `services/demos/vespa_synthetic.py` to use shared chat schemas if any chat-related schemas are needed
+  - [x] Verify that no other services are making direct calls to chat service internal models
+- [x] Ensure chat service tests pass
 - [ ] Update chat service documentation
 
 ## Phase 6: Shipments Service Models (Priority: Medium)
