@@ -10,7 +10,7 @@ echo "🚀 Generating TypeScript types from OpenAPI schemas..."
 cd "$(dirname "$0")/.."
 
 # Create types directory structure
-mkdir -p types/api/{chat,meetings,office,user,shipments,email-sync}
+mkdir -p types/api/{chat,contacts,meetings,office,user,shipments}
 
 # Install dependencies if not already installed
 if ! npm list openapi-typescript-codegen >/dev/null 2>&1; then
@@ -21,6 +21,9 @@ fi
 # Generate types for each service
 echo "📝 Generating types for Chat service..."
 npx openapi --input ../openapi-schemas/chat-openapi.json --output ./types/api/chat
+
+echo "📝 Generating types for Contacts service..."
+npx openapi --input ../openapi-schemas/contacts-openapi.json --output ./types/api/contacts
 
 echo "📝 Generating types for Meetings service..."
 npx openapi --input ../openapi-schemas/meetings-openapi.json --output ./types/api/meetings
@@ -34,9 +37,6 @@ npx openapi --input ../openapi-schemas/user-openapi.json --output ./types/api/us
 echo "📝 Generating types for Shipments service..."
 npx openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/api/shipments
 
-echo "📝 Generating types for Email Sync service..."
-npx openapi --input ../openapi-schemas/email_sync-openapi.json --output ./types/api/email-sync
-
 # Create index file
 echo "📄 Creating index file..."
 cat > types/api/index.ts << 'EOF'
@@ -44,11 +44,11 @@ cat > types/api/index.ts << 'EOF'
 // Generated on: $(date)
 
 export * from './chat';
+export * from './contacts';
 export * from './meetings';
 export * from './office';
 export * from './user';
 export * from './shipments';
-export * from './email-sync';
 EOF
 
 echo "✅ Type generation completed successfully!"

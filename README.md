@@ -157,6 +157,7 @@ npm run typecheck                           # Verify generated types are valid
 
 # Complete Type Update Workflow
 ./scripts/update-types.sh                   # Full workflow: schemas + types + verification
+
 # Add dependencies
 uv add fastapi               # Add to root
 uv add sqlalchemy --project services/user  # Add to service
