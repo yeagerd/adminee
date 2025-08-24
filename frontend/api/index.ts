@@ -29,4 +29,5 @@ export const contactsApi = new ContactsClient();
 export const chatApi = new ChatClient();
 export const userApi = new UserClient();
 export const meetingsApi = new MeetingsClient();
+export const officeApi = new OfficeClient();
 export const shipmentsApi = new ShipmentsClient();
