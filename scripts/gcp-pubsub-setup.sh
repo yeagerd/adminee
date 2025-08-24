@@ -62,10 +62,14 @@ create_topics() {
         # Core data types
         "emails"
         "calendars" 
+        "contacts"
         # Office document types
         "word_documents"
+        "word_fragments"
         "sheet_documents"
+        "sheet_fragments"
         "presentation_documents"
+        "presentation_fragments"
         "task_documents"
         # Todo types
         "todos"
@@ -96,6 +100,7 @@ create_subscriptions() {
     local router_subs=(
         "email-router-subscription:emails"
         "calendar-router-subscription:calendars"
+        "contact-router-subscription:contacts"
     )
     
     for sub_info in "${router_subs[@]}"; do
@@ -114,6 +119,7 @@ create_subscriptions() {
     local vespa_subs=(
         "vespa-loader-emails:emails"
         "vespa-loader-calendars:calendars"
+        "vespa-loader-contacts:contacts"
     )
     
     for sub_info in "${vespa_subs[@]}"; do
@@ -137,6 +143,7 @@ cleanup_topics() {
         # Core data types
         "emails"
         "calendars" 
+        "contacts"
         # Office document types
         "word_documents"
         "sheet_documents"
@@ -169,8 +176,10 @@ cleanup_subscriptions() {
     local subs=(
         "email-router-subscription"
         "calendar-router-subscription"
+        "contact-router-subscription"
         "vespa-loader-emails"
         "vespa-loader-calendars"
+        "vespa-loader-contacts"
     )
     
     for sub in "${subs[@]}"; do
