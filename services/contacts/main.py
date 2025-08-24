@@ -71,8 +71,12 @@ register_briefly_exception_handlers(app)
 
 # Include routers with v1 prefix
 from services.contacts.routers.contacts import router as contacts_router
+from services.contacts.routers.internal import router as internal_router
 
 app.include_router(contacts_router, prefix="/v1")
+
+# Include internal routers (no prefix - direct access)
+app.include_router(internal_router)
 
 
 @app.get("/")

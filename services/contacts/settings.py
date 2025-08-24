@@ -103,6 +103,20 @@ class Settings(BaseSettings):
         default="http://localhost:8004", description="Shipments service URL"
     )
 
+    # JWT Configuration
+    jwt_verify_signature: bool = Field(
+        default=True, description="Whether to verify JWT signatures"
+    )
+    nextauth_issuer: str = Field(
+        default="nextauth", description="NextAuth JWT issuer"
+    )
+    nextauth_audience: Optional[str] = Field(
+        default=None, description="NextAuth JWT audience"
+    )
+    nextauth_jwt_key: Optional[str] = Field(
+        default=None, description="NextAuth JWT secret key"
+    )
+
     # PubSub Configuration
     PUBSUB_PROJECT_ID: str = Field(
         default="briefly-dev", description="Google Cloud Pub/Sub project ID"

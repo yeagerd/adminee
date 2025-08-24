@@ -1,21 +1,20 @@
 """
-Authentication middleware for the Contacts Service.
+Legacy authentication functions for backward compatibility.
 
-Validates API keys from other services to enable service-to-service communication.
+This module provides the old caller-based authentication functions
+that were used before the refactor to permission-based authentication.
+These are kept for any existing code that might still use them.
 """
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import HTTPException, Request, status
 
 from services.contacts.settings import get_settings
 
-security = HTTPBearer()
-
 
 async def get_api_key_from_header(request: Request) -> Optional[str]:
-    """Extract API key from request headers."""
+    """Extract API key from request headers (legacy)."""
     # Check for API key in headers (common pattern for service-to-service auth)
     api_key = request.headers.get("X-API-Key")
     if api_key:
@@ -30,7 +29,7 @@ async def get_api_key_from_header(request: Request) -> Optional[str]:
 
 
 async def validate_service_api_key(api_key: str, service_name: str) -> bool:
-    """Validate API key for a specific service."""
+    """Validate API key for a specific service (legacy)."""
     settings = get_settings()
 
     # Map service names to their API keys
@@ -51,7 +50,7 @@ async def validate_service_api_key(api_key: str, service_name: str) -> bool:
 
 
 async def require_service_auth(service_name: str, request: Request) -> str:
-    """Require authentication from a specific service."""
+    """Require authentication from a specific service (legacy)."""
     api_key = await get_api_key_from_header(request)
     if not api_key:
         raise HTTPException(
@@ -68,34 +67,3 @@ async def require_service_auth(service_name: str, request: Request) -> str:
         )
 
     return service_name
-
-
-# Convenience functions for specific services
-async def require_user_service_auth(request: Request) -> str:
-    """Require authentication from User Service."""
-    return await require_service_auth("user", request)
-
-
-async def require_office_service_auth(request: Request) -> str:
-    """Require authentication from Office Service."""
-    return await require_service_auth("office", request)
-
-
-async def require_chat_service_auth(request: Request) -> str:
-    """Require authentication from Chat Service."""
-    return await require_service_auth("chat", request)
-
-
-async def require_meetings_service_auth(request: Request) -> str:
-    """Require authentication from Meetings Service."""
-    return await require_service_auth("meetings", request)
-
-
-async def require_shipments_service_auth(request: Request) -> str:
-    """Require authentication from Shipments Service."""
-    return await require_service_auth("shipments", request)
-
-
-async def require_frontend_auth(request: Request) -> str:
-    """Require authentication from Frontend."""
-    return await require_service_auth("frontend", request)
