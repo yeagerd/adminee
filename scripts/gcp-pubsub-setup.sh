@@ -65,11 +65,8 @@ create_topics() {
         "contacts"
         # Office document types
         "word_documents"
-        "word_fragments"
         "sheet_documents"
-        "sheet_fragments"
         "presentation_documents"
-        "presentation_fragments"
         "task_documents"
         # Todo types
         "todos"
