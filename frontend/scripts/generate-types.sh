@@ -18,24 +18,24 @@ if ! npm list openapi-typescript-codegen >/dev/null 2>&1; then
     npm install
 fi
 
-# Generate types for each service
+# Generate types for each service - only models, no core/services
 echo "📝 Generating types for Chat service..."
-npx openapi --input ../openapi-schemas/chat-openapi.json --output ./types/api/chat
+npx openapi --input ../openapi-schemas/chat-openapi.json --output ./types/api/chat --exportCore false --exportServices false
 
 echo "📝 Generating types for Contacts service..."
-npx openapi --input ../openapi-schemas/contacts-openapi.json --output ./types/api/contacts
+npx openapi --input ../openapi-schemas/contacts-openapi.json --output ./types/api/contacts --exportCore false --exportServices false
 
 echo "📝 Generating types for Meetings service..."
-npx openapi --input ../openapi-schemas/meetings-openapi.json --output ./types/api/meetings
+npx openapi --input ../openapi-schemas/meetings-openapi.json --output ./types/api/meetings --exportCore false --exportServices false
 
 echo "📝 Generating types for Office service..."
-npx openapi --input ../openapi-schemas/office-openapi.json --output ./types/api/office
+npx openapi --input ../openapi-schemas/office-openapi.json --output ./types/api/office --exportCore false --exportServices false
 
 echo "📝 Generating types for User service..."
-npx openapi --input ../openapi-schemas/user-openapi.json --output ./types/api/user
+npx openapi --input ../openapi-schemas/user-openapi.json --output ./types/api/user --exportCore false --exportServices false
 
 echo "📝 Generating types for Shipments service..."
-npx openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/api/shipments
+npx openapi --input ../openapi-schemas/shipments-openapi.json --output ./types/api/shipments --exportCore false --exportServices false
 
 # Create index file
 echo "📄 Creating index file..."
