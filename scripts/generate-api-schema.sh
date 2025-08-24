@@ -5,6 +5,25 @@
 
 set -e  # Exit on any error
 
+# Function to handle script exit and provide debugging info
+cleanup_and_debug() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        echo "ERROR: Script failed with exit code $exit_code" >&2
+        echo "ERROR: Last command that failed: $BASH_COMMAND" >&2
+        echo "ERROR: Current working directory: $(pwd)" >&2
+        echo "ERROR: Environment variables:" >&2
+        echo "  - PROJECT_ROOT: ${PROJECT_ROOT:-'not set'}" >&2
+        echo "  - PWD: $(pwd)" >&2
+        echo "  - Python: $(which python 2>/dev/null || echo 'not found')" >&2
+        echo "  - Git root: $(git rev-parse --show-toplevel 2>/dev/null || echo 'not found')" >&2
+    fi
+    exit $exit_code
+}
+
+# Set trap to run cleanup function on exit
+trap cleanup_and_debug EXIT
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -94,7 +113,8 @@ generate_schemas() {
     if [[ "$VERBOSE" == "true" ]]; then
         ./scripts/subscripts/generate-openapi-schemas.sh
     else
-        ./scripts/subscripts/generate-openapi-schemas.sh > /dev/null 2>&1
+        # Always show errors, even in quiet mode
+        ./scripts/subscripts/generate-openapi-schemas.sh > /dev/null
     fi
     
     print_status "success" "OpenAPI schemas generated successfully"
@@ -127,7 +147,8 @@ generate_types() {
     if [[ "$VERBOSE" == "true" ]]; then
         ../scripts/subscripts/update-types.sh
     else
-        ../scripts/subscripts/update-types.sh > /dev/null 2>&1
+        # Always show errors, even in quiet mode
+        ../scripts/subscripts/update-types.sh > /dev/null
     fi
     cd ..
     
@@ -141,7 +162,8 @@ validate_types() {
     if [[ "$VERBOSE" == "true" ]]; then
         ./scripts/subscripts/validate-types.sh
     else
-        ./scripts/subscripts/validate-types.sh > /dev/null 2>&1
+        # Always show errors, even in quiet mode
+        ./scripts/subscripts/validate-types.sh > /dev/null
     fi
     
     print_status "success" "Type validation completed successfully"
@@ -154,7 +176,8 @@ generate_version_matrix() {
     if [[ "$VERBOSE" == "true" ]]; then
         python3 ./scripts/subscripts/generate-version-matrix.py
     else
-        python3 ./scripts/subscripts/generate-version-matrix.py > /dev/null 2>&1
+        # Always show errors, even in quiet mode
+        python3 ./scripts/subscripts/generate-version-matrix.py > /dev/null
     fi
     
     print_status "success" "Version compatibility matrix generated successfully"
@@ -202,16 +225,32 @@ main() {
         exit 1
     fi
     
-    # Execute based on flags
+    # Execute based on flags with error handling
     if [[ "$CLEAN_ONLY" == "true" ]]; then
-        clean_generated
+        print_status "info" "Running clean operation..."
+        if ! clean_generated; then
+            print_status "error" "Clean operation failed"
+            exit 1
+        fi
     elif [[ "$SCHEMA_ONLY" == "true" ]]; then
-        generate_schemas
+        print_status "info" "Running schema generation..."
+        if ! generate_schemas; then
+            print_status "error" "Schema generation failed"
+            exit 1
+        fi
     elif [[ "$TYPES_ONLY" == "true" ]]; then
-        generate_types
+        print_status "info" "Running type generation..."
+        if ! generate_types; then
+            print_status "error" "Type generation failed"
+            exit 1
+        fi
     else
         # Default: run full workflow
-        run_full_workflow
+        print_status "info" "Running full workflow..."
+        if ! run_full_workflow; then
+            print_status "error" "Full workflow failed"
+            exit 1
+        fi
     fi
     
     print_status "success" "Operation completed successfully!"

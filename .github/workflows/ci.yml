@@ -44,7 +44,12 @@ jobs:
 
       - name: Generate OpenAPI schemas
         run: |
-          source .venv/bin/activate
+          echo "🔍 Debug: Current directory: $(pwd)"
+          echo "🔍 Debug: Python version: $(python --version)"
+          echo "🔍 Debug: Virtual env exists: $([[ -d ".venv" ]] && echo 'yes' || echo 'no')"
+          echo "🔍 Debug: Script exists: $([[ -f "./scripts/generate-api-schema.sh" ]] && echo 'yes' || echo 'no')"
+          echo "🔍 Debug: Script permissions: $(ls -la ./scripts/generate-api-schema.sh)"
+          echo "🔍 Debug: Running script..."
           ./scripts/generate-api-schema.sh --schema-only
 
       - name: Clean existing types
