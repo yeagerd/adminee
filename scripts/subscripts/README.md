@@ -19,6 +19,9 @@ Validates generated TypeScript types for all services.
 ### `update-types.sh`
 Legacy script for updating types - use `../generate-api-schema.sh` instead.
 
+### `generate-version-matrix.py`
+Generates version compatibility matrix for OpenAPI schemas to analyze API version differences.
+
 ## Usage
 
 **Direct usage (not recommended):**

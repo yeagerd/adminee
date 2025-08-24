@@ -125,9 +125,9 @@ generate_types() {
     
     cd frontend
     if [[ "$VERBOSE" == "true" ]]; then
-        ./scripts/generate-types.sh
+        ../scripts/subscripts/update-types.sh
     else
-        ./scripts/generate-types.sh > /dev/null 2>&1
+        ../scripts/subscripts/update-types.sh > /dev/null 2>&1
     fi
     cd ..
     
@@ -152,9 +152,9 @@ generate_version_matrix() {
     print_status "info" "Generating version compatibility matrix..."
     
     if [[ "$VERBOSE" == "true" ]]; then
-        python3 ./scripts/generate-version-matrix.py
+        python3 ./scripts/subscripts/generate-version-matrix.py
     else
-        python3 ./scripts/generate-version-matrix.py > /dev/null 2>&1
+        python3 ./scripts/subscripts/generate-version-matrix.py > /dev/null 2>&1
     fi
     
     print_status "success" "Version compatibility matrix generated successfully"
