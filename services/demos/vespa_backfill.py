@@ -452,7 +452,6 @@ class VespaBackfillDemo:
         # Show detailed provider results
         job_details = results.get("job_details", [])
         if job_details:
-            print(f"\n📋 PROVIDER RESULTS:")
             for job in job_details:
                 provider = job.get("provider", "unknown")
                 status = job.get("status", "unknown")
@@ -706,7 +705,6 @@ class VespaBackfillDemo:
                         # Show integration details
                         integrations = integrations_data.get("integrations", [])
                         if integrations:
-                            print(f"\n📋 INTEGRATION STATUS:")
                             for integration in integrations:
                                 provider = integration.get("provider", "unknown")
                                 status = integration.get("status", "unknown")
@@ -796,21 +794,13 @@ class VespaBackfillDemo:
 
                     if integrations_response.status_code == 200:
                         integrations = integrations_response.json()
-                        print(f"📋 Raw integrations response: {integrations}")
                         active_integrations = []
 
                         integrations_list = integrations.get("integrations", [])
-                        print(f"📋 Processing {len(integrations_list)} integrations")
-
                         for i, integration in enumerate(integrations_list):
-                            print(f"📋 Processing integration {i}: {integration}")
                             provider = integration.get("provider")
                             status = integration.get("status")
                             token_expires_at = integration.get("token_expires_at")
-
-                            print(
-                                f"📋 Integration {i} - Provider: {provider}, Status: {status}, Token expires: {token_expires_at}"
-                            )
 
                             # Check if token is expired (same logic as frontend)
                             if token_expires_at:
