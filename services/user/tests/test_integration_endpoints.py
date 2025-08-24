@@ -8,6 +8,7 @@ The old user-specific APIs have been deprecated and removed.
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import status
 
 from services.user.models.integration import (
@@ -25,7 +26,8 @@ from services.user.tests.test_base import BaseUserManagementIntegrationTest
 class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
     """Test cases for /me/integrations endpoints."""
 
-    def test_get_current_user_integrations_success(self):
+    @pytest.mark.asyncio
+    async def test_get_current_user_integrations_success(self):
         """Test successful retrieval of current user integrations."""
         mock_response = IntegrationListResponse(
             integrations=[],
@@ -49,7 +51,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["total"] == 0
         assert data["active_count"] == 0
 
-    def test_get_current_user_integrations_with_filters(self):
+    @pytest.mark.asyncio
+    async def test_get_current_user_integrations_with_filters(self):
         """Test current user integrations with filters."""
         mock_response = IntegrationListResponse(
             integrations=[],
@@ -81,7 +84,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
             include_token_info=False,
         )
 
-    def test_disconnect_current_user_integration_success(self):
+    @pytest.mark.asyncio
+    async def test_disconnect_current_user_integration_success(self):
         """Test successful disconnection of current user integration."""
         provider = "google"
 
@@ -111,7 +115,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["integration_id"] == 123
         assert data["provider"] == "google"
 
-    def test_refresh_current_user_integration_tokens_success(self):
+    @pytest.mark.asyncio
+    async def test_refresh_current_user_integration_tokens_success(self):
         """Test successful token refresh for current user integration."""
         provider = "google"
 
@@ -140,7 +145,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["integration_id"] == 123
         assert data["provider"] == "google"
 
-    def test_get_current_user_specific_integration_success(self):
+    @pytest.mark.asyncio
+    async def test_get_current_user_specific_integration_success(self):
         """Test successful retrieval of specific integration for current user."""
         provider = "google"
 
@@ -186,7 +192,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["provider"] == "google"
         assert data["status"] == "ACTIVE"
 
-    def test_check_current_user_integration_health_success(self):
+    @pytest.mark.asyncio
+    async def test_check_current_user_integration_health_success(self):
         """Test successful health check for current user integration."""
         provider = "google"
 
@@ -216,7 +223,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["provider"] == "google"
         assert data["healthy"] is True
 
-    def test_get_provider_scopes_success(self):
+    @pytest.mark.asyncio
+    async def test_get_provider_scopes_success(self):
         """Test successful retrieval of provider scopes."""
         provider = "google"
 
@@ -253,7 +261,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["provider"] == "google"
         assert len(data["scopes"]) == 2
 
-    def test_start_current_user_oauth_flow_success(self):
+    @pytest.mark.asyncio
+    async def test_start_current_user_oauth_flow_success(self):
         """Test successful OAuth flow initiation for current user."""
         request_data = {
             "provider": "google",
@@ -286,7 +295,8 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["state"] == mock_response["state"]
         assert data["provider"] == mock_response["provider"]
 
-    def test_complete_current_user_oauth_flow_success(self):
+    @pytest.mark.asyncio
+    async def test_complete_current_user_oauth_flow_success(self):
         """Test successful OAuth flow completion for current user."""
         mock_response = OAuthCallbackResponse(
             success=True,

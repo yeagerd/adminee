@@ -5,7 +5,7 @@ This module defines user-specific pagination schemas that extend the
 common pagination schemas.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from common.pagination.schemas import CursorPaginationRequest, CursorPaginationResponse
 from pydantic import BaseModel, Field
@@ -25,12 +25,44 @@ class UserCursorPaginationRequest(CursorPaginationRequest):
 class UserCursorPaginationResponse(CursorPaginationResponse):
     """Response schema for user cursor-based pagination."""
 
-    # Override items to be users
+    # Override items to be users - properly override parent field
     users: List[dict] = Field(description="List of users")
 
-    # Remove items field from parent class
-    class Config:
-        fields = {"items": {"exclude": True}}
+    # Override the items field from parent class to use users data
+    items: List[dict] = Field(default_factory=list, description="List of users")
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Ensure items field is synchronized with users
+        if "users" in data:
+            self.items = data["users"]
+
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        # Override to maintain API contract - output 'users' field, not 'items'
+        data = super().model_dump(**kwargs)
+        # Remove items field to maintain API contract
+        if "items" in data:
+            del data["items"]
+        return data
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        # Ensure items and users fields stay synchronized without infinite recursion
+        if name == "users":
+            # Set users first, then update items to avoid recursion
+            super().__setattr__(name, value)
+            if hasattr(self, "_items_initialized"):
+                super().__setattr__("items", value)
+        elif name == "items":
+            # Set items first, then update users to avoid recursion
+            super().__setattr__(name, value)
+            if hasattr(self, "_items_initialized"):
+                super().__setattr__("users", value)
+        else:
+            super().__setattr__(name, value)
+
+        # Mark items as initialized after first set
+        if name in ["users", "items"]:
+            self._items_initialized = True
 
 
 class UserSearchRequest(BaseModel):
