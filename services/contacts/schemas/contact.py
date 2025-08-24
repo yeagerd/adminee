@@ -9,6 +9,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from services.contacts.models.contact import Contact
+
 
 class EmailContactUpdate(BaseModel):
     """Update model for email contacts."""
@@ -26,8 +28,6 @@ class EmailContactUpdate(BaseModel):
 class EmailContactSearchResult(BaseModel):
     """Search result for email contacts."""
 
-    from services.contacts.models.contact import Contact
-    
     contact: Contact
     relevance_score: float
     match_highlights: List[str] = Field(default_factory=list)
@@ -51,8 +51,6 @@ class ContactCreate(BaseModel):
 class ContactResponse(BaseModel):
     """Response model for contacts."""
 
-    from services.contacts.models.contact import Contact
-    
     contact: Contact
     success: bool = True
     message: Optional[str] = None
@@ -61,8 +59,6 @@ class ContactResponse(BaseModel):
 class ContactListResponse(BaseModel):
     """Response model for contact lists."""
 
-    from services.contacts.models.contact import Contact
-    
     contacts: List[Contact]
     total: int
     limit: int
