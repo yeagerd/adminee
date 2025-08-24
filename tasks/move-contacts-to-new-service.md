@@ -157,14 +157,20 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [x] Update event consumers to use new contact data structure
 
 ### Phase 13: Update Tests
-- [ ] Move contact tests to `services/contacts/tests/`
-- [ ] Update test imports and dependencies
-- [ ] Create integration tests for Contacts Service API
-- [ ] Test contact discovery from various event types
-- [ ] Test contact CRUD operations via API
-- [ ] Test contact search and filtering
-- [ ] Test service-to-service authentication
-- [ ] Ensure all existing contact functionality is covered
+- [x] Move contact tests to `services/contacts/tests/`
+- [x] Update test imports and dependencies
+- [x] Create integration tests for Contacts Service API
+- [x] Test contact discovery from various event types
+- [x] Test contact CRUD operations via API
+- [x] Test contact search and filtering
+- [x] Test service-to-service authentication
+- [x] Ensure all existing contact functionality is covered
+
+### Phase 14: Revise API keys
+
+- [ x] Add `API_CONTACTS_CHAT_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_MEETINGS_KEY` to `.example.env`
+- [x] Add `API_CONTACTS_SHIPMENTS_KEY` to `.example.env`
 
 ### Phase 14: Update Documentation
 - [ ] Update `documentation/new-service-guide.md` if needed
@@ -196,22 +202,6 @@ Move the contact discovery, management, and API functionality from the User Serv
 - [ ] Test service-to-service communication
 - [ ] Test contact search and filtering
 - [ ] Test contact relevance scoring
-
-### Phase 18: Performance and Monitoring
-- [ ] Add performance monitoring for Contacts Service
-- [ ] Monitor database query performance
-- [ ] Monitor API response times
-- [ ] Monitor PubSub processing performance
-- [ ] Add health checks and readiness probes
-- [ ] Add logging and tracing for contact operations
-
-### Phase 19: Deployment and Validation
-- [ ] Deploy Contacts Service to staging environment
-- [ ] Test end-to-end contact functionality
-- [ ] Validate contact discovery from all event sources
-- [ ] Validate contact management via API
-- [ ] Validate service integration
-- [ ] Deploy to production environment
 
 ### Phase 20: Post-Migration Cleanup
 - [ ] Remove old contact code from User Service
