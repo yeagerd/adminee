@@ -134,8 +134,8 @@ class VespaBackfillDemo:
         try:
             import requests
 
-            # Required topics
-            topics = ["email-backfill", "calendar-updates", "contact-updates"]
+            # Required topics - using new data-type focused topic names
+            topics = ["emails", "calendars", "contacts"]
             project_id = self.settings.pubsub_project_id
             emulator_host = self.settings.pubsub_emulator_host
 
@@ -1351,7 +1351,7 @@ BACKFILL PROCESS:
   1. Connect to email provider APIs (Microsoft Graph, Gmail, etc.)
   2. Crawl emails, calendar events, and contacts
   3. Process and normalize data
-  4. Publish to Pub/Sub topics (email-backfill, calendar-updates, contact-updates)
+  4. Publish to Pub/Sub topics (emails, calendars, contacts)
   5. Vespa loader service consumes and indexes the data
   6. Monitor job progress and collect performance metrics
 
