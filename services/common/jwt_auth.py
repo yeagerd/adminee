@@ -5,7 +5,6 @@ Provides JWT token validation and user extraction that can be reused
 across all services to eliminate code duplication.
 """
 
-import logging
 import time
 from typing import Any, Callable, Dict, Optional
 
@@ -25,13 +24,14 @@ security = HTTPBearer(auto_error=False)
 def make_verify_jwt_token(get_settings: Callable[[], Any]) -> Callable[[str], Any]:
     """
     Create a JWT verification function that uses the service's settings.
-    
+
     Args:
         get_settings: Function that returns the service's settings object
-        
+
     Returns:
         Function that verifies JWT tokens
     """
+
     async def verify_jwt_token(token: str) -> Dict[str, Any]:
         """
         Verify JWT token using manual verification.
@@ -49,7 +49,8 @@ def make_verify_jwt_token(get_settings: Callable[[], Any]) -> Callable[[str], An
 
         try:
             logger_instance.info(
-                "Using manual JWT verification (signature verification potentially disabled based on settings)"
+                "Using manual JWT verification "
+                "(signature verification potentially disabled based on settings)"
             )
 
             settings = get_settings()
@@ -76,7 +77,8 @@ def make_verify_jwt_token(get_settings: Callable[[], Any]) -> Callable[[str], An
                     audience=audience if audience else None,
                 )
             elif not verify_signature:
-                # Decode without signature verification but still validate audience if configured
+                # Decode without signature verification but still validate audience
+                # if configured
                 decoded_token = jwt.decode(
                     token,
                     options={
@@ -86,7 +88,9 @@ def make_verify_jwt_token(get_settings: Callable[[], Any]) -> Callable[[str], An
                         "verify_aud": bool(audience),  # Validate audience if configured
                     },
                     algorithms=["HS256"],
-                    audience=audience if audience else None,  # Pass audience if configured
+                    audience=(
+                        audience if audience else None
+                    ),  # Pass audience if configured
                 )
             else:
                 # Signature verification is required but no secret is configured
@@ -187,19 +191,20 @@ async def get_current_user_from_gateway_headers(request: Request) -> Optional[st
 
 
 def make_get_current_user_flexible(
-    get_settings: Callable[[], Any]
+    get_settings: Callable[[], Any],
 ) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
-    Create a flexible authentication function that supports both gateway headers and JWT tokens.
-    
+    Create a flexible authentication function that supports both gateway headers 
+    and JWT tokens.
+
     Args:
         get_settings: Function that returns the service's settings object
-        
+
     Returns:
         Function that handles flexible authentication
     """
     verify_jwt_token = make_verify_jwt_token(get_settings)
-    
+
     async def get_current_user_flexible(
         request: Request,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -251,19 +256,20 @@ def make_get_current_user_flexible(
 
 
 def make_get_current_user(
-    get_settings: Callable[[], Any]
+    get_settings: Callable[[], Any],
 ) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
-    Create a get_current_user dependency that supports both gateway headers and JWT tokens.
-    
+    Create a get_current_user dependency that supports both gateway headers 
+    and JWT tokens.
+
     Args:
         get_settings: Function that returns the service's settings object
-        
+
     Returns:
         FastAPI dependency function
     """
     get_current_user_flexible = make_get_current_user_flexible(get_settings)
-    
+
     async def get_current_user(
         request: Request,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -291,19 +297,20 @@ def make_get_current_user(
 
 
 def make_get_current_user_with_claims(
-    get_settings: Callable[[], Any]
+    get_settings: Callable[[], Any],
 ) -> Callable[[Request, Optional[HTTPAuthorizationCredentials]], Any]:
     """
-    Create a get_current_user_with_claims dependency that supports both gateway headers and JWT tokens.
-    
+    Create a get_current_user_with_claims dependency that supports both gateway 
+    headers and JWT tokens.
+
     Args:
         get_settings: Function that returns the service's settings object
-        
+
     Returns:
         FastAPI dependency function
     """
     verify_jwt_token = make_verify_jwt_token(get_settings)
-    
+
     async def get_current_user_with_claims(
         request: Request,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
