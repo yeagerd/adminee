@@ -35,23 +35,37 @@ uv sync --all-packages --all-extras --active
 # Check database status and handle different scenarios
 echo "🗄️ Checking database status..."
 
-# Try to find an environment file to use
+# Parse command line arguments
 ENV_FILE=""
-if [ -f ".env.postgres.local" ]; then
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --env-file)
+            ENV_FILE="$2"
+            shift 2
+            ;;
+        *)
+            echo "❌ Unknown option: $1"
+            echo "Usage: $0 [--env-file <file>]"
+            exit 1
+            ;;
+    esac
+done
+
+# If no env file specified, default to local
+if [ -z "$ENV_FILE" ]; then
     ENV_FILE=".env.postgres.local"
-elif [ -f ".env.postgres.staging" ]; then
-    ENV_FILE=".env.postgres.staging"
-elif [ -f ".env.postgres.production" ]; then
-    ENV_FILE=".env.postgres.production"
 fi
 
-if [ -n "$ENV_FILE" ]; then
-    echo "📄 Using environment file: $ENV_FILE"
-    ./scripts/check-db-status.sh --env-file "$ENV_FILE"
-else
-    echo "📄 Using default credentials"
-    ./scripts/check-db-status.sh
+# Check if the specified environment file exists
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: Environment file not found: $ENV_FILE"
+    echo "   Available environment files:"
+    ls -1 .env.postgres.* 2>/dev/null | sed 's/.*\.env\.postgres\.//' | sort || echo "   No environment files found in repo root"
+    exit 1
 fi
+
+echo "📄 Using environment file: $ENV_FILE"
+./scripts/check-db-status.sh --env-file "$ENV_FILE"
 
 db_status=$?
 
