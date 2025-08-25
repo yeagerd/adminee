@@ -23,13 +23,13 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --frontend       Start the frontend along with backend services"
-            echo "  --serial         Start services sequentially instead of in parallel"
+            echo "  --serial         Start services sequentially instead of simultaneously"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0               Start backend services in parallel, run frontend separately"
-            echo "  $0 --frontend    Start all services in parallel including frontend"
-            echo "  $0 --serial      Start all services sequentially"
+            echo "  $0               Start backend services simultaneously (fastest), run frontend separately"
+            echo "  $0 --frontend    Start all services simultaneously including frontend"
+            echo "  $0 --serial      Start all services sequentially (better for debugging)"
             echo "  $0 --frontend --serial  Start all services sequentially including frontend"
             exit 0
             ;;
@@ -44,6 +44,18 @@ done
 # Ensure we're in the project root (parent of where this script is located)
 cd "$(dirname "$0")/.."
 
+# Service configuration
+declare -a SERVICES=(
+    "user-service|services.user.main:app|8001"
+    "chat-service|services.chat.main:app|8002"
+    "office-service|services.office.app.main:app|8003"
+    "shipments-service|services.shipments.main:app|8004"
+    "meetings-service|services.meetings.main:app|8005"
+    "vespa-loader-service|services.vespa_loader.main:app|9001"
+    "vespa-query-service|services.vespa_query.main:app|8006"
+    "contacts-service|services.contacts.main:app|8007"
+)
+
 echo "🚀 Starting all Briefly services..."
 if [ "$SKIP_FRONTEND" = true ]; then
     echo "📱 Frontend will be skipped (backend services only)"
@@ -53,7 +65,7 @@ fi
 if [ "$SERIAL_START" = true ]; then
     echo "⏳ Services will be started sequentially"
 else
-    echo "⚡ Services will be started in parallel"
+    echo "⚡ Services will be started simultaneously (fastest startup)"
 fi
 echo "📁 Working directory: $(pwd)"
 echo ""
@@ -143,13 +155,10 @@ source .venv/bin/activate
 echo -e "${BLUE}🔍 Checking if ports are available...${NC}"
 
 check_port 3001 "Gateway" || exit 1
-check_port 8001 "User Service" || exit 1
-check_port 8002 "Chat Service" || exit 1
-check_port 8003 "Office Service" || exit 1
-check_port 8004 "Shipments Service" || exit 1
-check_port 8005 "Meetings Service" || exit 1
-check_port 9001 "Vespa Loader Service" || exit 1
-check_port 8006 "Vespa Query Service" || exit 1
+for service_config in "${SERVICES[@]}"; do
+    IFS='|' read -r service_name module_path port <<< "$service_config"
+    check_port "$port" "$service_name" || exit 1
+done
 
 if [ "$SKIP_FRONTEND" = false ]; then
     check_port 3000 "Frontend" || exit 1
@@ -230,7 +239,11 @@ cleanup() {
     done
     
     # Kill any remaining processes on our ports (only for services we started)
-    local ports_to_kill="3001 8001 8002 8003 8004 8005 9001 8006 8007"
+    local ports_to_kill="3001"
+    for service_config in "${SERVICES[@]}"; do
+        IFS='|' read -r service_name module_path port <<< "$service_config"
+        ports_to_kill="$ports_to_kill $port"
+    done
     if [ "$SKIP_FRONTEND" = false ]; then
         ports_to_kill="$ports_to_kill 3000"
     fi
@@ -250,37 +263,12 @@ trap cleanup SIGINT SIGTERM
 if [ "$SERIAL_START" = true ]; then
     echo -e "${BLUE}🔧 Starting all services sequentially...${NC}"
     
-    # Start User Service
-    start_python_service "user-service" "services.user.main:app" 8001
-    wait_for_service "User Service" "http://localhost:8001/health"
-    
-    # Start Chat Service
-    start_python_service "chat-service" "services.chat.main:app" 8002
-    wait_for_service "Chat Service" "http://localhost:8002/health"
-    
-    # Start Office Service
-    start_python_service "office-service" "services.office.app.main:app" 8003
-    wait_for_service "Office Service" "http://localhost:8003/health"
-    
-    # Start Shipments Service
-    start_python_service "shipments-service" "services.shipments.main:app" 8004
-    wait_for_service "Shipments Service" "http://localhost:8004/health"
-    
-    # Start Meetings Service
-    start_python_service "meetings-service" "services.meetings.main:app" 8005
-    wait_for_service "Meetings Service" "http://localhost:8005/health"
-    
-    # Start Vespa Loader Service
-    start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
-    wait_for_service "Vespa Loader Service" "http://localhost:9001/health"
-    
-    # Start Vespa Query Service
-    start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
-    wait_for_service "Vespa Query Service" "http://localhost:8006/health"
-    
-    # Start Contacts Service
-    start_python_service "contacts-service" "services.contacts.main:app" 8007
-    wait_for_service "Contacts Service" "http://localhost:8007/health"
+    # Start all Python services sequentially
+    for service_config in "${SERVICES[@]}"; do
+        IFS='|' read -r service_name module_path port <<< "$service_config"
+        start_python_service "$service_name" "$module_path" "$port"
+        wait_for_service "$service_name" "http://localhost:$port/health"
+    done
     
     # Start Gateway
     echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
@@ -300,31 +288,13 @@ if [ "$SERIAL_START" = true ]; then
     fi
     
 else
-    echo -e "${BLUE}🔧 Starting all services in parallel...${NC}"
+    echo -e "${BLUE}🔧 Starting all services simultaneously (aggressive parallel)...${NC}"
     
-    # Start User Service
-    start_python_service "user-service" "services.user.main:app" 8001
-    
-    # Start Chat Service
-    start_python_service "chat-service" "services.chat.main:app" 8002
-    
-    # Start Office Service
-    start_python_service "office-service" "services.office.app.main:app" 8003
-    
-    # Start Shipments Service
-    start_python_service "shipments-service" "services.shipments.main:app" 8004
-    
-    # Start Meetings Service
-    start_python_service "meetings-service" "services.meetings.main:app" 8005
-    
-    # Start Vespa Loader Service
-    start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
-    
-    # Start Vespa Query Service
-    start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
-    
-    # Start Contacts Service
-    start_python_service "contacts-service" "services.contacts.main:app" 8007
+    # Start all Python services simultaneously
+    for service_config in "${SERVICES[@]}"; do
+        IFS='|' read -r service_name module_path port <<< "$service_config"
+        start_python_service "$service_name" "$module_path" "$port" &
+    done
     
     # Start Gateway
     echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
@@ -335,40 +305,36 @@ else
     # Start Frontend (if not skipped)
     if [ "$SKIP_FRONTEND" = false ]; then
         echo -e "${BLUE}🚀 Starting Frontend...${NC}"
-        start_node_service "frontend" "frontend" 3000
+        start_node_service "frontend" "frontend" 3000 &
     else
         echo -e "${YELLOW}📱 Frontend skipped - start it separately with:${NC}"
         echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
     fi
+    
+    # Wait for all services to be ready
+    for service_config in "${SERVICES[@]}"; do
+        IFS='|' read -r service_name module_path port <<< "$service_config"
+        wait_for_service "$service_name" "http://localhost:$port/health"
+    done
+    wait_for_service "Gateway" "http://localhost:3001/health"
+
+    if [ "$SKIP_FRONTEND" = false ]; then
+        wait_for_service "Frontend" "http://localhost:3000"
+    fi
 fi
 
-# Wait for all services to be ready (only needed for parallel mode)
-if [ "$SERIAL_START" = false ]; then
-    echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
-    
-    wait_for_service "User Service" "http://localhost:8001/health" &
-    wait_for_service "Chat Service" "http://localhost:8002/health" &
-    wait_for_service "Office Service" "http://localhost:8003/health" &
-    wait_for_service "Gateway" "http://localhost:3001/health" &
-    wait_for_service "Shipments Service" "http://localhost:8004/health" &
-    wait_for_service "Meetings Service" "http://localhost:8005/health" &
-    wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
-    wait_for_service "Vespa Query Service" "http://localhost:8006/health" &
-    wait_for_service "Contacts Service" "http://localhost:8007/health" &
-    
-    if [ "$SKIP_FRONTEND" = false ]; then
-        wait_for_service "Frontend" "http://localhost:3000" &
-    fi
-    
-    # Wait for all background jobs to complete
-    wait
+# Wait for all services to be ready (only needed for serial mode)
+if [ "$SERIAL_START" = true ]; then
+    echo -e "${BLUE}⏳ All services started sequentially - they should be ready${NC}"
+else
+    echo -e "${BLUE}⚡ All services started simultaneously - they will be ready shortly${NC}"
 fi
 
 # Display service status
 if [ "$SERIAL_START" = true ]; then
     echo -e "${GREEN}🎉 All services started successfully in sequence!${NC}"
 else
-    echo -e "${GREEN}🎉 All services started successfully in parallel!${NC}"
+    echo -e "${GREEN}🎉 All services started successfully simultaneously!${NC}"
 fi
 echo ""
 echo -e "${BLUE}📋 Service Status:${NC}"
@@ -378,14 +344,12 @@ else
     echo -e "   Frontend:     ${YELLOW}Not started (use --frontend flag)${NC}"
 fi
 echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
-echo -e "   User Service: ${GREEN}http://localhost:8001${NC}"
-echo -e "   Chat Service: ${GREEN}http://localhost:8002${NC}"
-echo -e "   Office Service: ${GREEN}http://localhost:8003${NC}"
-echo -e "   Shipments Service: ${GREEN}http://localhost:8004${NC}"
-echo -e "   Meetings Service: ${GREEN}http://localhost:8005${NC}"
-echo -e "   Vespa Loader Service: ${GREEN}http://localhost:9001${NC}"
-echo -e "   Vespa Query Service: ${GREEN}http://localhost:8006${NC}"
-echo -e "   Contacts Service: ${GREEN}http://localhost:8007${NC}"
+for service_config in "${SERVICES[@]}"; do
+    IFS='|' read -r service_name module_path port <<< "$service_config"
+    # Convert service-name to display name (e.g., "user-service" -> "User Service")
+    display_name=$(echo "$service_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+    echo -e "   $display_name: ${GREEN}http://localhost:$port${NC}"
+done
 echo ""
 echo -e "${BLUE}🔗 Quick Links:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
@@ -403,7 +367,7 @@ echo -e "   - Gateway provides centralized auth and security"
 if [ "$SERIAL_START" = true ]; then
     echo -e "   - Services started sequentially for better debugging"
 else
-    echo -e "   - Services started in parallel for faster startup"
+    echo -e "   - Services started simultaneously for fastest startup (no health checks)"
 fi
 if [ "$SKIP_FRONTEND" = true ]; then
     echo -e "   - Frontend is not managed by this script - restart it separately"
