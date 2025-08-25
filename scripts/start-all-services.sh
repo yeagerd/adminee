@@ -8,6 +8,7 @@ set -e
 # Parse command line arguments
 SKIP_FRONTEND=true
 SERIAL_START=false
+FORCE_KILL=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --frontend)
@@ -18,12 +19,17 @@ while [[ $# -gt 0 ]]; do
             SERIAL_START=true
             shift
             ;;
+        --force)
+            FORCE_KILL=true
+            shift
+            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --frontend       Start the frontend along with backend services"
             echo "  --serial         Start services sequentially instead of simultaneously"
+            echo "  --force          Kill port-conflicting services instead of exiting"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Examples:"
@@ -31,6 +37,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --frontend    Start all services simultaneously including frontend"
             echo "  $0 --serial      Start all services sequentially (better for debugging)"
             echo "  $0 --frontend --serial  Start all services sequentially including frontend"
+            echo "  $0 --force       Start services, killing any port conflicts"
             exit 0
             ;;
         *)
@@ -67,6 +74,9 @@ if [ "$SERIAL_START" = true ]; then
 else
     echo "⚡ Services will be started simultaneously (fastest startup)"
 fi
+if [ "$FORCE_KILL" = true ]; then
+    echo "⚠️  Force mode enabled - will kill port-conflicting services"
+fi
 echo "📁 Working directory: $(pwd)"
 echo ""
 
@@ -86,15 +96,39 @@ check_port() {
         local pid=$(lsof -Pi :$port -sTCP:LISTEN -t)
         local process_info=$(ps -p $pid -o pid,ppid,command --no-headers 2>/dev/null || echo "Unknown process")
         
-        echo -e "${RED}❌ Port $port is already in use by $service_name${NC}"
-        echo -e "${YELLOW}   Process ID: $pid${NC}"
-        echo -e "${YELLOW}   Process Info: $process_info${NC}"
-        echo -e "${YELLOW}   To kill the process:${NC}"
-        echo -e "${YELLOW}     kill $pid${NC}"
-        echo -e "${YELLOW}     or${NC}"
-        echo -e "${YELLOW}     lsof -ti:$port | xargs kill${NC}"
-        echo ""
-        return 1
+        if [ "$FORCE_KILL" = true ]; then
+            echo -e "${YELLOW}⚠️  Port $port is in use by $service_name - killing process $pid${NC}"
+            echo -e "${YELLOW}   Process Info: $process_info${NC}"
+            
+            # Kill the process
+            if kill $pid 2>/dev/null; then
+                echo -e "${GREEN}✅ Successfully killed process $pid${NC}"
+                # Wait a moment for the port to be released
+                sleep 1
+                return 0
+            else
+                echo -e "${RED}❌ Failed to kill process $pid, trying force kill${NC}"
+                if kill -9 $pid 2>/dev/null; then
+                    echo -e "${GREEN}✅ Successfully force killed process $pid${NC}"
+                    sleep 1
+                    return 0
+                else
+                    echo -e "${RED}❌ Failed to kill process $pid even with force kill${NC}"
+                    return 1
+                fi
+            fi
+        else
+            echo -e "${RED}❌ Port $port is already in use by $service_name${NC}"
+            echo -e "${YELLOW}   Process ID: $pid${NC}"
+            echo -e "${YELLOW}   Process Info: $process_info${NC}"
+            echo -e "${YELLOW}   To kill the process:${NC}"
+            echo -e "${YELLOW}     kill $pid${NC}"
+            echo -e "${YELLOW}     or${NC}"
+            echo -e "${YELLOW}     lsof -ti:$port | xargs kill${NC}"
+            echo -e "${YELLOW}     or use --force to automatically kill conflicting processes${NC}"
+            echo ""
+            return 1
+        fi
     fi
     return 0
 }
