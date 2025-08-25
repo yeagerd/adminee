@@ -327,8 +327,20 @@ else
         echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
     fi
     
-    # Brief pause to let all services start
-    sleep 3
+    # Wait for all services to be ready
+    wait_for_service "User Service" "http://localhost:8001/health"
+    wait_for_service "Chat Service" "http://localhost:8002/health"
+    wait_for_service "Office Service" "http://localhost:8003/health"
+    wait_for_service "Shipments Service" "http://localhost:8004/health"
+    wait_for_service "Meetings Service" "http://localhost:8005/health"
+    wait_for_service "Vespa Loader Service" "http://localhost:9001/health"
+    wait_for_service "Vespa Query Service" "http://localhost:8006/health"
+    wait_for_service "Contacts Service" "http://localhost:8007/health"
+    wait_for_service "Gateway" "http://localhost:3001/health"
+
+    if [ "$SKIP_FRONTEND" = false ]; then
+        wait_for_service "Frontend" "http://localhost:3000"
+    fi
 fi
 
 # Wait for all services to be ready (only needed for serial mode)
