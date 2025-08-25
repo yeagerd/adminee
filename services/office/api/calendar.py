@@ -27,16 +27,18 @@ from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import normalize_google_calendar_event
 from services.api.v1.office.models import Provider
 from services.api.v1.office.calendar import (
+    CalendarEvent,
+    CreateCalendarEventRequest,
+)
+from services.api.v1.office.responses import (
     ApiResponse,
     AvailabilityApiResponse,
     AvailabilityResponse,
     AvailableSlot,
-    CalendarEvent,
     CalendarEventApiResponse,
     CalendarEventDetailResponse,
     CalendarEventListApiResponse,
     CalendarEventResponse,
-    CreateCalendarEventRequest,
     TimeRange,
 )
 

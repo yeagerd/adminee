@@ -56,7 +56,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [x] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
   - [x] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api/v1.office`
   - [x] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
-  - [ ] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
+  - [x] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
   - [x] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
 - [x] Update office service tests and ensure they pass
 - [ ] Update office service documentation

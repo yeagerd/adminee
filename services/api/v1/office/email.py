@@ -208,3 +208,57 @@ class EmailMessageList(BaseModel):
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
     request_id: str
+
+
+class EmailFolder(BaseModel):
+    """Model for email folders/labels."""
+
+    label: str = Field(..., description="Unique identifier for the folder/label")
+    name: str = Field(..., description="Display name for the folder/label")
+    provider: Provider = Field(..., description="Provider this folder belongs to")
+    provider_folder_id: Optional[str] = Field(
+        None, description="Provider-specific folder ID"
+    )
+    account_email: EmailStr = Field(
+        ..., description="Which account this folder belongs to"
+    )
+    account_name: Optional[str] = Field(
+        None, description="Display name for the account"
+    )
+    is_system: bool = Field(
+        False, description="Whether this is a system folder (inbox, sent, etc.)"
+    )
+    message_count: Optional[int] = Field(
+        None, description="Number of messages in this folder"
+    )
+
+
+class EmailFolderListData(BaseModel):
+    """Data structure for email folder list responses."""
+
+    folders: List[EmailFolder]
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    request_metadata: Dict[str, Any]
+
+
+class EmailFolderList(BaseModel):
+    """Response model for email folder lists."""
+
+    success: bool
+    data: Optional[EmailFolderListData] = None
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class ApiError(BaseModel):
+    """Error model for API responses."""
+
+    type: str  # "validation_error", "auth_error", "provider_error", etc.
+    message: str
+    details: Optional[Dict[str, Any]] = None
+    provider: Optional[Provider] = None
+    retry_after: Optional[int] = None  # seconds
+    request_id: str

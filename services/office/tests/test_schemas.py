@@ -13,13 +13,12 @@ from pydantic import ValidationError
 from services.office.models import Provider
 from services.api.v1.office.email import (
     ApiError,
-    ApiResponse,
-    CalendarEvent,
-    DriveFile,
     EmailAddress,
     EmailMessage,
-    PaginatedResponse,
 )
+from services.api.v1.office.calendar import CalendarEvent
+from services.api.v1.office.files import DriveFile
+from services.api.v1.office.responses import ApiResponse, PaginatedResponse
 
 
 @pytest.fixture(autouse=True)
