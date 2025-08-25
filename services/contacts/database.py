@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 
 from services.contacts.settings import get_settings
+from services.common import get_async_database_url
 
 # Base class for models
 Base = declarative_base()
@@ -24,7 +25,7 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         settings = get_settings()
         database_url = settings.db_url_contacts
-        _engine = create_async_engine(database_url, echo=False)
+        _engine = create_async_engine(get_async_database_url(database_url), echo=False)
     return _engine
 
 
