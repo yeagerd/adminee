@@ -7,10 +7,15 @@ set -e
 
 # Parse command line arguments
 SKIP_FRONTEND=true
+SERIAL_START=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --frontend)
             SKIP_FRONTEND=false
+            shift
+            ;;
+        --serial)
+            SERIAL_START=true
             shift
             ;;
         --help|-h)
@@ -18,11 +23,14 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --frontend       Start the frontend along with backend services"
+            echo "  --serial         Start services sequentially instead of in parallel"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0               Start backend services only, run frontend separately"
-            echo "  $0 --frontend    Start all services including frontend"
+            echo "  $0               Start backend services in parallel, run frontend separately"
+            echo "  $0 --frontend    Start all services in parallel including frontend"
+            echo "  $0 --serial      Start all services sequentially"
+            echo "  $0 --frontend --serial  Start all services sequentially including frontend"
             exit 0
             ;;
         *)
@@ -41,6 +49,11 @@ if [ "$SKIP_FRONTEND" = true ]; then
     echo "📱 Frontend will be skipped (backend services only)"
 else
     echo "📱 Frontend will be started along with backend services"
+fi
+if [ "$SERIAL_START" = true ]; then
+    echo "⏳ Services will be started sequentially"
+else
+    echo "⚡ Services will be started in parallel"
 fi
 echo "📁 Working directory: $(pwd)"
 echo ""
@@ -233,70 +246,130 @@ cleanup() {
 # Set up signal handlers for proper Ctrl+C handling
 trap cleanup SIGINT SIGTERM
 
-# Start all services in parallel
-echo -e "${BLUE}🔧 Starting all services in parallel...${NC}"
-
-# Start User Service
-start_python_service "user-service" "services.user.main:app" 8001
-
-# Start Chat Service
-start_python_service "chat-service" "services.chat.main:app" 8002
-
-# Start Office Service
-start_python_service "office-service" "services.office.app.main:app" 8003
-
-# Start Shipments Service
-start_python_service "shipments-service" "services.shipments.main:app" 8004
-
-# Start Meetings Service
-start_python_service "meetings-service" "services.meetings.main:app" 8005
-
-# Start Vespa Loader Service
-start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
-
-# Start Vespa Query Service
-start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
-
-# Start Contacts Service
-start_python_service "contacts-service" "services.contacts.main:app" 8007
-
-# Start Gateway
-echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
-./scripts/gateway-start.sh &
-GATEWAY_PID=$!
-echo $GATEWAY_PID > /tmp/briefly-gateway.pid
-
-# Start Frontend (if not skipped)
-if [ "$SKIP_FRONTEND" = false ]; then
-    echo -e "${BLUE}🚀 Starting Frontend...${NC}"
-    start_node_service "frontend" "frontend" 3000
+# Start all services
+if [ "$SERIAL_START" = true ]; then
+    echo -e "${BLUE}🔧 Starting all services sequentially...${NC}"
+    
+    # Start User Service
+    start_python_service "user-service" "services.user.main:app" 8001
+    wait_for_service "User Service" "http://localhost:8001/health"
+    
+    # Start Chat Service
+    start_python_service "chat-service" "services.chat.main:app" 8002
+    wait_for_service "Chat Service" "http://localhost:8002/health"
+    
+    # Start Office Service
+    start_python_service "office-service" "services.office.app.main:app" 8003
+    wait_for_service "Office Service" "http://localhost:8003/health"
+    
+    # Start Shipments Service
+    start_python_service "shipments-service" "services.shipments.main:app" 8004
+    wait_for_service "Shipments Service" "http://localhost:8004/health"
+    
+    # Start Meetings Service
+    start_python_service "meetings-service" "services.meetings.main:app" 8005
+    wait_for_service "Meetings Service" "http://localhost:8005/health"
+    
+    # Start Vespa Loader Service
+    start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
+    wait_for_service "Vespa Loader Service" "http://localhost:9001/health"
+    
+    # Start Vespa Query Service
+    start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
+    wait_for_service "Vespa Query Service" "http://localhost:8006/health"
+    
+    # Start Contacts Service
+    start_python_service "contacts-service" "services.contacts.main:app" 8007
+    wait_for_service "Contacts Service" "http://localhost:8007/health"
+    
+    # Start Gateway
+    echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
+    ./scripts/gateway-start.sh &
+    GATEWAY_PID=$!
+    echo $GATEWAY_PID > /tmp/briefly-gateway.pid
+    wait_for_service "Gateway" "http://localhost:3001/health"
+    
+    # Start Frontend (if not skipped)
+    if [ "$SKIP_FRONTEND" = false ]; then
+        echo -e "${BLUE}🚀 Starting Frontend...${NC}"
+        start_node_service "frontend" "frontend" 3000
+        wait_for_service "Frontend" "http://localhost:3000"
+    else
+        echo -e "${YELLOW}📱 Frontend skipped - start it separately with:${NC}"
+        echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
+    fi
+    
 else
-    echo -e "${YELLOW}📱 Frontend skipped - start it separately with:${NC}"
-    echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
+    echo -e "${BLUE}🔧 Starting all services in parallel...${NC}"
+    
+    # Start User Service
+    start_python_service "user-service" "services.user.main:app" 8001
+    
+    # Start Chat Service
+    start_python_service "chat-service" "services.chat.main:app" 8002
+    
+    # Start Office Service
+    start_python_service "office-service" "services.office.app.main:app" 8003
+    
+    # Start Shipments Service
+    start_python_service "shipments-service" "services.shipments.main:app" 8004
+    
+    # Start Meetings Service
+    start_python_service "meetings-service" "services.meetings.main:app" 8005
+    
+    # Start Vespa Loader Service
+    start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
+    
+    # Start Vespa Query Service
+    start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
+    
+    # Start Contacts Service
+    start_python_service "contacts-service" "services.contacts.main:app" 8007
+    
+    # Start Gateway
+    echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
+    ./scripts/gateway-start.sh &
+    GATEWAY_PID=$!
+    echo $GATEWAY_PID > /tmp/briefly-gateway.pid
+    
+    # Start Frontend (if not skipped)
+    if [ "$SKIP_FRONTEND" = false ]; then
+        echo -e "${BLUE}🚀 Starting Frontend...${NC}"
+        start_node_service "frontend" "frontend" 3000
+    else
+        echo -e "${YELLOW}📱 Frontend skipped - start it separately with:${NC}"
+        echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
+    fi
 fi
 
-# Wait for all services to be ready
-echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
-
-wait_for_service "User Service" "http://localhost:8001/health" &
-wait_for_service "Chat Service" "http://localhost:8002/health" &
-wait_for_service "Office Service" "http://localhost:8003/health" &
-wait_for_service "Gateway" "http://localhost:3001/health" &
-wait_for_service "Shipments Service" "http://localhost:8004/health" &
-wait_for_service "Meetings Service" "http://localhost:8005/health" &
-wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
-wait_for_service "Vespa Query Service" "http://localhost:8006/health" &
-wait_for_service "Contacts Service" "http://localhost:8007/health" &
-
-if [ "$SKIP_FRONTEND" = false ]; then
-    wait_for_service "Frontend" "http://localhost:3000" &
+# Wait for all services to be ready (only needed for parallel mode)
+if [ "$SERIAL_START" = false ]; then
+    echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
+    
+    wait_for_service "User Service" "http://localhost:8001/health" &
+    wait_for_service "Chat Service" "http://localhost:8002/health" &
+    wait_for_service "Office Service" "http://localhost:8003/health" &
+    wait_for_service "Gateway" "http://localhost:3001/health" &
+    wait_for_service "Shipments Service" "http://localhost:8004/health" &
+    wait_for_service "Meetings Service" "http://localhost:8005/health" &
+    wait_for_service "Vespa Loader Service" "http://localhost:9001/health" &
+    wait_for_service "Vespa Query Service" "http://localhost:8006/health" &
+    wait_for_service "Contacts Service" "http://localhost:8007/health" &
+    
+    if [ "$SKIP_FRONTEND" = false ]; then
+        wait_for_service "Frontend" "http://localhost:3000" &
+    fi
+    
+    # Wait for all background jobs to complete
+    wait
 fi
-
-# Wait for all background jobs to complete
-wait
 
 # Display service status
-echo -e "${GREEN}🎉 All services started successfully!${NC}"
+if [ "$SERIAL_START" = true ]; then
+    echo -e "${GREEN}🎉 All services started successfully in sequence!${NC}"
+else
+    echo -e "${GREEN}🎉 All services started successfully in parallel!${NC}"
+fi
 echo ""
 echo -e "${BLUE}📋 Service Status:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
@@ -327,6 +400,11 @@ echo -e "${YELLOW}💡 Tips:${NC}"
 echo -e "   - Use Ctrl+C to stop all services"
 echo -e "   - Check logs in individual service directories"
 echo -e "   - Gateway provides centralized auth and security"
+if [ "$SERIAL_START" = true ]; then
+    echo -e "   - Services started sequentially for better debugging"
+else
+    echo -e "   - Services started in parallel for faster startup"
+fi
 if [ "$SKIP_FRONTEND" = true ]; then
     echo -e "   - Frontend is not managed by this script - restart it separately"
 fi
