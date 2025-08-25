@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import declarative_base
 
-from services.contacts.settings import get_settings
 from services.common import get_async_database_url
+from services.contacts.settings import get_settings
 
 # Base class for models
 Base = declarative_base()
