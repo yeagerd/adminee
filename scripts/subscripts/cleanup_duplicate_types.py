@@ -53,14 +53,17 @@ def cleanup_duplicate_types(file_path):
                     
                     # Skip lines until we find the end of this type definition
                     # Handle both multi-line and single-line type definitions
+                    start_i = i  # Track where we started to prevent infinite loops
                     while i < len(lines) and brace_count > 0:
                         current_line = lines[i]
-                        brace_count += current_line.count('{')
-                        brace_count -= current_line.count('}')
+                        # Count braces in the current line
+                        opening_braces = current_line.count('{')
+                        closing_braces = current_line.count('}')
+                        brace_count += opening_braces - closing_braces
                         i += 1
                         
                         # Safety check to prevent infinite loops
-                        if i > len(lines) + 1000:  # Arbitrary limit to prevent infinite loops
+                        if i - start_i > 1000:  # Arbitrary limit to prevent infinite loops
                             print(f'Warning: Possible infinite loop detected for type {type_name} in {file_path}', file=sys.stderr)
                             break
                     
@@ -68,6 +71,9 @@ def cleanup_duplicate_types(file_path):
                     # This indicates a malformed type definition
                     if brace_count > 0:
                         print(f'Warning: Unclosed braces in type definition for {type_name} in {file_path}', file=sys.stderr)
+                        # Ensure we don't go beyond the file bounds
+                        if i >= len(lines):
+                            break
                     
                     # Check if we ended with a semicolon (single-line types)
                     if i < len(lines) and ';' in lines[i-1]:
