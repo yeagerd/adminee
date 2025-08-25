@@ -5,6 +5,7 @@ requires-python = "==3.12.*"
 [manifest]
 members = [
     "briefly",
+    "briefly-api-v1",
     "briefly-chat",
     "briefly-common",
     "briefly-contacts",
@@ -303,6 +304,34 @@ dev = [
     { name = "types-pytz", specifier = ">=2025.2.0.20250516" },
     { name = "types-requests", specifier = ">=2.32.4.20250611" },
 ]
+
+[[package]]
+name = "briefly-api-v1"
+version = "1.0.0"
+source = { editable = "services/api/v1" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "black" },
+    { name = "isort" },
+    { name = "mypy" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
+    { name = "isort", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "briefly-chat"

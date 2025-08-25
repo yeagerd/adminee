@@ -68,10 +68,10 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [x] Update `services/meetings/` imports to use `services.api.v1.meetings`
 - [x] Update any inter-service calls that import meetings schemas
   - [x] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
-  - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
+  - [x] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
   - [x] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api/v1.meetings`
   - [x] **Office Service**: Update `services/office/api/calendar.py` to use `CreateCalendarEventRequest` from `services.api/v1.office` (already handled in Phase 3)
-  - [ ] **Office Tests**: Update `services/office/tests/test_validation.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
+  - [x] **Office Tests**: Update `services/office/tests/test_validation.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
   - [x] Verify that no other services are making direct calls to meetings service internal models
 - [x] Ensure meetings service tests pass
 - [ ] Update meetings service documentation

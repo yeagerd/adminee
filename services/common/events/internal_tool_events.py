@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from .base_events import BaseEvent
 
 
+
 # LLM Chat Events
 class LLMChatMessageData(BaseModel):
     """LLM chat message data structure."""

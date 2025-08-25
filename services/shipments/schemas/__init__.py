@@ -1,5 +1,7 @@
 """
 Pydantic schemas for the shipments service
+
+This module now imports from the shared API package.
 """
 
 from datetime import date, datetime
@@ -8,6 +10,22 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from services.api.v1.shipments.email_parser import (
+    EmailParseError,
+    EmailParseRequest,
+    EmailParseResponse,
+    ParsedTrackingInfo,
+)
+from services.api.v1.shipments.pagination import (
+    CursorValidationError,
+    PackageCursorPaginationRequest,
+    PackageCursorPaginationResponse,
+    PackageListRequest,
+    PackageListResponse,
+    PackageSearchRequest,
+    PackageSearchResponse,
+    PaginationError,
+)
 from services.shipments.models import PackageStatus
 
 
