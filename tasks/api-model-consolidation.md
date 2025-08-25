@@ -27,21 +27,21 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
   - [x] Move `pagination.py` schemas
   - [x] Move `health.py` schemas
 - [x] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
-- [ ] Update any inter-service calls that import user schemas to use the new API package
-  - [ ] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.schemas`
-  - [ ] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation
-  - [ ] **Office Service**: Update `services/office/core/pubsub_publisher.py` to use shared user schemas for user_id validation if any user-related schemas are added
-  - [ ] **Office Service**: Update `services/office/core/token_manager.py` to use shared user schemas for token validation responses
-  - [ ] **Office Service**: Update `services/office/core/api_client_factory.py` to use shared user schemas for user profile responses
-  - [ ] **Office Service**: Update `services/office/api/email.py` to use shared user schemas for integration responses
-  - [ ] **Office Service**: Update `services/office/api/backfill.py` to use shared user schemas for user existence responses
-  - [ ] **Meetings Service**: Update `services/meetings/services/booking_availability.py` to use shared user schemas if user validation schemas are needed
-  - [ ] **Meetings Service**: Update `services/meetings/services/email_integration.py` to use shared user schemas for integration responses
-  - [ ] **Chat Service**: Update `services/chat/tools/data_tools.py` to use shared user schemas for integration responses
-  - [ ] **Vespa Services**: Update `services/vespa_loader/` and `services/vespa_query/` to use shared user schemas for user validation responses
-  - [ ] **Demo Services**: Update demo services to use shared user schemas for user service responses
-  - [ ] Verify that no other services are making direct calls to user service internal models
-- [ ] Ensure user service tests still pass with new import structure
+- [x] Update any inter-service calls that import user schemas to use the new API package
+  - [x] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.schemas`
+  - [x] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation
+  - [x] **Office Service**: Update `services/office/core/pubsub_publisher.py` to use shared user schemas for user_id validation if any user-related schemas are added
+  - [x] **Office Service**: Update `services/office/core/token_manager.py` to use shared user schemas for token validation responses
+  - [x] **Office Service**: Update `services/office/core/api_client_factory.py` to use shared user schemas for user profile responses
+  - [x] **Office Service**: Update `services/office/api/email.py` to use shared user schemas for integration responses
+  - [x] **Office Service**: Update `services/office/api/backfill.py` to use shared user schemas for user existence responses
+  - [x] **Meetings Service**: Update `services/meetings/services/booking_availability.py` to use shared user schemas if user validation schemas are needed
+  - [x] **Meetings Service**: Update `services/meetings/services/email_integration.py` to use shared user schemas for integration responses
+  - [x] **Chat Service**: Update `services/chat/tools/data_tools.py` to use shared user schemas for integration responses
+  - [x] **Vespa Services**: Update `services/vespa_loader/` and `services/vespa_query/` to use shared user schemas for user validation responses
+  - [x] **Demo Services**: Update demo services to use shared user schemas for user service responses
+  - [x] Verify that no other services are making direct calls to user service internal models
+- [x] Ensure user service tests still pass with new import structure
 - [ ] Update user service documentation to reflect new API structure
 
 ## Phase 3: Office Service Models (Priority: High - Core Integration Service)
