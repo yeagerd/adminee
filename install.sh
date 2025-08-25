@@ -43,15 +43,19 @@ elif [ -f ".env.postgres.staging" ]; then
     ENV_FILE=".env.postgres.staging"
 elif [ -f ".env.postgres.production" ]; then
     ENV_FILE=".env.postgres.production"
-fi
-
-if [ -n "$ENV_FILE" ]; then
-    echo "📄 Using environment file: $ENV_FILE"
-    ./scripts/check-db-status.sh --env-file "$ENV_FILE"
+elif [ -n "$ENV_FILE" ]; then
+    # User provided a non-empty ENV_FILE that didn't match any of the above
+    echo "❌ Error: Invalid environment file specified: $ENV_FILE"
+    echo "   Available environment files:"
+    ls -1 .env.postgres.* 2>/dev/null | sed 's/.*\.env\.postgres\.//' | sort || echo "   No environment files found in repo root"
+    exit 1
 else
     echo "📄 Using default credentials"
-    ./scripts/check-db-status.sh
+    ENV_FILE=".env.postgres.local"
 fi
+
+echo "📄 Using environment file: $ENV_FILE"
+./scripts/check-db-status.sh --env-file "$ENV_FILE"
 
 db_status=$?
 
