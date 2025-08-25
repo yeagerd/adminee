@@ -83,13 +83,15 @@ async def list_my_contacts(
 ) -> ContactListResponse:
     """List contacts for the currently authenticated user with optional filtering."""
     try:
-        contacts = await contact_service.list_contacts(
+        # Use read-through method to get contacts from both local DB and Office Service
+        contacts = await contact_service.list_contacts_with_readthrough(
             session=session,
             user_id=current_user_id,
             limit=limit,
             offset=offset,
             tags=tags,
             source_services=source_services,
+            force_sync=False,  # Only sync if no local contacts exist
         )
 
         # Get office integration data for contacts
@@ -99,6 +101,7 @@ async def list_my_contacts(
             )
         )
 
+        # Count total contacts including synced ones
         total = await contact_service.count_contacts(
             session=session, user_id=current_user_id
         )
@@ -113,6 +116,48 @@ async def list_my_contacts(
     except Exception as e:
         logger.error(f"Error listing contacts for user {current_user_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to list contacts")
+
+
+@router.post("/me/sync", response_model=ContactListResponse)
+async def sync_contacts_from_office(
+    session: AsyncSession = Depends(get_async_session),
+    contact_service: ContactService = Depends(get_contact_service),
+    authenticated_service: str = Depends(
+        service_permission_required(["read_contacts"])
+    ),
+    current_user_id: str = Depends(get_current_user),
+) -> ContactListResponse:
+    """Force sync contacts from Office Service for the current user."""
+    try:
+        # Force sync from Office Service
+        synced_contacts = await contact_service.sync_office_contacts(
+            session=session, user_id=current_user_id
+        )
+        
+        # Get updated contact list
+        contacts = await contact_service.list_contacts(
+            session=session,
+            user_id=current_user_id,
+            limit=1000,  # Get all contacts after sync
+            offset=0,
+        )
+        
+        total = await contact_service.count_contacts(
+            session=session, user_id=current_user_id
+        )
+        
+        logger.info(f"Successfully synced {len(synced_contacts)} contacts for user {current_user_id}")
+        
+        return ContactListResponse(
+            contacts=contacts,
+            total=total,
+            limit=len(contacts),
+            offset=0,
+            success=True,
+        )
+    except Exception as e:
+        logger.error(f"Error syncing contacts for user {current_user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to sync contacts")
 
 
 @router.get("/me/search", response_model=List[EmailContactSearchResult])
