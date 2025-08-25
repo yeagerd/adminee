@@ -4,7 +4,6 @@ Contact service for business logic operations on contacts.
 Provides CRUD operations, search, filtering, and statistics for contacts.
 """
 
-import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, desc, func, or_, select
@@ -12,10 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select as sqlmodel_select
 
 from services.common.http_errors import NotFoundError, ValidationError
+from services.common.logging_config import get_logger
 from services.contacts.models.contact import Contact
 from services.contacts.schemas.contact import ContactCreate, EmailContactUpdate
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ContactService:
