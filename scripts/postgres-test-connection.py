@@ -6,6 +6,8 @@ import sys
 import os
 from urllib.parse import urlparse
 
+from services.common.postgres_urls import PostgresURLs
+
 def test_connection(service_name, connection_string):
     """Test connection to a specific database."""
     try:
@@ -44,21 +46,25 @@ def main():
     """Test connections for all services."""
     print("🔍 Testing PostgreSQL connections for all services...\n")
 
-    # Get admin credentials from environment variables
-    postgres_user = os.getenv('POSTGRES_USER', 'postgres')
-    postgres_password = os.getenv('POSTGRES_PASSWORD', 'postgres')
-    postgres_host = os.getenv('POSTGRES_HOST', 'localhost')
-    postgres_port = os.getenv('POSTGRES_PORT', '5432')
-
+    # Use PostgresURLs to get migration URLs for connection testing
+    urls = PostgresURLs()
+    
     # Test connections using admin user (for migrations)
     connections = [
-        ("User Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_user"),
-        ("Meetings Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_meetings"),
-        ("Shipments Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_shipments"),
-        ("Office Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_office"),
-        ("Chat Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_chat"),
-        ("Vector Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_vector"),
+        ("User Service", urls.get_migration_url("user")),
+        ("Meetings Service", urls.get_migration_url("meetings")),
+        ("Shipments Service", urls.get_migration_url("shipments")),
+        ("Office Service", urls.get_migration_url("office")),
+        ("Chat Service", urls.get_migration_url("chat")),
+        ("Contacts Service", urls.get_migration_url("contacts")),
     ]
+
+    # Add vector service if it exists
+    try:
+        vector_url = urls.get_migration_url("vector")
+        connections.append(("Vector Service", vector_url))
+    except Exception:
+        print("⚠️  Vector service not configured, skipping...")
 
     success_count = 0
     for service_name, connection_string in connections:

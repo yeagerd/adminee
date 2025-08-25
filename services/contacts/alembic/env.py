@@ -1,14 +1,26 @@
+import os
 from logging.config import fileConfig
 from typing import Any
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from services.contacts.database import metadata
+from services.contacts.database import Base, metadata
+from services.contacts.models.contact import Contact  # Import models to register them
+from services.common.postgres_urls import PostgresURLs
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Set the database URL from our settings
+# For migrations, use the admin user URL if available, otherwise fall back to service user URL
+migration_url = os.getenv("DB_URL_CONTACTS_MIGRATIONS")
+if migration_url:
+    config.set_main_option("sqlalchemy.url", migration_url)
+else:
+    # Use PostgresURLs to get the migration URL
+    config.set_main_option("sqlalchemy.url", PostgresURLs().get_migration_url("contacts"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

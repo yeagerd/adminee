@@ -6,6 +6,7 @@ Uses custom BaseSettings to manage environment variables and configuration.
 
 from typing import List, Optional
 
+from services.common.postgres_urls import PostgresURLs
 from services.common.settings import (
     AliasChoices,
     BaseSettings,
@@ -19,7 +20,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     db_url_user: str = Field(
-        default=...,
+        default_factory=lambda: PostgresURLs().get_service_url("user"),
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER"),
     )

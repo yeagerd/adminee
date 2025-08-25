@@ -51,16 +51,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# If no env file specified, default to local
+# If no env file specified, default to .env
 if [ -z "$ENV_FILE" ]; then
-    ENV_FILE=".env.postgres.local"
+    ENV_FILE=".env"
 fi
 
 # Check if the specified environment file exists
 if [ ! -f "$ENV_FILE" ]; then
     echo "❌ Error: Environment file not found: $ENV_FILE"
-    echo "   Available environment files:"
-    ls -1 .env.postgres.* 2>/dev/null | sed 's/.*\.env\.postgres\.//' | sort || echo "   No environment files found in repo root"
+    echo "   Please create a .env file based on .example.env"
+    echo "   Example: cp .example.env .env"
     exit 1
 fi
 
@@ -97,11 +97,4 @@ echo "✅ Development environment setup complete!"
 echo ""
 echo "🎯 Next steps:"
 echo "  1. Run `source .venv/bin/activate` to activate the virtual environment"
-echo "  2. Copy .env.example to .env and configure your environment variables"
-echo "  3. Start PostgreSQL with: ./scripts/postgres-start.sh"
-echo "  4. Check database status with: ./scripts/check-db-status.sh"
-echo "  5. Start services with: ./scripts/start-services.sh"
-echo "  6. Run tests with: nox -s test"
-echo "  7. Run linting with: nox -s lint"
-echo ""
-echo "🚀 Happy coding!" 
+echo "  2. Copy .example.env to .env and configure your environment variables" 

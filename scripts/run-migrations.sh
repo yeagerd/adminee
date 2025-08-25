@@ -1,36 +1,52 @@
 #!/bin/bash
 set -e
 
+# Database Migration Runner
+# 
+# This script runs Alembic migrations for all services.
+# 
+# Exit codes:
+#   0 - All migrations completed successfully
+#   1 - Error during migration execution
+#
+# Usage:
+#   ./scripts/run-migrations.sh [--env-file .env.postgres.local] [--check]
+#
+# Options:
+#   --env-file FILE    Environment file with database passwords (optional)
+#   --check            Only check migration status, don't run migrations
+#   -h, --help         Show this help message
+
 # Set working directory to the project root (one level up from scripts/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
 # Parse command line arguments
-CHECK_ONLY=false
 ENV_FILE=""
+CHECK_ONLY=false
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --check)
-            CHECK_ONLY=true
-            shift
-            ;;
         --env-file)
             ENV_FILE="$2"
             shift 2
+            ;;
+        --check)
+            CHECK_ONLY=true
+            shift
             ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --check            Check migration status without running migrations"
-            echo "  --env-file FILE    REQUIRED: Environment file with database passwords"
+            echo "  --env-file FILE    Environment file with database passwords (optional)"
+            echo "  --check            Only check migration status, don't run migrations"
             echo "  -h, --help         Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0 --env-file .env.postgres.local                    # Run migrations"
-            echo "  $0 --check --env-file .env.postgres.local           # Check status"
-            echo "  $0 --env-file .env.postgres.staging                 # Run on staging"
+            echo "  $0                                    # Run all migrations"
+            echo "  $0 --check                           # Check migration status only"
+            echo "  $0 --env-file .env.postgres.local    # Use local environment"
             exit 0
             ;;
         *)
@@ -41,55 +57,25 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate environment file
-if [ -z "$ENV_FILE" ]; then
-    echo "❌ Error: Environment file is required for security"
-    echo "   Please provide an environment file with database passwords"
-    echo "   Example: $0 --env-file .env.postgres.local"
-    echo ""
-    echo "   Available environment files:"
-    ls -1 .env.postgres.* 2>/dev/null | sed 's/.*\.env\.postgres\.//' | sort || echo "   No environment files found in repo root"
-    exit 1
+# Load environment variables
+if [ -n "$ENV_FILE" ]; then
+    if [ ! -f "$ENV_FILE" ]; then
+        echo "❌ Error: Environment file not found: $ENV_FILE"
+        exit 1
+    fi
+    source "$ENV_FILE"
+    echo "✅ Environment variables loaded from $ENV_FILE"
+else
+    # Use default hardcoded credentials for local development
+    echo "📄 Using default credentials for local development"
+    # No need to source postgres-env.sh anymore - PostgresURLs will handle this
 fi
 
-if [ ! -f "$ENV_FILE" ]; then
-    echo "❌ Error: Environment file not found: $ENV_FILE"
-    echo "Available environment files:"
-    ls -1 .env.postgres.* 2>/dev/null | sed 's/.*\.env\.postgres\.//' | sort || echo "   No environment files found in repo root"
-    exit 1
-fi
-
-echo "📄 Using environment file: $ENV_FILE"
-
-# Load environment variables from the provided file
-echo "📄 Loading environment from: $ENV_FILE"
-source "$ENV_FILE"
-
-# Set up database URLs using environment variables
+# Set up basic database connection info
 export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
 
-# Service-specific database URLs using environment passwords
-export DB_URL_USER=postgresql://briefly_user_service:${BRIEFLY_USER_SERVICE_PASSWORD:-briefly_user_pass}@localhost:5432/briefly_user
-export DB_URL_MEETINGS=postgresql://briefly_meetings_service:${BRIEFLY_MEETINGS_SERVICE_PASSWORD:-briefly_meetings_pass}@localhost:5432/briefly_meetings
-export DB_URL_SHIPMENTS=postgresql://briefly_shipments_service:${BRIEFLY_SHIPMENTS_SERVICE_PASSWORD:-briefly_shipments_pass}@localhost:5432/briefly_shipments
-export DB_URL_OFFICE=postgresql://briefly_office_service:${BRIEFLY_OFFICE_SERVICE_PASSWORD:-briefly_office_pass}@localhost:5432/briefly_office
-export DB_URL_CHAT=postgresql://briefly_chat_service:${BRIEFLY_CHAT_SERVICE_PASSWORD:-briefly_chat_pass}@localhost:5432/briefly_chat
-export DB_URL_CONTACTS=postgresql://briefly_contacts_service:${BRIEFLY_CONTACTS_SERVICE_PASSWORD:-briefly_contacts_pass}@localhost:5432/briefly_contacts
-
-# Vespa Loader service - no database required (stateless service)
-export DB_URL_VESPA_LOADER="no_database_required"
-
-# For Alembic migrations (using admin user from env file)
-export DB_URL_USER_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_user
-export DB_URL_MEETINGS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_meetings
-export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_shipments
-export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
-export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
-export DB_URL_CONTACTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_contacts
-
-
-echo "✅ Environment variables loaded from $ENV_FILE"
+echo "✅ Environment variables loaded"
 
 # Check if --check flag is provided
 if [ "$CHECK_ONLY" = true ]; then
@@ -101,12 +87,21 @@ fi
 # Function to run migrations for a service
 run_service_migrations() {
     local service_name=$1
-    local migration_url=$2
 
     echo "📦 Checking migrations for $service_name..."
 
-    # Set the database URL for this service
-    export DB_URL=$migration_url
+    # Use PostgresURLs to get the migration URL dynamically
+    local migration_url
+    migration_url=$(python3 -c "
+from services.common.postgres_urls import PostgresURLs
+urls = PostgresURLs()
+print(urls.get_migration_url('$service_name'))
+" 2>/dev/null)
+
+    if [ $? -ne 0 ] || [ -z "$migration_url" ]; then
+        echo "❌ Failed to get migration URL for $service_name"
+        return 1
+    fi
 
     if [ "$CHECK_ONLY" = true ]; then
         # Check current migration revision
@@ -142,13 +137,12 @@ run_service_migrations() {
 }
 
 # Run migrations for each service
-run_service_migrations "user" "$DB_URL_USER_MIGRATIONS"
-run_service_migrations "meetings" "$DB_URL_MEETINGS_MIGRATIONS"
-run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
-run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
-run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
-run_service_migrations "contacts" "$DB_URL_CONTACTS_MIGRATIONS"
-
+run_service_migrations "user"
+run_service_migrations "meetings"
+run_service_migrations "shipments"
+run_service_migrations "office"
+run_service_migrations "chat"
+run_service_migrations "contacts"
 
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
@@ -164,5 +158,5 @@ else
     echo "  - briefly_shipments: Ready"
     echo "  - briefly_office: Ready"
     echo "  - briefly_chat: Ready"
-
+    echo "  - briefly_contacts: Ready"
 fi

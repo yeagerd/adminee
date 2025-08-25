@@ -62,20 +62,12 @@ if [ -n "$ENV_FILE" ]; then
 else
     # Use default hardcoded credentials for local development
     echo "📄 Using default credentials for local development"
-    source scripts/postgres-env.sh
+    # No need to source postgres-env.sh anymore - PostgresURLs will handle this
 fi
 
-# Set up database URLs using environment variables
+# Set up basic database connection info
 export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
-
-# For Alembic migrations (using admin user from env file)
-export DB_URL_USER_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_user
-export DB_URL_MEETINGS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_meetings
-export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_shipments
-export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
-export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
-export DB_URL_CONTACTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_contacts
 
 echo "🔍 Checking PostgreSQL and database migration status..."
 
@@ -131,12 +123,21 @@ except Exception as e:
 # Function to check migration status for a service
 check_service_migrations() {
     local service_name=$1
-    local migration_url=$2
 
     echo "📦 Checking migrations for $service_name..."
 
-    # Set the database URL for this service
-    export DB_URL=$migration_url
+    # Use PostgresURLs to get the migration URL dynamically
+    local migration_url
+    migration_url=$($VENV_PYTHON -c "
+from services.common.postgres_urls import PostgresURLs
+urls = PostgresURLs()
+print(urls.get_migration_url('$service_name'))
+" 2>/dev/null)
+
+    if [ $? -ne 0 ] || [ -z "$migration_url" ]; then
+        echo "❌ Failed to get migration URL for $service_name"
+        return 1
+    fi
 
     # Check current migration revision
     current_rev=$(alembic -c services/$service_name/alembic.ini current 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
@@ -186,18 +187,10 @@ if check_postgres_running; then
     echo ""
     echo "🗄️ Checking migration status..."
 
-    services=(
-        "user:$DB_URL_USER_MIGRATIONS"
-        "meetings:$DB_URL_MEETINGS_MIGRATIONS"
-        "shipments:$DB_URL_SHIPMENTS_MIGRATIONS"
-        "office:$DB_URL_OFFICE_MIGRATIONS"
-        "chat:$DB_URL_CHAT_MIGRATIONS"
-        "contacts:$DB_URL_CONTACTS_MIGRATIONS"
-    )
+    services=("user" "meetings" "shipments" "office" "chat" "contacts")
 
-    for service_config in "${services[@]}"; do
-        IFS=':' read -r service_name migration_url <<< "$service_config"
-        if ! check_service_migrations "$service_name" "$migration_url"; then
+    for service_name in "${services[@]}"; do
+        if ! check_service_migrations "$service_name"; then
             migrations_ok=false
         fi
     done

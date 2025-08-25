@@ -8,6 +8,7 @@ from sqlalchemy import engine_from_config, pool
 from services.user import models  # noqa: F401
 from services.user.database import metadata
 from services.user.settings import get_settings
+from services.common.postgres_urls import PostgresURLs
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -19,7 +20,8 @@ migration_url = os.getenv("DB_URL_USER_MIGRATIONS")
 if migration_url:
     config.set_main_option("sqlalchemy.url", migration_url)
 else:
-    config.set_main_option("sqlalchemy.url", get_settings().db_url_user)
+    # Use PostgresURLs to get the migration URL
+    config.set_main_option("sqlalchemy.url", PostgresURLs().get_migration_url("user"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

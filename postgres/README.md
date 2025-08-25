@@ -8,13 +8,41 @@ The database user creation script now uses environment variables for passwords i
 
 ### Environment Files
 
-The project uses environment-specific files to manage database passwords:
+The project now uses a consolidated `.env` file for all database configuration:
 
-- `.env.postgres.local` - Local development environment
-- `.env.postgres.staging` - Staging environment
-- `.env.postgres.production` - Production environment template
+- `.env` - Main environment file with all database configuration
+- `.env.postgres.*` - Legacy environment files (deprecated)
 
-**Note:** These files are located in the repo root and are git-ignored for security.
+**Note:** The main `.env` file is located in the repo root and contains all necessary database configuration.
+
+### PostgresURLs Module
+
+All services now use the centralized `PostgresURLs` module (`services/common/postgres_urls.py`) for database URL construction. This module:
+
+- Automatically constructs database URLs from individual components
+- Supports both service connections (limited permissions) and migration connections (admin permissions)
+- Integrates with `services/common/config_secrets.py` for credential management
+- Provides a clean interface that can be easily mocked in tests
+- Eliminates environment variable pollution in shell scripts
+
+**Usage in Services:**
+```python
+from services.common.postgres_urls import PostgresURLs
+
+urls = PostgresURLs()
+service_url = urls.get_service_url("user")        # For service connections
+migration_url = urls.get_migration_url("user")    # For migrations
+```
+
+**Usage in Scripts:**
+```bash
+# Get migration URL dynamically
+migration_url=$(python3 -c "
+from services.common.postgres_urls import PostgresURLs
+urls = PostgresURLs()
+print(urls.get_migration_url('user'))
+")
+```
 
 ### Database Structure
 
@@ -66,11 +94,16 @@ The scripts now require environment files to be explicitly provided, ensuring no
 
 ### Required Environment Variables
 
-You can set the following environment variables to customize database passwords:
+The main `.env` file should contain the following database configuration:
+
+**Core Database Configuration:**
+- `POSTGRES_HOST` - Database host (default: localhost)
+- `POSTGRES_PORT` - Database port (default: 5432)
+- `ENVIRONMENT` - Environment mode (default: local)
 
 **Admin Credentials (REQUIRED):**
 - `POSTGRES_USER` - Admin username (e.g., postgres)
-- `POSTGRES_PASSWORD` - Admin password (must be set in environment file)
+- `POSTGRES_PASSWORD` - Admin password (must be set)
 
 **Service User Passwords:**
 - `BRIEFLY_USER_SERVICE_PASSWORD` - Password for the user service database user
@@ -79,61 +112,45 @@ You can set the following environment variables to customize database passwords:
 - `BRIEFLY_OFFICE_SERVICE_PASSWORD` - Password for the office service database user
 - `BRIEFLY_CHAT_SERVICE_PASSWORD` - Password for the chat service database user
 - `BRIEFLY_VECTOR_SERVICE_PASSWORD` - Password for the vector service database user
-- `BRIEFLY_READONLY_PASSWORD` - Password for the readonly user
+- `BRIEFLY_CONTACTS_SERVICE_PASSWORD` - Password for the contacts service database user
+- `BRIEFLY_READONLY_PASSWORD` - Password for the readonly user (optional)
+
+**Note:** Database URLs (`DB_URL_*`) are now constructed automatically by the `PostgresURLs` module. You only need to set the individual components.
 
 ### Usage Examples
 
 #### Environment File Setup
 
-Create environment files in the repo root (git-ignored):
+Create the main `.env` file in the repo root based on `.example.env`:
 
-**`.env.postgres.local`** (for local development):
+**`.env`** (for local development):
 ```bash
+# Environment
+ENVIRONMENT=local
+
+# Core database configuration
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+
 # Admin user credentials
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 
-# Database user passwords for each microservice
+# Service user passwords for each microservice
 BRIEFLY_USER_SERVICE_PASSWORD=briefly_user_pass
 BRIEFLY_MEETINGS_SERVICE_PASSWORD=briefly_meetings_pass
 BRIEFLY_SHIPMENTS_SERVICE_PASSWORD=briefly_shipments_pass
 BRIEFLY_OFFICE_SERVICE_PASSWORD=briefly_office_pass
 BRIEFLY_CHAT_SERVICE_PASSWORD=briefly_chat_pass
 BRIEFLY_VECTOR_SERVICE_PASSWORD=briefly_vector_pass
+BRIEFLY_CONTACTS_SERVICE_PASSWORD=briefly_contacts_pass
 BRIEFLY_READONLY_PASSWORD=briefly_readonly_pass
 ```
 
-**`.env.postgres.staging`** (for staging):
-```bash
-# Admin user credentials
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=staging_admin_pass_$(openssl rand -hex 8)
-
-# Database user passwords for each microservice
-BRIEFLY_USER_SERVICE_PASSWORD=staging_user_pass_$(openssl rand -hex 8)
-BRIEFLY_MEETINGS_SERVICE_PASSWORD=staging_meetings_pass_$(openssl rand -hex 8)
-BRIEFLY_SHIPMENTS_SERVICE_PASSWORD=staging_shipments_pass_$(openssl rand -hex 8)
-BRIEFLY_OFFICE_SERVICE_PASSWORD=staging_office_pass_$(openssl rand -hex 8)
-BRIEFLY_CHAT_SERVICE_PASSWORD=staging_chat_pass_$(openssl rand -hex 8)
-BRIEFLY_VECTOR_SERVICE_PASSWORD=staging_vector_pass_$(openssl rand -hex 8)
-BRIEFLY_READONLY_PASSWORD=staging_readonly_pass_$(openssl rand -hex 8)
-```
-
-**`.env.postgres.production`** (for production):
-```bash
-# Admin user credentials
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=REPLACE_WITH_STRONG_ADMIN_PASSWORD
-
-# Database user passwords for each microservice
-BRIEFLY_USER_SERVICE_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-BRIEFLY_MEETINGS_SERVICE_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-BRIEFLY_SHIPMENTS_SERVICE_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-BRIEFLY_OFFICE_SERVICE_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-BRIEFLY_CHAT_SERVICE_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-BRIEFLY_VECTOR_SERVICE_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-BRIEFLY_READONLY_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
-```
+**Note:** For different environments (staging, production), you can:
+1. Use different `.env` files (e.g., `.env.staging`, `.env.production`)
+2. Use GCP Secret Manager (production)
+3. Use environment variables directly in your deployment platform
 
 ## Security Best Practices
 
@@ -162,15 +179,21 @@ cat .env.postgres.production
 
 ## Production Migration
 
-When deploying to production (Neon/Supabase), update the connection strings:
+When deploying to production (Neon/Supabase), update the environment variables:
 
 ```bash
-# Development
-export DB_URL_USER=postgresql://briefly_user_service:briefly_user_pass@localhost:5432/briefly_user
+# Development (.env file)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+BRIEFLY_USER_SERVICE_PASSWORD=briefly_user_pass
 
-# Production (Neon)
-export DB_URL_USER=postgresql://briefly_user_service:prod_password@briefly-core.neon.tech/briefly_user
+# Production (GCP Secret Manager or environment variables)
+POSTGRES_HOST=your-neon-host.neon.tech
+POSTGRES_PORT=5432
+BRIEFLY_USER_SERVICE_PASSWORD=your_production_password
 ```
+
+**Note:** Database URLs are now constructed dynamically by the `PostgresURLs` module. You only need to set the individual components (host, port, passwords) and the module will build the full connection strings.
 
 **Migration Commands:**
 
@@ -182,16 +205,18 @@ export DB_URL_USER=postgresql://briefly_user_service:prod_password@briefly-core.
 ### Run migrations for specific service
 ```bash
 cd services/user
-export DB_URL=postgresql://postgres:postgres@localhost:5432/briefly_user
+# The service will automatically use PostgresURLs to get the migration URL
 alembic upgrade head
 ```
 
 ### Create new migration
 ```bash
 cd services/user
-export DB_URL=postgresql://postgres:postgres@localhost:5432/briefly_user
+# The service will automatically use PostgresURLs to get the migration URL
 alembic revision --autogenerate -m "Description of changes"
 ```
+
+**Note:** All services now use the `PostgresURLs` module to automatically construct database URLs. No need to manually set `DB_URL` environment variables.
 
 ## Database Status Checking
 
@@ -223,8 +248,10 @@ Comprehensive database status checker that:
 
 **Environment Files:**
 The script can optionally use an environment file to get database credentials:
-- Without `--env-file`: Uses default hardcoded credentials for local development
+- Without `--env-file`: Uses the main `.env` file for local development
 - With `--env-file`: Uses the specified environment file for secure credential management
+
+**Note:** All scripts now use the `PostgresURLs` module which reads from the main `.env` file. The `--env-file` option is mainly for backward compatibility or when using different environment configurations.
 
 ### `run-migrations.sh`
 Runs or checks Alembic migrations for all services.
