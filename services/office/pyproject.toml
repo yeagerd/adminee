@@ -1,4 +1,15 @@
 [project]
+# Briefly Office Service - Google and Microsoft Integration Service
+# 
+# This service has been migrated to use the shared API package structure
+# (services.api.v1.office.*) for all Pydantic schemas. All schemas are now
+# defined in the shared package to enable consistent inter-service communication.
+#
+# Architecture:
+# - Schemas: services.api.v1.office.* (shared package)
+# - No local schema definitions
+# - Consistent with other services using shared API package
+#
 name = "briefly-office"
 version = "0.1.0"
 description = "Briefly Office Integration Service"

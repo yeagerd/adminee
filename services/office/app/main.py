@@ -1,3 +1,23 @@
+"""
+Briefly Office Service - Main Application
+
+This service provides unified access to Google and Microsoft integrations including
+email, calendar, files, and contacts. It has been migrated to use the shared API
+package structure (services.api.v1.office.*) for all Pydantic schemas.
+
+Architecture:
+- All schemas imported from services.api.v1.office.* (shared package)
+- No local schema definitions (migrated to shared package)
+- Consistent inter-service communication using shared models
+- API versioning with /v1 prefix for user endpoints
+- Internal endpoints use /internal prefix for service-to-service calls
+
+For development, always import schemas from the shared API package:
+  from services.api.v1.office.calendar import CalendarEvent
+  from services.api.v1.office.email import EmailMessage
+  from services.api.v1.office.responses import ApiResponse
+"""
+
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict
@@ -12,6 +32,7 @@ from services.common.logging_config import (
     log_service_startup,
     setup_service_logging,
 )
+# Import API routers - all schemas now come from shared API package (services.api.v1.office.*)
 from services.office.api.backfill import internal_router as backfill_internal_router
 from services.office.api.calendar import router as calendar_router
 from services.office.api.contacts import router as contacts_router

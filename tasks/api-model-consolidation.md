@@ -16,7 +16,7 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [x] **Common Pagination**: Move `services/common/pagination/` schemas to `services/api/v1/common/pagination/`
 - [ ] Update all services to use `services.api.v1.common` instead of `services.common`
 - [ ] Ensure common package tests pass
-- [ ] Update common package documentation
+- [ ] Update common package documentationgi
 
 ## Phase 2: User Service Models (Priority: High - Most Referenced)
 
