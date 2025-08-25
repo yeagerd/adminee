@@ -44,6 +44,18 @@ done
 # Ensure we're in the project root (parent of where this script is located)
 cd "$(dirname "$0")/.."
 
+# Service configuration
+declare -a SERVICES=(
+    "user-service:services.user.main:app:8001"
+    "chat-service:services.chat.main:app:8002"
+    "office-service:services.office.app.main:app:8003"
+    "shipments-service:services.shipments.main:app:8004"
+    "meetings-service:services.meetings.main:app:8005"
+    "vespa-loader-service:services.vespa_loader.main:app:9001"
+    "vespa-query-service:services.vespa_query.main:app:8006"
+    "contacts-service:services.contacts.main:app:8007"
+)
+
 echo "🚀 Starting all Briefly services..."
 if [ "$SKIP_FRONTEND" = true ]; then
     echo "📱 Frontend will be skipped (backend services only)"
@@ -143,13 +155,10 @@ source .venv/bin/activate
 echo -e "${BLUE}🔍 Checking if ports are available...${NC}"
 
 check_port 3001 "Gateway" || exit 1
-check_port 8001 "User Service" || exit 1
-check_port 8002 "Chat Service" || exit 1
-check_port 8003 "Office Service" || exit 1
-check_port 8004 "Shipments Service" || exit 1
-check_port 8005 "Meetings Service" || exit 1
-check_port 9001 "Vespa Loader Service" || exit 1
-check_port 8006 "Vespa Query Service" || exit 1
+for service_config in "${SERVICES[@]}"; do
+    IFS=':' read -r service_name module_path port <<< "$service_config"
+    check_port "$port" "$service_name" || exit 1
+done
 
 if [ "$SKIP_FRONTEND" = false ]; then
     check_port 3000 "Frontend" || exit 1
@@ -230,7 +239,11 @@ cleanup() {
     done
     
     # Kill any remaining processes on our ports (only for services we started)
-    local ports_to_kill="3001 8001 8002 8003 8004 8005 9001 8006 8007"
+    local ports_to_kill="3001"
+    for service_config in "${SERVICES[@]}"; do
+        IFS=':' read -r service_name module_path port <<< "$service_config"
+        ports_to_kill="$ports_to_kill $port"
+    done
     if [ "$SKIP_FRONTEND" = false ]; then
         ports_to_kill="$ports_to_kill 3000"
     fi
@@ -245,18 +258,6 @@ cleanup() {
 
 # Set up signal handlers for proper Ctrl+C handling
 trap cleanup SIGINT SIGTERM
-
-# Service configuration
-declare -a SERVICES=(
-    "user-service:services.user.main:app:8001"
-    "chat-service:services.chat.main:app:8002"
-    "office-service:services.office.app.main:app:8003"
-    "shipments-service:services.shipments.main:app:8004"
-    "meetings-service:services.meetings.main:app:8005"
-    "vespa-loader-service:services.vespa_loader.main:app:9001"
-    "vespa-query-service:services.vespa_query.main:app:8006"
-    "contacts-service:services.contacts.main:app:8007"
-)
 
 # Start all services
 if [ "$SERIAL_START" = true ]; then
