@@ -6,7 +6,6 @@ for database persistence in the Contacts Service.
 """
 
 import json
-import logging
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 try:
@@ -31,10 +30,11 @@ from services.common.events import (
     EmailEvent,
     TodoEvent,
 )
+from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
 from services.contacts.services.contact_discovery_service import ContactDiscoveryService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ContactDiscoveryConsumer:
