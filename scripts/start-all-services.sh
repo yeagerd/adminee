@@ -347,7 +347,7 @@ echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
 for service_config in "${SERVICES[@]}"; do
     IFS='|' read -r service_name module_path port <<< "$service_config"
     # Convert service-name to display name (e.g., "user-service" -> "User Service")
-    local display_name=$(echo "$service_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+    display_name=$(echo "$service_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
     echo -e "   $display_name: ${GREEN}http://localhost:$port${NC}"
 done
 echo ""
