@@ -46,14 +46,14 @@ cd "$(dirname "$0")/.."
 
 # Service configuration
 declare -a SERVICES=(
-    "user-service:services.user.main:app:8001"
-    "chat-service:services.chat.main:app:8002"
-    "office-service:services.office.app.main:app:8003"
-    "shipments-service:services.shipments.main:app:8004"
-    "meetings-service:services.meetings.main:app:8005"
-    "vespa-loader-service:services.vespa_loader.main:app:9001"
-    "vespa-query-service:services.vespa_query.main:app:8006"
-    "contacts-service:services.contacts.main:app:8007"
+    "user-service|services.user.main:app|8001"
+    "chat-service|services.chat.main:app|8002"
+    "office-service|services.office.app.main:app|8003"
+    "shipments-service|services.shipments.main:app|8004"
+    "meetings-service|services.meetings.main:app|8005"
+    "vespa-loader-service|services.vespa_loader.main:app|9001"
+    "vespa-query-service|services.vespa_query.main:app|8006"
+    "contacts-service|services.contacts.main:app|8007"
 )
 
 echo "🚀 Starting all Briefly services..."
@@ -156,7 +156,7 @@ echo -e "${BLUE}🔍 Checking if ports are available...${NC}"
 
 check_port 3001 "Gateway" || exit 1
 for service_config in "${SERVICES[@]}"; do
-    IFS=':' read -r service_name module_path port <<< "$service_config"
+    IFS='|' read -r service_name module_path port <<< "$service_config"
     check_port "$port" "$service_name" || exit 1
 done
 
@@ -241,7 +241,7 @@ cleanup() {
     # Kill any remaining processes on our ports (only for services we started)
     local ports_to_kill="3001"
     for service_config in "${SERVICES[@]}"; do
-        IFS=':' read -r service_name module_path port <<< "$service_config"
+        IFS='|' read -r service_name module_path port <<< "$service_config"
         ports_to_kill="$ports_to_kill $port"
     done
     if [ "$SKIP_FRONTEND" = false ]; then
@@ -265,7 +265,7 @@ if [ "$SERIAL_START" = true ]; then
     
     # Start all Python services sequentially
     for service_config in "${SERVICES[@]}"; do
-        IFS=':' read -r service_name module_path port <<< "$service_config"
+        IFS='|' read -r service_name module_path port <<< "$service_config"
         start_python_service "$service_name" "$module_path" "$port"
         wait_for_service "$service_name" "http://localhost:$port/health"
     done
@@ -292,7 +292,7 @@ else
     
     # Start all Python services simultaneously
     for service_config in "${SERVICES[@]}"; do
-        IFS=':' read -r service_name module_path port <<< "$service_config"
+        IFS='|' read -r service_name module_path port <<< "$service_config"
         start_python_service "$service_name" "$module_path" "$port" &
     done
     
@@ -313,7 +313,7 @@ else
     
     # Wait for all services to be ready
     for service_config in "${SERVICES[@]}"; do
-        IFS=':' read -r service_name module_path port <<< "$service_config"
+        IFS='|' read -r service_name module_path port <<< "$service_config"
         wait_for_service "$service_name" "http://localhost:$port/health"
     done
     wait_for_service "Gateway" "http://localhost:3001/health"
@@ -345,7 +345,7 @@ else
 fi
 echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
 for service_config in "${SERVICES[@]}"; do
-    IFS=':' read -r service_name module_path port <<< "$service_config"
+    IFS='|' read -r service_name module_path port <<< "$service_config"
     # Convert service-name to display name (e.g., "user-service" -> "User Service")
     local display_name=$(echo "$service_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
     echo -e "   $display_name: ${GREEN}http://localhost:$port${NC}"
