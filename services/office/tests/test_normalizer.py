@@ -12,12 +12,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from services.api.v1.office.models import Provider
 from services.office.core.normalizer import (
     _is_html_content,
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.api.v1.office.models import Provider
 
 
 class TestHTMLContentDetection:

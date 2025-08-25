@@ -11,6 +11,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 from sqlmodel import select
 
+from services.api.v1.user.integration import (
+    InternalTokenResponse,
+    InternalUserStatusResponse,
+    ProviderRevocationResponse,
+    TokenRevocationResponse,
+)
 from services.common.http_errors import NotFoundError, ServiceError
 from services.common.logging_config import get_logger, request_id_var
 from services.user.database import get_async_session
@@ -21,12 +27,6 @@ from services.user.models.integration import (
 )
 from services.user.models.token import EncryptedToken, TokenType
 from services.user.models.user import User
-from services.api.v1.user.integration import (
-    InternalTokenResponse,
-    InternalUserStatusResponse,
-    ProviderRevocationResponse,
-    TokenRevocationResponse,
-)
 from services.user.security.encryption import TokenEncryption
 from services.user.services.audit_service import audit_logger
 from services.user.services.integration_service import (

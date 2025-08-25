@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from services.api.v1.office.email import EmailMessage
 from services.common.events import EmailData, EmailEvent, EventMetadata
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
@@ -20,7 +21,6 @@ from services.office.models.backfill import (
     BackfillStatus,
     BackfillStatusEnum,
 )
-from services.api.v1.office.email import EmailMessage
 
 logger = get_logger(__name__)
 

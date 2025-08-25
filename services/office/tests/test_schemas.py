@@ -10,15 +10,15 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from services.office.models import Provider
+from services.api.v1.office.calendar import CalendarEvent
 from services.api.v1.office.email import (
     ApiError,
     EmailAddress,
     EmailMessage,
 )
-from services.api.v1.office.calendar import CalendarEvent
 from services.api.v1.office.files import DriveFile
 from services.api.v1.office.responses import ApiResponse, PaginatedResponse
+from services.office.models import Provider
 
 
 @pytest.fixture(autouse=True)

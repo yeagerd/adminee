@@ -8,7 +8,7 @@ integration settings, and privacy controls.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -162,7 +162,9 @@ class AIPreferencesSchema(BaseModel):
         # Use enum validation
         valid_lengths = ["short", "medium", "long"]
         if v not in valid_lengths:
-            raise ValueError(f"Invalid response length. Must be one of: {valid_lengths}")
+            raise ValueError(
+                f"Invalid response length. Must be one of: {valid_lengths}"
+            )
         return v
 
     model_config = ConfigDict(
@@ -227,7 +229,9 @@ class IntegrationPreferencesSchema(BaseModel):
         # Use enum validation
         valid_strategies = ["prompt", "local_wins", "remote_wins", "create_copy"]
         if v not in valid_strategies:
-            raise ValueError(f"Invalid conflict resolution. Must be one of: {valid_strategies}")
+            raise ValueError(
+                f"Invalid conflict resolution. Must be one of: {valid_strategies}"
+            )
         return v
 
     model_config = ConfigDict(
@@ -250,15 +254,9 @@ class IntegrationPreferencesSchema(BaseModel):
 class UIPreferencesSchema(BaseModel):
     """UI preferences schema."""
 
-    theme: ThemeMode = Field(
-        default=ThemeMode.SYSTEM, description="Theme preference"
-    )
-    language: Language = Field(
-        default=Language.EN, description="Language preference"
-    )
-    timezone: Timezone = Field(
-        default=Timezone.UTC, description="Timezone preference"
-    )
+    theme: ThemeMode = Field(default=ThemeMode.SYSTEM, description="Theme preference")
+    language: Language = Field(default=Language.EN, description="Language preference")
+    timezone: Timezone = Field(default=Timezone.UTC, description="Timezone preference")
     date_format: DateFormat = Field(
         default=DateFormat.ISO, description="Date format preference"
     )
@@ -270,20 +268,12 @@ class UIPreferencesSchema(BaseModel):
     sidebar_collapsed: bool = Field(
         default=False, description="Whether sidebar is collapsed"
     )
-    compact_mode: bool = Field(
-        default=False, description="Enable compact layout mode"
-    )
-    show_animations: bool = Field(
-        default=True, description="Show UI animations"
-    )
+    compact_mode: bool = Field(default=False, description="Enable compact layout mode")
+    show_animations: bool = Field(default=True, description="Show UI animations")
 
     # Accessibility
-    high_contrast: bool = Field(
-        default=False, description="Enable high contrast mode"
-    )
-    font_size: str = Field(
-        default="medium", description="Font size preference"
-    )
+    high_contrast: bool = Field(default=False, description="Enable high contrast mode")
+    font_size: str = Field(default="medium", description="Font size preference")
     reduce_motion: bool = Field(
         default=False, description="Reduce motion for accessibility"
     )
@@ -319,9 +309,7 @@ class NotificationPreferencesSchema(BaseModel):
     meeting_reminders: bool = Field(
         default=True, description="Meeting reminder notifications"
     )
-    email_alerts: bool = Field(
-        default=True, description="Email alert notifications"
-    )
+    email_alerts: bool = Field(default=True, description="Email alert notifications")
     system_updates: bool = Field(
         default=True, description="System update notifications"
     )
@@ -398,14 +386,18 @@ class PreferencesResetRequest(BaseModel):
             valid_categories = ["ui", "notifications", "ai", "integrations", "privacy"]
             for category in v:
                 if category not in valid_categories:
-                    raise ValueError(f"Invalid category: {category}. Must be one of: {valid_categories}")
+                    raise ValueError(
+                        f"Invalid category: {category}. Must be one of: {valid_categories}"
+                    )
         return v
 
 
 class PreferencesImportRequest(BaseModel):
     """Request model for importing user preferences from external source."""
 
-    preferences_data: Dict[str, Any] = Field(..., description="Preferences data to import")
+    preferences_data: Dict[str, Any] = Field(
+        ..., description="Preferences data to import"
+    )
     source: str = Field(..., description="Source of the preferences data")
     overwrite_existing: bool = Field(
         default=False, description="Whether to overwrite existing preferences"
@@ -432,9 +424,13 @@ class UserPreferences(BaseModel):
 
     # Preference categories
     ui: UIPreferencesSchema = Field(description="UI preferences")
-    notifications: NotificationPreferencesSchema = Field(description="Notification preferences")
+    notifications: NotificationPreferencesSchema = Field(
+        description="Notification preferences"
+    )
     ai: AIPreferencesSchema = Field(description="AI preferences")
-    integrations: IntegrationPreferencesSchema = Field(description="Integration preferences")
+    integrations: IntegrationPreferencesSchema = Field(
+        description="Integration preferences"
+    )
     privacy: PrivacyPreferencesSchema = Field(description="Privacy preferences")
 
     # Timestamps

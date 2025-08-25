@@ -330,9 +330,9 @@ class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
         """Test that calendar events get a display_time field with proper timezone formatting via DataTools."""
         from datetime import datetime, timezone
 
-        from services.chat.tools.data_tools import DataTools
         from services.api.v1.office.calendar import CalendarEvent
         from services.api.v1.office.models import Provider
+        from services.chat.tools.data_tools import DataTools
 
         # Call get_calendar_events with timezone using DataTools
         data_tools = DataTools("test_user")

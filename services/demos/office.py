@@ -27,13 +27,13 @@ from typing import Any, Dict, List, Optional
 # Add the office service to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "office_service"))
 
+from services.api.v1.office.email import EmailMessage
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.api.v1.office.email import EmailMessage
 
 
 class OfficeDemoService:

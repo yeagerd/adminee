@@ -2,6 +2,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from services.api.v1.meetings.meetings import TimeSlot, TimeSlotCreate
 from services.common.api_key_auth import (
     APIKeyConfig,
     build_api_key_mapping,
@@ -12,7 +13,6 @@ from services.meetings.api.polls import get_user_id_from_request
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
-from services.api.v1.meetings.meetings import TimeSlot, TimeSlotCreate
 from services.meetings.settings import get_settings
 
 router = APIRouter()

@@ -11,11 +11,6 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
-from services.common.http_errors import NotFoundError, ServiceError, ValidationError
-from services.common.logging_config import get_logger
-from services.user.database import get_async_session
-from services.user.models.preferences import UserPreferences
-from services.user.models.user import User
 from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
@@ -25,6 +20,11 @@ from services.api.v1.user.preferences import (
     UserPreferencesResponse,
     UserPreferencesUpdate,
 )
+from services.common.http_errors import NotFoundError, ServiceError, ValidationError
+from services.common.logging_config import get_logger
+from services.user.database import get_async_session
+from services.user.models.preferences import UserPreferences
+from services.user.models.user import User
 
 # Set up logging
 logger = get_logger(__name__)

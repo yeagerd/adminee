@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from services.api.v1.office.email import EmailAddress, EmailMessage, SendEmailRequest
 from services.office.app.main import app
 from services.office.models import Provider
-from services.api.v1.office.email import EmailAddress, EmailMessage, SendEmailRequest
 
 
 @pytest.fixture(autouse=True)

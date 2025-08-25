@@ -32,6 +32,7 @@ from services.common.logging_config import (
     log_service_startup,
     setup_service_logging,
 )
+
 # Import API routers - all schemas now come from shared API package (services.api.v1.office.*)
 from services.office.api.backfill import internal_router as backfill_internal_router
 from services.office.api.calendar import router as calendar_router

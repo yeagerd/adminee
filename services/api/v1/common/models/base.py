@@ -224,7 +224,7 @@ class AliasChoices:
 
 class BaseModel:
     """Base model class for all schemas."""
-    
+
     def __init__(self, **kwargs: Any) -> None:
         """Initialize model with keyword arguments."""
         for key, value in kwargs.items():

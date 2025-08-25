@@ -11,13 +11,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException, status
 
-from services.common.http_errors import NotFoundError
-from services.user.models.user import User
 from services.api.v1.user.pagination import UserListResponse
 from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.http_errors import NotFoundError
+from services.user.models.user import User
 from services.user.services.user_service import get_user_service
 
 

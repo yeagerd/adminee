@@ -12,6 +12,13 @@ from typing import Any, List, Optional, cast
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 
+from services.api.v1.office.models import Provider
+from services.api.v1.office.responses import (
+    ApiResponse,
+    FileDetailResponse,
+    FileListResponse,
+    FileSearchResponse,
+)
 from services.common.http_errors import (
     ServiceError,
     ValidationError,
@@ -23,13 +30,6 @@ from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.normalizer import (
     normalize_google_drive_file,
     normalize_microsoft_drive_file,
-)
-from services.api.v1.office.models import Provider
-from services.api.v1.office.responses import (
-    ApiResponse,
-    FileDetailResponse,
-    FileListResponse,
-    FileSearchResponse,
 )
 
 logger = get_logger(__name__)

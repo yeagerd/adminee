@@ -10,10 +10,6 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from services.user.models.integration import (
-    IntegrationProvider,
-    IntegrationStatus,
-)
 from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
@@ -36,6 +32,10 @@ from services.api.v1.user.integration import (
     ScopeValidationResponse,
     TokenRefreshRequest,
     TokenRefreshResponse,
+)
+from services.user.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
 )
 
 

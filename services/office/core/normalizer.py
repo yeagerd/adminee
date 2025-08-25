@@ -11,13 +11,6 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
-from services.common.logging_config import get_logger
-from services.api.v1.office.models import Provider
-from services.api.v1.office.email import (
-    EmailAddress,
-    EmailMessage,
-    EmailThread,
-)
 from services.api.v1.office.calendar import (
     CalendarEvent,
 )
@@ -25,9 +18,16 @@ from services.api.v1.office.contacts import (
     Contact,
     ContactPhone,
 )
+from services.api.v1.office.email import (
+    EmailAddress,
+    EmailMessage,
+    EmailThread,
+)
 from services.api.v1.office.files import (
     DriveFile,
 )
+from services.api.v1.office.models import Provider
+from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
 

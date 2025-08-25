@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from services.api.v1.office.calendar import CalendarEvent
 from services.office.app.main import app
 from services.office.models import Provider
-from services.api.v1.office.calendar import CalendarEvent
 
 
 @pytest.fixture(autouse=True)

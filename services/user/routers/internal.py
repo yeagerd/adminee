@@ -10,15 +10,6 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from services.common.http_errors import (
-    BrieflyAPIError,
-    ErrorCode,
-    NotFoundError,
-    ServiceError,
-    ValidationError,
-)
-from services.common.logging_config import get_logger, request_id_var
-from services.user.auth.service_auth import service_permission_required
 from services.api.v1.user.integration import (
     InternalTokenRefreshRequest,
     InternalTokenRequest,
@@ -35,6 +26,15 @@ from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.http_errors import (
+    BrieflyAPIError,
+    ErrorCode,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
+from services.common.logging_config import get_logger, request_id_var
+from services.user.auth.service_auth import service_permission_required
 from services.user.services.preferences_service import PreferencesService
 from services.user.services.token_service import get_token_service
 from services.user.services.user_service import get_user_service

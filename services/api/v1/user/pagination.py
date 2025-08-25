@@ -7,8 +7,12 @@ common pagination schemas.
 
 from typing import Any, Dict, List, Optional
 
-from services.api.v1.common.pagination import CursorPaginationRequest, CursorPaginationResponse
 from pydantic import BaseModel, Field
+
+from services.api.v1.common.pagination import (
+    CursorPaginationRequest,
+    CursorPaginationResponse,
+)
 
 
 class UserCursorPaginationRequest(CursorPaginationRequest):

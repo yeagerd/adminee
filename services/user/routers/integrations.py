@@ -14,16 +14,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from services.common.http_errors import (
-    NotFoundError,
-    ServiceError,
-    ValidationError,
-)
-from services.user.auth.nextauth import get_current_user, verify_user_ownership
-from services.user.models.integration import (
-    IntegrationProvider,
-    IntegrationStatus,
-)
 from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
@@ -42,6 +32,16 @@ from services.api.v1.user.integration import (
     ScopeValidationResponse,
     TokenRefreshRequest,
     TokenRefreshResponse,
+)
+from services.common.http_errors import (
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
+from services.user.auth.nextauth import get_current_user, verify_user_ownership
+from services.user.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.services.integration_service import (

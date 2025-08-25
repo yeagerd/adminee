@@ -47,12 +47,12 @@ class UUID4(str):
         """Initialize UUID4 with string value."""
         if not isinstance(value, str):
             raise ValueError("UUID4 must be a string")
-        
+
         try:
             uuid.UUID(value, version=4)
         except ValueError as e:
             raise ValueError(f"Invalid UUID4 format: {e}")
-        
+
         super().__init__()
 
     @classmethod

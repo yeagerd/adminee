@@ -25,7 +25,7 @@ from .responses import (
 
 __all__ = [
     "calendar",
-    "contacts", 
+    "contacts",
     "email",
     "files",
     "models",

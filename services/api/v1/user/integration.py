@@ -116,9 +116,13 @@ class ExternalUserInfo(BaseModel):
     id: str = Field(..., description="External user ID")
     email: str = Field(..., description="External user email")
     name: Optional[str] = Field(None, description="External user display name")
-    picture: Optional[str] = Field(None, description="External user profile picture URL")
+    picture: Optional[str] = Field(
+        None, description="External user profile picture URL"
+    )
     locale: Optional[str] = Field(None, description="External user locale")
-    verified_email: Optional[bool] = Field(None, description="Whether email is verified")
+    verified_email: Optional[bool] = Field(
+        None, description="Whether email is verified"
+    )
     provider: str = Field(..., description="OAuth provider name")
 
 
@@ -182,14 +186,18 @@ class OAuthCallbackResponse(BaseModel):
 class IntegrationDisconnectRequest(BaseModel):
     """Request model for disconnecting an integration."""
 
-    provider: IntegrationProvider = Field(..., description="OAuth provider to disconnect")
+    provider: IntegrationProvider = Field(
+        ..., description="OAuth provider to disconnect"
+    )
 
 
 class TokenRefreshRequest(BaseModel):
     """Request model for token refresh operation."""
 
     provider: IntegrationProvider = Field(..., description="OAuth provider")
-    force: bool = Field(default=False, description="Force refresh even if token not expired")
+    force: bool = Field(
+        default=False, description="Force refresh even if token not expired"
+    )
 
 
 class TokenRefreshResponse(BaseModel):
@@ -219,14 +227,20 @@ class TokenRevocationResponse(BaseModel):
 # Internal API schemas for service-to-service communication
 class InternalTokenRequest(BaseModel):
     """Request model for internal token retrieval."""
+
     user_id: str = Field(..., description="User ID to retrieve tokens for")
     provider: IntegrationProvider = Field(..., description="OAuth provider")
-    required_scopes: List[str] = Field(default_factory=list, description="Required OAuth scopes")
-    refresh_if_needed: bool = Field(default=True, description="Automatically refresh if token is near expiration")
+    required_scopes: List[str] = Field(
+        default_factory=list, description="Required OAuth scopes"
+    )
+    refresh_if_needed: bool = Field(
+        default=True, description="Automatically refresh if token is near expiration"
+    )
 
 
 class InternalTokenResponse(BaseModel):
     """Response model for internal token retrieval."""
+
     success: bool = Field(..., description="Whether token retrieval succeeded")
     access_token: Optional[str] = Field(None, description="OAuth access token")
     refresh_token: Optional[str] = Field(None, description="OAuth refresh token")
@@ -241,13 +255,17 @@ class InternalTokenResponse(BaseModel):
 
 class InternalTokenRefreshRequest(BaseModel):
     """Request model for internal token refresh."""
+
     user_id: str = Field(..., description="User ID to refresh tokens for")
     provider: IntegrationProvider = Field(..., description="OAuth provider")
-    force: bool = Field(default=False, description="Force refresh even if not near expiration")
+    force: bool = Field(
+        default=False, description="Force refresh even if not near expiration"
+    )
 
 
 class InternalUserStatusResponse(BaseModel):
     """Internal response model for user status checks."""
+
     exists: bool = Field(..., description="Whether user exists")
     user_id: Optional[str] = Field(None, description="User ID if exists")
     email: Optional[str] = Field(None, description="User email if exists")

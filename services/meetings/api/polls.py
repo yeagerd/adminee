@@ -8,6 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from services.api.v1.meetings.meetings import (
+    MeetingPoll,
+    MeetingPollCreate,
+    MeetingPollUpdate,
+    PollParticipant,
+    PollParticipantCreate,
+)
 from services.common.api_key_auth import (
     APIKeyConfig,
     build_api_key_mapping,
@@ -20,13 +27,6 @@ from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_async_session, get_session
 from services.meetings.models.meeting import ParticipantStatus, PollStatus
-from services.api.v1.meetings.meetings import (
-    MeetingPoll,
-    MeetingPollCreate,
-    MeetingPollUpdate,
-    PollParticipant,
-    PollParticipantCreate,
-)
 from services.meetings.services import calendar_integration, email_integration
 from services.meetings.settings import get_settings
 
@@ -92,8 +92,8 @@ def get_poll(
         )
 
         # Fetch responses for this poll
-        from services.meetings.models import PollResponse as PollResponseModel
         from services.api.v1.meetings.meetings import PollResponse as PollResponseSchema
+        from services.meetings.models import PollResponse as PollResponseModel
 
         responses = session.query(PollResponseModel).filter_by(poll_id=poll_id).all()
         try:

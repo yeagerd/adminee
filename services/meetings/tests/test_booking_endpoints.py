@@ -465,10 +465,10 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         self, mock_send_email, mock_create_calendar
     ):
         """Test successful booking creation with proper transaction handling."""
-        from services.meetings.models import get_session
         from services.api.v1.meetings.booking_requests import (
             CreatePublicBookingRequest,
         )
+        from services.meetings.models import get_session
 
         # Mock external service responses
         mock_create_calendar.return_value = "calendar-event-123"
@@ -537,10 +537,10 @@ class TestBookingEndpoints(BaseMeetingsIntegrationTest):
         self, mock_send_email, mock_create_calendar
     ):
         """Test booking creation when calendar event creation fails."""
-        from services.meetings.models import get_session
         from services.api.v1.meetings.booking_requests import (
             CreatePublicBookingRequest,
         )
+        from services.meetings.models import get_session
 
         # Mock calendar service failure
         mock_create_calendar.side_effect = Exception("Calendar service unavailable")

@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from services.api.v1.office.email import EmailAddress, EmailMessage, EmailThread
+from services.api.v1.office.models import Provider
 from services.common.http_errors import ValidationError
 from services.office.api.email import (
     fetch_provider_threads,
@@ -23,8 +25,6 @@ from services.office.core.normalizer import (
     normalize_microsoft_conversation,
     normalize_thread_id,
 )
-from services.api.v1.office.email import EmailAddress, EmailMessage, EmailThread
-from services.api.v1.office.models import Provider
 
 
 class TestThreadIDParsing:
