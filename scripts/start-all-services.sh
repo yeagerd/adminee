@@ -344,14 +344,12 @@ else
     echo -e "   Frontend:     ${YELLOW}Not started (use --frontend flag)${NC}"
 fi
 echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
-echo -e "   User Service: ${GREEN}http://localhost:8001${NC}"
-echo -e "   Chat Service: ${GREEN}http://localhost:8002${NC}"
-echo -e "   Office Service: ${GREEN}http://localhost:8003${NC}"
-echo -e "   Shipments Service: ${GREEN}http://localhost:8004${NC}"
-echo -e "   Meetings Service: ${GREEN}http://localhost:8005${NC}"
-echo -e "   Vespa Loader Service: ${GREEN}http://localhost:9001${NC}"
-echo -e "   Vespa Query Service: ${GREEN}http://localhost:8006${NC}"
-echo -e "   Contacts Service: ${GREEN}http://localhost:8007${NC}"
+for service_config in "${SERVICES[@]}"; do
+    IFS=':' read -r service_name module_path port <<< "$service_config"
+    # Convert service-name to display name (e.g., "user-service" -> "User Service")
+    local display_name=$(echo "$service_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+    echo -e "   $display_name: ${GREEN}http://localhost:$port${NC}"
+done
 echo ""
 echo -e "${BLUE}🔗 Quick Links:${NC}"
 if [ "$SKIP_FRONTEND" = false ]; then
