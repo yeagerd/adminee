@@ -133,7 +133,7 @@ class OfficeIntegrationService:
 
         try:
             # Get office contacts for this user
-            office_contacts = await self.get_office_contacts(user_id, limit=1000)
+            office_contacts = await self.get_office_contacts(user_id, limit=500)
 
             # Create a lookup map for office contacts by email
             office_contact_map = {}

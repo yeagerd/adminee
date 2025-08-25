@@ -8,7 +8,7 @@ for database persistence.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, DateTime, func
 from sqlmodel import Field, SQLModel
 
 
@@ -57,9 +57,15 @@ class Contact(SQLModel, table=True):
         default=0, description="Total number of events across all types"
     )
     last_seen: datetime = Field(
-        ..., description="When this contact was last seen in any event"
+        ..., 
+        sa_column=Column(DateTime(timezone=True)),
+        description="When this contact was last seen in any event"
     )
-    first_seen: datetime = Field(..., description="When this contact was first seen")
+    first_seen: datetime = Field(
+        ..., 
+        sa_column=Column(DateTime(timezone=True)),
+        description="When this contact was first seen"
+    )
 
     # Contact relevance scoring
     relevance_score: float = Field(
@@ -89,8 +95,9 @@ class Contact(SQLModel, table=True):
         default=None, description="Office service provider (Google, Microsoft, etc.)"
     )
     last_synced: Optional[datetime] = Field(
-        default=None,
-        description="When this contact was last synced from Office Service",
+        default=None, 
+        sa_column=Column(DateTime(timezone=True)),
+        description="When this contact was last synced from Office Service"
     )
     phone_numbers: List[str] = Field(
         default_factory=list,
@@ -104,10 +111,12 @@ class Contact(SQLModel, table=True):
     # Timestamps
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
         description="When this contact record was created",
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
         description="When this contact record was last updated",
     )
 
