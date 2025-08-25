@@ -5,92 +5,92 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 
 ## Phase 1: Infrastructure Setup and Common Models
 
-- [ ] Create `services/api/v1/` directory structure
-- [ ] Create `services/api/v1/__init__.py` with proper exports
-- [ ] Create `services/api/v1/pyproject.toml` for the new API package
-- [ ] Update root `pyproject.toml` to include the new API package as a dependency
-- [ ] Create `services/api/v1/README.md` documenting the new structure and usage patterns
-- [ ] Set up proper import paths and ensure the API package can be imported by all services
-- [ ] **Common Models**: Move `services/common/models/` contents to `services/api/v1/common/`
-- [ ] **Common Events**: Move `services/common/events/` schemas to `services/api/v1/common/events/`
-- [ ] **Common Pagination**: Move `services/common/pagination/` schemas to `services/api/v1/common/pagination/`
+- [x] Create `services/api/v1/` directory structure
+- [x] Create `services/api/v1/__init__.py` with proper exports
+- [x] Create `services/api/v1/pyproject.toml` for the new API package
+- [x] Update root `pyproject.toml` to include the new API package as a dependency
+- [x] Create `services/api/v1/README.md` documenting the new structure and usage patterns
+- [x] Set up proper import paths and ensure the API package can be imported by all services
+- [x] **Common Models**: Move `services/common/models/` contents to `services/api/v1/common/`
+- [x] **Common Events**: Move `services/common/events/` schemas to `services/api/v1/common/events/`
+- [x] **Common Pagination**: Move `services/common/pagination/` schemas to `services/api/v1/common/pagination/`
 - [ ] Update all services to use `services.api.v1.common` instead of `services.common`
 - [ ] Ensure common package tests pass
-- [ ] Update common package documentation
+- [ ] Update common package documentationgi
 
 ## Phase 2: User Service Models (Priority: High - Most Referenced)
 
-- [ ] Move `services/user/schemas/` contents to `services/api/v1/user/`
-  - [ ] Move `user.py` schemas
-  - [ ] Move `integration.py` schemas  
-  - [ ] Move `preferences.py` schemas
-  - [ ] Move `pagination.py` schemas
-  - [ ] Move `health.py` schemas
-- [ ] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
-- [ ] Update any inter-service calls that import user schemas to use the new API package
-  - [ ] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.schemas`
-  - [ ] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation
-  - [ ] **Office Service**: Update `services/office/core/pubsub_publisher.py` to use shared user schemas for user_id validation if any user-related schemas are added
-  - [ ] **Office Service**: Update `services/office/core/token_manager.py` to use shared user schemas for token validation responses
-  - [ ] **Office Service**: Update `services/office/core/api_client_factory.py` to use shared user schemas for user profile responses
-  - [ ] **Office Service**: Update `services/office/api/email.py` to use shared user schemas for integration responses
-  - [ ] **Office Service**: Update `services/office/api/backfill.py` to use shared user schemas for user existence responses
-  - [ ] **Meetings Service**: Update `services/meetings/services/booking_availability.py` to use shared user schemas if user validation schemas are needed
-  - [ ] **Meetings Service**: Update `services/meetings/services/email_integration.py` to use shared user schemas for integration responses
-  - [ ] **Chat Service**: Update `services/chat/tools/data_tools.py` to use shared user schemas for integration responses
-  - [ ] **Vespa Services**: Update `services/vespa_loader/` and `services/vespa_query/` to use shared user schemas for user validation responses
-  - [ ] **Demo Services**: Update demo services to use shared user schemas for user service responses
-  - [ ] Verify that no other services are making direct calls to user service internal models
-- [ ] Ensure user service tests still pass with new import structure
+- [x] Move `services/user/schemas/` contents to `services/api/v1/user/`
+  - [x] Move `user.py` schemas
+  - [x] Move `integration.py` schemas  
+  - [x] Move `preferences.py` schemas
+  - [x] Move `pagination.py` schemas
+  - [x] Move `health.py` schemas
+- [x] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
+- [x] Update any inter-service calls that import user schemas to use the new API package
+  - [x] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.schemas`
+  - [x] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation
+  - [x] **Office Service**: Update `services/office/core/pubsub_publisher.py` to use shared user schemas for user_id validation if any user-related schemas are added
+  - [x] **Office Service**: Update `services/office/core/token_manager.py` to use shared user schemas for token validation responses
+  - [x] **Office Service**: Update `services/office/core/api_client_factory.py` to use shared user schemas for user profile responses
+  - [x] **Office Service**: Update `services/office/api/email.py` to use shared user schemas for integration responses
+  - [x] **Office Service**: Update `services/office/api/backfill.py` to use shared user schemas for user existence responses
+  - [x] **Meetings Service**: Update `services/meetings/services/booking_availability.py` to use shared user schemas if user validation schemas are needed
+  - [x] **Meetings Service**: Update `services/meetings/services/email_integration.py` to use shared user schemas for integration responses
+  - [x] **Chat Service**: Update `services/chat/tools/data_tools.py` to use shared user schemas for integration responses
+  - [x] **Vespa Services**: Update `services/vespa_loader/` and `services/vespa_query/` to use shared user schemas for user validation responses
+  - [x] **Demo Services**: Update demo services to use shared user schemas for user service responses
+  - [x] Verify that no other services are making direct calls to user service internal models
+- [x] Ensure user service tests still pass with new import structure
 - [ ] Update user service documentation to reflect new API structure
 
 ## Phase 3: Office Service Models (Priority: High - Core Integration Service)
 
-- [ ] Move `services/office/schemas/` contents to `services/api/v1/office/`
-  - [ ] Move all schema files from the monolithic `__init__.py`
-  - [ ] Break down the large schema file into logical modules
-- [ ] Update `services/office/` imports to use `services.api.v1.office`
+- [x] Move `services/office/schemas/` contents to `services/api/v1/office/`
+  - [x] Move all schema files from the monolithic `__init__.py`
+  - [x] Break down the large schema file into logical modules
+- [x] Update `services/office/` imports to use `services.api.v1.office`
 - [ ] Update inter-service calls in other services that import office schemas
-  - [ ] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
-  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
-  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
-  - [ ] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api.v1.office`
-  - [ ] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
-  - [ ] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
-  - [ ] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
-- [ ] Update office service tests and ensure they pass
+  - [x] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
+  - [x] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [x] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [x] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api/v1.office`
+  - [x] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
+  - [x] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
+  - [x] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
+- [x] Update office service tests and ensure they pass
 - [ ] Update office service documentation
 
 ## Phase 4: Meetings Service Models (Priority: Medium)
 
-- [ ] Move `services/meetings/schemas/` contents to `services/api/v1/meetings/`
-  - [ ] Move `booking_requests.py` schemas
-- [ ] Update `services/meetings/` imports to use `services.api.v1.meetings`
-- [ ] Update any inter-service calls that import meetings schemas
-  - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
-  - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
-  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api.v1.meetings`
-  - [ ] **Office Service**: Update `services/office/api/calendar.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
-  - [ ] **Office Tests**: Update `services/office/tests/test_validation.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
-  - [ ] Verify that no other services are making direct calls to meetings service internal models
-- [ ] Ensure meetings service tests pass
+- [x] Move `services/meetings/schemas/` contents to `services/api/v1/meetings/`
+  - [x] Move `booking_requests.py` schemas
+- [x] Update `services/meetings/` imports to use `services.api.v1.meetings`
+- [x] Update any inter-service calls that import meetings schemas
+  - [x] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `MeetingPollData` from `services.api.v1.meetings` instead of local definition
+  - [x] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.meetings`
+  - [x] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `MeetingPollData, MeetingPollEvent` from `services.api/v1.meetings`
+  - [x] **Office Service**: Update `services/office/api/calendar.py` to use `CreateCalendarEventRequest` from `services.api/v1.office` (already handled in Phase 3)
+  - [x] **Office Tests**: Update `services/office/tests/test_validation.py` to use `CreateCalendarEventRequest` from `services.api.v1.office` (already handled in Phase 3)
+  - [x] Verify that no other services are making direct calls to meetings service internal models
+- [x] Ensure meetings service tests pass
 - [ ] Update meetings service documentation
 
 ## Phase 5: Chat Service Models (Priority: Medium)
 
-- [ ] Move `services/chat/schemas/` contents to `services/api/v1/chat/`
-  - [ ] Move `office_responses.py` schemas
-- [ ] Move any other schema files that exist
-- [ ] Update `services/chat/` imports to use `services.api.v1.chat`
-- [ ] Update inter-service calls that import chat schemas
-  - [ ] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `LLMChatMessageData` from `services.api.v1.chat` instead of local definition
-  - [ ] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api.v1.chat`
-  - [ ] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `LLMChatMessageData` from `services.api.v1.chat`
-  - [ ] **Demos**: Update `services/demos/chat.py` to use shared chat schemas for type annotations and validation
-  - [ ] **Demos**: Update `services/demos/vespa_search.py` to use shared chat schemas if any chat-related schemas are needed
-  - [ ] **Demos**: Update `services/demos/vespa_synthetic.py` to use shared chat schemas if any chat-related schemas are needed
-  - [ ] Verify that no other services are making direct calls to chat service internal models
-- [ ] Ensure chat service tests pass
+- [x] Move `services/chat/schemas/` contents to `services/api/v1/chat/`
+  - [x] Move `office_responses.py` schemas
+- [x] Move any other schema files that exist
+- [x] Update `services/chat/` imports to use `services.api.v1.chat`
+- [x] Update inter-service calls that import chat schemas
+  - [x] **Common Events**: Update `services/common/events/internal_tool_events.py` to use `LLMChatMessageData` from `services.api.v1.chat` instead of local definition
+  - [x] **Common Events**: Update `services/common/events/__init__.py` to export from `services.api/v1.chat`
+  - [x] **Common Tests**: Update `services/common/tests/test_internal_tool_integration.py` to import `LLMChatMessageData` from `services.api.v1.chat`
+  - [x] **Demos**: Update `services/demos/chat.py` to use shared chat schemas for type annotations and validation
+  - [x] **Demos**: Update `services/demos/vespa_search.py` to use shared chat schemas if any chat-related schemas are needed
+  - [x] **Demos**: Update `services/demos/vespa_synthetic.py` to use shared chat schemas if any chat-related schemas are needed
+  - [x] Verify that no other services are making direct calls to chat service internal models
+- [x] Ensure chat service tests pass
 - [ ] Update chat service documentation
 
 ## Phase 6: Shipments Service Models (Priority: Medium)

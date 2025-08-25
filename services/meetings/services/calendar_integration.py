@@ -90,7 +90,7 @@ async def create_calendar_event(
         headers["X-Request-Id"] = request_id
 
     # Convert participants to EmailAddress format
-    from services.office.schemas import EmailAddress
+    from services.api.v1.office.email import EmailAddress
 
     attendee_list = [
         EmailAddress(email=email, name=email.split("@")[0])
@@ -98,7 +98,7 @@ async def create_calendar_event(
     ]
 
     # Create event data using the existing CreateCalendarEventRequest schema
-    from services.office.schemas import CreateCalendarEventRequest
+    from services.api.v1.office.calendar import CreateCalendarEventRequest
 
     event_data = CreateCalendarEventRequest(
         title=title,
@@ -171,7 +171,8 @@ async def update_calendar_event(
         headers["X-Request-Id"] = request_id
 
     # Convert participants to EmailAddress format
-    from services.office.schemas import CreateCalendarEventRequest, EmailAddress
+    from services.api.v1.office.calendar import CreateCalendarEventRequest
+    from services.api.v1.office.email import EmailAddress
 
     attendee_list = [
         EmailAddress(email=email, name=email.split("@")[0])

@@ -95,7 +95,7 @@ class TestTimezonePreferencesAPI(BaseUserManagementIntegrationTest):
         """Test that timezone fields are included in the preferences schema (top-level, not UI)."""
         from datetime import datetime, timezone
 
-        from services.user.schemas.preferences import (
+        from services.api.v1.user.preferences import (
             AIPreferencesSchema,
             IntegrationPreferencesSchema,
             NotificationPreferencesSchema,

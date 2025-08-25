@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from pydantic import ValidationError
 
-from services.office.schemas import (
+from services.api.v1.office.calendar import (
     AvailabilityRequest,
     CreateCalendarEventRequest,
     EmailAddress,

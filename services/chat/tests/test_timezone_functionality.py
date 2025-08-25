@@ -281,7 +281,8 @@ class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
                 # Create proper CalendarEvent object
                 from datetime import datetime, timezone
 
-                from services.office.schemas import CalendarEvent, Provider
+                from services.api.v1.office.calendar import CalendarEvent
+                from services.api.v1.office.models import Provider
 
                 event = CalendarEvent(
                     id="google_event_1",
@@ -329,8 +330,9 @@ class TestTimezoneIntegration(BaseSelectiveHTTPIntegrationTest):
         """Test that calendar events get a display_time field with proper timezone formatting via DataTools."""
         from datetime import datetime, timezone
 
+        from services.api.v1.office.calendar import CalendarEvent
+        from services.api.v1.office.models import Provider
         from services.chat.tools.data_tools import DataTools
-        from services.office.schemas import CalendarEvent, Provider
 
         # Call get_calendar_events with timezone using DataTools
         data_tools = DataTools("test_user")

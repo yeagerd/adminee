@@ -8,23 +8,23 @@ including edge cases and malicious input attempts.
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from services.user.middleware.sanitization import (
-    is_safe_text,
-    sanitize_user_input,
-)
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     OAuthCallbackRequest,
     OAuthStartRequest,
 )
-from services.user.schemas.pagination import UserSearchRequest
-from services.user.schemas.preferences import (
+from services.api.v1.user.pagination import UserSearchRequest
+from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,
     PreferencesImportRequest,
 )
-from services.user.schemas.user import (
+from services.api.v1.user.user import (
     UserCreate,
     UserUpdate,
+)
+from services.user.middleware.sanitization import (
+    is_safe_text,
+    sanitize_user_input,
 )
 from services.user.utils.validation import ValidationError as CustomValidationError
 from services.user.utils.validation import (

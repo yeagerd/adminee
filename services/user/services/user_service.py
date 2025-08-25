@@ -10,14 +10,11 @@ from typing import List, Optional
 
 from sqlmodel import select
 
-from services.common.http_errors import NotFoundError, ValidationError
-from services.user.database import get_async_session
-from services.user.models.user import User
-from services.user.schemas.pagination import (
+from services.api.v1.user.pagination import (
     UserListResponse,
     UserSearchRequest,
 )
-from services.user.schemas.user import (
+from services.api.v1.user.user import (
     EmailResolutionRequest,
     EmailResolutionResponse,
     UserCreate,
@@ -26,6 +23,9 @@ from services.user.schemas.user import (
     UserResponse,
     UserUpdate,
 )
+from services.common.http_errors import NotFoundError, ValidationError
+from services.user.database import get_async_session
+from services.user.models.user import User
 from services.user.services.audit_service import audit_logger
 from services.user.utils.email_collision import EmailCollisionDetector
 

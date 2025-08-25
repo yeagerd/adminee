@@ -15,18 +15,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Path, Query
 
-from services.common.http_errors import (
-    BrieflyAPIError,
-    ErrorCode,
-    NotFoundError,
-    ServiceError,
-    ValidationError,
-)
-from services.common.logging_config import get_logger
-from services.user.auth import get_current_user
-from services.user.auth.service_auth import service_permission_required
-from services.user.models.integration import IntegrationProvider, IntegrationStatus
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationHealthResponse,
@@ -39,14 +28,25 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.user.schemas.pagination import (
+from services.api.v1.user.pagination import (
     UserListResponse,
     UserSearchRequest,
 )
-from services.user.schemas.user import (
+from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.http_errors import (
+    BrieflyAPIError,
+    ErrorCode,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
+from services.common.logging_config import get_logger
+from services.user.auth import get_current_user
+from services.user.auth.service_auth import service_permission_required
+from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
 
