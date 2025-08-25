@@ -246,41 +246,28 @@ cleanup() {
 # Set up signal handlers for proper Ctrl+C handling
 trap cleanup SIGINT SIGTERM
 
+# Service configuration
+declare -a SERVICES=(
+    "user-service:services.user.main:app:8001"
+    "chat-service:services.chat.main:app:8002"
+    "office-service:services.office.app.main:app:8003"
+    "shipments-service:services.shipments.main:app:8004"
+    "meetings-service:services.meetings.main:app:8005"
+    "vespa-loader-service:services.vespa_loader.main:app:9001"
+    "vespa-query-service:services.vespa_query.main:app:8006"
+    "contacts-service:services.contacts.main:app:8007"
+)
+
 # Start all services
 if [ "$SERIAL_START" = true ]; then
     echo -e "${BLUE}🔧 Starting all services sequentially...${NC}"
     
-    # Start User Service
-    start_python_service "user-service" "services.user.main:app" 8001
-    wait_for_service "User Service" "http://localhost:8001/health"
-    
-    # Start Chat Service
-    start_python_service "chat-service" "services.chat.main:app" 8002
-    wait_for_service "Chat Service" "http://localhost:8002/health"
-    
-    # Start Office Service
-    start_python_service "office-service" "services.office.app.main:app" 8003
-    wait_for_service "Office Service" "http://localhost:8003/health"
-    
-    # Start Shipments Service
-    start_python_service "shipments-service" "services.shipments.main:app" 8004
-    wait_for_service "Shipments Service" "http://localhost:8004/health"
-    
-    # Start Meetings Service
-    start_python_service "meetings-service" "services.meetings.main:app" 8005
-    wait_for_service "Meetings Service" "http://localhost:8005/health"
-    
-    # Start Vespa Loader Service
-    start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001
-    wait_for_service "Vespa Loader Service" "http://localhost:9001/health"
-    
-    # Start Vespa Query Service
-    start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006
-    wait_for_service "Vespa Query Service" "http://localhost:8006/health"
-    
-    # Start Contacts Service
-    start_python_service "contacts-service" "services.contacts.main:app" 8007
-    wait_for_service "Contacts Service" "http://localhost:8007/health"
+    # Start all Python services sequentially
+    for service_config in "${SERVICES[@]}"; do
+        IFS=':' read -r service_name module_path port <<< "$service_config"
+        start_python_service "$service_name" "$module_path" "$port"
+        wait_for_service "$service_name" "http://localhost:$port/health"
+    done
     
     # Start Gateway
     echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
@@ -303,14 +290,10 @@ else
     echo -e "${BLUE}🔧 Starting all services simultaneously (aggressive parallel)...${NC}"
     
     # Start all Python services simultaneously
-    start_python_service "user-service" "services.user.main:app" 8001 &
-    start_python_service "chat-service" "services.chat.main:app" 8002 &
-    start_python_service "office-service" "services.office.app.main:app" 8003 &
-    start_python_service "shipments-service" "services.shipments.main:app" 8004 &
-    start_python_service "meetings-service" "services.meetings.main:app" 8005 &
-    start_python_service "vespa-loader-service" "services.vespa_loader.main:app" 9001 &
-    start_python_service "vespa-query-service" "services.vespa_query.main:app" 8006 &
-    start_python_service "contacts-service" "services.contacts.main:app" 8007 &
+    for service_config in "${SERVICES[@]}"; do
+        IFS=':' read -r service_name module_path port <<< "$service_config"
+        start_python_service "$service_name" "$module_path" "$port" &
+    done
     
     # Start Gateway
     echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
@@ -328,14 +311,10 @@ else
     fi
     
     # Wait for all services to be ready
-    wait_for_service "User Service" "http://localhost:8001/health"
-    wait_for_service "Chat Service" "http://localhost:8002/health"
-    wait_for_service "Office Service" "http://localhost:8003/health"
-    wait_for_service "Shipments Service" "http://localhost:8004/health"
-    wait_for_service "Meetings Service" "http://localhost:8005/health"
-    wait_for_service "Vespa Loader Service" "http://localhost:9001/health"
-    wait_for_service "Vespa Query Service" "http://localhost:8006/health"
-    wait_for_service "Contacts Service" "http://localhost:8007/health"
+    for service_config in "${SERVICES[@]}"; do
+        IFS=':' read -r service_name module_path port <<< "$service_config"
+        wait_for_service "$service_name" "http://localhost:$port/health"
+    done
     wait_for_service "Gateway" "http://localhost:3001/health"
 
     if [ "$SKIP_FRONTEND" = false ]; then
