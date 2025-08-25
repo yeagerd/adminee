@@ -1,17 +1,16 @@
-"""Create contacts table
+"""create_contacts_table
 
-Revision ID: 0001
+Revision ID: 6e6ed8afcfd9
 Revises:
-Create Date: 2024-01-01 00:00:00.000000
+Create Date: 2025-08-25 13:15:53.304168
 
 """
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "0001"
+revision = "6e6ed8afcfd9"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,21 +26,17 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(), nullable=True),
         sa.Column("given_name", sa.String(), nullable=True),
         sa.Column("family_name", sa.String(), nullable=True),
-        sa.Column(
-            "event_counts", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
-        sa.Column("total_event_count", sa.Integer(), nullable=True),
-        sa.Column("last_seen", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("first_seen", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("relevance_score", sa.Float(), nullable=True),
-        sa.Column(
-            "relevance_factors", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
-        sa.Column("source_services", postgresql.ARRAY(sa.String()), nullable=True),
-        sa.Column("tags", postgresql.ARRAY(sa.String()), nullable=True),
+        sa.Column("event_counts", sa.JSON(), nullable=True),
+        sa.Column("total_event_count", sa.Integer(), nullable=False),
+        sa.Column("last_seen", sa.DateTime(), nullable=False),
+        sa.Column("first_seen", sa.DateTime(), nullable=False),
+        sa.Column("relevance_score", sa.Float(), nullable=False),
+        sa.Column("relevance_factors", sa.JSON(), nullable=True),
+        sa.Column("source_services", sa.JSON(), nullable=True),
+        sa.Column("tags", sa.JSON(), nullable=True),
         sa.Column("notes", sa.String(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
 

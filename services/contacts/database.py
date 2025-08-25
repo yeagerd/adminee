@@ -7,12 +7,19 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import declarative_base
+from sqlmodel import SQLModel
 
 from services.common import get_async_database_url
+
+# Import all models so they are registered with metadata
+from services.contacts.models.contact import Contact  # noqa: F401
 from services.contacts.settings import get_settings
 
 # Base class for models
 Base = declarative_base()
+
+# Export metadata for Alembic (use SQLModel.metadata since Contact inherits from SQLModel)
+metadata = SQLModel.metadata
 
 # Global variables for lazy initialization
 _engine: AsyncEngine | None = None
