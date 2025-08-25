@@ -5,7 +5,6 @@ Moved from services/user/services/contact_discovery_service.py and adapted
 for database persistence in the Contacts Service.
 """
 
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 from uuid import uuid4
@@ -22,11 +21,12 @@ from services.common.events import (
     TodoEvent,
 )
 from services.common.events.todo_events import TodoData, TodoEvent
+from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
 from services.contacts.models.contact import Contact
 from services.contacts.schemas.contact import EmailContactUpdate
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ContactDiscoveryService:
