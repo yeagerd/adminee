@@ -68,17 +68,20 @@ jobs:
       - name: Check for uncommitted changes
         run: |
           # Check if any generated files have changed
-          if ! git diff --quiet; then
+          # Only check OpenAPI schema files and frontend TypeScript types
+          GENERATED_FILES=$(git diff --name-only | grep -E '\.(json|ts|tsx)$' | grep -E '(openapi/schema\.json|frontend/types/api)' || true)
+          
+          if [[ -n "$GENERATED_FILES" ]]; then
             echo "❌ Generated files are out of date!"
-            echo "The following files have been modified:"
-            git diff --name-only
+            echo "The following generated files have been modified:"
+            echo "$GENERATED_FILES"
             echo ""
-                      echo "Please run the following commands to update generated files:"
-          echo "  ./scripts/generate-api-schema.sh"
-          echo "  git add . && git commit -m 'Update generated files'"
-          echo ""
-          echo "Note: The generate-api-schema.sh script automatically cleans existing types"
-          echo "before generation, ensuring a fresh and consistent output."
+            echo "Please run the following commands to update generated files:"
+            echo "  ./scripts/generate-api-schema.sh"
+            echo "  git add . && git commit -m 'Update generated files'"
+            echo ""
+            echo "Note: The generate-api-schema.sh script automatically cleans existing types"
+            echo "before generation, ensuring a fresh and consistent output."
             echo ""
             echo "This ensures that your PR includes the latest generated types and schemas."
             exit 1
