@@ -192,7 +192,7 @@ if check_postgres_running; then
         "shipments:$DB_URL_SHIPMENTS_MIGRATIONS"
         "office:$DB_URL_OFFICE_MIGRATIONS"
         "chat:$DB_URL_CHAT_MIGRATIONS"
-
+        "contacts:$DB_URL_CONTACTS_MIGRATIONS"
     )
 
     for service_config in "${services[@]}"; do
