@@ -57,39 +57,25 @@ if [ -n "$ENV_FILE" ]; then
         echo "❌ Error: Environment file not found: $ENV_FILE"
         exit 1
     fi
-    echo "📄 Loading environment from: $ENV_FILE"
     source "$ENV_FILE"
-    
-    # Set up database URLs using environment variables
-    export POSTGRES_HOST=localhost
-    export POSTGRES_PORT=5432
-    
-    # Service-specific database URLs using environment passwords
-    export DB_URL_USER=postgresql://briefly_user_service:${BRIEFLY_USER_SERVICE_PASSWORD:-briefly_user_pass}@localhost:5432/briefly_user
-    export DB_URL_MEETINGS=postgresql://briefly_meetings_service:${BRIEFLY_MEETINGS_SERVICE_PASSWORD:-briefly_meetings_pass}@localhost:5432/briefly_meetings
-    export DB_URL_SHIPMENTS=postgresql://briefly_shipments_service:${BRIEFLY_SHIPMENTS_SERVICE_PASSWORD:-briefly_shipments_pass}@localhost:5432/briefly_shipments
-    export DB_URL_OFFICE=postgresql://briefly_office_service:${BRIEFLY_OFFICE_SERVICE_PASSWORD:-briefly_office_pass}@localhost:5432/briefly_office
-    export DB_URL_CHAT=postgresql://briefly_chat_service:${BRIEFLY_CHAT_SERVICE_PASSWORD:-briefly_chat_pass}@localhost:5432/briefly_chat
-    export DB_URL_VECTOR=postgresql://briefly_vector_service:${BRIEFLY_VECTOR_SERVICE_PASSWORD:-briefly_vector_pass}@localhost:5432/briefly_vector
-    export DB_URL_CONTACTS=postgresql://briefly_contacts_service:${BRIEFLY_CONTACTS_SERVICE_PASSWORD:-briefly_contacts_pass}@localhost:5432/briefly_contacts
-    # Vespa Loader service - no database required (stateless service)
-    export DB_URL_VESPA_LOADER="no_database_required"
-    
-    # For Alembic migrations (using admin user from env file)
-    export DB_URL_USER_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_user
-    export DB_URL_MEETINGS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_meetings
-    export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_shipments
-    export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
-    export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
-    export DB_URL_VECTOR_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_vector
-    export DB_URL_CONTACTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_contacts
-    
     echo "✅ Environment variables loaded from $ENV_FILE"
 else
     # Use default hardcoded credentials for local development
     echo "📄 Using default credentials for local development"
     source scripts/postgres-env.sh
 fi
+
+# Set up database URLs using environment variables
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+
+# For Alembic migrations (using admin user from env file)
+export DB_URL_USER_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_user
+export DB_URL_MEETINGS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_meetings
+export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_shipments
+export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
+export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
+export DB_URL_CONTACTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_contacts
 
 echo "🔍 Checking PostgreSQL and database migration status..."
 
