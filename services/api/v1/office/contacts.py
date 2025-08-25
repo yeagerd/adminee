@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
-from .email import EmailAddress
-from .models import Provider
+from services.api.v1.office.email import EmailAddress
+from services.api.v1.office.models import Provider
 
 
 class ContactPhone(BaseModel):

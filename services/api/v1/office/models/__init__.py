@@ -2,6 +2,6 @@
 Office service models.
 """
 
-from .provider import Provider
+from services.api.v1.office.models.provider import Provider
 
 __all__ = ["Provider"]

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
-from .models import Provider
+from services.api.v1.office.models import Provider
 
 
 # Unified File Models

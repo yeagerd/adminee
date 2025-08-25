@@ -2,8 +2,8 @@
 Meetings service API schemas.
 """
 
-from . import booking_requests, meetings
-from .meetings import (
+from services.api.v1.meetings import booking_requests, meetings
+from services.api.v1.meetings.meetings import (
     ChatMeeting,
     ChatMeetingCreate,
     MeetingPoll,

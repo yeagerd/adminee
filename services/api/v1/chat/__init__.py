@@ -2,6 +2,6 @@
 Chat service API schemas.
 """
 
-from . import office_responses
+from services.api.v1.chat import office_responses
 
 __all__ = ["office_responses"]

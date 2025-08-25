@@ -2,7 +2,7 @@
 Pagination schemas for cursor-based pagination.
 """
 
-from .schemas import (
+from services.api.v1.common.pagination.schemas import (
     CursorData,
     CursorPaginationParams,
     CursorPaginationRequest,

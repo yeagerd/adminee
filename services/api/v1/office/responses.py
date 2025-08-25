@@ -6,7 +6,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
 
-from .models import Provider
+from services.api.v1.office.models import Provider
 
 T = TypeVar("T")
 

@@ -2,8 +2,8 @@
 Office service API schemas.
 """
 
-from . import calendar, contacts, email, files, models, responses
-from .responses import (
+from services.api.v1.office import calendar, contacts, email, files, models, responses
+from services.api.v1.office.responses import (
     ApiResponse,
     AvailabilityApiResponse,
     AvailabilityResponse,

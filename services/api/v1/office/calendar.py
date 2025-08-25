@@ -14,8 +14,8 @@ from pydantic import (
     model_validator,
 )
 
-from .email import EmailAddress
-from .models import Provider
+from services.api.v1.office.email import EmailAddress
+from services.api.v1.office.models import Provider
 
 
 # Unified Calendar Models
