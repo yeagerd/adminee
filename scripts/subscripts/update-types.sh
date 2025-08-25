@@ -140,16 +140,47 @@ update_service_types() {
     # Create types directory if it doesn't exist
     mkdir -p "$types_dir"
     
-    # Generate types using openapi-typescript-codegen
+    # Generate types using openapi-typescript-codegen (no Java dependency)
     cd "$PROJECT_ROOT/frontend"
     
-    if npx --no-install openapi-typescript-codegen --input "$schema_file" --output "$types_dir" --exportServices false --exportCore false; then
-        print_status "success" "Types updated for $service_name"
-        return 0
+    # Use openapi-typescript-codegen with optimized settings for better type handling
+    if npx --no-install openapi-typescript-codegen \
+        --input "$schema_file" \
+        --output "$types_dir" \
+        --exportServices false \
+        --exportCore false \
+        --exportClient false \
+        --exportModels true \
+        --exportUtils false \
+        --exportServer false \
+        --exportTest false \
+        --exportReadme false \
+        --exportApi false \
+        --exportApiCore false \
+        --exportApiClient false \
+        --exportApiServer false \
+        --exportApiUtils false \
+        --exportApiTest false \
+        --exportApiReadme false; then
+        print_status "success" "Types updated for $service_name (using openapi-typescript-codegen)"
+        
+        # Clean up duplicate types if Python is available
+        if command -v python3 &> /dev/null; then
+            print_status "info" "Cleaning up duplicate types for $service_name..."
+            if python3 "$PROJECT_ROOT/scripts/subscripts/cleanup_duplicate_types.py" "$types_dir"; then
+                print_status "success" "Duplicate types cleaned for $service_name"
+            else
+                print_status "warning" "Duplicate type cleanup failed for $service_name (continuing anyway)"
+            fi
+        else
+            print_status "warning" "Python3 not available, skipping duplicate type cleanup for $service_name"
+        fi
     else
         print_status "error" "Failed to update types for $service_name"
         return 1
     fi
+    
+    return 0
 }
 
 # Function to update all service types
