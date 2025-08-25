@@ -147,11 +147,13 @@ dotenv.config({ path: envPath });
         'MEETINGS_SERVICE_URL',
         'SHIPMENTS_SERVICE_URL',
         'VESPA_QUERY_URL',
+        'CONTACTS_SERVICE_URL',
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_OFFICE_KEY',
         'API_FRONTEND_SHIPMENTS_KEY',
         'API_FRONTEND_MEETINGS_KEY',
+        'API_FRONTEND_CONTACTS_KEY',
     ];
     const missing = required.filter((key) => !process.env[key]);
     if (missing.length > 0) {
