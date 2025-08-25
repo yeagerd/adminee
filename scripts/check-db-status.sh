@@ -70,7 +70,6 @@ if [ -n "$ENV_FILE" ]; then
     export DB_URL_SHIPMENTS=postgresql://briefly_shipments_service:${BRIEFLY_SHIPMENTS_SERVICE_PASSWORD:-briefly_shipments_pass}@localhost:5432/briefly_shipments
     export DB_URL_OFFICE=postgresql://briefly_office_service:${BRIEFLY_OFFICE_SERVICE_PASSWORD:-briefly_office_pass}@localhost:5432/briefly_office
     export DB_URL_CHAT=postgresql://briefly_chat_service:${BRIEFLY_CHAT_SERVICE_PASSWORD:-briefly_chat_pass}@localhost:5432/briefly_chat
-    export DB_URL_VECTOR=postgresql://briefly_vector_service:${BRIEFLY_VECTOR_SERVICE_PASSWORD:-briefly_vector_pass}@localhost:5432/briefly_vector
     export DB_URL_CONTACTS=postgresql://briefly_contacts_service:${BRIEFLY_CONTACTS_SERVICE_PASSWORD:-briefly_contacts_pass}@localhost:5432/briefly_contacts
     # Vespa Loader service - no database required (stateless service)
     export DB_URL_VESPA_LOADER="no_database_required"
@@ -81,7 +80,6 @@ if [ -n "$ENV_FILE" ]; then
     export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_shipments
     export DB_URL_OFFICE_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_office
     export DB_URL_CHAT_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_chat
-    export DB_URL_VECTOR_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_vector
     export DB_URL_CONTACTS_MIGRATIONS=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@localhost:5432/briefly_contacts
     
     echo "✅ Environment variables loaded from $ENV_FILE"
@@ -206,7 +204,7 @@ if check_postgres_running; then
         "shipments:$DB_URL_SHIPMENTS_MIGRATIONS"
         "office:$DB_URL_OFFICE_MIGRATIONS"
         "chat:$DB_URL_CHAT_MIGRATIONS"
-
+        "contacts:$DB_URL_CONTACTS_MIGRATIONS"
     )
 
     for service_config in "${services[@]}"; do
