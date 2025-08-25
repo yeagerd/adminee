@@ -4,8 +4,7 @@ from typing import Any
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from services.contacts.database import Base
-from services.contacts.models.contact import Contact  # Import models to register them
+from services.contacts.database import metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,7 +17,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-target_metadata = Base.metadata
+target_metadata = metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
