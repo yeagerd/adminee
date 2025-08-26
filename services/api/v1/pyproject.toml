@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Shared API schemas for Briefly services"
 authors = [{name = "Briefly Team"}]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -27,7 +27,7 @@ where = ["."]
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ['py312']
 
 [tool.isort]
 profile = "black"
