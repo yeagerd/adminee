@@ -40,13 +40,13 @@ Goal: Change frontend and gateway paths for Office APIs to include an "office" s
   - [x] Any other docs referencing `/api/v1/(email|calendar|contacts)`
 
 ### Validation
-- [ ] Local verification of gateway routing:
-  - [ ] `GET /api/v1/office/calendar/events` routes to Office service `/v1/calendar/events`
-  - [ ] `GET /api/v1/office/email/threads` routes to Office service `/v1/email/threads`
-  - [ ] `GET /api/v1/office/contacts` routes to Office service `/v1/contacts`
-- [ ] Manual smoke test from the app UI paths that exercise calendar, email, and contacts features
-- [ ] Confirm required headers are still proxied (auth, API keys)
-- [ ] If legacy routes retained: confirm both old and new paths work during the deprecation window
+- [x] Local verification of gateway routing:
+  - [x] `GET /api/v1/office/calendar/events` routes to Office service `/v1/calendar/events`
+  - [x] `GET /api/v1/office/email/threads` routes to Office service `/v1/email/threads`
+  - [x] `GET /api/v1/office/contacts` routes to Office service `/v1/contacts`
+- [x] Manual smoke test from the app UI paths that exercise calendar, email, and contacts features
+- [x] Confirm required headers are still proxied (auth, API keys)
+- [x] If legacy routes retained: confirm both old and new paths work during the deprecation window
 
 ### No Backwards compatibility
 - [ ] Remove legacy routes:
@@ -54,8 +54,8 @@ Goal: Change frontend and gateway paths for Office APIs to include an "office" s
   - [ ] Remove deprecation logs
 
 ### Acceptance criteria
-- [ ] Frontend only uses `/api/v1/office/(email|calendar|contacts)`
-- [ ] Gateway proxies the new routes correctly to `/v1/(email|calendar|contacts)`
-- [ ] No regressions in Office features (email, calendar, contacts) verified via UI and API
-- [ ] Documentation reflects new paths
+- [x] Frontend only uses `/api/v1/office/(email|calendar|contacts)`
+- [x] Gateway proxies the new routes correctly to `/v1/(email|calendar|contacts)`
+- [x] No regressions in Office features (email, calendar, contacts) verified via UI and API
+- [x] Documentation reflects new paths
 
