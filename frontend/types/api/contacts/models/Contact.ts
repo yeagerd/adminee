@@ -86,10 +86,10 @@ export type Contact = {
     /**
      * When this contact record was created
      */
-    created_at?: string;
+    created_at: string;
     /**
      * When this contact record was last updated
      */
-    updated_at?: string;
+    updated_at: string;
 };
 
