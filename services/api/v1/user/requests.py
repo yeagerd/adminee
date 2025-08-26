@@ -3,7 +3,7 @@ User-specific request schemas that extend common pagination schemas.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from services.api.v1.common.pagination import CursorPaginationRequest
 
