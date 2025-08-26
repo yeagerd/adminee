@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from services.contacts.models.contact import Contact, EmailContactEventCount
 
 
-def test_jsonb_field_types():
+def test_jsonb_field_types() -> None:
     """Test that JSONB fields are properly typed and can store complex data."""
     # Create a contact with complex JSONB data
     contact = Contact(
@@ -94,7 +94,7 @@ def test_jsonb_field_types():
     assert work_address["city"] == "Work City"
 
 
-def test_jsonb_field_serialization():
+def test_jsonb_field_serialization() -> None:
     """Test that JSONB fields can be properly serialized for database storage."""
     contact = Contact(
         user_id="test_user_2",
@@ -140,7 +140,7 @@ def test_jsonb_field_serialization():
     assert any(addr["type"] == "new" for addr in contact.addresses)
 
 
-def test_jsonb_field_validation():
+def test_jsonb_field_validation() -> None:
     """Test that JSONB fields properly validate data types."""
     # Test with various data types that should work in JSONB
     contact = Contact(
