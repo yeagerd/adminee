@@ -30,6 +30,31 @@ class IntegrationStatus(str, Enum):
     EXPIRED = "EXPIRED"  # Token was valid but is now expired
 
 
+def validate_oauth_scopes(scopes: List[str]) -> List[str]:
+    """Validate OAuth scopes.
+    
+    Args:
+        scopes: List of scope strings to validate
+        
+    Returns:
+        List of validated and cleaned scope strings
+        
+    Raises:
+        ValueError: If scopes validation fails
+    """
+    if not scopes:
+        raise ValueError("At least one scope must be requested")
+    
+    # Basic scope validation
+    for scope in scopes:
+        if not scope or not scope.strip():
+            raise ValueError("Scope cannot be empty")
+        if len(scope) > 100:
+            raise ValueError("Scope must be 100 characters or less")
+    
+    return [scope.strip() for scope in scopes]
+
+
 class IntegrationScopeResponse(BaseModel):
     """Response model for OAuth scope information."""
 
@@ -130,17 +155,7 @@ class IntegrationCreateRequest(BaseModel):
     @classmethod
     def validate_scopes(cls: type["IntegrationCreateRequest"], v: List[str]) -> List[str]:
         """Validate OAuth scopes."""
-        if not v:
-            raise ValueError("At least one scope must be requested")
-        
-        # Basic scope validation
-        for scope in v:
-            if not scope or not scope.strip():
-                raise ValueError("Scope cannot be empty")
-            if len(scope) > 100:
-                raise ValueError("Scope must be 100 characters or less")
-        
-        return [scope.strip() for scope in v]
+        return validate_oauth_scopes(v)
 
 
 class IntegrationUpdateRequest(BaseModel):
@@ -155,18 +170,7 @@ class IntegrationUpdateRequest(BaseModel):
         """Validate OAuth scopes."""
         if v is None:
             return v
-        
-        if not v:
-            raise ValueError("Scopes list cannot be empty")
-        
-        # Basic scope validation
-        for scope in v:
-            if not scope or not scope.strip():
-                raise ValueError("Scope cannot be empty")
-            if len(scope) > 100:
-                raise ValueError("Scope must be 100 characters or less")
-        
-        return [scope.strip() for scope in v]
+        return validate_oauth_scopes(v)
 
 
 class IntegrationDeleteRequest(BaseModel):
