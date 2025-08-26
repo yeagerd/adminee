@@ -212,9 +212,12 @@ If issues arise, the rollback plan is:
 ### Gateway Routes:
 - `/api/v1/users/*` → User Management Service
 - `/api/v1/chat/*` → Chat Service
-- `/api/v1/calendar/*` → Office Service
-- `/api/v1/email/*` → Office Service
+- `/api/v1/calendar/*` → Office Service (legacy)
+- `/api/v1/email/*` → Office Service (legacy)
 - `/api/v1/files/*` → Office Service
+- `/api/v1/office/calendar/*` → Office Service (new)
+- `/api/v1/office/email/*` → Office Service (new)
+- `/api/v1/office/contacts/*` → Office Service (new)
 - `/api/v1/drafts/*` → Chat Service
 - `/api/v1/meetings/*` → Meetings Service
 - `/api/v1/public/polls/*` → Meetings Service

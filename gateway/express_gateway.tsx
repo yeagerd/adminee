@@ -445,6 +445,9 @@ const serviceRoutes = {
     '/api/v1/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/contacts': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/office/calendar': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/office/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/v1/office/contacts': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
     '/api/v1/shipments': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
     '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
@@ -624,6 +627,14 @@ app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy
 app.use('/api/v1/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts/' }));
 app.use('/api/v1/contacts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/contacts'], { '^/api/v1/contacts': '/v1/contacts' }));
 
+// New office-prefixed routes
+app.use('/api/v1/office/calendar', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office/calendar'], { '^/api/v1/office/calendar': '/v1/calendar' }));
+app.use('/api/v1/office/calendar/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office/calendar'], { '^/api/v1/office/calendar': '/v1/calendar' }));
+app.use('/api/v1/office/email', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office/email'], { '^/api/v1/office/email': '/v1/email' }));
+app.use('/api/v1/office/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office/email'], { '^/api/v1/office/email': '/v1/email' }));
+app.use('/api/v1/office/contacts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office/contacts'], { '^/api/v1/office/contacts': '/v1/contacts' }));
+app.use('/api/v1/office/contacts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office/contacts'], { '^/api/v1/office/contacts': '/v1/contacts' }));
+
 // Catch-all for undefined routes
 app.use('*', (req, res) => {
     res.status(404).json({ error: 'Route not found' });
@@ -656,6 +667,9 @@ const server = app.listen(PORT, () => {
     logWithContext('info', `  /api/v1/email    → ${serviceRoutes['/api/v1/email']}`);
     logWithContext('info', `  /api/v1/files    → ${serviceRoutes['/api/v1/files']}`);
     logWithContext('info', `  /api/v1/contacts → ${serviceRoutes['/api/v1/contacts']}`);
+    logWithContext('info', `  /api/v1/office/calendar → ${serviceRoutes['/api/v1/office/calendar']}`);
+    logWithContext('info', `  /api/v1/office/email → ${serviceRoutes['/api/v1/office/email']}`);
+    logWithContext('info', `  /api/v1/office/contacts → ${serviceRoutes['/api/v1/office/contacts']}`);
     logWithContext('info', `  /api/v1/drafts     → ${serviceRoutes['/api/v1/drafts']}`);
     logWithContext('info', `  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
     logWithContext('info', `  /api/v1/bookings → ${serviceRoutes['/api/v1/bookings']}`);
@@ -675,7 +689,7 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
 
     if (path.startsWith('/api/v1/chat')) {
         targetService = serviceRoutes['/api/v1/chat'];
-    } else if (path.startsWith('/api/v1/calendar') || path.startsWith('/api/v1/email') || path.startsWith('/api/v1/files') || path.startsWith('/api/v1/contacts')) {
+    } else if (path.startsWith('/api/v1/office/calendar') || path.startsWith('/api/v1/office/email') || path.startsWith('/api/v1/office/contacts') || path.startsWith('/api/v1/calendar') || path.startsWith('/api/v1/email') || path.startsWith('/api/v1/files') || path.startsWith('/api/v1/contacts')) {
         targetService = serviceRoutes['/api/v1/calendar'];
     } else if (path.startsWith('/api/v1/meetings')) {
         targetService = serviceRoutes['/api/v1/meetings'];
