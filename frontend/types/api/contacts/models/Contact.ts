@@ -68,6 +68,22 @@ export type Contact = {
      */
     notes?: (string | null);
     /**
+     * Office service provider (Google, Microsoft, etc.)
+     */
+    provider?: (string | null);
+    /**
+     * When this contact was last synced from Office Service
+     */
+    last_synced?: (string | null);
+    /**
+     * Contact phone numbers
+     */
+    phone_numbers?: Array<string>;
+    /**
+     * Contact addresses
+     */
+    addresses?: Array<Record<string, any>>;
+    /**
      * When this contact record was created
      */
     created_at?: string;

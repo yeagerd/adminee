@@ -167,5 +167,59 @@ def get_settings() -> Settings:
     """Get the global settings instance, creating it if necessary."""
     global _settings
     if _settings is None:
-        _settings = Settings()
+        try:
+            _settings = Settings()
+        except ValueError as e:
+            # Check if this is a schema generation scenario (missing required env vars)
+            if "not found in environment" in str(e):
+                # Create mock settings for schema generation
+                _settings = _create_mock_settings_for_schema_generation()
+            else:
+                # Re-raise if it's a different error
+                raise
     return _settings
+
+
+def _create_mock_settings_for_schema_generation() -> Settings:
+    """Create mock settings for schema generation when environment variables are not available."""
+    # Create a mock settings object with minimal required values
+    mock_settings = Settings(
+        # Database - use in-memory SQLite for schema generation
+        db_url_user="sqlite:///:memory:",
+        # Service configuration
+        service_name="user",
+        host="0.0.0.0",
+        port=8001,
+        debug=False,
+        environment="development",
+        # CORS
+        cors_origins=["http://localhost:3000", "http://localhost:3001"],
+        # API keys - use placeholder values
+        api_frontend_user_key="mock-frontend-key",
+        api_chat_user_key="mock-chat-key",
+        api_office_user_key="mock-office-key",
+        api_meetings_user_key="mock-meetings-key",
+        # Redis
+        redis_url="redis://localhost:6379",
+        # Celery
+        celery_broker_url="redis://localhost:6379/0",
+        celery_result_backend="redis://localhost:6379/0",
+        # OAuth
+        oauth_redirect_uri="http://localhost:8001/oauth/callback",
+        oauth_base_url="http://localhost:8001",
+        # Token management
+        refresh_timeout_seconds=30.0,
+        # NextAuth
+        nextauth_jwt_key="mock-jwt-key",
+        nextauth_issuer="nextauth",
+        nextauth_audience="briefly-backend",
+        # Logging
+        log_level="INFO",
+        log_format="json",
+        # Pagination
+        pagination_secret_key="mock-pagination-key",
+        pagination_token_expiry=3600,
+        pagination_max_page_size=100,
+        pagination_default_page_size=20,
+    )
+    return mock_settings

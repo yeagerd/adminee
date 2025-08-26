@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     api_contacts_office_key: str = Field(
         ...,  # Required field - no default to prevent production mistakes
         description="Office service API key to access this Contacts service",
+        validation_alias=AliasChoices("API_CONTACTS_OFFICE_KEY"),
+    )
+    api_frontend_office_key: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
+        description="Frontend API key to access Office service",
+        validation_alias=AliasChoices("API_FRONTEND_OFFICE_KEY"),
     )
     api_chat_contacts_key: str = Field(
         ...,  # Required field - no default to prevent production mistakes
