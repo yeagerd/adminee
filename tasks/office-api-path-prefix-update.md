@@ -24,14 +24,14 @@ Goal: Change frontend and gateway paths for Office APIs to include an "office" s
   - [x] Option A: Keep legacy routes (`/api/v1/email|calendar|contacts`) active for N weeks with deprecation warnings
 
 ### Frontend changes
-- [ ] Update `frontend/api/clients/office-client.ts` to use the new prefixed paths:
-  - [ ] Calendar: replace `/api/v1/calendar/...` → `/api/v1/office/calendar/...`
-  - [ ] Email: replace `/api/v1/email/...` → `/api/v1/office/email/...`
-  - [ ] Contacts: replace `/api/v1/contacts...` → `/api/v1/office/contacts...`
-- [ ] Search the frontend for any additional hard-coded Office API paths and update if found
-  - [ ] Grep: `/api/v1/(email|calendar|contacts)` across `frontend/`
-- [ ] Run frontend type-check and tests
-  - [ ] `cd frontend && npm run lint && npx tsc --noEmit && npm test`
+- [x] Update `frontend/api/clients/office-client.ts` to use the new prefixed paths:
+  - [x] Calendar: replace `/api/v1/calendar/...` → `/api/v1/office/calendar/...`
+  - [x] Email: replace `/api/v1/email/...` → `/api/v1/office/email/...`
+  - [x] Contacts: replace `/api/v1/contacts...` → `/api/v1/office/contacts...`
+- [x] Search the frontend for any additional hard-coded Office API paths and update if found
+  - [x] Grep: `/api/v1/(email|calendar|contacts)` across `frontend/`
+- [x] Run frontend type-check and tests
+  - [x] `cd frontend && npm run lint && npx tsc --noEmit && npm test`
 
 ### Documentation updates (optional but recommended)
 - [ ] Update any docs/specs mentioning the old paths to include `/api/v1/office/...`:
@@ -48,12 +48,8 @@ Goal: Change frontend and gateway paths for Office APIs to include an "office" s
 - [ ] Confirm required headers are still proxied (auth, API keys)
 - [ ] If legacy routes retained: confirm both old and new paths work during the deprecation window
 
-### Rollout/Backwards compatibility
-- [ ] If using a deprecation window:
-  - [ ] Keep legacy routes active in gateway
-  - [ ] Add warning logs on legacy route access
-  - [ ] Communicate deprecation and removal timeline
-- [ ] Remove legacy routes after the window:
+### No Backwards compatibility
+- [ ] Remove legacy routes:
   - [ ] Delete old `/api/v1/(email|calendar|contacts)` handlers and route keys in the gateway
   - [ ] Remove deprecation logs
 
