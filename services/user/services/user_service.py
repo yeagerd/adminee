@@ -13,10 +13,8 @@ from sqlmodel import select
 from services.common.http_errors import NotFoundError, ValidationError
 from services.user.database import get_async_session
 from services.user.models.user import User
-from services.api.v1.user.pagination import (
-    UserListResponse,
-    UserSearchRequest,
-)
+from services.common.pagination.schemas import CursorPaginationResponse
+from services.api.v1.user.requests import UserSearchRequest
 from services.api.v1.user.user import (
     EmailResolutionRequest,
     EmailResolutionResponse,
@@ -550,7 +548,7 @@ class UserService:
                 value=value,
             )
 
-    async def search_users(self, search_request: UserSearchRequest) -> UserListResponse:
+    async def search_users(self, search_request: UserSearchRequest) -> CursorPaginationResponse:
         """
         Search users with cursor-based pagination.
 
@@ -724,7 +722,14 @@ class UserService:
 
                 logger.info(f"Found {len(users)} users with cursor pagination")
 
-                return UserListResponse(**response)
+                return CursorPaginationResponse(
+                    items=[UserResponse.from_orm(user) for user in users],
+                    next_cursor=response.get("next_cursor"),
+                    prev_cursor=response.get("prev_cursor"),
+                    has_next=has_next,
+                    has_prev=has_prev,
+                    limit=limit
+                )
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")

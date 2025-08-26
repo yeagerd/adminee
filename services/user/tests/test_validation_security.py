@@ -16,7 +16,7 @@ from services.api.v1.user.integration import (
     OAuthCallbackRequest,
     OAuthStartRequest,
 )
-from services.api.v1.user.pagination import UserSearchRequest
+from services.api.v1.user.requests import UserSearchRequest
 from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,

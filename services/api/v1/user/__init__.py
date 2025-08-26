@@ -2,6 +2,6 @@
 User service API schemas.
 """
 
-from . import health, integration, pagination, preferences, user
+from . import health, integration, preferences, user, requests
 
-__all__ = ["health", "integration", "pagination", "preferences", "user"]
+__all__ = ["health", "integration", "preferences", "user", "requests"]

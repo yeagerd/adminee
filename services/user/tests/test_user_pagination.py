@@ -8,13 +8,13 @@ import pytest
 from common.pagination import PaginationConfig
 from common.pagination.base import CursorInfo
 
-from services.api.v1.user.pagination import (
+from services.api.v1.user.requests import (
+    UserListRequest,
+    UserSearchRequest,
+)
+from services.common.pagination.schemas import (
     CursorValidationError,
     PaginationError,
-    UserListRequest,
-    UserListResponse,
-    UserSearchRequest,
-    UserSearchResponse,
 )
 from services.user.utils.pagination import UserCursorPagination
 
@@ -231,31 +231,7 @@ class TestUserListRequest:
             UserListRequest(direction="invalid")
 
 
-class TestUserListResponse:
-    """Test user list response schema."""
 
-    def test_user_list_response(self):
-        """Test user list response."""
-        users = [
-            {"id": 1, "email": "user1@example.com"},
-            {"id": 2, "email": "user2@example.com"},
-        ]
-
-        response = UserListResponse(
-            users=users,
-            next_cursor="next-cursor",
-            prev_cursor=None,
-            has_next=True,
-            has_prev=False,
-            limit=20,
-        )
-
-        assert response.users == users
-        assert response.next_cursor == "next-cursor"
-        assert response.prev_cursor is None
-        assert response.has_next is True
-        assert response.has_prev is False
-        assert response.limit == 20
 
 
 class TestUserSearchRequest:
@@ -280,33 +256,7 @@ class TestUserSearchRequest:
         assert request.onboarding_completed is True
 
 
-class TestUserSearchResponse:
-    """Test user search response schema."""
 
-    def test_user_search_response(self):
-        """Test user search response."""
-        users = [
-            {"id": 1, "email": "user1@example.com"},
-            {"id": 2, "email": "user2@example.com"},
-        ]
-
-        response = UserSearchResponse(
-            users=users,
-            next_cursor="next-cursor",
-            prev_cursor="prev-cursor",
-            has_next=True,
-            has_prev=True,
-            limit=20,
-            search_query="john",
-        )
-
-        assert response.users == users
-        assert response.next_cursor == "next-cursor"
-        assert response.prev_cursor == "prev-cursor"
-        assert response.has_next is True
-        assert response.has_prev is True
-        assert response.limit == 20
-        assert response.search_query == "john"
 
 
 class TestCursorValidationError:

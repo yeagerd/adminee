@@ -31,10 +31,6 @@ from services.api.v1.user.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.api.v1.user.pagination import (
-    UserListResponse,
-    UserSearchRequest,
-)
 from services.api.v1.user.user import (
     UserBase,
     UserCreate,
@@ -43,16 +39,30 @@ from services.api.v1.user.user import (
     UserResponse,
     UserUpdate,
 )
+from services.api.v1.user.requests import (
+    UserSearchRequest,
+    UserListRequest,
+)
+from services.api.v1.user.preferences import (
+    TimezonePreference,
+    TimezonePreferenceCreate,
+    TimezonePreferenceResponse,
+    TimezonePreferenceUpdate,
+)
+from services.api.v1.user.health import (
+    HealthResponse,
+)
 
 __all__ = [
     "UserBase",
     "UserCreate",
     "UserUpdate",
     "UserResponse",
-    "UserListResponse",
     "UserDeleteResponse",
     "UserOnboardingUpdate",
+    # Request schemas
     "UserSearchRequest",
+    "UserListRequest",
     # Integration schemas
     "IntegrationResponse",
     "IntegrationListResponse",
@@ -79,4 +89,11 @@ __all__ = [
     "ProviderListResponse",
     "ScopeValidationRequest",
     "ScopeValidationResponse",
+    # Preference schemas
+    "TimezonePreference",
+    "TimezonePreferenceCreate",
+    "TimezonePreferenceResponse",
+    "TimezonePreferenceUpdate",
+    # Health schemas
+    "HealthResponse",
 ]

@@ -39,10 +39,8 @@ from services.api.v1.user.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.api.v1.user.pagination import (
-    UserListResponse,
-    UserSearchRequest,
-)
+from services.api.v1.user.requests import UserSearchRequest
+from services.common.pagination.schemas import CursorPaginationResponse
 from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
@@ -395,7 +393,7 @@ async def get_provider_scopes(
 
 @router.get(
     "/search",
-    response_model=UserListResponse,
+    response_model=CursorPaginationResponse,
     summary="Search users",
     description="Search users with cursor-based pagination. For admin/service use.",
     responses={
@@ -419,7 +417,7 @@ async def search_users(
         None, description="Filter by onboarding status"
     ),
     current_user_id: str = Depends(get_current_user),
-) -> UserListResponse:
+) -> CursorPaginationResponse:
     """
     Search users with cursor-based pagination.
 

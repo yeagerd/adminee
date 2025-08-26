@@ -13,7 +13,7 @@ from fastapi import HTTPException, status
 
 from services.common.http_errors import NotFoundError
 from services.user.models.user import User
-from services.api.v1.user.pagination import UserListResponse
+from services.common.pagination.schemas import CursorPaginationResponse
 from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
@@ -52,7 +52,7 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_search_users_success(self):
         """Test successful user search."""
-        mock_search_results = UserListResponse(
+        mock_search_results = CursorPaginationResponse(
             users=[
                 {
                     "id": 1,
