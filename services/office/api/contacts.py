@@ -168,8 +168,25 @@ async def list_contacts(
     request_id = get_request_id()
 
     try:
+        # If no specific providers requested, query user integrations to get active ones
         if not providers:
-            providers = ["google", "microsoft"]
+            from services.office.api.email import get_user_email_providers
+
+            available_providers = await get_user_email_providers(user_id)
+            if not available_providers:
+                # User has no active integrations, return empty result
+                return ContactList(
+                    success=True,
+                    data=[],
+                    cache_hit=False,
+                    provider_used=None,
+                    request_id=request_id,
+                )
+            providers = available_providers
+            logger.info(
+                f"User {user_id} has active integrations for providers: {providers}"
+            )
+
         valid_providers = [p for p in providers if p in ["google", "microsoft"]]
         if not valid_providers:
             raise ValidationError(
@@ -240,6 +257,9 @@ async def list_contacts(
             return results, provider
 
         tasks = [_fetch(p) for p in valid_providers]
+        logger.info(
+            f"Fetching contacts from {len(valid_providers)} providers: {valid_providers}"
+        )
         provider_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         contacts: List[Contact] = []

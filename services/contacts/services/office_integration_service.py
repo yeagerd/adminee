@@ -22,7 +22,8 @@ class OfficeIntegrationService:
     def __init__(self) -> None:
         self.settings = get_settings()
         self.office_service_url = self.settings.OFFICE_SERVICE_URL
-        self.api_key = self.settings.api_contacts_office_key
+        # Use the frontend office key since that's what the Office Service expects
+        self.api_key = self.settings.api_frontend_office_key
 
     async def get_office_contacts(
         self, user_id: str, limit: int = 100, offset: int = 0
@@ -41,22 +42,27 @@ class OfficeIntegrationService:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"{self.office_service_url}/internal/contacts",
+                    f"{self.office_service_url}/v1/contacts/",
                     headers={
                         "X-API-Key": self.api_key,
                         "Content-Type": "application/json",
+                        "X-User-Id": user_id,  # Office Service expects this header
                     },
                     params={
-                        "user_id": user_id,
                         "limit": limit,
-                        "offset": offset,
+                        "no_cache": True,  # Get fresh data
                     },
                     timeout=30.0,
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    return data.get("contacts", [])
+                    # Office Service returns ContactList with data field containing contacts
+                    contacts = data.get("data", [])
+                    logger.info(
+                        f"Retrieved {len(contacts)} contacts from Office Service for user {user_id}"
+                    )
+                    return contacts
                 else:
                     logger.warning(
                         f"Failed to get office contacts for user {user_id}: {response.status_code}"

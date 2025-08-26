@@ -84,6 +84,23 @@ class Contact(SQLModel, table=True):
         default=None, description="Additional notes about the contact"
     )
 
+    # Office Service integration fields
+    provider: Optional[str] = Field(
+        default=None, description="Office service provider (Google, Microsoft, etc.)"
+    )
+    last_synced: Optional[datetime] = Field(
+        default=None,
+        description="When this contact was last synced from Office Service",
+    )
+    phone_numbers: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON),
+        description="Contact phone numbers",
+    )
+    addresses: List[Dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON), description="Contact addresses"
+    )
+
     # Timestamps
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
