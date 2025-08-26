@@ -8,7 +8,8 @@ for database persistence.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, Column, DateTime, func, postgresql
+from sqlalchemy import JSON, Column, DateTime, func, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -101,12 +102,12 @@ class Contact(SQLModel, table=True):
     )
     phone_numbers: List[str] = Field(
         default_factory=list,
-        sa_column=Column(postgresql.JSONB(astext_type=sa.Text())),
+        sa_column=Column(JSONB(astext_type=Text())),
         description="Contact phone numbers",
     )
     addresses: List[Dict[str, Any]] = Field(
         default_factory=list,
-        sa_column=Column(postgresql.JSONB(astext_type=sa.Text())),
+        sa_column=Column(JSONB(astext_type=Text())),
         description="Contact addresses",
     )
 
@@ -207,6 +208,7 @@ class Contact(SQLModel, table=True):
 
     def to_vespa_document(self) -> Dict[str, Any]:
         """Convert to Vespa document format."""
+        now = datetime.now(timezone.utc)
         return {
             "doc_id": f"contact_{self.user_id}_{self.email_address}",
             "user_id": self.user_id,
@@ -214,10 +216,10 @@ class Contact(SQLModel, table=True):
             "title": self.get_primary_name(),
             "content": self.notes or "",
             "search_text": f"{self.get_primary_name()} {self.email_address}",
-            "created_at": int(self.created_at.timestamp()),
-            "updated_at": int(self.updated_at.timestamp()),
+            "created_at": int((self.created_at or now).timestamp()),
+            "updated_at": int((self.updated_at or now).timestamp()),
             "last_updated": int(self.last_seen.timestamp()),
-            "sync_timestamp": int(self.updated_at.timestamp()),
+            "sync_timestamp": int((self.updated_at or now).timestamp()),
             "operation": "create",
             "batch_id": None,
             "tags": self.tags,
