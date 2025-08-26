@@ -42,7 +42,9 @@ class TestContactsApi:
             patch(
                 "services.office.api.contacts.get_api_client_factory"
             ) as mock_factory,
-            patch("services.office.api.email.get_user_email_providers") as mock_get_providers,
+            patch(
+                "services.office.api.email.get_user_email_providers"
+            ) as mock_get_providers,
         ):
             mock_cache.get_from_cache = AsyncMock(return_value=None)
             mock_cache.set_to_cache = AsyncMock()
@@ -120,7 +122,9 @@ class TestContactsApi:
     async def test_list_contacts_cache_hit(self, client, auth_headers):
         with (
             patch("services.office.api.contacts.cache_manager") as mock_cache,
-            patch("services.office.api.email.get_user_email_providers") as mock_get_providers,
+            patch(
+                "services.office.api.email.get_user_email_providers"
+            ) as mock_get_providers,
         ):
             mock_cache.get_from_cache = AsyncMock(
                 return_value={
