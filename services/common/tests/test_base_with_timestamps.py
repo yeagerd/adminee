@@ -2,7 +2,6 @@
 Tests for BaseWithTimestamps class.
 """
 
-
 from sqlalchemy import Column, String, create_engine
 from sqlalchemy.orm import sessionmaker
 
