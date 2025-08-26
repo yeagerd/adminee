@@ -92,12 +92,12 @@ class Contact(SQLModel, table=True):
         default=None,
         description="When this contact was last synced from Office Service",
     )
-    phone_numbers: Optional[List[str]] = Field(
+    phone_numbers: List[str] = Field(
         default_factory=list,
         sa_column=Column(JSON),
         description="Contact phone numbers",
     )
-    addresses: Optional[List[Dict[str, Any]]] = Field(
+    addresses: List[Dict[str, Any]] = Field(
         default_factory=list, sa_column=Column(JSON), description="Contact addresses"
     )
 
