@@ -98,6 +98,14 @@ class AIModelType(str, Enum):
     GEMINI_FLASH = "gemini-flash"
 
 
+class PrivacyLevel(str, Enum):
+    """AI privacy level options."""
+
+    MINIMAL = "minimal"
+    BALANCED = "balanced"
+    STRICT = "strict"
+
+
 class UIPreferences(BaseModel):
     """User interface preferences."""
 
@@ -154,7 +162,7 @@ class AIPreferences(BaseModel):
     auto_categorize_tasks: bool = Field(default=True, description="Auto-categorize tasks")
     smart_scheduling: bool = Field(default=True, description="Enable smart scheduling suggestions")
     ai_assistant_enabled: bool = Field(default=True, description="Enable AI assistant features")
-    privacy_level: str = Field(default="balanced", description="AI privacy level (minimal, balanced, strict)")
+    privacy_level: PrivacyLevel = Field(default=PrivacyLevel.BALANCED, description="AI privacy level")
 
 
 class IntegrationPreferences(BaseModel):
