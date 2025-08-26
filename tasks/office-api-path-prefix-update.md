@@ -8,21 +8,20 @@ Goal: Change frontend and gateway paths for Office APIs to include an "office" s
 - Backend Office service stays the same; gateway pathRewrite handles the mapping
 
 ### Gateway changes
-- [ ] Add new service route keys in `gateway/express_gateway.tsx` `serviceRoutes` for:
-  - [ ] `/api/v1/office/email` → `OFFICE_SERVICE_URL`
-  - [ ] `/api/v1/office/calendar` → `OFFICE_SERVICE_URL`
-  - [ ] `/api/v1/office/contacts` → `OFFICE_SERVICE_URL`
-- [ ] Add proxy `app.use` handlers for the new routes with path rewrites:
-  - [ ] `/api/v1/office/email` and `/api/v1/office/email/*` → rewrite `^/api/v1/office/email` → `/v1/email`
-  - [ ] `/api/v1/office/calendar` and `/api/v1/office/calendar/*` → rewrite `^/api/v1/office/calendar` → `/v1/calendar`
-  - [ ] `/api/v1/office/contacts` and `/api/v1/office/contacts/*` → rewrite `^/api/v1/office/contacts` → `/v1/contacts`
-- [ ] Update WebSocket upgrade routing to recognize new paths (grouped with Office service):
-  - [ ] Replace checks for `/api/v1/(calendar|email|contacts)` with `/api/v1/office/(calendar|email|contacts)`
-  - [ ] Keep legacy checks temporarily if enabling a deprecation window
-- [ ] Update gateway startup logging to print the new routes; optionally mark legacy routes as deprecated
-- [ ] Decide on backward compatibility policy:
-  - [ ] Option A: Keep legacy routes (`/api/v1/email|calendar|contacts`) active for N weeks with deprecation warnings
-  - [ ] Option B: Remove legacy routes immediately (breaking change)
+- [x] Add new service route keys in `gateway/express_gateway.tsx` `serviceRoutes` for:
+  - [x] `/api/v1/office/email` → `OFFICE_SERVICE_URL`
+  - [x] `/api/v1/office/calendar` → `OFFICE_SERVICE_URL`
+  - [x] `/api/v1/office/contacts` → `OFFICE_SERVICE_URL`
+- [x] Add proxy `app.use` handlers for the new routes with path rewrites:
+  - [x] `/api/v1/office/email` and `/api/v1/office/email/*` → rewrite `^/api/v1/office/email` → `/v1/email`
+  - [x] `/api/v1/office/calendar` and `/api/v1/office/calendar/*` → rewrite `^/api/v1/office/calendar` → `/v1/calendar`
+  - [x] `/api/v1/office/contacts` and `/api/v1/office/contacts/*` → rewrite `^/api/v1/office/contacts` → `/v1/contacts`
+- [x] Update WebSocket upgrade routing to recognize new paths (grouped with Office service):
+  - [x] Replace checks for `/api/v1/(calendar|email|contacts)` with `/api/v1/office/(calendar|email|contacts)`
+  - [x] Keep legacy checks temporarily if enabling a deprecation window
+- [x] Update gateway startup logging to print the new routes; optionally mark legacy routes as deprecated
+- [x] Decide on backward compatibility policy:
+  - [x] Option A: Keep legacy routes (`/api/v1/email|calendar|contacts`) active for N weeks with deprecation warnings
 
 ### Frontend changes
 - [ ] Update `frontend/api/clients/office-client.ts` to use the new prefixed paths:
