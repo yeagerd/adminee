@@ -78,7 +78,7 @@ export type Contact = {
     /**
      * Contact phone numbers
      */
-    phone_numbers?: (Array<string> | null);
+    phone_numbers?: Array<string>;
     /**
      * Contact addresses
      */

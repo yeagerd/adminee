@@ -221,7 +221,9 @@ class ContactService:
                             existing_contact.source_services.append("office")
                         # Handle provider field properly - avoid converting None to "None"
                         provider_value = office_contact.get("provider")
-                        existing_contact.provider = provider_value if provider_value is not None else None
+                        existing_contact.provider = (
+                            provider_value if provider_value is not None else None
+                        )
                         existing_contact.last_synced = datetime.now(timezone.utc)
                         existing_contact.phone_numbers = phone_numbers
                         existing_contact.notes = notes or existing_contact.notes
@@ -244,7 +246,9 @@ class ContactService:
                             tags=[],  # Office Service doesn't provide tags
                             notes=notes,
                             source_services=["office"],
-                            provider=provider_value if provider_value is not None else None,
+                            provider=(
+                                provider_value if provider_value is not None else None
+                            ),
                             last_synced=datetime.now(timezone.utc),
                             phone_numbers=phone_numbers,
                             addresses=[],  # Office Service doesn't provide addresses
