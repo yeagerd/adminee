@@ -183,12 +183,14 @@ class BaseMeta(sqlmodel.SQLModel): # TODO: Check if this is the correct base cla
 class IntegrationProvider(str, Enum):
     GOOGLE = "google"
     MICROSOFT = "microsoft"
+    SLACK = "slack"
 
 class IntegrationStatus(str, Enum):
-    CONNECTED = "connected"
-    EXPIRED = "expired"
-    REVOKED = "revoked"
-    ERROR = "error"
+    ACTIVE = "ACTIVE"      # Connected and working
+    INACTIVE = "INACTIVE"  # Disconnected by user
+    ERROR = "ERROR"        # Connection error or expired tokens
+    PENDING = "PENDING"    # OAuth flow in progress
+    EXPIRED = "EXPIRED"    # Token was valid but is now expired
 
 class User(sqlmodel.SQLModel, table=True):
     __tablename__ = "users"
@@ -246,7 +248,7 @@ class Integration(sqlmodel.SQLModel, table=True):
     id: str = sqlmodel.Field(default_factory=sqlmodel.uuid4, primary_key=True)
     user_id: str = sqlmodel.Field(default=None, foreign_key="users.id") # TODO: Check ondelete="CASCADE"
     provider: IntegrationProvider = sqlmodel.Field(default=None, max_length=50)
-    status: IntegrationStatus = sqlmodel.Field(default=IntegrationStatus.CONNECTED, max_length=20)
+    status: IntegrationStatus = sqlmodel.Field(default=IntegrationStatus.ACTIVE, max_length=20)
     connected_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
     last_refresh_at: Optional[datetime] = sqlmodel.Field(default=None)
     expires_at: Optional[datetime] = sqlmodel.Field(default=None)
