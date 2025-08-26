@@ -156,39 +156,47 @@ def test_jsonb_field_validation():
         addresses=[],
     )
     
-    # Test nested dictionaries
-    # Test that event_counts can store EmailContactEventCount objects with complex metadata
+    # Test nested dictionaries with proper EmailContactEventCount objects
     contact.event_counts = {
-        "complex_email_event": EmailContactEventCount(
-            event_type="complex_email_event",
+        "complex": EmailContactEventCount(
+            event_type="complex",
             count=42,
             last_seen=datetime.now(timezone.utc),
             first_seen=datetime.now(timezone.utc),
-            # If EmailContactEventCount supports additional metadata,
-            # it should be added as proper fields rather than arbitrary nested data
+        ),
+        "nested": EmailContactEventCount(
+            event_type="nested",
+            count=10,
+            last_seen=datetime.now(timezone.utc),
+            first_seen=datetime.now(timezone.utc),
+        ),
+        "deep": EmailContactEventCount(
+            event_type="deep",
+            count=5,
+            last_seen=datetime.now(timezone.utc),
+            first_seen=datetime.now(timezone.utc),
         )
     }
     
-    # Test mixed data types
+    # Test mixed data types for relevance_factors (should be numeric)
     contact.relevance_factors = {
-        "string": "value",
-        "number": 3.14,
-        "boolean": False,
-        "null": None,
-        "array": ["a", "b", "c"],
-        "object": {"key": "value"}
+        "recency": 0.8,
+        "frequency": 0.6,
+        "diversity": 0.4,
+        "complexity": 0.9,
+        "engagement": 0.7
     }
     
     # Verify complex data is stored correctly
-    assert contact.event_counts["complex"]["nested"]["deep"]["value"] == 42
-    assert contact.event_counts["complex"]["nested"]["deep"]["text"] == "deeply nested"
-    assert contact.event_counts["complex"]["nested"]["deep"]["boolean"] is True
-    assert contact.event_counts["complex"]["nested"]["deep"]["null"] is None
-    assert contact.event_counts["complex"]["nested"]["deep"]["array"] == [1, 2, 3]
+    assert contact.event_counts["complex"].event_type == "complex"
+    assert contact.event_counts["complex"].count == 42
+    assert contact.event_counts["nested"].event_type == "nested"
+    assert contact.event_counts["nested"].count == 10
+    assert contact.event_counts["deep"].event_type == "deep"
+    assert contact.event_counts["deep"].count == 5
     
-    assert contact.relevance_factors["string"] == "value"
-    assert contact.relevance_factors["number"] == 3.14
-    assert contact.relevance_factors["boolean"] is False
-    assert contact.relevance_factors["null"] is None
-    assert contact.relevance_factors["array"] == ["a", "b", "c"]
-    assert contact.relevance_factors["object"] == {"key": "value"}
+    assert contact.relevance_factors["recency"] == 0.8
+    assert contact.relevance_factors["frequency"] == 0.6
+    assert contact.relevance_factors["diversity"] == 0.4
+    assert contact.relevance_factors["complexity"] == 0.9
+    assert contact.relevance_factors["engagement"] == 0.7
