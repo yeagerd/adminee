@@ -1,5 +1,6 @@
 from typing import Optional
 
+from services.common.postgres_urls import PostgresURLs
 from services.common.settings import (
     AliasChoices,
     BaseSettings,
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
 
     # Database configuration
     db_url_contacts: str = Field(
-        ...,  # Required field - no default to prevent production mistakes
+        default_factory=lambda: PostgresURLs().get_service_url("contacts"),
         description="Database connection URL",
         validation_alias=AliasChoices("DB_URL_CONTACTS"),
     )

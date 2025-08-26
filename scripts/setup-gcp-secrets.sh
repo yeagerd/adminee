@@ -182,10 +182,24 @@ AZURE_AD_CLIENT_ID=your_azure_client_id
 AZURE_AD_CLIENT_SECRET=your_azure_client_secret
 AZURE_AD_TENANT_ID=your_azure_tenant_id
 
-# Database URLs
-DB_URL_USER=postgresql://user:pass@host:port/db_user
-DB_URL_OFFICE=postgresql://user:pass@host:port/db_office
-DB_URL_CHAT=postgresql://user:pass@host:port/db_chat
+# Database Configuration
+POSTGRES_HOST=your_postgres_host
+POSTGRES_PORT=5432
+POSTGRES_USER=your_admin_user
+POSTGRES_PASSWORD=your_admin_password
+
+# Service-specific passwords (used by PostgresURLs module)
+BRIEFLY_USER_SERVICE_PASSWORD=your_user_service_password
+BRIEFLY_MEETINGS_SERVICE_PASSWORD=your_meetings_service_password
+BRIEFLY_SHIPMENTS_SERVICE_PASSWORD=your_shipments_service_password
+BRIEFLY_OFFICE_SERVICE_PASSWORD=your_office_service_password
+BRIEFLY_CHAT_SERVICE_PASSWORD=your_chat_service_password
+BRIEFLY_VECTOR_SERVICE_PASSWORD=your_vector_service_password
+BRIEFLY_CONTACTS_SERVICE_PASSWORD=your_contacts_service_password
+BRIEFLY_READONLY_PASSWORD=your_readonly_password
+
+# Note: DB_URL_* variables are now constructed dynamically by PostgresURLs module
+# No need to define them manually
 
 # Redis
 REDIS_URL=redis://redis-host:6379

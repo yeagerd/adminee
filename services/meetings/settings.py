@@ -2,6 +2,7 @@
 Settings and configuration for Meetings Service.
 """
 
+from services.common.postgres_urls import PostgresURLs
 from services.common.settings import (
     AliasChoices,
     BaseSettings,
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     db_url_meetings: str = Field(
-        default=...,
+        default_factory=lambda: PostgresURLs().get_service_url("meetings"),
         description="PostgreSQL database connection string for meetings service",
         validation_alias=AliasChoices("DB_URL_MEETINGS"),
     )

@@ -9,6 +9,7 @@ from sqlmodel import SQLModel
 # Add the parent directory to sys.path to import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
+from services.common.postgres_urls import PostgresURLs
 from services.office.core.settings import get_settings
 
 # Import our models to ensure they're registered with SQLModel metadata
@@ -23,7 +24,8 @@ migration_url = os.getenv("DB_URL_OFFICE_MIGRATIONS")
 if migration_url:
     config.set_main_option("sqlalchemy.url", migration_url)
 else:
-    config.set_main_option("sqlalchemy.url", get_settings().db_url_office)
+    # Use PostgresURLs to get the migration URL
+    config.set_main_option("sqlalchemy.url", PostgresURLs().get_migration_url("office"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -4,6 +4,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from services.common.postgres_urls import PostgresURLs
+
 # Import our models
 from services.shipments.models import (
     SQLModel,
@@ -20,7 +22,10 @@ migration_url = os.getenv("DB_URL_SHIPMENTS_MIGRATIONS")
 if migration_url:
     config.set_main_option("sqlalchemy.url", migration_url)
 else:
-    config.set_main_option("sqlalchemy.url", get_settings().db_url_shipments)
+    # Use PostgresURLs to get the migration URL
+    config.set_main_option(
+        "sqlalchemy.url", PostgresURLs().get_migration_url("shipments")
+    )
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
