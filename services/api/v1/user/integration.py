@@ -5,7 +5,7 @@ Defines request and response models for OAuth integration endpoints,
 including integration status, token management, and provider-specific data.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
