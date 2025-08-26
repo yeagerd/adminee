@@ -608,6 +608,7 @@ app.use('/api/v1/users/*', validateAuth, standardLimiter, createServiceProxy(ser
 app.use('/api/v1/chat', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/v1/chat'], { '^/api/v1/chat': '/v1/chat' }));
 app.use('/api/v1/chat/*', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/v1/chat'], { '^/api/v1/chat': '/v1/chat' }));
 app.use('/api/v1/office', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/' }));
+app.use('/api/v1/office/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/office'], { '^/api/v1/office': '/v1/' }));
 app.use('/api/v1/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/drafts'], { '^/api/v1/drafts': '/v1/chat/drafts' }));
 app.use('/api/v1/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/drafts'], { '^/api/v1/drafts': '/v1/chat/drafts' }));
 app.use('/api/v1/meetings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
