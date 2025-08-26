@@ -712,9 +712,9 @@ class UserService:
                         limit=limit,
                     )
 
-                # Create pagination response
+                # Create pagination response (pass raw user objects)
                 response = pagination.create_user_pagination_response(
-                    users=[UserResponse.from_orm(user) for user in users],
+                    users=users,  # Pass raw user objects, not converted ones
                     cursor_info=current_cursor_info,
                     has_next=has_next,
                     has_prev=has_prev,
@@ -722,8 +722,9 @@ class UserService:
 
                 logger.info(f"Found {len(users)} users with cursor pagination")
 
+                # Convert users to UserResponse objects only once, at the end
                 return CursorPaginationResponse(
-                    items=response["users"],
+                    items=[UserResponse.from_orm(user) for user in users],
                     next_cursor=response.get("next_cursor"),
                     prev_cursor=response.get("prev_cursor"),
                     has_next=has_next,
