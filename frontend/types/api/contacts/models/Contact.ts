@@ -10,7 +10,7 @@ export type Contact = {
     /**
      * Unique contact ID
      */
-    id?: (string | null);
+    id?: (number | null);
     /**
      * User ID who owns this contact
      */
