@@ -20,7 +20,7 @@ def upgrade() -> None:
     # Create contacts table
     op.create_table(
         "contacts",
-        sa.Column("id", sa.String(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.String(), nullable=False),
         sa.Column("email_address", sa.String(), nullable=False),
         sa.Column("display_name", sa.String(), nullable=True),

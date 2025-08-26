@@ -32,7 +32,7 @@ class Contact(SQLModel, table=True):
 
     __tablename__ = "contacts"  # type: ignore[assignment]
 
-    id: Optional[str] = Field(
+    id: Optional[int] = Field(
         default=None, primary_key=True, description="Unique contact ID"
     )
     user_id: str = Field(..., description="User ID who owns this contact")
