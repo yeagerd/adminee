@@ -42,9 +42,11 @@ class TestContactsApi:
             patch(
                 "services.office.api.contacts.get_api_client_factory"
             ) as mock_factory,
+            patch("services.office.api.email.get_user_email_providers") as mock_get_providers,
         ):
             mock_cache.get_from_cache = AsyncMock(return_value=None)
             mock_cache.set_to_cache = AsyncMock()
+            mock_get_providers.return_value = ["google", "microsoft"]
 
             # Mock factory.create_client to return fake clients with get_contacts
             class FakeGoogle:
@@ -116,7 +118,10 @@ class TestContactsApi:
 
     @pytest.mark.asyncio
     async def test_list_contacts_cache_hit(self, client, auth_headers):
-        with patch("services.office.api.contacts.cache_manager") as mock_cache:
+        with (
+            patch("services.office.api.contacts.cache_manager") as mock_cache,
+            patch("services.office.api.email.get_user_email_providers") as mock_get_providers,
+        ):
             mock_cache.get_from_cache = AsyncMock(
                 return_value={
                     "contacts": [],
@@ -124,6 +129,7 @@ class TestContactsApi:
                     "providers_used": ["google"],
                 }
             )
+            mock_get_providers.return_value = ["google"]
             resp = client.get("/v1/contacts?limit=5", headers=auth_headers)
             assert resp.status_code == 200
             data = resp.json()
