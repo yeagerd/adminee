@@ -219,9 +219,9 @@ class ContactService:
                         # Preserve existing source services and add 'office' if not present
                         if "office" not in existing_contact.source_services:
                             existing_contact.source_services.append("office")
-                        existing_contact.provider = str(
-                            office_contact.get("provider", "")
-                        )
+                        # Handle provider field properly - avoid converting None to "None"
+                        provider_value = office_contact.get("provider")
+                        existing_contact.provider = provider_value if provider_value is not None else None
                         existing_contact.last_synced = datetime.now(timezone.utc)
                         existing_contact.phone_numbers = phone_numbers
                         existing_contact.notes = notes or existing_contact.notes
@@ -232,6 +232,8 @@ class ContactService:
                         )
                     else:
                         # Create new contact from office data
+                        # Handle provider field properly - avoid converting None to "None"
+                        provider_value = office_contact.get("provider")
                         new_contact = Contact(
                             user_id=user_id,
                             email_address=email_address.lower(),
@@ -242,7 +244,7 @@ class ContactService:
                             tags=[],  # Office Service doesn't provide tags
                             notes=notes,
                             source_services=["office"],
-                            provider=str(office_contact.get("provider", "")),
+                            provider=provider_value if provider_value is not None else None,
                             last_synced=datetime.now(timezone.utc),
                             phone_numbers=phone_numbers,
                             addresses=[],  # Office Service doesn't provide addresses
