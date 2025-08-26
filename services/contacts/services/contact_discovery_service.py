@@ -560,13 +560,13 @@ class ContactDiscoveryService:
             from services.common.events.contact_events import ContactData, ContactEvent
 
             contact_data = ContactData(
-                id=contact.id or str(uuid4()),
+                id=str(contact.id) if contact.id else str(uuid4()),
                 display_name=contact.display_name or contact.email_address,
                 given_name=contact.given_name,
                 family_name=contact.family_name,
                 email_addresses=[contact.email_address],
                 provider="contact_discovery",
-                provider_contact_id=contact.id or str(uuid4()),
+                provider_contact_id=str(contact.id) if contact.id else str(uuid4()),
                 notes=contact.notes,
                 last_modified=contact.updated_at,
             )
