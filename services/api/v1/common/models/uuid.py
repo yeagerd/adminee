@@ -22,7 +22,9 @@ class UUID4(str):
         try:
             parsed_uuid = uuid.UUID(value)
             if parsed_uuid.version != 4:
-                raise ValueError(f"UUID must be version 4, got version {parsed_uuid.version}")
+                raise ValueError(
+                    f"UUID must be version 4, got version {parsed_uuid.version}"
+                )
         except ValueError as e:
             raise ValueError(f"Invalid UUID4 format: {e}")
 
