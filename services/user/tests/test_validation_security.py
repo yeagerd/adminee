@@ -16,7 +16,7 @@ from services.api.v1.user.integration import (
     OAuthCallbackRequest,
     OAuthStartRequest,
 )
-from services.api.v1.user.requests import UserSearchRequest
+from services.api.v1.user.requests import UserFilterRequest
 from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,
@@ -415,7 +415,7 @@ class TestSchemaValidation:
         }
 
         # The query should be sanitized, not rejected
-        search_request = UserSearchRequest(**search_data)
+        search_request = UserFilterRequest(**search_data)
         assert search_request.query == "John'; DROP TABLE users; --"
         assert search_request.cursor == "test_cursor"
         assert search_request.limit == 20

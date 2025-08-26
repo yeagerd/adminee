@@ -14,7 +14,7 @@ from services.common.http_errors import NotFoundError, ValidationError
 from services.user.database import get_async_session
 from services.user.models.user import User
 from services.common.pagination.schemas import CursorPaginationResponse
-from services.api.v1.user.requests import UserSearchRequest
+from services.api.v1.user.requests import UserFilterRequest
 from services.api.v1.user.user import (
     EmailResolutionRequest,
     EmailResolutionResponse,
@@ -548,7 +548,7 @@ class UserService:
                 value=value,
             )
 
-    async def search_users(self, search_request: UserSearchRequest) -> CursorPaginationResponse:
+    async def search_users(self, search_request: UserFilterRequest) -> CursorPaginationResponse:
         """
         Search users with cursor-based pagination.
 

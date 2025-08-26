@@ -39,10 +39,7 @@ from services.api.v1.user.user import (
     UserResponse,
     UserUpdate,
 )
-from services.api.v1.user.requests import (
-    UserSearchRequest,
-    UserListRequest,
-)
+from services.api.v1.user.requests import UserFilterRequest
 from services.api.v1.user.preferences import (
     TimezonePreference,
     TimezonePreferenceCreate,
@@ -61,8 +58,7 @@ __all__ = [
     "UserDeleteResponse",
     "UserOnboardingUpdate",
     # Request schemas
-    "UserSearchRequest",
-    "UserListRequest",
+    "UserFilterRequest",
     # Integration schemas
     "IntegrationResponse",
     "IntegrationListResponse",

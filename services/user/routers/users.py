@@ -39,7 +39,7 @@ from services.api.v1.user.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.api.v1.user.requests import UserSearchRequest
+from services.api.v1.user.requests import UserFilterRequest
 from services.common.pagination.schemas import CursorPaginationResponse
 from services.api.v1.user.user import (
     UserCreate,
@@ -428,7 +428,7 @@ async def search_users(
     Regular users should use other endpoints for their own data.
     """
     try:
-        search_request = UserSearchRequest(
+        search_request = UserFilterRequest(
             cursor=cursor,
             limit=limit,
             direction=direction,
