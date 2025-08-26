@@ -8,7 +8,7 @@ for database persistence.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, DateTime, Text, func
 from sqlmodel import Field, SQLModel
 
 
@@ -57,9 +57,15 @@ class Contact(SQLModel, table=True):
         default=0, description="Total number of events across all types"
     )
     last_seen: datetime = Field(
-        ..., description="When this contact was last seen in any event"
+        ...,
+        sa_column=Column(DateTime(timezone=True)),
+        description="When this contact was last seen in any event",
     )
-    first_seen: datetime = Field(..., description="When this contact was first seen")
+    first_seen: datetime = Field(
+        ...,
+        sa_column=Column(DateTime(timezone=True)),
+        description="When this contact was first seen",
+    )
 
     # Contact relevance scoring
     relevance_score: float = Field(
@@ -90,6 +96,7 @@ class Contact(SQLModel, table=True):
     )
     last_synced: Optional[datetime] = Field(
         default=None,
+        sa_column=Column(DateTime(timezone=True)),
         description="When this contact was last synced from Office Service",
     )
     phone_numbers: List[str] = Field(
@@ -98,16 +105,22 @@ class Contact(SQLModel, table=True):
         description="Contact phone numbers",
     )
     addresses: List[Dict[str, Any]] = Field(
-        default_factory=list, sa_column=Column(JSON), description="Contact addresses"
+        default_factory=list,
+        sa_column=Column(JSON),
+        description="Contact addresses",
     )
 
     # Timestamps
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
         description="When this contact record was created",
     )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
         description="When this contact record was last updated",
     )
 
@@ -196,6 +209,7 @@ class Contact(SQLModel, table=True):
 
     def to_vespa_document(self) -> Dict[str, Any]:
         """Convert to Vespa document format."""
+        now = datetime.now(timezone.utc)
         return {
             "doc_id": f"contact_{self.user_id}_{self.email_address}",
             "user_id": self.user_id,
@@ -203,10 +217,10 @@ class Contact(SQLModel, table=True):
             "title": self.get_primary_name(),
             "content": self.notes or "",
             "search_text": f"{self.get_primary_name()} {self.email_address}",
-            "created_at": int(self.created_at.timestamp()),
-            "updated_at": int(self.updated_at.timestamp()),
+            "created_at": int((self.created_at or now).timestamp()),
+            "updated_at": int((self.updated_at or now).timestamp()),
             "last_updated": int(self.last_seen.timestamp()),
-            "sync_timestamp": int(self.updated_at.timestamp()),
+            "sync_timestamp": int((self.updated_at or now).timestamp()),
             "operation": "create",
             "batch_id": None,
             "tags": self.tags,

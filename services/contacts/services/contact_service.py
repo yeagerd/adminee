@@ -163,10 +163,10 @@ class ContactService:
         """
         try:
             office_service = OfficeIntegrationService()
+            # Get office contacts for this user
             office_contacts = await office_service.get_office_contacts(
                 user_id, limit=1000
             )
-
             if not office_contacts:
                 logger.info(f"No office contacts found for user {user_id}")
                 return []
