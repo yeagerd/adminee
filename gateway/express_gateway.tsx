@@ -448,7 +448,7 @@ const serviceRoutes = {
     '/api/v1/bookings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/search': process.env.VESPA_QUERY_URL || 'http://127.0.0.1:8006',
-    '/api/v1/contacts': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8007',
+    '/api/v1/contacts': process.env.CONTACTS_SERVICE_URL || 'http://127.0.0.1:8007',
 };
 
 // Create proxy middleware factory
