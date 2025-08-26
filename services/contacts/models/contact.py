@@ -112,11 +112,13 @@ class Contact(SQLModel, table=True):
     )
 
     # Timestamps
-    created_at: datetime = Field(
+    created_at: Optional[datetime] = Field(
+        default=None,
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
         description="When this contact record was created",
     )
-    updated_at: datetime = Field(
+    updated_at: Optional[datetime] = Field(
+        default=None,
         sa_column=Column(
             DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
         ),

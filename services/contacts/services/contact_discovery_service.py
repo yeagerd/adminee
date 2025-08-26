@@ -587,7 +587,7 @@ class ContactDiscoveryService:
                 operation="update",
                 batch_id=None,
                 last_updated=contact.last_seen,
-                sync_timestamp=contact.updated_at,
+                sync_timestamp=contact.updated_at or datetime.now(timezone.utc),
                 provider="contact_discovery",
                 metadata=metadata,
             )
