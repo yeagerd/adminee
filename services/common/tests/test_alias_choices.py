@@ -2,7 +2,6 @@
 Tests for AliasChoices class.
 """
 
-
 from services.api.v1.common.models.base import AliasChoices
 
 
