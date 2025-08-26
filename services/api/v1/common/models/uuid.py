@@ -13,6 +13,27 @@ from pydantic_core import CoreSchema, core_schema
 class UUID4(str):
     """UUID4 string type for Pydantic models."""
 
+    def __new__(cls, value: str) -> "UUID4":
+        """Create a new UUID4 instance with proper string value."""
+        if not isinstance(value, str):
+            raise ValueError("UUID4 must be a string")
+
+        # Validate that it's a valid UUID4
+        try:
+            parsed_uuid = uuid.UUID(value)
+            if parsed_uuid.version != 4:
+                raise ValueError(f"UUID must be version 4, got version {parsed_uuid.version}")
+        except ValueError as e:
+            raise ValueError(f"Invalid UUID4 format: {e}")
+
+        # Create the string instance with the validated value
+        return super().__new__(cls, value)
+
+    def __init__(self, value: str) -> None:
+        """Initialize UUID4 (no-op since __new__ handles everything)."""
+        # The value is already set in __new__, so we don't need to do anything here
+        pass
+
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
@@ -42,18 +63,6 @@ class UUID4(str):
             "maxLength": 36,
             "pattern": r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
         }
-
-    def __init__(self, value: str) -> None:
-        """Initialize UUID4 with string value."""
-        if not isinstance(value, str):
-            raise ValueError("UUID4 must be a string")
-
-        try:
-            uuid.UUID(value, version=4)
-        except ValueError as e:
-            raise ValueError(f"Invalid UUID4 format: {e}")
-
-        super().__init__()
 
     @classmethod
     def generate(cls) -> "UUID4":
