@@ -34,10 +34,10 @@ Goal: Change frontend and gateway paths for Office APIs to include an "office" s
   - [x] `cd frontend && npm run lint && npx tsc --noEmit && npm test`
 
 ### Documentation updates (optional but recommended)
-- [ ] Update any docs/specs mentioning the old paths to include `/api/v1/office/...`:
-  - [ ] `documentation/microsoft-email-threading-implementation.md`
-  - [ ] `tasks/api-versioning-v1.md` (service mapping examples)
-  - [ ] Any other docs referencing `/api/v1/(email|calendar|contacts)`
+- [x] Update any docs/specs mentioning the old paths to include `/api/v1/office/...`:
+  - [x] `documentation/microsoft-email-threading-implementation.md`
+  - [x] `tasks/api-versioning-v1.md` (service mapping examples)
+  - [x] Any other docs referencing `/api/v1/(email|calendar|contacts)`
 
 ### Validation
 - [ ] Local verification of gateway routing:

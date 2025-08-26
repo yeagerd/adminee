@@ -21,9 +21,12 @@ The `MicrosoftAPIClient` class has been extended with new methods for thread-awa
 
 New REST API endpoints for thread operations:
 
-- `GET /api/v1/email/threads` - Get email threads from multiple providers
-- `GET /api/v1/email/threads/{thread_id}` - Get a specific thread with all messages
-- `GET /api/v1/email/messages/{message_id}/thread` - Get thread containing a specific message
+- `GET /api/v1/email/threads` - Get email threads from multiple providers (legacy path)
+- `GET /api/v1/office/email/threads` - Get email threads from multiple providers (new path)
+- `GET /api/v1/email/threads/{thread_id}` - Get a specific thread with all messages (legacy path)
+- `GET /api/v1/office/email/threads/{thread_id}` - Get a specific thread with all messages (new path)
+- `GET /api/v1/email/messages/{message_id}/thread` - Get thread containing a specific message (legacy path)
+- `GET /api/v1/office/email/messages/{message_id}/thread` - Get thread containing a specific message (new path)
 
 #### 3. Thread Normalization (`services/office/core/normalizer.py`)
 
@@ -70,8 +73,14 @@ Custom React hook for managing thread state:
 
 ### Get Email Threads
 
+**Legacy Path:**
 ```http
 GET /api/v1/email/threads
+```
+
+**New Path:**
+```http
+GET /api/v1/office/email/threads
 ```
 
 **Query Parameters:**
@@ -113,8 +122,14 @@ GET /api/v1/email/threads
 
 ### Get Specific Thread
 
+**Legacy Path:**
 ```http
 GET /api/v1/email/threads/{thread_id}
+```
+
+**New Path:**
+```http
+GET /api/v1/office/email/threads/{thread_id}
 ```
 
 **Path Parameters:**
@@ -158,8 +173,14 @@ GET /api/v1/email/threads/{thread_id}
 
 ### Get Message Thread
 
+**Legacy Path:**
 ```http
 GET /api/v1/email/messages/{message_id}/thread
+```
+
+**New Path:**
+```http
+GET /api/v1/office/email/messages/{message_id}/thread
 ```
 
 **Path Parameters:**
