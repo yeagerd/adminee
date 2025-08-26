@@ -20,10 +20,20 @@ depends_on = None
 def upgrade() -> None:
     # Add office integration fields
     op.add_column("contacts", sa.Column("provider", sa.String(), nullable=True))
-    op.add_column("contacts", sa.Column("last_synced", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("contacts", sa.Column("phone_numbers", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column("contacts", sa.Column("addresses", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    
+    op.add_column(
+        "contacts", sa.Column("last_synced", sa.DateTime(timezone=True), nullable=True)
+    )
+    op.add_column(
+        "contacts",
+        sa.Column(
+            "phone_numbers", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
+    )
+    op.add_column(
+        "contacts",
+        sa.Column("addresses", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    )
+
     # Create index for provider field
     op.create_index("idx_contacts_provider", "contacts", ["provider"])
 
@@ -31,7 +41,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Drop index
     op.drop_index("idx_contacts_provider", table_name="contacts")
-    
+
     # Drop columns
     op.drop_column("contacts", "addresses")
     op.drop_column("contacts", "phone_numbers")

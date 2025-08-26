@@ -15,7 +15,9 @@ from services.common.http_errors import NotFoundError, ValidationError
 from services.common.logging_config import get_logger
 from services.contacts.models.contact import Contact
 from services.contacts.schemas.contact import ContactCreate, EmailContactUpdate
-from services.contacts.services.office_integration_service import OfficeIntegrationService
+from services.contacts.services.office_integration_service import (
+    OfficeIntegrationService,
+)
 
 logger = get_logger(__name__)
 
@@ -155,18 +157,20 @@ class ContactService:
     ) -> List[Contact]:
         """
         Sync contacts from Office Service and store them locally.
-        
+
         This implements the read-through pattern where contacts are fetched
         from the Office Service and stored in the local database for future use.
         """
         try:
             office_service = OfficeIntegrationService()
-            office_contacts = await office_service.get_office_contacts(user_id, limit=1000)
-            
+            office_contacts = await office_service.get_office_contacts(
+                user_id, limit=1000
+            )
+
             if not office_contacts:
                 logger.info(f"No office contacts found for user {user_id}")
                 return []
-            
+
             synced_contacts = []
             for office_contact in office_contacts:
                 try:
@@ -182,20 +186,26 @@ class ContactService:
                             email_address = emails[0].get("email", "")
                         else:
                             email_address = ""
-                    
+
                     if not email_address:
-                        logger.warning(f"Office contact has no valid email: {office_contact}")
+                        logger.warning(
+                            f"Office contact has no valid email: {office_contact}"
+                        )
                         continue
-                    
+
                     # Check if contact already exists locally
                     existing_contact = await self.get_contact_by_email(
                         session, user_id, email_address
                     )
-                    
+
                     # Extract phone numbers from Office Service contact structure
                     phones = office_contact.get("phones", [])
-                    phone_numbers = [phone.get("number", "") for phone in phones if isinstance(phone, dict)]
-                    
+                    phone_numbers = [
+                        phone.get("number", "")
+                        for phone in phones
+                        if isinstance(phone, dict)
+                    ]
+
                     # Extract notes (combine company and job title)
                     notes_parts = []
                     if office_contact.get("company"):
@@ -203,23 +213,28 @@ class ContactService:
                     if office_contact.get("job_title"):
                         notes_parts.append(f"Job Title: {office_contact['job_title']}")
                     notes = "; ".join(notes_parts) if notes_parts else None
-                    
+
                     if existing_contact:
                         # Update existing contact with office data
                         existing_contact.source_services = ["office"]
-                        existing_contact.provider = str(office_contact.get("provider", ""))
+                        existing_contact.provider = str(
+                            office_contact.get("provider", "")
+                        )
                         existing_contact.last_synced = datetime.now(timezone.utc)
                         existing_contact.phone_numbers = phone_numbers
                         existing_contact.notes = notes or existing_contact.notes
                         await session.commit()
                         synced_contacts.append(existing_contact)
-                        logger.debug(f"Updated existing contact: {existing_contact.email_address}")
+                        logger.debug(
+                            f"Updated existing contact: {existing_contact.email_address}"
+                        )
                     else:
                         # Create new contact from office data
                         new_contact = Contact(
                             user_id=user_id,
                             email_address=email_address.lower(),
-                            display_name=office_contact.get("full_name") or office_contact.get("given_name"),
+                            display_name=office_contact.get("full_name")
+                            or office_contact.get("given_name"),
                             given_name=office_contact.get("given_name"),
                             family_name=office_contact.get("family_name"),
                             tags=[],  # Office Service doesn't provide tags
@@ -237,15 +252,21 @@ class ContactService:
                         await session.commit()
                         await session.refresh(new_contact)
                         synced_contacts.append(new_contact)
-                        logger.debug(f"Created new contact from office: {new_contact.email_address}")
-                
+                        logger.debug(
+                            f"Created new contact from office: {new_contact.email_address}"
+                        )
+
                 except Exception as e:
-                    logger.error(f"Error syncing office contact {office_contact.get('id', 'unknown')}: {e}")
+                    logger.error(
+                        f"Error syncing office contact {office_contact.get('id', 'unknown')}: {e}"
+                    )
                     continue
-            
-            logger.info(f"Successfully synced {len(synced_contacts)} contacts from Office Service for user {user_id}")
+
+            logger.info(
+                f"Successfully synced {len(synced_contacts)} contacts from Office Service for user {user_id}"
+            )
             return synced_contacts
-            
+
         except Exception as e:
             logger.error(f"Error syncing office contacts for user {user_id}: {e}")
             return []
@@ -262,7 +283,7 @@ class ContactService:
     ) -> List[Contact]:
         """
         List contacts for a user with read-through to Office Service.
-        
+
         This method implements the read-through pattern:
         1. First returns local contacts
         2. If no local contacts or force_sync=True, syncs from Office Service
@@ -273,24 +294,28 @@ class ContactService:
             local_contacts = await self.list_contacts(
                 session, user_id, limit, offset, tags, source_services
             )
-            
+
             # If no local contacts or force sync requested, sync from Office Service
             if not local_contacts or force_sync:
                 logger.info(f"Syncing contacts from Office Service for user {user_id}")
                 synced_contacts = await self.sync_office_contacts(session, user_id)
-                
+
                 # If we synced new contacts, get the updated list
                 if synced_contacts:
                     local_contacts = await self.list_contacts(
                         session, user_id, limit, offset, tags, source_services
                     )
-            
+
             return local_contacts
-            
+
         except Exception as e:
-            logger.error(f"Error in read-through contact listing for user {user_id}: {e}")
+            logger.error(
+                f"Error in read-through contact listing for user {user_id}: {e}"
+            )
             # Fall back to local contacts only
-            return await self.list_contacts(session, user_id, limit, offset, tags, source_services)
+            return await self.list_contacts(
+                session, user_id, limit, offset, tags, source_services
+            )
 
     async def search_contacts(
         self,

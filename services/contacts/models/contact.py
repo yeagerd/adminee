@@ -83,16 +83,19 @@ class Contact(SQLModel, table=True):
     notes: Optional[str] = Field(
         default=None, description="Additional notes about the contact"
     )
-    
+
     # Office Service integration fields
     provider: Optional[str] = Field(
         default=None, description="Office service provider (Google, Microsoft, etc.)"
     )
     last_synced: Optional[datetime] = Field(
-        default=None, description="When this contact was last synced from Office Service"
+        default=None,
+        description="When this contact was last synced from Office Service",
     )
     phone_numbers: Optional[List[str]] = Field(
-        default_factory=list, sa_column=Column(JSON), description="Contact phone numbers"
+        default_factory=list,
+        sa_column=Column(JSON),
+        description="Contact phone numbers",
     )
     addresses: Optional[List[Dict[str, Any]]] = Field(
         default_factory=list, sa_column=Column(JSON), description="Contact addresses"

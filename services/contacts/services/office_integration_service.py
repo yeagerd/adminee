@@ -59,7 +59,9 @@ class OfficeIntegrationService:
                     data = response.json()
                     # Office Service returns ContactList with data field containing contacts
                     contacts = data.get("data", [])
-                    logger.info(f"Retrieved {len(contacts)} contacts from Office Service for user {user_id}")
+                    logger.info(
+                        f"Retrieved {len(contacts)} contacts from Office Service for user {user_id}"
+                    )
                     return contacts
                 else:
                     logger.warning(

@@ -133,7 +133,7 @@ async def sync_contacts_from_office(
         synced_contacts = await contact_service.sync_office_contacts(
             session=session, user_id=current_user_id
         )
-        
+
         # Get updated contact list
         contacts = await contact_service.list_contacts(
             session=session,
@@ -141,13 +141,15 @@ async def sync_contacts_from_office(
             limit=1000,  # Get all contacts after sync
             offset=0,
         )
-        
+
         total = await contact_service.count_contacts(
             session=session, user_id=current_user_id
         )
-        
-        logger.info(f"Successfully synced {len(synced_contacts)} contacts for user {current_user_id}")
-        
+
+        logger.info(
+            f"Successfully synced {len(synced_contacts)} contacts for user {current_user_id}"
+        )
+
         return ContactListResponse(
             contacts=contacts,
             total=total,
