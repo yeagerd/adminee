@@ -8,7 +8,7 @@ for database persistence.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, Column, DateTime, func, Text
+from sqlalchemy import JSON, Column, DateTime, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
