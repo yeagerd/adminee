@@ -157,18 +157,16 @@ def test_jsonb_field_validation():
     )
     
     # Test nested dictionaries
+    # Test that event_counts can store EmailContactEventCount objects with complex metadata
     contact.event_counts = {
-        "complex": {
-            "nested": {
-                "deep": {
-                    "value": 42,
-                    "text": "deeply nested",
-                    "boolean": True,
-                    "null": None,
-                    "array": [1, 2, 3]
-                }
-            }
-        }
+        "complex_email_event": EmailContactEventCount(
+            event_type="complex_email_event",
+            count=42,
+            last_seen=datetime.now(timezone.utc),
+            first_seen=datetime.now(timezone.utc),
+            # If EmailContactEventCount supports additional metadata,
+            # it should be added as proper fields rather than arbitrary nested data
+        )
     }
     
     # Test mixed data types
