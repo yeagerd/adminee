@@ -4,6 +4,14 @@ Pydantic schemas package for User Management Service.
 Exports all schema models for API request/response validation.
 """
 
+from services.api.v1.user.health import (
+    ConfigurationStatus,
+    DatabaseStatus,
+    DependencyStatus,
+    PerformanceStatus,
+    ReadinessChecks,
+    ReadinessStatus,
+)
 from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
@@ -30,6 +38,17 @@ from services.api.v1.user.integration import (
     ScopeValidationResponse,
     TokenRefreshRequest,
     TokenRefreshResponse,
+)
+from services.api.v1.user.preferences import (
+    AIPreferencesSchema,
+    IntegrationPreferencesSchema,
+    NotificationPreferencesSchema,
+    PreferencesExportResponse,
+    PreferencesImportRequest,
+    PreferencesResetRequest,
+    PrivacyPreferencesSchema,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
 )
 from services.api.v1.user.user import (
     UserBase,
@@ -88,6 +107,10 @@ __all__ = [
     "UIPreferencesSchema",
     "UserPreferences",
     # Health schemas
-    "HealthCheck",
-    "HealthResponse",
+    "DependencyStatus",
+    "ConfigurationStatus",
+    "DatabaseStatus",
+    "PerformanceStatus",
+    "ReadinessChecks",
+    "ReadinessStatus",
 ]

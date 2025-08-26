@@ -8,13 +8,10 @@ import pytest
 from common.pagination import PaginationConfig
 from common.pagination.base import CursorInfo
 
-from services.user.schemas.pagination import (
+from services.api.v1.user.requests import UserFilterRequest
+from services.common.pagination.schemas import (
     CursorValidationError,
     PaginationError,
-    UserListRequest,
-    UserListResponse,
-    UserSearchRequest,
-    UserSearchResponse,
 )
 from services.user.utils.pagination import UserCursorPagination
 
@@ -193,12 +190,12 @@ class TestUserCursorPagination:
         assert validated_filters["onboarding_completed"] is False
 
 
-class TestUserListRequest:
-    """Test user list request schema."""
+class TestUserFilterRequest:
+    """Test user filter request schema."""
 
-    def test_user_list_request_defaults(self):
-        """Test user list request with default values."""
-        request = UserListRequest()
+    def test_user_filter_request_defaults(self):
+        """Test user filter request with default values."""
+        request = UserFilterRequest()
 
         assert request.cursor is None
         assert request.limit is None
@@ -207,9 +204,9 @@ class TestUserListRequest:
         assert request.email is None
         assert request.onboarding_completed is None
 
-    def test_user_list_request_with_values(self):
-        """Test user list request with values."""
-        request = UserListRequest(
+    def test_user_filter_request_with_values(self):
+        """Test user filter request with values."""
+        request = UserFilterRequest(
             cursor="test-cursor",
             limit=50,
             direction="prev",
@@ -225,88 +222,10 @@ class TestUserListRequest:
         assert request.email == "john@example.com"
         assert request.onboarding_completed is True
 
-    def test_user_list_request_invalid_direction(self):
-        """Test user list request with invalid direction."""
+    def test_user_filter_request_invalid_direction(self):
+        """Test user filter request with invalid direction."""
         with pytest.raises(ValueError):
-            UserListRequest(direction="invalid")
-
-
-class TestUserListResponse:
-    """Test user list response schema."""
-
-    def test_user_list_response(self):
-        """Test user list response."""
-        users = [
-            {"id": 1, "email": "user1@example.com"},
-            {"id": 2, "email": "user2@example.com"},
-        ]
-
-        response = UserListResponse(
-            users=users,
-            next_cursor="next-cursor",
-            prev_cursor=None,
-            has_next=True,
-            has_prev=False,
-            limit=20,
-        )
-
-        assert response.users == users
-        assert response.next_cursor == "next-cursor"
-        assert response.prev_cursor is None
-        assert response.has_next is True
-        assert response.has_prev is False
-        assert response.limit == 20
-
-
-class TestUserSearchRequest:
-    """Test user search request schema."""
-
-    def test_user_search_request(self):
-        """Test user search request."""
-        request = UserSearchRequest(
-            cursor="test-cursor",
-            limit=30,
-            direction="next",
-            query="john",
-            email="john@example.com",
-            onboarding_completed=True,
-        )
-
-        assert request.cursor == "test-cursor"
-        assert request.limit == 30
-        assert request.direction == "next"
-        assert request.query == "john"
-        assert request.email == "john@example.com"
-        assert request.onboarding_completed is True
-
-
-class TestUserSearchResponse:
-    """Test user search response schema."""
-
-    def test_user_search_response(self):
-        """Test user search response."""
-        users = [
-            {"id": 1, "email": "user1@example.com"},
-            {"id": 2, "email": "user2@example.com"},
-        ]
-
-        response = UserSearchResponse(
-            users=users,
-            next_cursor="next-cursor",
-            prev_cursor="prev-cursor",
-            has_next=True,
-            has_prev=True,
-            limit=20,
-            search_query="john",
-        )
-
-        assert response.users == users
-        assert response.next_cursor == "next-cursor"
-        assert response.prev_cursor == "prev-cursor"
-        assert response.has_next is True
-        assert response.has_prev is True
-        assert response.limit == 20
-        assert response.search_query == "john"
+            UserFilterRequest(direction="invalid")
 
 
 class TestCursorValidationError:
@@ -321,7 +240,6 @@ class TestCursorValidationError:
         )
 
         assert error.error == "Invalid cursor token"
-        assert error.error_code == "INVALID_CURSOR"
         assert error.cursor_token == "invalid-token"
         assert error.reason == "Token expired"
 

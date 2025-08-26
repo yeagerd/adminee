@@ -13,13 +13,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from services.common.logging_config import get_logger
-from services.user.auth.nextauth import get_current_user
-from services.user.schemas.preferences import (
+from services.api.v1.user.preferences import (
     PreferencesResetRequest,
     UserPreferencesResponse,
     UserPreferencesUpdate,
 )
+from services.common.logging_config import get_logger
+from services.user.auth.nextauth import get_current_user
 from services.user.services.preferences_service import PreferencesService
 
 # Set up logging

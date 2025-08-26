@@ -8,26 +8,22 @@ including edge cases and malicious input attempts.
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from services.user.middleware.sanitization import (
-    is_safe_text,
-    sanitize_user_input,
-)
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     OAuthCallbackRequest,
     OAuthStartRequest,
 )
-from services.user.schemas.pagination import UserSearchRequest
-from services.user.schemas.preferences import (
+from services.api.v1.user.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,
     PreferencesImportRequest,
 )
-from services.user.schemas.user import (
+from services.api.v1.user.requests import UserFilterRequest
+from services.api.v1.user.user import (
     UserCreate,
     UserUpdate,
 )
-from services.user.utils.validation import ValidationError as CustomValidationError
-from services.user.utils.validation import (
+from services.common.validation import ValidationError as CustomValidationError
+from services.common.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,
     validate_email_address,
@@ -39,6 +35,10 @@ from services.user.utils.validation import (
     validate_time_format,
     validate_timezone,
     validate_url,
+)
+from services.user.middleware.sanitization import (
+    is_safe_text,
+    sanitize_user_input,
 )
 
 
@@ -415,7 +415,7 @@ class TestSchemaValidation:
         }
 
         # The query should be sanitized, not rejected
-        search_request = UserSearchRequest(**search_data)
+        search_request = UserFilterRequest(**search_data)
         assert search_request.query == "John'; DROP TABLE users; --"
         assert search_request.cursor == "test_cursor"
         assert search_request.limit == 20

@@ -12,8 +12,6 @@ from urllib.parse import urlparse
 
 import pytz
 
-from services.user.utils.email_collision import email_collision_detector
-
 # Security patterns for input sanitization
 HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
 SCRIPT_PATTERN = re.compile(r"<script[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
@@ -161,33 +159,6 @@ def validate_email_address(email: str) -> str:
         raise ValidationError("email", email, "Invalid email format")
 
     return email
-
-
-async def validate_email_with_collision_check(email: str) -> str:
-    """
-    Validate email address and check for collisions using normalized email.
-
-    Args:
-        email: Email address to validate
-
-    Returns:
-        Normalized email address
-
-    Raises:
-        ValidationError: If email is invalid or collision detected
-    """
-    # First validate the email format
-    validated_email = validate_email_address(email)
-
-    # Then normalize using fast local normalization rules
-    try:
-        normalized_email = await email_collision_detector.normalize_email_async(
-            validated_email
-        )
-        return normalized_email
-    except Exception:
-        # If normalization fails, fall back to basic validation
-        return validated_email
 
 
 def validate_url(url: str, allowed_schemes: Optional[List[str]] = None) -> str:
@@ -529,17 +500,6 @@ def email_validator() -> Any:
         if v is None:
             return v
         return validate_email_address(v)
-
-    return validator
-
-
-async def email_validator_with_collision_check() -> Any:
-    """Create a Pydantic validator for email fields with collision checking."""
-
-    async def validator(cls: Any, v: Any) -> Any:
-        if v is None:
-            return v
-        return await validate_email_with_collision_check(v)
 
     return validator
 

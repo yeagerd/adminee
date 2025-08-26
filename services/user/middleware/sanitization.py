@@ -12,7 +12,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from services.common.logging_config import get_logger
-from services.user.utils.validation import (
+from services.common.validation import (
     check_sql_injection_patterns,
     validate_json_safe_string,
 )

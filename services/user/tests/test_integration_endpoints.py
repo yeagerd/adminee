@@ -11,14 +11,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import status
 
-from services.user.models.integration import (
-    IntegrationProvider,
-    IntegrationStatus,
-)
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     IntegrationListResponse,
     OAuthCallbackResponse,
     TokenRefreshResponse,
+)
+from services.user.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
 )
 from services.user.tests.test_base import BaseUserManagementIntegrationTest
 
