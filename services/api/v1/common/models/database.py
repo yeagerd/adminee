@@ -2,7 +2,7 @@
 Database models used across all services.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Column, DateTime, Integer
@@ -19,7 +19,10 @@ class BaseWithTimestamps(Base):  # type: ignore[misc,valid-type]
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     def __init__(self, **kwargs: Any) -> None:
