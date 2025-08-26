@@ -8,7 +8,7 @@ for database persistence.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, Column, DateTime, func
+from sqlalchemy import JSON, Column, DateTime, func, postgresql
 from sqlmodel import Field, SQLModel
 
 
@@ -101,21 +101,21 @@ class Contact(SQLModel, table=True):
     )
     phone_numbers: List[str] = Field(
         default_factory=list,
-        sa_column=Column(JSON),
+        sa_column=Column(postgresql.JSONB(astext_type=sa.Text())),
         description="Contact phone numbers",
     )
     addresses: List[Dict[str, Any]] = Field(
-        default_factory=list, sa_column=Column(JSON), description="Contact addresses"
+        default_factory=list,
+        sa_column=Column(postgresql.JSONB(astext_type=sa.Text())),
+        description="Contact addresses",
     )
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
         description="When this contact record was created",
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
             DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
         ),
