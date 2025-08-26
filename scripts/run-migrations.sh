@@ -135,7 +135,11 @@ print(urls.get_migration_url('$service_name'))
         echo "🔐 Granting permissions on migrated tables..."
         if [ -f "postgres/grant-permissions.sh" ]; then
             # Map service names to database names and service users
-            ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_$service_name" --service-user "briefly_${service_name}_service"
+            if [ -n "$ENV_FILE" ]; then
+                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_$service_name" --service-user "briefly_${service_name}_service"
+            else
+                ./postgres/grant-permissions.sh --db-name "briefly_$service_name" --service-user "briefly_${service_name}_service"
+            fi
             echo "✅ Permissions granted successfully for $service_name"
         else
             echo "❌ Error: postgres/grant-permissions.sh not found"
