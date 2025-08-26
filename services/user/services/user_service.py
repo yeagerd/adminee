@@ -723,7 +723,7 @@ class UserService:
                 logger.info(f"Found {len(users)} users with cursor pagination")
 
                 return CursorPaginationResponse(
-                    items=[UserResponse.from_orm(user) for user in users],
+                    items=response["users"],
                     next_cursor=response.get("next_cursor"),
                     prev_cursor=response.get("prev_cursor"),
                     has_next=has_next,
