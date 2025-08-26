@@ -216,7 +216,9 @@ class ContactService:
 
                     if existing_contact:
                         # Update existing contact with office data
-                        existing_contact.source_services = ["office"]
+                        # Preserve existing source services and add 'office' if not present
+                        if "office" not in existing_contact.source_services:
+                            existing_contact.source_services.append("office")
                         existing_contact.provider = str(
                             office_contact.get("provider", "")
                         )
