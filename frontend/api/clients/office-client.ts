@@ -1,3 +1,4 @@
+import { BulkActionType } from '@/types';
 import { getSession } from 'next-auth/react';
 import { getUserId } from '../../lib/session-utils';
 import type {
@@ -14,7 +15,6 @@ import type {
     TypedApiResponse_CalendarEventResponse_,
     TypedApiResponse_List_CalendarEvent__
 } from '../../types/api/office';
-import { BulkActionType } from '@/types';
 import { GatewayClient } from './gateway-client';
 
 export class OfficeClient extends GatewayClient {
