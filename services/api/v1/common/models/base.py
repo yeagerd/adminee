@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, TypeVar, Union, get_type_hints
+from typing import Any, Iterator, TypeVar, Union, get_type_hints
 
 T = TypeVar("T", bound="BaseSettings")
 
@@ -218,8 +218,9 @@ class AliasChoices:
     def __init__(self, *choices: str) -> None:
         self.choices = list(choices)
 
-    def __iter__(self) -> AliasChoices:
-        return self
+    def __iter__(self) -> "Iterator[str]":
+        """Return an iterator over the choices."""
+        return iter(self.choices)
 
 
 class BaseModel:
