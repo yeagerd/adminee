@@ -4,12 +4,13 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from services.common.postgres_urls import PostgresURLs
+
 # Import our models
 from services.shipments.models import (
     SQLModel,
 )
 from services.shipments.settings import get_settings
-from services.common.postgres_urls import PostgresURLs
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -22,7 +23,9 @@ if migration_url:
     config.set_main_option("sqlalchemy.url", migration_url)
 else:
     # Use PostgresURLs to get the migration URL
-    config.set_main_option("sqlalchemy.url", PostgresURLs().get_migration_url("shipments"))
+    config.set_main_option(
+        "sqlalchemy.url", PostgresURLs().get_migration_url("shipments")
+    )
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

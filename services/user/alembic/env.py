@@ -4,11 +4,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from services.common.postgres_urls import PostgresURLs
+
 # Import all models so they are registered with metadata
 from services.user import models  # noqa: F401
 from services.user.database import metadata
 from services.user.settings import get_settings
-from services.common.postgres_urls import PostgresURLs
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

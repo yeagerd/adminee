@@ -4,11 +4,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from services.common.postgres_urls import PostgresURLs
+
 # Import all models so they are registered with metadata
 from services.meetings import models  # noqa: F401
 from services.meetings.models import Base
 from services.meetings.settings import get_settings
-from services.common.postgres_urls import PostgresURLs
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -21,7 +22,9 @@ if migration_url:
     config.set_main_option("sqlalchemy.url", migration_url)
 else:
     # Use PostgresURLs to get the migration URL
-    config.set_main_option("sqlalchemy.url", PostgresURLs().get_migration_url("meetings"))
+    config.set_main_option(
+        "sqlalchemy.url", PostgresURLs().get_migration_url("meetings")
+    )
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

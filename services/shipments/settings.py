@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     log_format: str = Field(default="json", validation_alias="LOG_FORMAT")
     db_url_shipments: str = Field(
         default_factory=lambda: PostgresURLs().get_service_url("shipments"),
-        validation_alias="DB_URL_SHIPMENTS"
+        validation_alias="DB_URL_SHIPMENTS",
     )
     api_frontend_shipments_key: str = Field(
         ..., validation_alias="API_FRONTEND_SHIPMENTS_KEY"
