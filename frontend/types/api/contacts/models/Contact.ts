@@ -82,7 +82,7 @@ export type Contact = {
     /**
      * Contact addresses
      */
-    addresses?: null;
+    addresses?: Array<Record<string, any>>;
     /**
      * When this contact record was created
      */
