@@ -131,7 +131,7 @@ class IntegrationListResponse(BaseModel):
     integrations: List[IntegrationResponse] = Field(
         default_factory=list, description="List of user integrations"
     )
-    total_count: int = Field(..., description="Total number of integrations")
+    total: int = Field(..., description="Total number of integrations")
     active_count: int = Field(..., description="Number of active integrations")
     error_count: int = Field(..., description="Number of integrations with errors")
 
@@ -234,3 +234,213 @@ class IntegrationHealthSummary(BaseModel):
         ..., description="Health status for each integration"
     )
     overall_health: str = Field(..., description="Overall system health status")
+
+
+class OAuthStartRequest(BaseModel):
+    """Request model for starting OAuth flow."""
+
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    redirect_uri: str = Field(..., description="OAuth redirect URI")
+    scopes: Optional[List[str]] = Field(None, description="Requested OAuth scopes")
+    state_data: Optional[Dict[str, Any]] = Field(None, description="Additional state data")
+
+    @field_validator("redirect_uri")
+    @classmethod
+    def validate_redirect_uri(cls: type["OAuthStartRequest"], v: str) -> str:
+        """Validate redirect URI format."""
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("Redirect URI must be a valid HTTP/HTTPS URL")
+        return v
+
+    @field_validator("scopes")
+    @classmethod
+    def validate_scopes(cls: type["OAuthStartRequest"], v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate and clean OAuth scopes."""
+        if v is None:
+            return v
+        
+        # Remove duplicates and empty/whitespace strings
+        cleaned_scopes = []
+        for scope in v:
+            if scope and scope.strip():
+                cleaned_scope = scope.strip()
+                if cleaned_scope not in cleaned_scopes:
+                    cleaned_scopes.append(cleaned_scope)
+        
+        return cleaned_scopes if cleaned_scopes else None
+
+
+class OAuthStartResponse(BaseModel):
+    """Response model for OAuth flow start."""
+
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    authorization_url: str = Field(..., description="OAuth authorization URL")
+    state: str = Field(..., description="OAuth state parameter")
+    expires_at: datetime = Field(..., description="State expiration time")
+    requested_scopes: List[str] = Field(default_factory=list, description="Requested scopes")
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Request model for OAuth callback."""
+
+    code: str = Field(..., description="OAuth authorization code")
+    state: str = Field(..., description="OAuth state parameter")
+    error: Optional[str] = Field(None, description="OAuth error if any")
+    error_description: Optional[str] = Field(None, description="OAuth error description")
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls: type["OAuthCallbackRequest"], v: str) -> str:
+        """Validate authorization code."""
+        if not v or not v.strip():
+            raise ValueError("Authorization code cannot be empty")
+        return v.strip()
+
+    @field_validator("state")
+    @classmethod
+    def validate_state(cls: type["OAuthCallbackRequest"], v: str) -> str:
+        """Validate OAuth state."""
+        if not v or not v.strip():
+            raise ValueError("OAuth state cannot be empty")
+        return v.strip()
+
+
+class ExternalUserInfo(BaseModel):
+    """External user information from OAuth provider."""
+
+    id: str = Field(..., description="External user ID")
+    email: str = Field(..., description="External user email")
+    provider: str = Field(..., description="Provider name")
+
+
+class OAuthCallbackResponse(BaseModel):
+    """Response model for OAuth callback."""
+
+    success: bool = Field(..., description="Whether OAuth flow was successful")
+    integration_id: Optional[int] = Field(None, description="Integration ID if successful")
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    status: IntegrationStatus = Field(..., description="Integration status")
+    scopes: List[str] = Field(default_factory=list, description="Granted scopes")
+    external_user_info: Optional[ExternalUserInfo] = Field(None, description="External user info")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class ProviderListResponse(BaseModel):
+    """Response model for listing available providers."""
+
+    providers: List[IntegrationProviderInfo] = Field(
+        default_factory=list, description="List of available providers"
+    )
+    total: int = Field(..., description="Total number of providers")
+    available_count: int = Field(..., description="Number of available providers")
+
+
+class ScopeValidationRequest(BaseModel):
+    """Request model for validating OAuth scopes."""
+
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    scopes: List[str] = Field(..., description="Scopes to validate")
+
+
+class ScopeValidationResponse(BaseModel):
+    """Response model for scope validation."""
+
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    requested_scopes: List[str] = Field(..., description="Requested scopes")
+    valid_scopes: List[str] = Field(..., description="Valid scopes")
+    invalid_scopes: List[str] = Field(default_factory=list, description="Invalid scopes")
+    warnings: List[str] = Field(default_factory=list, description="Scope warnings")
+
+
+class TokenRefreshRequest(BaseModel):
+    """Request model for refreshing OAuth tokens."""
+
+    integration_id: int = Field(..., description="Integration ID")
+    force: bool = Field(default=False, description="Force refresh even if not expired")
+
+
+class TokenRefreshResponse(BaseModel):
+    """Response model for token refresh."""
+
+    success: bool = Field(..., description="Whether refresh was successful")
+    integration_id: int = Field(..., description="Integration ID")
+    new_expires_at: Optional[datetime] = Field(None, description="New expiration time")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class InternalTokenRequest(BaseModel):
+    """Internal request model for token operations."""
+
+    integration_id: int = Field(..., description="Integration ID")
+    user_id: str = Field(..., description="User ID")
+
+
+class InternalTokenResponse(BaseModel):
+    """Internal response model for token operations."""
+
+    integration_id: int = Field(..., description="Integration ID")
+    has_valid_token: bool = Field(..., description="Whether valid token exists")
+    expires_in: Optional[int] = Field(None, description="Seconds until token expires")
+    scopes: List[str] = Field(default_factory=list, description="Token scopes")
+
+
+class InternalTokenRefreshRequest(BaseModel):
+    """Internal request model for token refresh."""
+
+    integration_id: int = Field(..., description="Integration ID")
+    user_id: str = Field(..., description="User ID")
+
+
+class InternalUserStatusResponse(BaseModel):
+    """Internal response model for user integration status."""
+
+    user_id: str = Field(..., description="User ID")
+    has_active_integrations: bool = Field(..., description="Whether user has active integrations")
+    integration_count: int = Field(..., description="Total number of integrations")
+    active_integration_count: int = Field(..., description="Number of active integrations")
+    last_sync_at: Optional[datetime] = Field(None, description="Last sync time")
+
+
+class IntegrationDisconnectRequest(BaseModel):
+    """Request model for disconnecting an integration."""
+
+    force: bool = Field(default=False, description="Force disconnect even if active")
+
+
+class IntegrationDisconnectResponse(BaseModel):
+    """Response model for integration disconnection."""
+
+    success: bool = Field(..., description="Whether disconnection was successful")
+    message: str = Field(..., description="Disconnection status message")
+    integration_id: int = Field(..., description="ID of disconnected integration")
+    disconnected_at: datetime = Field(..., description="Disconnection timestamp")
+
+
+class IntegrationErrorResponse(BaseModel):
+    """Response model for integration errors."""
+
+    error: str = Field(..., description="Error message")
+    error_code: str = Field(..., description="Error code")
+    integration_id: Optional[int] = Field(None, description="Integration ID if applicable")
+    details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
+
+
+class IntegrationHealthResponse(BaseModel):
+    """Response model for integration health check."""
+
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    status: IntegrationStatus = Field(..., description="Current integration status")
+    last_sync: Optional[datetime] = Field(None, description="Last successful sync")
+    token_expires_in: Optional[int] = Field(..., description="Seconds until token expires")
+    error_count: int = Field(..., description="Consecutive error count")
+    is_healthy: bool = Field(..., description="Overall health status")
+
+
+class IntegrationStatsResponse(BaseModel):
+    """Response model for integration statistics."""
+
+    total_integrations: int = Field(..., description="Total number of integrations")
+    active_integrations: int = Field(..., description="Number of active integrations")
+    error_integrations: int = Field(..., description="Number of integrations with errors")
+    last_sync_at: Optional[datetime] = Field(None, description="Last sync time across all integrations")
+    sync_success_rate: float = Field(..., description="Percentage of successful syncs")
