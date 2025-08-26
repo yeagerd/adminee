@@ -5,7 +5,7 @@ UUID models used across all services.
 import uuid
 from typing import Any
 
-from pydantic import GetJsonSchemaHandler
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
@@ -40,15 +40,13 @@ class UUID4(str):
     def __get_pydantic_core_schema__(
         cls,
         _source_type: Any,
-        _handler: GetJsonSchemaHandler,
+        _handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         """Get Pydantic core schema for UUID4."""
-        return core_schema.json_schema(
-            core_schema.str_schema(
-                min_length=36,
-                max_length=36,
-                pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-            )
+        return core_schema.str_schema(
+            min_length=36,
+            max_length=36,
+            pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
         )
 
     @classmethod
