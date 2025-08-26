@@ -62,12 +62,21 @@ if [ -n "$ENV_FILE" ]; then
 else
     # Use default hardcoded credentials for local development
     echo "📄 Using default credentials for local development"
+    # Set default values for required environment variables
+    export POSTGRES_USER=${POSTGRES_USER:-postgres}
+    export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     # No need to source postgres-env.sh anymore - PostgresURLs will handle this
 fi
 
 # Set up basic database connection info
 export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
+
+# Set up Python interpreter for PostgresURLs calls
+VENV_PYTHON="python3"
+if [ -f ".venv/bin/activate" ]; then
+    VENV_PYTHON=".venv/bin/python"
+fi
 
 echo "🔍 Checking PostgreSQL and database migration status..."
 
@@ -90,10 +99,8 @@ check_postgres_running() {
         echo "⚠️  pg_isready not found, using Python fallback..."
         
         # Try to activate virtual environment if it exists
-        VENV_PYTHON="python3"
         if [ -f ".venv/bin/activate" ]; then
             echo "📦 Activating virtual environment for psycopg2..."
-            VENV_PYTHON=".venv/bin/python"
         fi
         
         $VENV_PYTHON -c "
@@ -159,12 +166,6 @@ print(urls.get_migration_url('$service_name'))
 # Function to test database connections
 test_connections() {
     echo "🔌 Testing database connections..."
-    
-    # Use virtual environment Python if available
-    VENV_PYTHON="python3"
-    if [ -f ".venv/bin/activate" ]; then
-        VENV_PYTHON=".venv/bin/python"
-    fi
     
     $VENV_PYTHON scripts/postgres-test-connection.py
 }

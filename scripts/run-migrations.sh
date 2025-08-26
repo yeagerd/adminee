@@ -68,12 +68,21 @@ if [ -n "$ENV_FILE" ]; then
 else
     # Use default hardcoded credentials for local development
     echo "📄 Using default credentials for local development"
+    # Set default values for required environment variables
+    export POSTGRES_USER=${POSTGRES_USER:-postgres}
+    export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     # No need to source postgres-env.sh anymore - PostgresURLs will handle this
 fi
 
 # Set up basic database connection info
 export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
+
+# Set up Python interpreter for PostgresURLs calls
+VENV_PYTHON="python3"
+if [ -f ".venv/bin/activate" ]; then
+    VENV_PYTHON=".venv/bin/python"
+fi
 
 echo "✅ Environment variables loaded"
 
@@ -92,7 +101,7 @@ run_service_migrations() {
 
     # Use PostgresURLs to get the migration URL dynamically
     local migration_url
-    migration_url=$(python3 -c "
+    migration_url=$("$VENV_PYTHON" -c "
 from services.common.postgres_urls import PostgresURLs
 urls = PostgresURLs()
 print(urls.get_migration_url('$service_name'))
