@@ -17,6 +17,7 @@ from services.common.validation import (
     sanitize_text_input,
     validate_enum_value,
     validate_time_format,
+    validate_timezone,
 )
 
 
@@ -57,6 +58,13 @@ class Timezone(str, Enum):
     ASIA_SEOUL = "Asia/Seoul"
     ASIA_SHANGHAI = "Asia/Shanghai"
     AUSTRALIA_SYDNEY = "Australia/Sydney"
+
+
+class TimezoneMode(str, Enum):
+    """Timezone mode options."""
+
+    AUTO = "auto"
+    MANUAL = "manual"
 
 
 class DateFormat(str, Enum):
@@ -508,18 +516,36 @@ class UserPreferencesUpdate(BaseModel):
         None, description="Privacy preferences to update"
     )
     # New timezone fields (optional for partial update)
-    timezone_mode: Optional[str] = Field(
+    timezone_mode: Optional[TimezoneMode] = Field(
         None, description="Timezone mode: 'auto' or 'manual'"
     )
     manual_timezone: Optional[str] = Field(
         None, description="Manual timezone override (IANA name, or empty if not set)"
     )
 
+    @field_validator("timezone_mode")
+    @classmethod
+    def validate_timezone_mode(cls, v: Optional[TimezoneMode]) -> Optional[TimezoneMode]:
+        """Validate timezone mode."""
+        if v is not None:
+            # The enum will automatically validate the value
+            return v
+        return v
+
+    @field_validator("manual_timezone")
+    @classmethod
+    def validate_manual_timezone(cls, v: Optional[str], info) -> Optional[str]:
+        """Validate manual timezone when mode is manual."""
+        if v is not None and v.strip():
+            # Validate IANA format using the common validation function
+            return validate_timezone(v.strip())
+        return v
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "ui": {"theme": "dark", "language": "en"},
-                "timezone_mode": "manual",
+                "timezone_mode": TimezoneMode.MANUAL,
                 "manual_timezone": "America/New_York",
                 "notifications": {"email_notifications": False},
             }
