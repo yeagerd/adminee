@@ -253,9 +253,21 @@ class IntegrationUpdateRequest(BaseModel):
     @field_validator("scopes")
     @classmethod
     def validate_scopes(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate OAuth scopes."""
+        """Enhanced OAuth scopes validation with comprehensive security checks."""
         if v is not None:
-            v = list(set(scope.strip() for scope in v if scope.strip()))
+            cleaned_scopes = []
+            for scope in v:
+                if scope and scope.strip():
+                    # Check for SQL injection patterns
+                    check_sql_injection_patterns(scope, "oauth_scope")
+
+                    # Sanitize the scope
+                    sanitized_scope = sanitize_text_input(scope, max_length=200)
+                    if sanitized_scope:
+                        cleaned_scopes.append(sanitized_scope)
+
+            # Remove duplicates
+            v = list(set(cleaned_scopes))
             if not v:
                 return None
         return v
