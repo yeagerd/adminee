@@ -15,12 +15,14 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Path, Query
 
+from services.api.v1.user import ProviderScopesResponse
 from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationResponse,
+    IntegrationScopeResponse,
     OAuthCallbackRequest,
     OAuthCallbackResponse,
     OAuthStartRequest,
@@ -341,6 +343,7 @@ async def check_current_user_integration_health(
     "/me/integrations/{provider}/scopes",
     summary="Get available OAuth scopes for provider",
     description="Get the list of available OAuth scopes for a specific provider.",
+    response_model=ProviderScopesResponse,
     responses={
         200: {"description": "Scopes retrieved successfully"},
         401: {"description": "Authentication required"},
@@ -350,7 +353,7 @@ async def check_current_user_integration_health(
 async def get_provider_scopes(
     provider: IntegrationProvider = Path(..., description="OAuth provider"),
     current_user_external_auth_id: str = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> ProviderScopesResponse:
     """
     Get available OAuth scopes for a provider.
 
@@ -369,19 +372,20 @@ async def get_provider_scopes(
         scopes = []
         for scope in provider_config.scopes:
             scopes.append(
-                {
-                    "name": scope.name,
-                    "description": scope.description,
-                    "required": scope.required,
-                    "sensitive": scope.sensitive,
-                }
+                IntegrationScopeResponse(
+                    name=scope.name,
+                    description=scope.description,
+                    required=scope.required,
+                    sensitive=scope.sensitive,
+                    granted=False,  # Provider scopes are not yet granted
+                )
             )
 
-        return {
-            "provider": provider.value,
-            "scopes": scopes,
-            "default_scopes": provider_config.default_scopes,
-        }
+        return ProviderScopesResponse(
+            provider=provider.value,
+            scopes=scopes,
+            default_scopes=provider_config.default_scopes,
+        )
 
     except NotFoundError as e:
         logger.warning(f"Provider not found: {e.message}")

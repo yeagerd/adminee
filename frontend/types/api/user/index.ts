@@ -41,6 +41,7 @@ export type { PerformanceStatus } from './models/PerformanceStatus';
 export type { PreferencesResetRequest } from './models/PreferencesResetRequest';
 export type { PrivacyPreferencesSchema } from './models/PrivacyPreferencesSchema';
 export type { ProviderListResponse } from './models/ProviderListResponse';
+export type { ProviderScopesResponse } from './models/ProviderScopesResponse';
 export type { ReadinessChecks } from './models/ReadinessChecks';
 export type { ReadinessStatus } from './models/ReadinessStatus';
 export type { ScopeValidationRequest } from './models/ScopeValidationRequest';

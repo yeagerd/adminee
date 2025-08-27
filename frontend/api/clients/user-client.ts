@@ -6,6 +6,7 @@ import {
     OAuthCallbackResponse,
     OAuthStartRequest,
     OAuthStartResponse,
+    ProviderScopesResponse,
     UserPreferencesResponse,
     UserPreferencesUpdate,
     UserResponse
@@ -77,7 +78,7 @@ export class UserClient extends GatewayClient {
         });
     }
 
-    async getProviderScopes(provider: IntegrationProvider): Promise<IntegrationScopeResponse> {
-        return this.request<IntegrationScopeResponse>(`/api/v1/users/me/integrations/${provider}/scopes`);
+    async getProviderScopes(provider: IntegrationProvider): Promise<ProviderScopesResponse> {
+        return this.request<ProviderScopesResponse>(`/api/v1/users/me/integrations/${provider}/scopes`);
     }
 }

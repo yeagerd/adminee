@@ -34,6 +34,7 @@ from services.api.v1.user.integration import (
     OAuthStartRequest,
     OAuthStartResponse,
     ProviderListResponse,
+    ProviderScopesResponse,
     ScopeValidationRequest,
     ScopeValidationResponse,
     TokenRefreshRequest,
@@ -91,6 +92,7 @@ __all__ = [
     "TokenRefreshRequest",
     "TokenRefreshResponse",
     "ProviderListResponse",
+    "ProviderScopesResponse",
     "ScopeValidationRequest",
     "ScopeValidationResponse",
     # Preferences schemas

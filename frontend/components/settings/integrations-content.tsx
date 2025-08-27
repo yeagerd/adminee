@@ -1,14 +1,14 @@
 'use client';
 
 import { userApi } from '@/api';
-import type { IntegrationResponse } from '@/types/api/user';
-import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
+import { ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
+import type { IntegrationResponse, IntegrationScopeResponse } from '@/types/api/user';
 import { IntegrationProvider } from '@/types/api/user';
 import { AlertCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -48,7 +48,7 @@ export function IntegrationsContent() {
     const { integrations, loading, error, refreshIntegrations } = useIntegrations();
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
     const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
-    const [providerScopes] = useState<Record<string, OAuthScope[]>>({});
+    const [providerScopes, setProviderScopes] = useState<Record<string, IntegrationScopeResponse[]>>({});
     const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
     const [currentProvider, setCurrentProvider] = useState<string | null>(null);
     const [availableScopes, setAvailableScopes] = useState<string[]>([]);
@@ -56,13 +56,19 @@ export function IntegrationsContent() {
     const loadProviderScopes = async (provider: IntegrationProvider) => {
         try {
             const response = await userApi.getProviderScopes(provider);
-            // IntegrationScopeResponse is an array of scope objects
-            if (response && Array.isArray(response)) {
-                const scopes = response;
-                console.log(`Loaded scopes for ${provider}:`, scopes.map((s: { name: string }) => s.name));
+            // ProviderScopesResponse has scopes array and default_scopes array
+            if (response && response.scopes && Array.isArray(response.scopes)) {
+                const scopes = response.scopes;
+                console.log(`Loaded scopes for ${provider}:`, scopes.map((s: IntegrationScopeResponse) => s.name));
+
+                // Store the scopes in providerScopes state
+                setProviderScopes(prev => ({
+                    ...prev,
+                    [provider]: scopes
+                }));
 
                 // Extract scope names for display
-                const allScopeNames = scopes.map((scope: { name: string }) => scope.name);
+                const allScopeNames = scopes.map((scope: IntegrationScopeResponse) => scope.name);
                 setAvailableScopes(allScopeNames);
                 return scopes; // Return the scopes array
             }
@@ -85,7 +91,7 @@ export function IntegrationsContent() {
                 // Also convert any Read-only scopes to ReadWrite scopes
                 const currentScopes = new Set(existingIntegration.scopes);
                 const availableScopes = scopes || []; // Use the loaded scopes
-                const defaultScopeNames = availableScopes.map(scope => scope.name);
+                const defaultScopeNames = availableScopes.map((scope: IntegrationScopeResponse) => scope.name);
 
                 // Convert Read-only scopes to ReadWrite scopes
                 const convertedScopes = new Set<string>();
@@ -146,7 +152,7 @@ export function IntegrationsContent() {
                 // Load provider scopes and use all of them
                 const scopes = await loadProviderScopes(config.provider as IntegrationProvider);
                 if (scopes && Array.isArray(scopes)) {
-                    scopesToUse = scopes.map((scope: { name: string }) => scope.name);
+                    scopesToUse = scopes.map((scope: IntegrationScopeResponse) => scope.name);
                 }
             }
 
@@ -207,7 +213,7 @@ export function IntegrationsContent() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                <div data-testid="loading-spinner" className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
             </div>
         );
     }
@@ -316,9 +322,9 @@ export function IntegrationsContent() {
                             }
                         </DialogDescription>
                     </DialogHeader>
-                    {currentProvider && providerScopes[currentProvider] && (
+                    {currentProvider && (
                         <ScopeSelector
-                            scopes={providerScopes[currentProvider]}
+                            scopes={providerScopes[currentProvider] || []}
                             selectedScopes={selectedScopes}
                             onScopeChange={setSelectedScopes}
                         />
