@@ -37,7 +37,7 @@ PROJECT_ROOT="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null ||
 
 # Service configuration
 # Services to exclude from OpenAPI generation (no meaningful schemas or not FastAPI apps)
-EXCLUDED_SERVICES="common email_sync demos briefly.egg-info __pycache__"
+EXCLUDED_SERVICES="common email_sync demos briefly.egg-info __pycache__ api"
 
 # Auto-discover services
 discover_services() {
