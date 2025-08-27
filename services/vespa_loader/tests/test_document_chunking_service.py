@@ -4,7 +4,7 @@ Tests for the document chunking service.
 
 import pytest
 
-from services.vespa_loader.models.document_chunking import (
+from services.api.v1.vespa.document_chunking import (
     ChunkingStrategy,
     ChunkType,
     DocumentChunkingConfig,
@@ -20,7 +20,7 @@ class TestDocumentChunkingService:
     @pytest.fixture
     def config(self):
         """Create a test configuration."""
-        from services.vespa_loader.models.document_chunking import (
+        from services.api.v1.vespa.document_chunking import (
             ChunkingRule,
             ChunkingStrategy,
         )
