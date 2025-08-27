@@ -98,8 +98,7 @@ class DocumentChunk(BaseModel):
         description="When this chunk was last updated",
     )
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+
 
     def to_vespa_document(self, user_id: str, provider: str) -> Dict[str, Any]:
         """Convert to Vespa document format."""
@@ -196,9 +195,6 @@ class ChunkingRule(BaseModel):
         default=100, description="Number of chunks to process in a batch"
     )
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
-
 
 class ChunkingResult(BaseModel):
     """Result of a document chunking operation."""
@@ -240,9 +236,6 @@ class ChunkingResult(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="When chunking was completed",
     )
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def get_chunk_by_sequence(self, sequence: int) -> Optional[DocumentChunk]:
         """Get a chunk by its sequence number."""
@@ -401,6 +394,3 @@ class DocumentChunkingConfig(BaseModel):
     chunk_retention_days: int = Field(
         default=365, description="Days to retain chunk data"
     )
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
