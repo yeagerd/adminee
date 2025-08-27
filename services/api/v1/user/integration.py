@@ -22,6 +22,11 @@ from services.user.models.integration import (
 )
 
 
+def get_current_utc_timestamp() -> datetime:
+    """Get current UTC timestamp for default values."""
+    return datetime.now(timezone.utc)
+
+
 class IntegrationScopeResponse(BaseModel):
     """Response model for OAuth scope information."""
 
@@ -437,7 +442,7 @@ class IntegrationErrorResponse(BaseModel):
     )
     integration_id: Optional[int] = Field(None, description="Related integration ID")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=get_current_utc_timestamp,
         description="Error timestamp",
     )
 
