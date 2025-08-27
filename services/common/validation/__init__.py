@@ -4,7 +4,7 @@ Common validation utilities package.
 Exports all validation functions and utilities that can be used across services.
 """
 
-from .validation import (
+from services.common.validation.validation import (
     ValidationError,
     check_sql_injection_patterns,
     email_validator,

@@ -47,9 +47,9 @@ from services.api.v1.user.preferences import (
     PreferencesImportRequest,
     PreferencesResetRequest,
     PrivacyPreferencesSchema,
+    UIPreferencesSchema,
     UserPreferencesResponse,
     UserPreferencesUpdate,
-    UIPreferencesSchema,
 )
 from services.api.v1.user.user import (
     UserBase,
