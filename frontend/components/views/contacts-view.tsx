@@ -6,6 +6,7 @@ import type { Contact } from "@/types/api/contacts";
 import { BarChart3, Plus, RefreshCw, Settings } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import SourceFilter from '@/components/contacts/source-filter';
 
 interface ContactsViewProps {
     toolDataLoading?: boolean;
@@ -19,7 +20,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    const [sourceFilter, setSourceFilter] = useState<string>('all');
+    const [sourceFilter, setSourceFilter] = useState<string[]>([]);
     const [tagFilter, setTagFilter] = useState<string[]>([]);
 
     const fetchContacts = useCallback(async (noCache = false) => {
@@ -28,15 +29,8 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
             const userId = session?.user?.id;
             if (!userId) throw new Error('No user id found in session');
 
-            // Convert source filter to source_services array
-            let sourceServices: string[] | undefined;
-            if (sourceFilter === 'office') {
-                sourceServices = ['office'];
-            } else if (sourceFilter === 'discovered') {
-                sourceServices = ['email', 'calendar', 'documents'];
-            } else if (sourceFilter === 'both') {
-                sourceServices = ['office', 'email', 'calendar', 'documents'];
-            }
+            // Use source filter array directly - empty array means all sources
+            const sourceServices = sourceFilter.length > 0 ? sourceFilter : undefined;
 
             const resp = await contactsApi.getContacts(
                 200, // limit
@@ -95,6 +89,17 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
         return Array.from(tagSet).sort();
     }, [contacts]);
 
+    // Get available source services from contacts
+    const availableSources = useMemo(() => {
+        const sourceSet = new Set<string>();
+        contacts.forEach(contact => {
+            if (contact.source_services) {
+                contact.source_services.forEach(service => sourceSet.add(service));
+            }
+        });
+        return Array.from(sourceSet).sort();
+    }, [contacts]);
+
     // Get source service statistics
     const sourceStats = useMemo(() => {
         const stats = { office: 0, discovered: 0, both: 0 };
@@ -127,16 +132,11 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                         />
 
                         {/* Source Filter */}
-                        <select
-                            value={sourceFilter}
-                            onChange={(e) => setSourceFilter(e.target.value)}
-                            className="border rounded px-2 py-1 text-sm"
-                        >
-                            <option value="all">All Sources</option>
-                            <option value="office">Office Only</option>
-                            <option value="discovered">Discovered Only</option>
-                            <option value="both">Both Sources</option>
-                        </select>
+                        <SourceFilter
+                            sourceFilter={sourceFilter}
+                            onSourceFilterChange={setSourceFilter}
+                            availableSources={availableSources}
+                        />
 
                         {/* Tags Filter */}
                         <select
