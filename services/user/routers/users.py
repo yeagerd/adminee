@@ -376,6 +376,7 @@ async def get_provider_scopes(
                     "description": scope.description,
                     "required": scope.required,
                     "sensitive": scope.sensitive,
+                    "granted": False,  # Provider scopes are not yet granted
                 }
             )
 
