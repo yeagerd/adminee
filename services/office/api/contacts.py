@@ -5,6 +5,14 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from pydantic import BaseModel
 
+from services.api.v1.office import (
+    Contact,
+    ContactCreateResponse,
+    ContactDeleteResponse,
+    ContactList,
+    ContactUpdateResponse,
+    Provider,
+)
 from services.common.http_errors import ServiceError, ValidationError
 from services.common.logging_config import get_logger, request_id_var
 from services.office.api.email import get_provider_enum, get_user_account_info
@@ -16,14 +24,6 @@ from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import (
     normalize_google_contact,
     normalize_microsoft_contact,
-)
-from services.office.models import Provider
-from services.office.schemas import (
-    Contact,
-    ContactCreateResponse,
-    ContactDeleteResponse,
-    ContactList,
-    ContactUpdateResponse,
 )
 
 logger = get_logger(__name__)

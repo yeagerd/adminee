@@ -10,7 +10,7 @@ from pydantic import (
     model_validator,
 )
 
-from services.office.models import Provider
+from services.api.v1.office.models import Provider
 
 T = TypeVar("T")
 

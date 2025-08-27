@@ -13,6 +13,25 @@ from typing import Any, Dict, List, Optional, cast
 import httpx
 from fastapi import APIRouter, Depends, Path, Query, Request
 
+from services.api.v1.office import (
+    EmailDraftCreateRequest,
+    EmailDraftResponse,
+    EmailDraftResult,
+    EmailDraftUpdateRequest,
+    EmailFolder,
+    EmailFolderList,
+    EmailFolderListData,
+    EmailMessage,
+    EmailMessageList,
+    EmailMessageListData,
+    EmailSendResult,
+    EmailThread,
+    EmailThreadList,
+    EmailThreadListData,
+    Provider,
+    SendEmailRequest,
+    SendEmailResponse,
+)
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
@@ -33,25 +52,6 @@ from services.office.core.normalizer import (
     normalize_microsoft_email,
 )
 from services.office.core.settings import get_settings
-from services.office.models import Provider
-from services.office.schemas import (
-    EmailDraftCreateRequest,
-    EmailDraftResponse,
-    EmailDraftResult,
-    EmailDraftUpdateRequest,
-    EmailFolder,
-    EmailFolderList,
-    EmailFolderListData,
-    EmailMessage,
-    EmailMessageList,
-    EmailMessageListData,
-    EmailSendResult,
-    EmailThread,
-    EmailThreadList,
-    EmailThreadListData,
-    SendEmailRequest,
-    SendEmailResponse,
-)
 
 logger = get_logger(__name__)
 

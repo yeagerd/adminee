@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-from services.office.schemas import CalendarEvent
+from services.api.v1.office import CalendarEvent
 
 
 class OfficeServiceCalendarResponse(BaseModel):

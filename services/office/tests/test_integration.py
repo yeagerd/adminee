@@ -695,7 +695,7 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
         """Test handling of provider API errors."""
 
         def failing_http_side_effect(*args, **kwargs):
-            from services.office.models import Provider
+            from services.api.v1.office import Provider
 
             raise ProviderError("Provider API is down", Provider.GOOGLE)
 
