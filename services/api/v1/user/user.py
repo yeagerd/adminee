@@ -275,21 +275,25 @@ class UserOnboardingUpdate(BaseModel):
         check_sql_injection_patterns(str(v), "onboarding_step")
 
         # Sanitize the input
-        v = sanitize_text_input(str(v), max_length=50)
+        sanitized = sanitize_text_input(str(v), max_length=50)
 
-        if v is not None:
-            valid_steps = [
-                "profile_setup",
-                "preferences_setup",
-                "integration_setup",
-                "welcome_tour",
-            ]
-            if v not in valid_steps:
-                raise ValueError(
-                    f'Invalid onboarding step. Must be one of: {", ".join(valid_steps)}'
-                )
+        # If sanitization results in None or empty string, return None
+        if not sanitized:
+            return None
 
-        return v
+        # Validate against allowed steps
+        valid_steps = [
+            "profile_setup",
+            "preferences_setup",
+            "integration_setup",
+            "welcome_tour",
+        ]
+        if sanitized not in valid_steps:
+            raise ValueError(
+                f'Invalid onboarding step. Must be one of: {", ".join(valid_steps)}'
+            )
+
+        return sanitized
 
     @model_validator(mode="after")
     def validate_onboarding_consistency(self: "UserOnboardingUpdate") -> Any:
