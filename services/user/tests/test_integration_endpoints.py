@@ -233,14 +233,23 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         ) as mock_oauth_config:
             # Mock the OAuth config to return a provider config with scopes
             mock_provider_config = MagicMock()
+            
+            # Create proper mock scope objects with the correct attributes
+            class MockScope:
+                def __init__(self, name, description, required, sensitive):
+                    self.name = name
+                    self.description = description
+                    self.required = required
+                    self.sensitive = sensitive
+            
             mock_provider_config.scopes = [
-                MagicMock(
+                MockScope(
                     name="email",
                     description="Access to email address",
                     required=True,
                     sensitive=False,
                 ),
-                MagicMock(
+                MockScope(
                     name="profile",
                     description="Access to profile information",
                     required=False,
