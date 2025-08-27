@@ -4,7 +4,7 @@ Redis reference pattern for managing large payloads and idempotency keys.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
@@ -109,7 +109,7 @@ class RedisReferencePattern:
             redis_key = self.KEY_PATTERNS["idempotency"].format(key=key)
 
             # Add timestamp to metadata
-            metadata["stored_at"] = datetime.utcnow().isoformat()
+            metadata["stored_at"] = datetime.now(timezone.utc).isoformat()
             metadata["key"] = key
 
             # Serialize metadata
@@ -164,7 +164,7 @@ class RedisReferencePattern:
             # Add metadata
             batch_data["batch_id"] = batch_id
             batch_data["correlation_id"] = correlation_id
-            batch_data["stored_at"] = datetime.utcnow().isoformat()
+            batch_data["stored_at"] = datetime.now(timezone.utc).isoformat()
 
             # Serialize batch data
             serialized_data = json.dumps(batch_data, default=self._json_serializer)
@@ -218,7 +218,7 @@ class RedisReferencePattern:
             # Add metadata
             fragment_data["parent_doc_id"] = parent_doc_id
             fragment_data["fragment_id"] = fragment_id
-            fragment_data["stored_at"] = datetime.utcnow().isoformat()
+            fragment_data["stored_at"] = datetime.now(timezone.utc).isoformat()
 
             # Serialize fragment data
             serialized_data = json.dumps(fragment_data, default=self._json_serializer)
