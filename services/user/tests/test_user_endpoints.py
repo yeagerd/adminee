@@ -131,7 +131,7 @@ class TestUserProfileEndpoints:
                 "get_user_by_external_auth_id_auto_detect",
                 return_value=mock_user,
             ),
-            patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
+            patch("services.api.v1.user.user.UserResponse.from_orm") as mock_from_orm,
         ):
             mock_response = UserResponse(
                 id=1,
