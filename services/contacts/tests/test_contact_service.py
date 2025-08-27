@@ -32,7 +32,7 @@ def mock_session():
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
     session.refresh = AsyncMock()
-    session.delete = MagicMock()
+    session.delete = AsyncMock()
     return session
 
 

@@ -444,7 +444,7 @@ class ContactService:
             if not contact:
                 return False
 
-            session.delete(contact)
+            await session.delete(contact)
             await session.commit()
 
             logger.info(f"Deleted contact {contact_id}")
