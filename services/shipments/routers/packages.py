@@ -206,12 +206,12 @@ async def list_packages(
         if not cursor_info:
             raise HTTPException(
                 status_code=400,
-                            detail=CursorValidationError(
-                error="Invalid or expired cursor token",
-                error_code="CURSOR_TOKEN_INVALID",
-                cursor_token=cursor,
-                reason="Token validation failed",
-            ).dict(),
+                detail=CursorValidationError(
+                    error="Invalid or expired cursor token",
+                    error_code="CURSOR_TOKEN_INVALID",
+                    cursor_token=cursor,
+                    reason="Token validation failed",
+                ).dict(),
             )
 
     # Build filters

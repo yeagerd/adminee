@@ -525,7 +525,9 @@ class UserPreferencesUpdate(BaseModel):
 
     @field_validator("timezone_mode")
     @classmethod
-    def validate_timezone_mode(cls, v: Optional[TimezoneMode]) -> Optional[TimezoneMode]:
+    def validate_timezone_mode(
+        cls, v: Optional[TimezoneMode]
+    ) -> Optional[TimezoneMode]:
         """Validate timezone mode."""
         if v is not None:
             # The enum will automatically validate the value
