@@ -23,7 +23,7 @@ export type { IntegrationPreferencesSchema } from './models/IntegrationPreferenc
 export { IntegrationProvider } from './models/IntegrationProvider';
 export type { IntegrationProviderInfo } from './models/IntegrationProviderInfo';
 export type { IntegrationResponse } from './models/IntegrationResponse';
-export type { IntegrationScopeResponse } from './models/IntegrationScopeResponse';
+export type { IntegrationScopeResponse, ProviderScopesResponse } from './models/IntegrationScopeResponse';
 export type { IntegrationStatsResponse } from './models/IntegrationStatsResponse';
 export { IntegrationStatus } from './models/IntegrationStatus';
 export type { InternalTokenRefreshRequest } from './models/InternalTokenRefreshRequest';
@@ -58,3 +58,4 @@ export type { UserPreferencesResponse } from './models/UserPreferencesResponse';
 export type { UserPreferencesUpdate } from './models/UserPreferencesUpdate';
 export type { UserResponse } from './models/UserResponse';
 export type { ValidationError } from './models/ValidationError';
+

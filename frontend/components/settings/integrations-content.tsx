@@ -48,7 +48,7 @@ export function IntegrationsContent() {
     const { integrations, loading, error, refreshIntegrations } = useIntegrations();
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
     const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
-    const [providerScopes] = useState<Record<string, OAuthScope[]>>({});
+    const [providerScopes, setProviderScopes] = useState<Record<string, OAuthScope[]>>({});
     const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
     const [currentProvider, setCurrentProvider] = useState<string | null>(null);
     const [availableScopes, setAvailableScopes] = useState<string[]>([]);
@@ -56,10 +56,16 @@ export function IntegrationsContent() {
     const loadProviderScopes = async (provider: IntegrationProvider) => {
         try {
             const response = await userApi.getProviderScopes(provider);
-            // IntegrationScopeResponse is an array of scope objects
-            if (response && Array.isArray(response)) {
-                const scopes = response;
+            // ProviderScopesResponse has scopes array and default_scopes array
+            if (response && response.scopes && Array.isArray(response.scopes)) {
+                const scopes = response.scopes;
                 console.log(`Loaded scopes for ${provider}:`, scopes.map((s: { name: string }) => s.name));
+
+                // Store the scopes in providerScopes state
+                setProviderScopes(prev => ({
+                    ...prev,
+                    [provider]: scopes
+                }));
 
                 // Extract scope names for display
                 const allScopeNames = scopes.map((scope: { name: string }) => scope.name);
@@ -85,7 +91,7 @@ export function IntegrationsContent() {
                 // Also convert any Read-only scopes to ReadWrite scopes
                 const currentScopes = new Set(existingIntegration.scopes);
                 const availableScopes = scopes || []; // Use the loaded scopes
-                const defaultScopeNames = availableScopes.map(scope => scope.name);
+                const defaultScopeNames = availableScopes.map((scope: OAuthScope) => scope.name);
 
                 // Convert Read-only scopes to ReadWrite scopes
                 const convertedScopes = new Set<string>();
@@ -316,9 +322,9 @@ export function IntegrationsContent() {
                             }
                         </DialogDescription>
                     </DialogHeader>
-                    {currentProvider && providerScopes[currentProvider] && (
+                    {currentProvider && (
                         <ScopeSelector
-                            scopes={providerScopes[currentProvider]}
+                            scopes={providerScopes[currentProvider] || []}
                             selectedScopes={selectedScopes}
                             onScopeChange={setSelectedScopes}
                         />
