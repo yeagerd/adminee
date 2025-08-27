@@ -37,6 +37,18 @@ class IntegrationScopeResponse(BaseModel):
     granted: bool = Field(..., description="Whether user has granted this scope")
 
 
+class ProviderScopesResponse(BaseModel):
+    """Response model for provider scopes endpoint."""
+
+    provider: str = Field(..., description="Provider name")
+    scopes: List[IntegrationScopeResponse] = Field(
+        ..., description="Available scopes for this provider"
+    )
+    default_scopes: List[str] = Field(
+        ..., description="Default scopes for this provider"
+    )
+
+
 class IntegrationProviderInfo(BaseModel):
     """Information about an OAuth provider."""
 

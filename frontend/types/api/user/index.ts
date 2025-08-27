@@ -23,7 +23,7 @@ export type { IntegrationPreferencesSchema } from './models/IntegrationPreferenc
 export { IntegrationProvider } from './models/IntegrationProvider';
 export type { IntegrationProviderInfo } from './models/IntegrationProviderInfo';
 export type { IntegrationResponse } from './models/IntegrationResponse';
-export type { IntegrationScopeResponse, ProviderScopesResponse } from './models/IntegrationScopeResponse';
+export type { IntegrationScopeResponse } from './models/IntegrationScopeResponse';
 export type { IntegrationStatsResponse } from './models/IntegrationStatsResponse';
 export { IntegrationStatus } from './models/IntegrationStatus';
 export type { InternalTokenRefreshRequest } from './models/InternalTokenRefreshRequest';
@@ -41,6 +41,7 @@ export type { PerformanceStatus } from './models/PerformanceStatus';
 export type { PreferencesResetRequest } from './models/PreferencesResetRequest';
 export type { PrivacyPreferencesSchema } from './models/PrivacyPreferencesSchema';
 export type { ProviderListResponse } from './models/ProviderListResponse';
+export type { ProviderScopesResponse } from './models/ProviderScopesResponse';
 export type { ReadinessChecks } from './models/ReadinessChecks';
 export type { ReadinessStatus } from './models/ReadinessStatus';
 export type { ScopeValidationRequest } from './models/ScopeValidationRequest';
@@ -58,4 +59,3 @@ export type { UserPreferencesResponse } from './models/UserPreferencesResponse';
 export type { UserPreferencesUpdate } from './models/UserPreferencesUpdate';
 export type { UserResponse } from './models/UserResponse';
 export type { ValidationError } from './models/ValidationError';
-

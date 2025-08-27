@@ -28,21 +28,3 @@ export type IntegrationScopeResponse = {
     granted: boolean;
 };
 
-/**
- * Response model for provider scopes endpoint.
- */
-export type ProviderScopesResponse = {
-    /**
-     * Provider name
-     */
-    provider: string;
-    /**
-     * Available scopes for this provider
-     */
-    scopes: IntegrationScopeResponse[];
-    /**
-     * Default scopes for this provider
-     */
-    default_scopes: string[];
-};
-
