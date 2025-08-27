@@ -7,10 +7,7 @@ import { Label } from '@/components/ui/label';
 import type { IntegrationScopeResponse } from '@/types/api/user';
 import { Calendar, FileText, Lock, Mail, Shield, User } from 'lucide-react';
 
-export interface OAuthScope extends IntegrationScopeResponse {
-    // OAuthScope now extends IntegrationScopeResponse to maintain compatibility
-    // while using the proper API type
-}
+export type OAuthScope = IntegrationScopeResponse;
 
 interface ScopeSelectorProps {
     scopes: OAuthScope[];
