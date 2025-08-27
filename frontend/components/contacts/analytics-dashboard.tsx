@@ -14,11 +14,7 @@ interface AnalyticsData {
     newThisMonth: number;
     growthRate: number;
     sourceDistribution: Record<string, number>;
-    relevanceDistribution: {
-        high: number;
-        medium: number;
-        low: number;
-    };
+
     topTags: Array<{ tag: string; count: number }>;
     monthlyGrowth: Array<{ month: string; count: number }>;
     sourceTrends: Record<string, Array<{ month: string; count: number }>>;
@@ -45,12 +41,7 @@ const ContactAnalyticsDashboard: React.FC<ContactAnalyticsProps> = ({ onClose, c
             });
         });
 
-        // Relevance distribution
-        const relevanceDistribution = {
-            high: contacts.filter(c => (c.relevance_score || 0) >= 0.7).length,
-            medium: contacts.filter(c => (c.relevance_score || 0) >= 0.4 && (c.relevance_score || 0) < 0.7).length,
-            low: contacts.filter(c => (c.relevance_score || 0) < 0.4).length,
-        };
+
 
         // Top tags
         const tagCounts: Record<string, number> = {};
@@ -88,7 +79,7 @@ const ContactAnalyticsDashboard: React.FC<ContactAnalyticsProps> = ({ onClose, c
             newThisMonth,
             growthRate,
             sourceDistribution,
-            relevanceDistribution,
+
             topTags,
             monthlyGrowth,
             sourceTrends,
@@ -112,20 +103,7 @@ const ContactAnalyticsDashboard: React.FC<ContactAnalyticsProps> = ({ onClose, c
         }
     };
 
-    const getSourceServiceColor = (service: string) => {
-        switch (service) {
-            case 'office':
-                return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'email':
-                return 'bg-green-100 text-green-800 border-green-200';
-            case 'calendar':
-                return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'documents':
-                return 'bg-orange-100 text-orange-800 border-orange-200';
-            default:
-                return 'bg-gray-100 text-gray-800 border-gray-200';
-        }
-    };
+
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -246,32 +224,7 @@ const ContactAnalyticsDashboard: React.FC<ContactAnalyticsProps> = ({ onClose, c
                     </div>
                 </div>
 
-                {/* Relevance Distribution */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Relevance Score Distribution</h3>
-                    <div className="space-y-4">
-                        {Object.entries(analytics.relevanceDistribution).map(([level, count]) => {
-                            const percentage = (count / analytics.totalContacts) * 100;
-                            const color = level === 'high' ? 'bg-green-500' : level === 'medium' ? 'bg-yellow-500' : 'bg-red-500';
-                            const label = level === 'high' ? 'High (≥70%)' : level === 'medium' ? 'Medium (40-69%)' : 'Low (<40%)';
 
-                            return (
-                                <div key={level} className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-medium capitalize">{label}</span>
-                                        <span className="text-gray-600">{count.toLocaleString()}</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-3">
-                                        <div
-                                            className={`${color} h-3 rounded-full transition-all duration-300`}
-                                            style={{ width: `${percentage}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
 
                 {/* Monthly Growth Chart */}
                 <div className="bg-gray-50 rounded-lg p-6">
@@ -370,12 +323,7 @@ const ContactAnalyticsDashboard: React.FC<ContactAnalyticsProps> = ({ onClose, c
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-blue-600" />
-                            <span className="text-blue-900">
-                                <strong>Engagement:</strong> {analytics.relevanceDistribution.high} contacts have high relevance scores
-                            </span>
-                        </div>
+
                         <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-blue-600" />
                             <span className="text-blue-900">

@@ -102,21 +102,7 @@ const ContactCard: React.FC<ContactCardProps> = ({
 
             {/* Contact Details */}
             <div className="space-y-2 mb-3">
-                {/* Relevance Score */}
-                {contact.relevance_score !== undefined && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 font-medium">Relevance:</span>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div
-                                className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${(contact.relevance_score || 0) * 100}%` }}
-                            />
-                        </div>
-                        <span className="text-xs text-gray-600 font-medium min-w-[3rem] text-right">
-                            {Math.round((contact.relevance_score || 0) * 100)}%
-                        </span>
-                    </div>
-                )}
+
 
                 {/* Event Counts */}
                 {contact.event_counts && Object.keys(contact.event_counts).length > 0 && (

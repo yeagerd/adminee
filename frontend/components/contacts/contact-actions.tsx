@@ -217,7 +217,7 @@ const ContactActions: React.FC<ContactActionsProps> = ({
                     <li>• Use filters to find specific contacts</li>
                     <li>• Select multiple contacts for bulk actions</li>
                     <li>• Tags help organize your contact list</li>
-                    <li>• Relevance scores show contact importance</li>
+
                 </ul>
             </div>
         </div>

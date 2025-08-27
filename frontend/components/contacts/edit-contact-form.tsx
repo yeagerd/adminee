@@ -178,12 +178,7 @@ const EditContactForm: React.FC<EditContactFormProps> = ({
                                 <span className="text-gray-600">Total Events:</span>
                                 <span className="font-medium">{contact.total_event_count || 0}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Relevance Score:</span>
-                                <span className="font-medium">
-                                    {Math.round((contact.relevance_score || 0) * 100)}%
-                                </span>
-                            </div>
+
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Last Seen:</span>
                                 <span className="font-medium">

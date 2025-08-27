@@ -34,7 +34,7 @@ const ContactMerger: React.FC<ContactMergerProps> = ({ onClose, onMerge }) => {
                     source_services: ['office'],
                     event_counts: { email: { count: 15, last_seen: '2024-01-15T10:00:00Z' } },
                     total_event_count: 15,
-                    relevance_score: 0.8,
+
                     last_seen: '2024-01-15T10:00:00Z',
                     first_seen: '2024-01-01T00:00:00Z',
                     tags: ['work', 'important'],
@@ -52,7 +52,7 @@ const ContactMerger: React.FC<ContactMergerProps> = ({ onClose, onMerge }) => {
                     source_services: ['email'],
                     event_counts: { email: { count: 8, last_seen: '2024-01-14T15:30:00Z' } },
                     total_event_count: 8,
-                    relevance_score: 0.6,
+
                     last_seen: '2024-01-14T15:30:00Z',
                     first_seen: '2024-01-05T00:00:00Z',
                     tags: ['client'],
@@ -77,7 +77,7 @@ const ContactMerger: React.FC<ContactMergerProps> = ({ onClose, onMerge }) => {
                     source_services: ['office'],
                     event_counts: { calendar: { count: 3, last_seen: '2024-01-10T14:00:00Z' } },
                     total_event_count: 3,
-                    relevance_score: 0.4,
+
                     last_seen: '2024-01-10T14:00:00Z',
                     first_seen: '2024-01-08T00:00:00Z',
                     tags: ['meeting'],
@@ -95,7 +95,7 @@ const ContactMerger: React.FC<ContactMergerProps> = ({ onClose, onMerge }) => {
                     source_services: ['email'],
                     event_counts: { email: { count: 12, last_seen: '2024-01-13T09:15:00Z' } },
                     total_event_count: 12,
-                    relevance_score: 0.7,
+
                     last_seen: '2024-01-13T09:15:00Z',
                     first_seen: '2024-01-02T00:00:00Z',
                     tags: ['work', 'project'],
@@ -320,12 +320,7 @@ const ContactMerger: React.FC<ContactMergerProps> = ({ onClose, onMerge }) => {
 
                                     {/* Contact Details */}
                                     <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Relevance Score:</span>
-                                            <span className="font-medium">
-                                                {Math.round((contact.relevance_score || 0) * 100)}%
-                                            </span>
-                                        </div>
+
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Total Events:</span>
                                             <span className="font-medium">{contact.total_event_count || 0}</span>

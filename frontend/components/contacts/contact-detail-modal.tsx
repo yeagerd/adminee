@@ -211,20 +211,7 @@ const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
                             <h4 className="text-lg font-semibold text-gray-900">Statistics & Metrics</h4>
 
                             <div className="space-y-3">
-                                <div>
-                                    <span className="text-sm font-medium text-gray-600">Relevance Score:</span>
-                                    <div className="flex items-center gap-3 mt-1">
-                                        <div className="flex-1 bg-gray-200 rounded-full h-3">
-                                            <div
-                                                className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300"
-                                                style={{ width: `${(contact.relevance_score || 0) * 100}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-900 min-w-[3rem]">
-                                            {Math.round((contact.relevance_score || 0) * 100)}%
-                                        </span>
-                                    </div>
-                                </div>
+
 
                                 <div>
                                     <span className="text-sm font-medium text-gray-600">Total Events:</span>
@@ -329,50 +316,7 @@ const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Relevance Factors */}
-                    {contact.relevance_score !== undefined && (
-                        <div className="space-y-4">
-                            <h4 className="text-lg font-semibold text-gray-900">Relevance Factors</h4>
 
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-sm text-gray-600 mb-3">
-                                    Relevance score is calculated based on multiple factors:
-                                </p>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Recency:</span>
-                                            <span className="font-medium">
-                                                {new Date(contact.last_seen).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 ? 'High' : 'Medium'}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Frequency:</span>
-                                            <span className="font-medium">
-                                                {(contact.total_event_count || 0) > 10 ? 'High' : (contact.total_event_count || 0) > 3 ? 'Medium' : 'Low'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Diversity:</span>
-                                            <span className="font-medium">
-                                                {(contact.source_services?.length || 0) > 1 ? 'High' : 'Low'}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Name Completeness:</span>
-                                            <span className="font-medium">
-                                                {contact.display_name || (contact.given_name && contact.family_name) ? 'High' : 'Low'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Footer */}

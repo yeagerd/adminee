@@ -21,7 +21,6 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
     const [search, setSearch] = useState('');
     const [sourceFilter, setSourceFilter] = useState<string>('all');
     const [tagFilter, setTagFilter] = useState<string[]>([]);
-    const [relevanceFilter, setRelevanceFilter] = useState<[number, number]>([0, 1]);
 
     const fetchContacts = useCallback(async (noCache = false) => {
         try {
@@ -82,13 +81,8 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
         return () => { mounted = false; };
     }, [integrationsLoading, toolDataLoading, activeTool, fetchContacts]);
 
-    // Filter contacts by relevance score
-    const filteredContacts = useMemo(() => {
-        return contacts.filter(contact => {
-            const relevance = contact.relevance_score || 0;
-            return relevance >= relevanceFilter[0] && relevance <= relevanceFilter[1];
-        });
-    }, [contacts, relevanceFilter]);
+    // Use contacts directly since we removed relevance filtering
+    const filteredContacts = contacts;
 
     // Get unique tags from contacts
     const allTags = useMemo(() => {
@@ -160,29 +154,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                             ))}
                         </select>
 
-                        {/* Relevance Score Filter */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">Relevance:</span>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.1"
-                                value={relevanceFilter[0]}
-                                onChange={(e) => setRelevanceFilter([parseFloat(e.target.value), relevanceFilter[1]])}
-                                className="w-20"
-                            />
-                            <span className="text-sm text-gray-600">-</span>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.1"
-                                value={relevanceFilter[1]}
-                                onChange={(e) => setRelevanceFilter([relevanceFilter[0], parseFloat(e.target.value)])}
-                                className="w-20"
-                            />
-                        </div>
+
 
                         <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing || loading} title="Refresh">
                             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -251,21 +223,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                                             ))}
                                         </div>
 
-                                        {/* Relevance Score */}
-                                        {contact.relevance_score !== undefined && (
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-xs text-gray-500">Relevance:</span>
-                                                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-blue-500 h-2 rounded-full"
-                                                        style={{ width: `${(contact.relevance_score || 0) * 100}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-xs text-gray-500">
-                                                    {Math.round((contact.relevance_score || 0) * 100)}%
-                                                </span>
-                                            </div>
-                                        )}
+
 
                                         {/* Event Counts */}
                                         {contact.event_counts && Object.keys(contact.event_counts).length > 0 && (

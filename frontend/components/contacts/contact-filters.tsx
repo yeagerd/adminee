@@ -11,8 +11,7 @@ interface ContactFiltersProps {
     onSourceFilterChange: (value: string) => void;
     providerFilter: string[];
     onProviderFilterChange: (providers: string[]) => void;
-    relevanceFilter: [number, number];
-    onRelevanceFilterChange: (range: [number, number]) => void;
+
     eventTypeFilter: string[];
     onEventTypeFilterChange: (types: string[]) => void;
     tagFilter: string[];
@@ -28,8 +27,7 @@ const ContactFilters: React.FC<ContactFiltersProps> = ({
     onSourceFilterChange,
     providerFilter,
     onProviderFilterChange,
-    relevanceFilter,
-    onRelevanceFilterChange,
+
     eventTypeFilter,
     onEventTypeFilterChange,
     tagFilter,
@@ -83,8 +81,7 @@ const ContactFilters: React.FC<ContactFiltersProps> = ({
         search ||
         sourceFilter !== 'all' ||
         providerFilter.length > 0 ||
-        relevanceFilter[0] > 0 ||
-        relevanceFilter[1] < 1 ||
+
         eventTypeFilter.length > 0 ||
         tagFilter.length > 0;
 
@@ -154,42 +151,7 @@ const ContactFilters: React.FC<ContactFiltersProps> = ({
                 </div>
             </div>
 
-            {/* Relevance Score Filter */}
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                    Relevance Score: {Math.round(relevanceFilter[0] * 100)}% - {Math.round(relevanceFilter[1] * 100)}%
-                </label>
-                <div className="space-y-2">
-                    <div className="flex gap-2">
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={relevanceFilter[0]}
-                            onChange={(e) => onRelevanceFilterChange([parseFloat(e.target.value), relevanceFilter[1]])}
-                            className="flex-1"
-                        />
-                        <span className="text-sm text-gray-500 min-w-[3rem]">
-                            {Math.round(relevanceFilter[0] * 100)}%
-                        </span>
-                    </div>
-                    <div className="flex gap-2">
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={relevanceFilter[1]}
-                            onChange={(e) => onRelevanceFilterChange([relevanceFilter[0], parseFloat(e.target.value)])}
-                            className="flex-1"
-                        />
-                        <span className="text-sm text-gray-500 min-w-[3rem]">
-                            {Math.round(relevanceFilter[1] * 100)}%
-                        </span>
-                    </div>
-                </div>
-            </div>
+
 
             {/* Event Type Filter */}
             <div className="space-y-2">
@@ -282,17 +244,7 @@ const ContactFilters: React.FC<ContactFiltersProps> = ({
                                 </button>
                             </Badge>
                         ))}
-                        {(relevanceFilter[0] > 0 || relevanceFilter[1] < 1) && (
-                            <Badge variant="outline" className="text-xs">
-                                Relevance: {Math.round(relevanceFilter[0] * 100)}% - {Math.round(relevanceFilter[1] * 100)}%
-                                <button
-                                    onClick={() => onRelevanceFilterChange([0, 1])}
-                                    className="ml-1 hover:text-red-500"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </Badge>
-                        )}
+
                         {eventTypeFilter.map((eventType) => (
                             <Badge key={eventType} variant="outline" className="text-xs">
                                 Event: {eventType}
