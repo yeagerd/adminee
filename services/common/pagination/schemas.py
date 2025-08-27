@@ -86,6 +86,7 @@ class CursorValidationError(BaseModel):
     """Validation error for cursor tokens."""
 
     error: str = Field(description="Validation error message")
+    error_code: str = Field(description="Error code for cursor validation failures")
     cursor_token: Optional[str] = Field(None, description="The invalid cursor token")
     reason: str = Field(description="Reason for validation failure")
 
