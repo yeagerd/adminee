@@ -724,15 +724,9 @@ class UserService:
 
                 logger.info(f"Found {len(users)} users with cursor pagination")
 
-                # Convert users to UserResponse objects only once, at the end
-                return CursorPaginationResponse(
-                    items=[UserResponse.from_orm(user) for user in users],
-                    next_cursor=response.get("next_cursor"),
-                    prev_cursor=response.get("prev_cursor"),
-                    has_next=has_next,
-                    has_prev=has_prev,
-                    limit=limit,
-                )
+                # Convert users to UserResponse objects and use response dict directly
+                response["items"] = [UserResponse.from_orm(user) for user in users]
+                return CursorPaginationResponse(**response)
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")
