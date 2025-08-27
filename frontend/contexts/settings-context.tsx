@@ -2,6 +2,7 @@
 
 import { userApi } from '@/api';
 import { getUserTimezone } from '@/lib/utils';
+import { TimezoneMode } from '@/types/api/user';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -78,7 +79,7 @@ export function useSettings() {
 }
 
 export interface UserPreferences {
-    timezone_mode: 'auto' | 'manual';
+    timezone_mode: TimezoneMode;
     manual_timezone: string;
     ui?: {
         sidebar_expanded?: boolean;
@@ -112,7 +113,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
                 // Type guard and defaults
                 const obj = (prefsRaw && typeof prefsRaw === 'object') ? prefsRaw as Record<string, unknown> : {};
                 const prefs: UserPreferences = {
-                    timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === 'auto' || obj.timezone_mode === 'manual')) ? obj.timezone_mode : 'auto',
+                    timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === TimezoneMode.AUTO || obj.timezone_mode === TimezoneMode.MANUAL)) ? obj.timezone_mode as TimezoneMode : TimezoneMode.AUTO,
                     manual_timezone: (typeof obj.manual_timezone === 'string') ? obj.manual_timezone : '',
                     ui: { sidebar_expanded: (obj.ui as { sidebar_expanded?: boolean } | undefined)?.sidebar_expanded ?? false },
                     privacy: {
@@ -124,7 +125,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
                     // ...other fields as needed
                 };
                 setUserPreferencesState(prefs);
-                const tz = (prefs.timezone_mode === 'manual' && prefs.manual_timezone)
+                const tz = (prefs.timezone_mode === TimezoneMode.MANUAL && prefs.manual_timezone)
                     ? prefs.manual_timezone
                     : getUserTimezone();
                 setEffectiveTimezone(tz);
@@ -138,7 +139,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     // Update preferences and recompute effectiveTimezone
     const setUserPreferences = async (prefs: Partial<UserPreferences>) => {
         const updated: UserPreferences = {
-            timezone_mode: prefs.timezone_mode ?? userPreferences?.timezone_mode ?? 'auto',
+            timezone_mode: prefs.timezone_mode ?? userPreferences?.timezone_mode ?? TimezoneMode.AUTO,
             manual_timezone: prefs.manual_timezone ?? userPreferences?.manual_timezone ?? '',
             ui: {
                 ...userPreferences?.ui,
@@ -152,7 +153,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         };
         await userApi.updateUserPreferences(updated as unknown as Record<string, unknown>);
         setUserPreferencesState(updated);
-        const tz = (updated.timezone_mode === 'manual' && updated.manual_timezone)
+        const tz = (updated.timezone_mode === TimezoneMode.MANUAL && updated.manual_timezone)
             ? updated.manual_timezone
             : getUserTimezone();
         console.log(`[UserPreferences] Updating timezone to: ${tz}`);

@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { useStreamingSetting } from '@/hooks/use-streaming-setting';
 import { getUserTimezone } from '@/lib/utils';
+import { TimezoneMode } from '@/types/api/user';
 import { Settings, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -120,8 +121,8 @@ export function ProfileContent() {
                                 <input
                                     type="radio"
                                     name="timezone_mode"
-                                    checked={userPreferences?.timezone_mode === 'auto'}
-                                    onChange={() => setUserPreferences({ timezone_mode: 'auto' })}
+                                    checked={userPreferences?.timezone_mode === TimezoneMode.AUTO}
+                                    onChange={() => setUserPreferences({ timezone_mode: TimezoneMode.AUTO })}
                                 />
                                 Automatic (use browser timezone)
                             </label>
@@ -129,13 +130,13 @@ export function ProfileContent() {
                                 <input
                                     type="radio"
                                     name="timezone_mode"
-                                    checked={userPreferences?.timezone_mode === 'manual'}
-                                    onChange={() => setUserPreferences({ timezone_mode: 'manual', manual_timezone: userPreferences?.manual_timezone || browserTimezone })}
+                                    checked={userPreferences?.timezone_mode === TimezoneMode.MANUAL}
+                                    onChange={() => setUserPreferences({ timezone_mode: TimezoneMode.MANUAL, manual_timezone: userPreferences?.manual_timezone || browserTimezone })}
                                 />
                                 Manual
                             </label>
                         </div>
-                        {userPreferences?.timezone_mode === 'manual' && (
+                        {userPreferences?.timezone_mode === TimezoneMode.MANUAL && (
                             <div className="mt-2">
                                 <select
                                     className="border rounded px-2 py-1"
