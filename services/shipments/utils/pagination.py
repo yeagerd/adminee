@@ -8,9 +8,9 @@ extending the common base pagination.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
+from services.common.api.v1.schemas import PaginationConfig
 from services.common.pagination.base import BaseCursorPagination, CursorInfo
 from services.common.pagination.query_builder import PostgreSQLCursorQueryBuilder
-from services.common.pagination.schemas import PaginationConfig
 
 
 def _parse_iso_datetime(dt_str: str) -> datetime:

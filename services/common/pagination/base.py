@@ -11,7 +11,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 from itsdangerous import BadSignature, SignatureExpired
 
-from .schemas import PaginationConfig
+from ..api.v1.schemas import PaginationConfig
 from .token_manager import TokenManager
 
 T = TypeVar("T")

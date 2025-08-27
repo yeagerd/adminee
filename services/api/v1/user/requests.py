@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from services.common.pagination.schemas import CursorPaginationRequest
+from services.common.api.v1.schemas import CursorPaginationRequest
 
 
 class UserFilterRequest(CursorPaginationRequest):

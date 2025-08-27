@@ -9,7 +9,7 @@ from common.pagination import PaginationConfig
 from common.pagination.base import CursorInfo
 
 from services.api.v1.user.requests import UserFilterRequest
-from services.common.pagination.schemas import (
+from services.common.api.v1.schemas import (
     CursorValidationError,
     PaginationError,
 )
