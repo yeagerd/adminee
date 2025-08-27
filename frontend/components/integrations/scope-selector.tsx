@@ -4,13 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import type { IntegrationScopeResponse } from '@/types/api/user';
 import { Calendar, FileText, Lock, Mail, Shield, User } from 'lucide-react';
 
-export interface OAuthScope {
-    name: string;
-    description: string;
-    required: boolean;
-    sensitive: boolean;
+export interface OAuthScope extends IntegrationScopeResponse {
+    // OAuthScope now extends IntegrationScopeResponse to maintain compatibility
+    // while using the proper API type
 }
 
 interface ScopeSelectorProps {
