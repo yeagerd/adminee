@@ -10,8 +10,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from services.office.models import Provider
-from services.office.schemas import (
+from services.api.v1.office import (
     ApiError,
     ApiResponse,
     CalendarEvent,
@@ -19,6 +18,7 @@ from services.office.schemas import (
     EmailAddress,
     EmailMessage,
     PaginatedResponse,
+    Provider,
 )
 
 

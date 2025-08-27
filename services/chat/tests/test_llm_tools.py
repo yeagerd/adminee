@@ -149,8 +149,8 @@ class TestLLMTools(BaseSelectiveHTTPIntegrationTest):
         """Test successful calendar events retrieval."""
         from datetime import datetime, timezone
 
+        from services.api.v1.office import CalendarEvent, Provider
         from services.chat.tools.data_tools import DataTools
-        from services.office.schemas import CalendarEvent, Provider
 
         # Test the DataTools directly
         data_tools = DataTools("user123")

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from services.api.v1.office import EmailMessage
 from services.common.events import EmailData, EmailEvent, EventMetadata
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
@@ -20,7 +21,6 @@ from services.office.models.backfill import (
     BackfillStatus,
     BackfillStatusEnum,
 )
-from services.office.schemas import EmailMessage
 
 logger = get_logger(__name__)
 
@@ -389,7 +389,7 @@ async def run_backfill_job(
                             logger.debug(
                                 f"Reconstructing EmailMessage from dict: {email.get('id', 'unknown')}"
                             )
-                            from services.office.schemas import EmailMessage
+                            from services.api.v1.office import EmailMessage
 
                             try:
                                 email = EmailMessage(**email)

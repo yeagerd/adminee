@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from services.api.v1.office import Provider
 from services.common.http_errors import ProviderError
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.clients.base import BaseAPIClient
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.token_manager import TokenData
-from services.office.models import Provider
 
 
 @pytest.fixture(autouse=True)

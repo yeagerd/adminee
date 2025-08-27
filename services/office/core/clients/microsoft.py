@@ -1,8 +1,8 @@
 from typing import Any, Dict, Optional, cast
 
+from services.api.v1.office import Provider
 from services.common.logging_config import get_logger
 from services.office.core.clients.base import BaseAPIClient
-from services.office.models import Provider
 
 logger = get_logger(__name__)
 

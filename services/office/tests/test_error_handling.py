@@ -11,6 +11,7 @@ import httpx
 import pytest
 from fastapi import Request
 
+from services.api.v1.office import Provider
 from services.common.http_errors import (
     ProviderError,
     RateLimitError,
@@ -18,7 +19,6 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.office.core.clients.google import GoogleAPIClient
-from services.office.models import Provider
 
 
 @pytest.fixture(autouse=True)

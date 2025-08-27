@@ -44,21 +44,21 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 - [ ] Ensure user service tests still pass with new import structure
 - [ ] Update user service documentation to reflect new API structure
 
-## Phase 3: Office Service Models (Priority: High - Core Integration Service)
+## Phase 3: Office Service Models (Priority: High - Core Integration Service) ✅
 
-- [ ] Move `services/office/schemas/` contents to `services/api/v1/office/`
-  - [ ] Move all schema files from the monolithic `__init__.py`
-  - [ ] Break down the large schema file into logical modules
-- [ ] Update `services/office/` imports to use `services.api.v1.office`
-- [ ] Update inter-service calls in other services that import office schemas
-  - [ ] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
-  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
-  - [ ] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
-  - [ ] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api.v1.office`
-  - [ ] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api.v1.office`
-  - [ ] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api.v1.office`
-  - [ ] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
-- [ ] Update office service tests and ensure they pass
+- [x] Move `services/office/schemas/` contents to `services/api/v1/office/`
+  - [x] Move all schema files from the monolithic `__init__.py`
+  - [x] Break down the large schema file into logical modules
+- [x] Update `services/office/` imports to use `services.api.v1.office`
+- [x] Update inter-service calls in other services that import office schemas
+  - [x] **Chat Service**: Update `services/chat/schemas/office_responses.py` to import `CalendarEvent` from `services.api.v1.office`
+  - [x] **Chat Service Tests**: Update `services/chat/tests/test_llm_tools.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [x] **Chat Service Tests**: Update `services/chat/tests/test_timezone_functionality.py` to import `CalendarEvent, Provider` from `services.api.v1.office`
+  - [x] **Meetings Service**: Update `services/meetings/services/calendar_integration.py` to import `EmailAddress, CreateCalendarEventRequest` from `services.api/v1.office`
+  - [x] **Demos**: Update `services/demos/office_full.py` to import `ApiResponse` from `services.api/v1.office`
+  - [x] **Demos**: Update `services/demos/office.py` to import `EmailMessage` from `services.api/v1.office`
+  - [x] **Office Service Internal**: Update all internal office service files to use `services.api.v1.office` instead of local schemas
+- [x] Update office service tests and ensure they pass
 - [ ] Update office service documentation
 
 ## Phase 4: Meetings Service Models (Priority: Medium)

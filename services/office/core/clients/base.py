@@ -13,9 +13,10 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from services.api.v1.office import ApiCallStatus, Provider
 from services.common.http_errors import ErrorCode, ProviderError
 from services.common.logging_config import get_logger
-from services.office.models import ApiCall, ApiCallStatus, Provider
+from services.office.models import ApiCall
 
 # Configure logging
 logger = get_logger(__name__)

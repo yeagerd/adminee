@@ -12,6 +12,20 @@ from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 
+from services.api.v1.office import (
+    ApiResponse,
+    AvailabilityApiResponse,
+    AvailabilityResponse,
+    AvailableSlot,
+    CalendarEvent,
+    CalendarEventApiResponse,
+    CalendarEventDetailResponse,
+    CalendarEventListApiResponse,
+    CalendarEventResponse,
+    CreateCalendarEventRequest,
+    Provider,
+    TimeRange,
+)
 from services.common.http_errors import (
     AuthError,
     NotFoundError,
@@ -25,20 +39,6 @@ from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import normalize_google_calendar_event
-from services.office.models import Provider
-from services.office.schemas import (
-    ApiResponse,
-    AvailabilityApiResponse,
-    AvailabilityResponse,
-    AvailableSlot,
-    CalendarEvent,
-    CalendarEventApiResponse,
-    CalendarEventDetailResponse,
-    CalendarEventListApiResponse,
-    CalendarEventResponse,
-    CreateCalendarEventRequest,
-    TimeRange,
-)
 
 logger = get_logger(__name__)
 
