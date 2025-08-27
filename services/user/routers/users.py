@@ -33,6 +33,7 @@ from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.api.v1.schemas import CursorPaginationResponse
 from services.common.http_errors import (
     BrieflyAPIError,
     ErrorCode,
@@ -41,7 +42,6 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.common.logging_config import get_logger
-from services.common.pagination.schemas import CursorPaginationResponse
 from services.user.auth import get_current_user
 from services.user.auth.service_auth import service_permission_required
 from services.user.models.integration import IntegrationProvider, IntegrationStatus

@@ -6,16 +6,16 @@ This module tests the common pagination components used across all Briefly servi
 
 from datetime import datetime, timezone
 
-from services.common.pagination.base import BaseCursorPagination, CursorInfo
-from services.common.pagination.query_builder import (
-    PostgreSQLCursorQueryBuilder,
-    SQLAlchemyCursorQueryBuilder,
-)
-from services.common.pagination.schemas import (
+from services.common.api.v1.schemas import (
     CursorData,
     CursorPaginationRequest,
     CursorPaginationResponse,
     PaginationConfig,
+)
+from services.common.pagination.base import BaseCursorPagination, CursorInfo
+from services.common.pagination.query_builder import (
+    PostgreSQLCursorQueryBuilder,
+    SQLAlchemyCursorQueryBuilder,
 )
 from services.common.pagination.token_manager import TokenManager
 

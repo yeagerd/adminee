@@ -15,8 +15,8 @@ from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.api.v1.schemas import CursorPaginationResponse
 from services.common.http_errors import NotFoundError
-from services.common.pagination.schemas import CursorPaginationResponse
 from services.user.models.user import User
 from services.user.services.user_service import get_user_service
 

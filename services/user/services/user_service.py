@@ -20,8 +20,8 @@ from services.api.v1.user.user import (
     UserResponse,
     UserUpdate,
 )
+from services.common.api.v1.schemas import CursorPaginationResponse
 from services.common.http_errors import NotFoundError, ValidationError
-from services.common.pagination.schemas import CursorPaginationResponse
 from services.user.database import get_async_session
 from services.user.models.user import User
 from services.user.services.audit_service import audit_logger
