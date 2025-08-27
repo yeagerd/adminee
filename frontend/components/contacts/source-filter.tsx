@@ -14,16 +14,22 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
     onSourceFilterChange,
     availableSources,
 }) => {
+    const [isOpen, setIsOpen] = React.useState(false);
     const allSources = ['office', 'email', 'calendar', 'documents'];
-    const allSourcesSelected = sourceFilter.length === 0 || sourceFilter.length === allSources.length;
+    
+    // "All Sources" is selected when no specific sources are filtered
+    const allSourcesSelected = sourceFilter.length === 0;
+    
+    // Get the sources that are actually available in the data
+    const effectiveAvailableSources = allSources.filter(source => availableSources.includes(source));
 
     const handleAllSourcesToggle = () => {
         if (allSourcesSelected) {
-            // If all sources are selected, clear the selection
-            onSourceFilterChange([]);
+            // If "All Sources" is selected, select all available sources
+            onSourceFilterChange([...effectiveAvailableSources]);
         } else {
-            // If not all sources are selected, select all available sources
-            onSourceFilterChange([...availableSources]);
+            // If specific sources are selected, clear the selection (back to "All Sources")
+            onSourceFilterChange([]);
         }
     };
 
@@ -71,19 +77,33 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
         }
     };
 
+    // Handle click outside to close dropdown
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Element;
+            if (!target.closest('.source-filter-dropdown')) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     return (
-        <div className="relative">
+        <div className="relative source-filter-dropdown">
             <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {}} // This will be controlled by parent
+                onClick={() => setIsOpen(!isOpen)}
                 className="min-w-[140px] justify-between"
             >
                 <span>Source Filter</span>
-                <span className="ml-2">▼</span>
+                <span className={`ml-2 transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </Button>
 
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px] z-10">
+            {isOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px] z-10">
                 <div className="space-y-3">
                     {/* All Sources Option */}
                     <div className="border-b border-gray-200 pb-2">
@@ -165,7 +185,8 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
                         </div>
                     )}
                 </div>
-            </div>
+                </div>
+            )}
         </div>
     );
 };
