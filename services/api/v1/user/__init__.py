@@ -4,7 +4,15 @@ Pydantic schemas package for User Management Service.
 Exports all schema models for API request/response validation.
 """
 
-from services.user.schemas.integration import (
+from services.api.v1.user.health import (
+    ConfigurationStatus,
+    DatabaseStatus,
+    DependencyStatus,
+    PerformanceStatus,
+    ReadinessChecks,
+    ReadinessStatus,
+)
+from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationErrorResponse,
@@ -31,11 +39,19 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.user.schemas.pagination import (
-    UserListResponse,
-    UserSearchRequest,
+from services.api.v1.user.preferences import (
+    AIPreferencesSchema,
+    IntegrationPreferencesSchema,
+    NotificationPreferencesSchema,
+    PreferencesExportResponse,
+    PreferencesImportRequest,
+    PreferencesResetRequest,
+    PrivacyPreferencesSchema,
+    UIPreferencesSchema,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
 )
-from services.user.schemas.user import (
+from services.api.v1.user.user import (
     UserBase,
     UserCreate,
     UserDeleteResponse,
@@ -49,10 +65,8 @@ __all__ = [
     "UserCreate",
     "UserUpdate",
     "UserResponse",
-    "UserListResponse",
     "UserDeleteResponse",
     "UserOnboardingUpdate",
-    "UserSearchRequest",
     # Integration schemas
     "IntegrationResponse",
     "IntegrationListResponse",
@@ -79,4 +93,22 @@ __all__ = [
     "ProviderListResponse",
     "ScopeValidationRequest",
     "ScopeValidationResponse",
+    # Preferences schemas
+    "AIPreferencesSchema",
+    "IntegrationPreferencesSchema",
+    "NotificationPreferencesSchema",
+    "PrivacyPreferencesSchema",
+    "PreferencesExportResponse",
+    "PreferencesImportRequest",
+    "PreferencesResetRequest",
+    "UserPreferencesResponse",
+    "UserPreferencesUpdate",
+    "UIPreferencesSchema",
+    # Health schemas
+    "DependencyStatus",
+    "ConfigurationStatus",
+    "DatabaseStatus",
+    "PerformanceStatus",
+    "ReadinessChecks",
+    "ReadinessStatus",
 ]

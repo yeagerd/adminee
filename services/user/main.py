@@ -14,6 +14,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from services.api.v1.user.health import (
+    ConfigurationStatus,
+    DatabaseStatus,
+    DependencyStatus,
+    PerformanceStatus,
+    ReadinessChecks,
+    ReadinessStatus,
+)
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
@@ -38,14 +46,6 @@ from services.user.routers import (
     preferences_router,
     provider_router,
     users_router,
-)
-from services.user.schemas.health import (
-    ConfigurationStatus,
-    DatabaseStatus,
-    DependencyStatus,
-    PerformanceStatus,
-    ReadinessChecks,
-    ReadinessStatus,
 )
 from services.user.services.integration_service import (
     get_integration_service,

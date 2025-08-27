@@ -305,12 +305,13 @@ class TestCursorValidationError:
         """Test cursor validation error."""
         error = CursorValidationError(
             error="Invalid cursor token",
+            error_code="CURSOR_VALIDATION_FAILED",
             cursor_token="invalid-token",
             reason="Token expired",
         )
 
         assert error.error == "Invalid cursor token"
-        assert error.error_code == "INVALID_CURSOR"
+        assert error.error_code == "CURSOR_VALIDATION_FAILED"
         assert error.cursor_token == "invalid-token"
         assert error.reason == "Token expired"
 

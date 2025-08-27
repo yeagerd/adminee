@@ -11,13 +11,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException, status
 
-from services.common.http_errors import NotFoundError
-from services.user.models.user import User
-from services.user.schemas.pagination import UserListResponse
-from services.user.schemas.user import (
+from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.http_errors import NotFoundError
+from services.common.pagination.schemas import CursorPaginationResponse
+from services.user.models.user import User
 from services.user.services.user_service import get_user_service
 
 
@@ -42,6 +42,7 @@ class TestUserProfileEndpoints:
         user.first_name = "Test"
         user.last_name = "User"
         user.profile_image_url = "https://example.com/avatar.jpg"
+        user.preferred_provider = None
         user.onboarding_completed = False
         user.onboarding_step = "profile_setup"
         user.created_at = datetime.now(timezone.utc)
@@ -52,8 +53,8 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_search_users_success(self):
         """Test successful user search."""
-        mock_search_results = UserListResponse(
-            users=[
+        mock_search_results = CursorPaginationResponse(
+            items=[
                 {
                     "id": 1,
                     "external_auth_id": "user_123",
@@ -91,8 +92,8 @@ class TestUserProfileEndpoints:
                 current_user_id="user_123",
             )
 
-            assert len(result.users) == 1
-            assert result.users[0]["email"] == "test@example.com"
+            assert len(result.items) == 1
+            assert result.items[0]["email"] == "test@example.com"
 
     @pytest.mark.asyncio
     async def test_search_users_with_filters(self):
@@ -130,7 +131,7 @@ class TestUserProfileEndpoints:
                 "get_user_by_external_auth_id_auto_detect",
                 return_value=mock_user,
             ),
-            patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
+            patch("services.api.v1.user.user.UserResponse.from_orm") as mock_from_orm,
         ):
             mock_response = UserResponse(
                 id=1,
@@ -202,7 +203,7 @@ class TestUserProfileEndpoints:
             assert retrieved_user.email == "integration@test.com"
 
             # Test updating user
-            from services.user.schemas.user import UserUpdate
+            from services.api.v1.user.user import UserUpdate
 
             update_data = UserUpdate(first_name="Updated")
             updated_user = await get_user_service().update_user(1, update_data)

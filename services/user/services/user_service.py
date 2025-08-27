@@ -10,14 +10,8 @@ from typing import List, Optional
 
 from sqlmodel import select
 
-from services.common.http_errors import NotFoundError, ValidationError
-from services.user.database import get_async_session
-from services.user.models.user import User
-from services.user.schemas.pagination import (
-    UserListResponse,
-    UserSearchRequest,
-)
-from services.user.schemas.user import (
+from services.api.v1.user.requests import UserFilterRequest
+from services.api.v1.user.user import (
     EmailResolutionRequest,
     EmailResolutionResponse,
     UserCreate,
@@ -26,6 +20,10 @@ from services.user.schemas.user import (
     UserResponse,
     UserUpdate,
 )
+from services.common.http_errors import NotFoundError, ValidationError
+from services.common.pagination.schemas import CursorPaginationResponse
+from services.user.database import get_async_session
+from services.user.models.user import User
 from services.user.services.audit_service import audit_logger
 from services.user.utils.email_collision import EmailCollisionDetector
 
@@ -550,7 +548,9 @@ class UserService:
                 value=value,
             )
 
-    async def search_users(self, search_request: UserSearchRequest) -> UserListResponse:
+    async def search_users(
+        self, search_request: UserFilterRequest
+    ) -> CursorPaginationResponse:
         """
         Search users with cursor-based pagination.
 
@@ -714,9 +714,9 @@ class UserService:
                         limit=limit,
                     )
 
-                # Create pagination response
+                # Create pagination response (pass raw user objects)
                 response = pagination.create_user_pagination_response(
-                    users=[UserResponse.from_orm(user) for user in users],
+                    users=users,  # Pass raw user objects, not converted ones
                     cursor_info=current_cursor_info,
                     has_next=has_next,
                     has_prev=has_prev,
@@ -724,7 +724,9 @@ class UserService:
 
                 logger.info(f"Found {len(users)} users with cursor pagination")
 
-                return UserListResponse(**response)
+                # Convert users to UserResponse objects and use response dict directly
+                response["items"] = [UserResponse.from_orm(user) for user in users]
+                return CursorPaginationResponse(**response)
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")

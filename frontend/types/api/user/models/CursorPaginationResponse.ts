@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Response schema for user listing with cursor pagination.
+ * Base response schema for cursor-based pagination.
  */
-export type UserListResponse = {
-    /**
-     * List of users
-     */
-    users: Array<Record<string, any>>;
+export type CursorPaginationResponse = {
+    items: Array<any>;
     /**
      * Cursor token for next page
      */
@@ -19,15 +16,15 @@ export type UserListResponse = {
      */
     prev_cursor?: (string | null);
     /**
-     * Whether there are more users after this page
+     * Whether there are more items after this page
      */
     has_next: boolean;
     /**
-     * Whether there are users before this page
+     * Whether there are items before this page
      */
     has_prev: boolean;
     /**
-     * Number of users per page
+     * Number of items per page
      */
     limit: number;
 };

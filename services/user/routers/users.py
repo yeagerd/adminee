@@ -15,18 +15,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Path, Query
 
-from services.common.http_errors import (
-    BrieflyAPIError,
-    ErrorCode,
-    NotFoundError,
-    ServiceError,
-    ValidationError,
-)
-from services.common.logging_config import get_logger
-from services.user.auth import get_current_user
-from services.user.auth.service_auth import service_permission_required
-from services.user.models.integration import IntegrationProvider, IntegrationStatus
-from services.user.schemas.integration import (
+from services.api.v1.user.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationHealthResponse,
@@ -39,14 +28,23 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.user.schemas.pagination import (
-    UserListResponse,
-    UserSearchRequest,
-)
-from services.user.schemas.user import (
+from services.api.v1.user.requests import UserFilterRequest
+from services.api.v1.user.user import (
     UserCreate,
     UserResponse,
 )
+from services.common.http_errors import (
+    BrieflyAPIError,
+    ErrorCode,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
+from services.common.logging_config import get_logger
+from services.common.pagination.schemas import CursorPaginationResponse
+from services.user.auth import get_current_user
+from services.user.auth.service_auth import service_permission_required
+from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
 
@@ -395,7 +393,7 @@ async def get_provider_scopes(
 
 @router.get(
     "/search",
-    response_model=UserListResponse,
+    response_model=CursorPaginationResponse,
     summary="Search users",
     description="Search users with cursor-based pagination. For admin/service use.",
     responses={
@@ -419,7 +417,7 @@ async def search_users(
         None, description="Filter by onboarding status"
     ),
     current_user_id: str = Depends(get_current_user),
-) -> UserListResponse:
+) -> CursorPaginationResponse:
     """
     Search users with cursor-based pagination.
 
@@ -430,7 +428,7 @@ async def search_users(
     Regular users should use other endpoints for their own data.
     """
     try:
-        search_request = UserSearchRequest(
+        search_request = UserFilterRequest(
             cursor=cursor,
             limit=limit,
             direction=direction,
@@ -442,7 +440,7 @@ async def search_users(
         search_results = await get_user_service().search_users(search_request)
 
         logger.info(
-            f"User search performed by {current_user_id}, found {len(search_results.users)} results"
+            f"User search performed by {current_user_id}, found {len(search_results.items)} results"
         )
         return search_results
 

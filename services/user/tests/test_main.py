@@ -40,7 +40,7 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         response = self.client.get("/v1/users/search")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "users" in data or "total" in data  # Check for valid response structure
+        assert "items" in data  # Check for valid cursor pagination response structure
 
         # Test: /v1/users/me with mocked authentication (should succeed)
         response = self.client.get("/v1/users/me")

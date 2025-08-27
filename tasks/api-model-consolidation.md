@@ -20,13 +20,13 @@ Move all Pydantic models from individual services into `services/api/v1/` to ena
 
 ## Phase 2: User Service Models (Priority: High - Most Referenced)
 
-- [ ] Move `services/user/schemas/` contents to `services/api/v1/user/`
-  - [ ] Move `user.py` schemas
-  - [ ] Move `integration.py` schemas  
-  - [ ] Move `preferences.py` schemas
-  - [ ] Move `pagination.py` schemas
-  - [ ] Move `health.py` schemas
-- [ ] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
+- [x] Move `services/user/schemas/` contents to `services/api/v1/user/`
+  - [x] Move `user.py` schemas
+  - [x] Move `integration.py` schemas  
+  - [x] Move `preferences.py` schemas
+  - [x] Move `pagination.py` schemas
+  - [x] Move `health.py` schemas
+- [x] Update `services/user/` imports to use `services.api.v1.user` instead of local schemas
 - [ ] Update any inter-service calls that import user schemas to use the new API package
   - [ ] Update `services/demos/user_management_demo.py` to use `services.api.v1.user` instead of `services.user.schemas`
   - [ ] Update `services/demos/vespa_backfill.py` user service HTTP calls to use shared user schemas for validation

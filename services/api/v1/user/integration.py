@@ -10,16 +10,21 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from services.user.models.integration import (
-    IntegrationProvider,
-    IntegrationStatus,
-)
-from services.user.utils.validation import (
+from services.common.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,
     validate_json_safe_string,
     validate_url,
 )
+from services.user.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
+)
+
+
+def get_current_utc_timestamp() -> datetime:
+    """Get current UTC timestamp for default values."""
+    return datetime.now(timezone.utc)
 
 
 class IntegrationScopeResponse(BaseModel):
@@ -253,9 +258,21 @@ class IntegrationUpdateRequest(BaseModel):
     @field_validator("scopes")
     @classmethod
     def validate_scopes(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate OAuth scopes."""
+        """Enhanced OAuth scopes validation with comprehensive security checks."""
         if v is not None:
-            v = list(set(scope.strip() for scope in v if scope.strip()))
+            cleaned_scopes = []
+            for scope in v:
+                if scope and scope.strip():
+                    # Check for SQL injection patterns
+                    check_sql_injection_patterns(scope, "oauth_scope")
+
+                    # Sanitize the scope
+                    sanitized_scope = sanitize_text_input(scope, max_length=200)
+                    if sanitized_scope:
+                        cleaned_scopes.append(sanitized_scope)
+
+            # Remove duplicates
+            v = list(set(cleaned_scopes))
             if not v:
                 return None
         return v
@@ -425,7 +442,7 @@ class IntegrationErrorResponse(BaseModel):
     )
     integration_id: Optional[int] = Field(None, description="Related integration ID")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=get_current_utc_timestamp,
         description="Error timestamp",
     )
 

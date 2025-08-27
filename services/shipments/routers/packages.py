@@ -182,6 +182,7 @@ async def list_packages(
             status_code=400,
             detail=CursorValidationError(
                 error="Cursor token too long",
+                error_code="CURSOR_TOKEN_TOO_LONG",
                 cursor_token=cursor[:50] + "...",  # Truncate for security
                 reason="Token length exceeds maximum allowed",
             ).dict(),
@@ -192,6 +193,7 @@ async def list_packages(
             status_code=400,
             detail=CursorValidationError(
                 error="Invalid pagination direction",
+                error_code="INVALID_PAGINATION_DIRECTION",
                 cursor_token=cursor,
                 reason="Direction must be 'next' or 'prev'",
             ).dict(),
@@ -206,6 +208,7 @@ async def list_packages(
                 status_code=400,
                 detail=CursorValidationError(
                     error="Invalid or expired cursor token",
+                    error_code="CURSOR_TOKEN_INVALID",
                     cursor_token=cursor,
                     reason="Token validation failed",
                 ).dict(),
