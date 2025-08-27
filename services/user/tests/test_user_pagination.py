@@ -245,6 +245,19 @@ class TestCursorValidationError:
         assert error.cursor_token == "invalid-token"
         assert error.reason == "Token expired"
 
+    def test_cursor_validation_error_defaults(self):
+        """Test cursor validation error with default values."""
+        error = CursorValidationError(
+            error="Invalid cursor token",
+            cursor_token="invalid-token",
+            reason="Token expired",
+        )
+
+        assert error.error == "Invalid cursor token"
+        assert error.error_code == "INVALID_CURSOR"  # Default value
+        assert error.cursor_token == "invalid-token"
+        assert error.reason == "Token expired"
+
 
 class TestPaginationError:
     """Test pagination error schema."""
