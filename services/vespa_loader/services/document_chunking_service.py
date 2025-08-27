@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from services.vespa_loader.models.document_chunking import (
+from services.api.v1.vespa.document_chunking import (
     ChunkingResult,
     ChunkingRule,
     ChunkingStrategy,
