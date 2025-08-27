@@ -49,6 +49,7 @@ from services.api.v1.user.preferences import (
     PrivacyPreferencesSchema,
     UserPreferencesResponse,
     UserPreferencesUpdate,
+    UIPreferencesSchema,
 )
 from services.api.v1.user.user import (
     UserBase,
@@ -93,19 +94,16 @@ __all__ = [
     "ScopeValidationRequest",
     "ScopeValidationResponse",
     # Preferences schemas
-    "AIPreferences",
     "AIPreferencesSchema",
     "IntegrationPreferencesSchema",
-    "NotificationPreferences",
     "NotificationPreferencesSchema",
-    "PrivacyPreferences",
     "PrivacyPreferencesSchema",
+    "PreferencesExportResponse",
     "PreferencesImportRequest",
     "PreferencesResetRequest",
-    "PreferencesResponse",
-    "UIPreferences",
+    "UserPreferencesResponse",
+    "UserPreferencesUpdate",
     "UIPreferencesSchema",
-    "UserPreferences",
     # Health schemas
     "DependencyStatus",
     "ConfigurationStatus",
