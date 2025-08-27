@@ -22,6 +22,7 @@ from services.api.v1.user.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationResponse,
+    IntegrationScopeResponse,
     OAuthCallbackRequest,
     OAuthCallbackResponse,
     OAuthStartRequest,
@@ -48,7 +49,6 @@ from services.user.auth.service_auth import service_permission_required
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
-from services.api.v1.user.integration import IntegrationScopeResponse
 
 logger = get_logger(__name__)
 
