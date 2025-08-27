@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { useSession } from 'next-auth/react';
-import { IntegrationsContent } from '../integrations-content';
 import { userApi } from '@/api';
 import { INTEGRATION_STATUS } from '@/lib/constants';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useSession } from 'next-auth/react';
+import { IntegrationsContent } from '../integrations-content';
 
 // Mock Next.js navigation
 jest.mock('next/navigation', () => ({
@@ -126,7 +126,7 @@ describe('IntegrationsContent', () => {
             // Find and click the gear icon (settings button) for the Microsoft integration
             const settingsButton = screen.getByTitle('Edit permissions');
             expect(settingsButton).toBeInTheDocument();
-            
+
             fireEvent.click(settingsButton);
 
             // Wait for the dialog to open and scopes to load
@@ -137,7 +137,7 @@ describe('IntegrationsContent', () => {
             // Verify that the scope selector is rendered with the loaded scopes
             expect(screen.getByText('Required Permissions')).toBeInTheDocument();
             expect(screen.getByText('Optional Permissions')).toBeInTheDocument();
-            
+
             // Check that specific scopes are displayed
             expect(screen.getByText('OpenID Connect authentication')).toBeInTheDocument();
             expect(screen.getByText('Read and send email messages')).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe('IntegrationsContent', () => {
                 // Required scopes should be visible but not editable
                 expect(screen.getByText('Required Permissions')).toBeInTheDocument();
                 expect(screen.getByText('Optional Permissions')).toBeInTheDocument();
-                
+
                 // Check that the summary section shows the total count
                 expect(screen.getByText('Total: 4 permissions')).toBeInTheDocument();
             });

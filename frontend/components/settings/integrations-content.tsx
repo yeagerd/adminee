@@ -1,7 +1,6 @@
 'use client';
 
 import { userApi } from '@/api';
-import type { IntegrationResponse } from '@/types/api/user';
 import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
+import type { IntegrationResponse } from '@/types/api/user';
 import { IntegrationProvider } from '@/types/api/user';
 import { AlertCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
