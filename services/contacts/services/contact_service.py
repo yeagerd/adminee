@@ -11,10 +11,10 @@ from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select as sqlmodel_select
 
+from services.api.v1.contacts import ContactCreate, EmailContactUpdate
 from services.common.http_errors import NotFoundError, ValidationError
 from services.common.logging_config import get_logger
 from services.contacts.models.contact import Contact
-from services.contacts.schemas.contact import ContactCreate, EmailContactUpdate
 from services.contacts.services.office_integration_service import (
     OfficeIntegrationService,
 )

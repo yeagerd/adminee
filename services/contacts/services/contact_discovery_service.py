@@ -13,6 +13,7 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select as sqlmodel_select
 
+from services.api.v1.contacts import EmailContactUpdate
 from services.common.events import (
     CalendarEvent,
     ContactEvent,
@@ -24,7 +25,6 @@ from services.common.events.todo_events import TodoData, TodoEvent
 from services.common.logging_config import get_logger
 from services.common.pubsub_client import PubSubClient
 from services.contacts.models.contact import Contact
-from services.contacts.schemas.contact import EmailContactUpdate
 
 logger = get_logger(__name__)
 
