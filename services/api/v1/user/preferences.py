@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from services.common.validation import (
     check_sql_injection_patterns,
@@ -536,7 +536,9 @@ class UserPreferencesUpdate(BaseModel):
 
     @field_validator("manual_timezone")
     @classmethod
-    def validate_manual_timezone(cls, v: Optional[str], info) -> Optional[str]:
+    def validate_manual_timezone(
+        cls, v: Optional[str], info: ValidationInfo
+    ) -> Optional[str]:
         """Validate manual timezone when mode is manual."""
         if v is not None and v.strip():
             # Validate IANA format using the common validation function
