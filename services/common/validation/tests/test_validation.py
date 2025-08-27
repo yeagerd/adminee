@@ -38,8 +38,8 @@ class TestValidationUtilities:
 
     def test_sanitize_text_input_dangerous_chars(self):
         """Test dangerous character removal."""
-        with pytest.raises(ValidationError, match="Text contains HTML tags or scripts"):
-            sanitize_text_input('Hello"World<test>')
+        with pytest.raises(ValidationError, match="Text contains dangerous characters"):
+            sanitize_text_input('Hello"World;test\'')
 
     def test_sanitize_text_input_max_length(self):
         """Test maximum length enforcement."""
