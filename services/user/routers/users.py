@@ -48,6 +48,7 @@ from services.user.auth.service_auth import service_permission_required
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
+from services.api.v1.user.integration import IntegrationScopeResponse
 
 logger = get_logger(__name__)
 
@@ -371,13 +372,13 @@ async def get_provider_scopes(
         scopes = []
         for scope in provider_config.scopes:
             scopes.append(
-                {
-                    "name": scope.name,
-                    "description": scope.description,
-                    "required": scope.required,
-                    "sensitive": scope.sensitive,
-                    "granted": False,  # Provider scopes are not yet granted
-                }
+                IntegrationScopeResponse(
+                    name=scope.name,
+                    description=scope.description,
+                    required=scope.required,
+                    sensitive=scope.sensitive,
+                    granted=False,  # Provider scopes are not yet granted
+                )
             )
 
         return ProviderScopesResponse(
