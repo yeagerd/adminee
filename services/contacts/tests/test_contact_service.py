@@ -11,8 +11,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from services.api.v1.contacts import ContactCreate, EmailContactUpdate
 from services.contacts.models.contact import Contact
-from services.contacts.schemas.contact import ContactCreate, EmailContactUpdate
 from services.contacts.services.contact_service import ContactService
 
 

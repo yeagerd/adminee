@@ -11,12 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.common.http_errors import NotFoundError, ValidationError
-from services.common.logging_config import get_logger, request_id_var
-from services.contacts.auth import service_permission_required
-from services.contacts.database import get_async_session
-from services.contacts.models.contact import Contact
-from services.contacts.schemas.contact import (
+from services.api.v1.contacts import (
     ContactCreate,
     ContactListResponse,
     ContactResponse,
@@ -25,6 +20,11 @@ from services.contacts.schemas.contact import (
     EmailContactSearchResult,
     EmailContactUpdate,
 )
+from services.common.http_errors import NotFoundError, ValidationError
+from services.common.logging_config import get_logger, request_id_var
+from services.contacts.auth import service_permission_required
+from services.contacts.database import get_async_session
+from services.contacts.models.contact import Contact
 from services.contacts.services.contact_discovery_service import ContactDiscoveryService
 from services.contacts.services.contact_service import ContactService
 

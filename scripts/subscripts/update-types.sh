@@ -163,7 +163,7 @@ update_all_types() {
     echo "=================================================================="
     
     # Services to exclude from frontend type generation (same as generate-openapi-schemas.sh)
-    local EXCLUDED_SERVICES="common email_sync demos briefly.egg-info __pycache__"
+    local EXCLUDED_SERVICES="common email_sync demos briefly.egg-info __pycache__ api"
     
     # Get list of services that have OpenAPI schemas
     local services=()
