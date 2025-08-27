@@ -6,6 +6,7 @@ import type { AIPreferencesSchema } from './AIPreferencesSchema';
 import type { IntegrationPreferencesSchema } from './IntegrationPreferencesSchema';
 import type { NotificationPreferencesSchema } from './NotificationPreferencesSchema';
 import type { PrivacyPreferencesSchema } from './PrivacyPreferencesSchema';
+import type { TimezoneMode } from './TimezoneMode';
 import type { UIPreferencesSchema } from './UIPreferencesSchema';
 /**
  * User preferences update schema for partial updates.
@@ -34,7 +35,7 @@ export type UserPreferencesUpdate = {
     /**
      * Timezone mode: 'auto' or 'manual'
      */
-    timezone_mode?: (string | null);
+    timezone_mode?: (TimezoneMode | null);
     /**
      * Manual timezone override (IANA name, or empty if not set)
      */
