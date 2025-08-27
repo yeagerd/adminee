@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from services.api.v1.vespa.vespa_types import VespaDocumentType
 from services.common.events.base_events import EventMetadata
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
 from services.common.events.contact_events import ContactData, ContactEvent
@@ -20,7 +21,6 @@ from services.vespa_loader.document_factory import (
     VespaDocumentFactory,
     parse_event_by_topic,
 )
-from services.vespa_loader.vespa_types import VespaDocumentType
 
 
 class TestVespaDocumentFactory:

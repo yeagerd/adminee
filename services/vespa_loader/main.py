@@ -13,6 +13,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from services.api.v1.vespa.vespa_types import VespaDocumentType
 from services.common.http_errors import (
     AuthError,
     ErrorCode,
@@ -34,7 +35,6 @@ from services.vespa_loader.embeddings import EmbeddingGenerator
 from services.vespa_loader.ingest_service import ingest_document_service
 from services.vespa_loader.pubsub_consumer import PubSubConsumer
 from services.vespa_loader.vespa_client import VespaClient
-from services.vespa_loader.vespa_types import VespaDocumentType
 
 # Setup telemetry
 setup_telemetry("vespa-loader", "1.0.0")
@@ -315,7 +315,7 @@ async def ingest_document(
     """Ingest a document into Vespa"""
     try:
         # Convert Dict to VespaDocumentType
-        from services.vespa_loader.vespa_types import VespaDocumentType
+        from services.api.v1.vespa.vespa_types import VespaDocumentType
 
         # Create a VespaDocumentType from the input data
         vespa_document = VespaDocumentType(

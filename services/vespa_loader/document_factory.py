@@ -8,13 +8,13 @@ into Vespa-ready document structures for indexing.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from services.api.v1.vespa.vespa_types import VespaDocumentType
 from services.common.events.calendar_events import CalendarEvent, CalendarEventData
 from services.common.events.contact_events import ContactData, ContactEvent
 from services.common.events.document_events import DocumentData, DocumentEvent
 from services.common.events.email_events import EmailData, EmailEvent
 from services.common.events.todo_events import TodoData, TodoEvent
 from services.common.logging_config import get_logger
-from services.vespa_loader.vespa_types import VespaDocumentType
 
 logger = get_logger(__name__)
 
