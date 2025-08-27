@@ -21,7 +21,8 @@ dependencies = [
 test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
-    "respx"
+    "respx",
+    "gocept.testdb>=2.0.0",
 ]
 
 [build-system]
