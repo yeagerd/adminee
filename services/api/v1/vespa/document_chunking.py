@@ -98,8 +98,6 @@ class DocumentChunk(BaseModel):
         description="When this chunk was last updated",
     )
 
-
-
     def to_vespa_document(self, user_id: str, provider: str) -> Dict[str, Any]:
         """Convert to Vespa document format."""
         return {
