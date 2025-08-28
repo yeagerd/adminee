@@ -47,6 +47,16 @@ async def session():
 
 
 @pytest.fixture
+async def setup_tables():
+    """Set up and tear down tables for each test."""
+    # Create tables before each test
+    await test_db.create_tables()
+    yield
+    # Drop tables after each test
+    await test_db.drop_tables()
+
+
+@pytest.fixture
 def contact_service():
     """Create ContactService instance."""
     return ContactService()
@@ -59,14 +69,6 @@ class TestContactServiceConversionExample(PostgresTestDB):
     This class demonstrates how to convert existing tests that use mocks
     to tests that use real PostgreSQL databases.
     """
-
-    async def async_setup(self):
-        """Async setup - create tables."""
-        await test_db.create_tables()
-
-    async def async_teardown(self):
-        """Async teardown - drop tables."""
-        await test_db.drop_tables()
 
     # BEFORE: Mock-based test (from original test_contact_service.py)
     # async def test_create_contact_success_mock(self, contact_service, mock_session, sample_contact_data):
@@ -91,52 +93,45 @@ class TestContactServiceConversionExample(PostgresTestDB):
     # AFTER: Real database test
     @pytest.mark.asyncio
     async def test_create_contact_success_real_db(
-        self, session: AsyncSession, contact_service: ContactService
+        self, session: AsyncSession, contact_service: ContactService, setup_tables
     ):
         """Test successful contact creation using real database."""
-        # Setup
-        await self.async_setup()
+        # Create contact data using ContactCreate model
+        contact_data = ContactCreate(
+            user_id="test_user_123",
+            email_address="test@example.com",
+            display_name="Test User",
+            given_name="Test",
+            family_name="User",
+            tags=["test", "example"],
+            notes="A test contact",
+        )
 
-        try:
-            # Create contact data using ContactCreate model
-            contact_data = ContactCreate(
-                user_id="test_user_123",
-                email_address="test@example.com",
-                display_name="Test User",
-                given_name="Test",
-                family_name="User",
-                tags=["test", "example"],
-                notes="A test contact",
+        # Test the service method with real database
+        contact = await contact_service.create_contact(session, contact_data)
+
+        # Verify contact was created
+        assert contact.id is not None
+        assert contact.user_id == contact_data.user_id
+        assert (
+            contact.email_address == contact_data.email_address.lower()
+        )  # Service lowercases email
+        assert contact.display_name == contact_data.display_name
+        assert contact.given_name == contact_data.given_name
+        assert contact.family_name == contact_data.family_name
+        assert contact.tags == contact_data.tags
+        assert contact.notes == contact_data.notes
+
+        # Query from database to verify persistence
+        result = await session.execute(
+            select(Contact).where(
+                Contact.email_address == contact_data.email_address.lower()
             )
+        )
+        db_contact = result.scalar_one_or_none()
 
-            # Test the service method with real database
-            contact = await contact_service.create_contact(session, contact_data)
-
-            # Verify contact was created
-            assert contact.id is not None
-            assert contact.user_id == contact_data.user_id
-            assert (
-                contact.email_address == contact_data.email_address.lower()
-            )  # Service lowercases email
-            assert contact.display_name == contact_data.display_name
-            assert contact.given_name == contact_data.given_name
-            assert contact.family_name == contact_data.family_name
-            assert contact.tags == contact_data.tags
-            assert contact.notes == contact_data.notes
-
-            # Query from database to verify persistence
-            result = await session.execute(
-                select(Contact).where(
-                    Contact.email_address == contact_data.email_address.lower()
-                )
-            )
-            db_contact = result.scalar_one_or_none()
-
-            assert db_contact is not None
-            assert db_contact.id == contact.id
-
-        finally:
-            await self.async_teardown()
+        assert db_contact is not None
+        assert db_contact.id == contact.id
 
     # BEFORE: Mock-based test for getting contact by email
     # async def test_get_contact_by_email_mock(self, contact_service, mock_session, sample_contact):
@@ -151,38 +146,31 @@ class TestContactServiceConversionExample(PostgresTestDB):
     # AFTER: Real database test for getting contact by email
     @pytest.mark.asyncio
     async def test_get_contact_by_email_real_db(
-        self, session: AsyncSession, contact_service: ContactService
+        self, session: AsyncSession, contact_service: ContactService, setup_tables
     ):
         """Test getting contact by email using real database."""
-        # Setup
-        await self.async_setup()
+        # Create a contact using the service layer
+        contact_data = ContactCreate(
+            user_id="test_user_123",
+            email_address="test@example.com",
+            display_name="Test User",
+            given_name="Test",
+            family_name="User",
+            tags=["test"],
+            notes="A test contact",
+        )
 
-        try:
-            # Create a contact using the service layer
-            contact_data = ContactCreate(
-                user_id="test_user_123",
-                email_address="test@example.com",
-                display_name="Test User",
-                given_name="Test",
-                family_name="User",
-                tags=["test"],
-                notes="A test contact",
-            )
+        contact = await contact_service.create_contact(session, contact_data)
 
-            contact = await contact_service.create_contact(session, contact_data)
+        # Test the service method with real database
+        retrieved_contact = await contact_service.get_contact_by_email(
+            session, "test_user_123", "test@example.com"
+        )
 
-            # Test the service method with real database
-            retrieved_contact = await contact_service.get_contact_by_email(
-                session, "test_user_123", "test@example.com"
-            )
-
-            # Verify the contact was retrieved correctly
-            assert retrieved_contact is not None
-            assert retrieved_contact.id == contact.id
-            assert retrieved_contact.email_address == "test@example.com"
-
-        finally:
-            await self.async_teardown()
+        # Verify the contact was retrieved correctly
+        assert retrieved_contact is not None
+        assert retrieved_contact.id == contact.id
+        assert retrieved_contact.email_address == "test@example.com"
 
     # BEFORE: Mock-based test for updating contact
     # async def test_update_contact_mock(self, contact_service, mock_session, sample_contact):
@@ -198,43 +186,34 @@ class TestContactServiceConversionExample(PostgresTestDB):
     # AFTER: Real database test for updating contact
     @pytest.mark.asyncio
     async def test_update_contact_real_db(
-        self, session: AsyncSession, contact_service: ContactService
+        self, session: AsyncSession, contact_service: ContactService, setup_tables
     ):
         """Test updating contact using real database."""
-        # Setup
-        await self.async_setup()
+        # Create initial contact using the service layer
+        contact_data = ContactCreate(
+            user_id="test_user_123",
+            email_address="test@example.com",
+            display_name="Original Name",
+            given_name="Test",
+            family_name="User",
+            tags=["test"],
+        )
 
-        try:
-            # Create initial contact using the service layer
-            contact_data = ContactCreate(
-                user_id="test_user_123",
-                email_address="test@example.com",
-                display_name="Original Name",
-                given_name="Test",
-                family_name="User",
-                tags=["test"],
-            )
+        contact = await contact_service.create_contact(session, contact_data)
 
-            contact = await contact_service.create_contact(session, contact_data)
+        # Update the contact
+        new_display_name = "Updated Name"
+        contact.display_name = new_display_name
 
-            # Update the contact
-            new_display_name = "Updated Name"
-            contact.display_name = new_display_name
+        await session.commit()
+        await session.refresh(contact)
 
-            await session.commit()
-            await session.refresh(contact)
+        # Verify the update
+        assert contact.display_name == new_display_name
 
-            # Verify the update
-            assert contact.display_name == new_display_name
+        # Query from database to verify persistence
+        result = await session.execute(select(Contact).where(Contact.id == contact.id))
+        updated_contact = result.scalar_one_or_none()
 
-            # Query from database to verify persistence
-            result = await session.execute(
-                select(Contact).where(Contact.id == contact.id)
-            )
-            updated_contact = result.scalar_one_or_none()
-
-            assert updated_contact is not None
-            assert updated_contact.display_name == new_display_name
-
-        finally:
-            await self.async_teardown()
+        assert updated_contact is not None
+        assert updated_contact.display_name == new_display_name
