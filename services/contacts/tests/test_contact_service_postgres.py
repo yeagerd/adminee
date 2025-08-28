@@ -5,6 +5,7 @@ This test file demonstrates how to use gocept.testdb to test the ContactService
 with a real PostgreSQL database instead of mocks.
 """
 
+import asyncio
 from datetime import datetime, timezone
 
 import pytest
@@ -20,21 +21,27 @@ from services.contacts.services.contact_service import ContactService
 class TestContactServicePostgres(PostgresTestDB):
     """Test ContactService with real PostgreSQL database."""
 
-    def setup_class(self):
+    @classmethod
+    def setup_class(cls):
         """Set up test database and create tables."""
         super().setup_class()
         # Use the contacts service metadata
-        self.metadata = metadata
+        cls.metadata = metadata
+        # Create the test database once for the entire test class
+        asyncio.run(cls.create_test_database())
 
-    async def async_setup(self):
-        """Async setup - create database and tables."""
-        # Create the test database first
-        await self.__class__.create_test_database()
-        # Then create tables
+    @classmethod
+    def teardown_class(cls):
+        """Clean up test database."""
+        super().teardown_class()
+
+    @pytest.fixture(autouse=True)
+    async def setup_tables(self):
+        """Set up and tear down tables for each test."""
+        # Create tables before each test
         await self.create_tables()
-
-    async def async_teardown(self):
-        """Async teardown - drop tables."""
+        yield
+        # Drop tables after each test
         await self.drop_tables()
 
     @pytest.fixture
@@ -69,48 +76,41 @@ class TestContactServicePostgres(PostgresTestDB):
         sample_contact_data: dict,
     ):
         """Test creating a contact in the real database."""
-        # Setup
-        await self.async_setup()
+        # Create contact data
+        contact = Contact(
+            user_id=sample_contact_data["user_id"],
+            email_address=sample_contact_data["email_address"],
+            display_name=sample_contact_data["display_name"],
+            given_name=sample_contact_data["given_name"],
+            family_name=sample_contact_data["family_name"],
+            first_seen=datetime.now(timezone.utc),
+            last_seen=datetime.now(timezone.utc),
+            tags=sample_contact_data["tags"],
+            notes=sample_contact_data["notes"],
+        )
 
-        try:
-            # Create contact data
-            contact = Contact(
-                user_id=sample_contact_data["user_id"],
-                email_address=sample_contact_data["email_address"],
-                display_name=sample_contact_data["display_name"],
-                given_name=sample_contact_data["given_name"],
-                family_name=sample_contact_data["family_name"],
-                first_seen=datetime.now(timezone.utc),
-                last_seen=datetime.now(timezone.utc),
-                tags=sample_contact_data["tags"],
-                notes=sample_contact_data["notes"],
+        # Add to database
+        session.add(contact)
+        await session.commit()
+        await session.refresh(contact)
+
+        # Verify contact was created
+        assert contact.id is not None
+        assert contact.user_id == sample_contact_data["user_id"]
+        assert contact.email_address == sample_contact_data["email_address"]
+        assert contact.display_name == sample_contact_data["display_name"]
+
+        # Query from database to verify persistence
+        result = await session.execute(
+            select(Contact).where(
+                Contact.email_address == sample_contact_data["email_address"]
             )
+        )
+        db_contact = result.scalar_one_or_none()
 
-            # Add to database
-            session.add(contact)
-            await session.commit()
-            await session.refresh(contact)
-
-            # Verify contact was created
-            assert contact.id is not None
-            assert contact.user_id == sample_contact_data["user_id"]
-            assert contact.email_address == sample_contact_data["email_address"]
-            assert contact.display_name == sample_contact_data["display_name"]
-
-            # Query from database to verify persistence
-            result = await session.execute(
-                select(Contact).where(
-                    Contact.email_address == sample_contact_data["email_address"]
-                )
-            )
-            db_contact = result.scalar_one_or_none()
-
-            assert db_contact is not None
-            assert db_contact.id == contact.id
-            assert db_contact.email_address == sample_contact_data["email_address"]
-
-        finally:
-            await self.async_teardown()
+        assert db_contact is not None
+        assert db_contact.id == contact.id
+        assert db_contact.email_address == sample_contact_data["email_address"]
 
     @pytest.mark.asyncio
     async def test_get_contact_by_email_real_database(
