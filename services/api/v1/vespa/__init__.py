@@ -12,6 +12,15 @@ from services.api.v1.vespa.document_chunking import (
     DocumentChunk,
     DocumentChunkingConfig,
 )
+from services.api.v1.vespa.search_models import (
+    SearchError,
+    SearchFacets,
+    SearchPerformance,
+    SearchQuery,
+    SearchResponse,
+    SearchResult,
+    SearchSummary,
+)
 from services.api.v1.vespa.vespa_types import DocumentIngestionResult, VespaDocumentType
 
 __all__ = [
@@ -23,4 +32,11 @@ __all__ = [
     "DocumentChunkingConfig",
     "DocumentIngestionResult",
     "VespaDocumentType",
+    "SearchQuery",
+    "SearchResult",
+    "SearchFacets",
+    "SearchPerformance",
+    "SearchResponse",
+    "SearchError",
+    "SearchSummary",
 ]

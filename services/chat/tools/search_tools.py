@@ -14,6 +14,11 @@ can be added as optional parameters without changing the agent-side logic.
 import logging
 from typing import Any, Dict, List, Optional
 
+from services.api.v1.vespa.search_models import (
+    SearchResponse,
+    SearchResult,
+    SearchSummary,
+)
 from services.vespa_query.search_engine import SearchEngine
 
 logger = logging.getLogger(__name__)
@@ -61,9 +66,26 @@ class UserDataSearchTool:
             logger.info(f"Search query: {search_query}")
             results = await self.search_engine.search(search_query)
 
-            processed_results = self._process_search_results(results, query)
+            # Convert to SearchResponse model for type safety
+            from services.vespa_query.result_processor import ResultProcessor
 
-            grouped_results = self._group_results_by_type(processed_results)
+            processor = ResultProcessor()
+            processed_results = processor.process_search_results(
+                results, query, self.user_id
+            )
+
+            # Check if we got an error response
+            if hasattr(processed_results, "error"):
+                # This is a SearchError
+                return {
+                    "status": "error",
+                    "query": query,
+                    "error": processed_results.error,
+                    "grouped_results": {},
+                }
+
+            # This is a SearchResponse
+            grouped_results = self._group_results_by_type(processed_results.documents)
             summary = self._generate_search_summary(grouped_results, query)
 
             return {
@@ -71,12 +93,8 @@ class UserDataSearchTool:
                 "query": query,
                 "summary": summary,
                 "grouped_results": grouped_results,
-                "total_found": results.get("root", {})
-                .get("fields", {})
-                .get("totalCount", 0),
-                "search_time_ms": results.get("performance", {}).get(
-                    "query_time_ms", 0
-                ),
+                "total_found": processed_results.total_hits,
+                "search_time_ms": processed_results.performance.query_time_ms,
             }
         except Exception as e:
             logger.error(f"User data search failed: {e}")
@@ -308,10 +326,10 @@ class UserDataSearchTool:
         return snippet
 
     def _group_results_by_type(
-        self, processed_results: List[Dict[str, Any]]
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        self, processed_results: List[SearchResult]
+    ) -> Dict[str, List[SearchResult]]:
         """Group search results by source type for better organization."""
-        grouped: Dict[str, List[Dict[str, Any]]] = {
+        grouped: Dict[str, List[SearchResult]] = {
             "emails": [],
             "calendar": [],
             "contacts": [],
@@ -320,7 +338,7 @@ class UserDataSearchTool:
         }
 
         for result in processed_results:
-            source_type = result.get("type", "other")
+            source_type = result.source_type.lower()
             if source_type == "email":
                 grouped["emails"].append(result)
             elif source_type == "calendar":
@@ -336,7 +354,7 @@ class UserDataSearchTool:
         return {k: v for k, v in grouped.items() if v}
 
     def _generate_search_summary(
-        self, grouped_results: Dict[str, List[Dict[str, Any]]], query: str
+        self, grouped_results: Dict[str, List[SearchResult]], query: str
     ) -> Dict[str, Any]:
         """Generate a summary of search results across all data types."""
         total_results = sum(len(results) for results in grouped_results.values())
@@ -368,14 +386,14 @@ class UserDataSearchTool:
 
         # Sort by relevance and take top 5
         top_matches = sorted(
-            all_results, key=lambda x: x.get("relevance_score", 0.0), reverse=True
+            all_results, key=lambda x: x.relevance_score, reverse=True
         )[:5]
         summary["top_matches"] = [
             {
-                "type": match.get("type"),
-                "title": match.get("title", "")[:100],
-                "relevance": match.get("relevance_score", 0.0),
-                "search_method": match.get("search_method", "Unknown"),
+                "type": match.source_type,
+                "title": match.title[:100] if match.title else "",
+                "relevance": match.relevance_score,
+                "search_method": match.search_method or "Unknown",
             }
             for match in top_matches
         ]
@@ -394,7 +412,7 @@ class UserDataSearchTool:
 
         # Add search quality insights
         high_confidence = sum(
-            1 for r in all_results if r.get("match_confidence") in ["Very High", "High"]
+            1 for r in all_results if r.match_confidence in ["Very High", "High"]
         )
         if high_confidence > 0:
             insights.append(f"{high_confidence} high-confidence matches found")
