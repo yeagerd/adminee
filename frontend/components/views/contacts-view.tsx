@@ -1,4 +1,5 @@
 import { contactsApi } from '@/api';
+import SourceFilter from '@/components/contacts/source-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useIntegrations } from '@/contexts/integrations-context';
@@ -6,7 +7,6 @@ import type { Contact } from "@/types/api/contacts";
 import { BarChart3, Plus, RefreshCw, Settings } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import SourceFilter from '@/components/contacts/source-filter';
 
 interface ContactsViewProps {
     toolDataLoading?: boolean;
@@ -100,12 +100,12 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
         return Array.from(sourceSet).sort();
     }, [contacts]);
 
-    // Get provider information for office contacts
+    // Get provider information for contacts
     const providerInfo = useMemo(() => {
         const info: Record<string, string> = {};
         contacts.forEach(contact => {
-            if (contact.source_services?.includes('office') && contact.provider) {
-                info['office'] = contact.provider;
+            if (contact.source_services?.includes('contacts') && contact.provider) {
+                info['contacts'] = contact.provider;
             }
         });
         return info;
@@ -113,15 +113,15 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
 
     // Get source service statistics
     const sourceStats = useMemo(() => {
-        const stats = { office: 0, discovered: 0, both: 0 };
+        const stats = { contacts: 0, discovered: 0, both: 0 };
         contacts.forEach(contact => {
-            const hasOffice = contact.source_services?.includes('office') || false;
+            const hasContacts = contact.source_services?.includes('contacts') || false;
             const hasDiscovered = contact.source_services?.some(s => ['email', 'calendar', 'documents'].includes(s)) || false;
 
-            if (hasOffice && hasDiscovered) {
+            if (hasContacts && hasDiscovered) {
                 stats.both++;
-            } else if (hasOffice) {
-                stats.office++;
+            } else if (hasContacts) {
+                stats.contacts++;
             } else if (hasDiscovered) {
                 stats.discovered++;
             }
@@ -189,7 +189,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                 {/* Source Statistics */}
                 <div className="flex gap-4 mt-3 text-sm text-gray-600">
                     <span>Total: {contacts.length}</span>
-                    <span>Office: {sourceStats.office}</span>
+                                            <span>Contacts: {sourceStats.contacts}</span>
                     <span>Discovered: {sourceStats.discovered}</span>
                     <span>Both: {sourceStats.both}</span>
                 </div>
@@ -224,10 +224,10 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                                                 <span
                                                     key={service}
                                                     className={`px-2 py-1 text-xs rounded-full ${service === 'office' ? 'bg-blue-100 text-blue-800' :
-                                                            service === 'email' ? 'bg-green-100 text-green-800' :
-                                                                service === 'calendar' ? 'bg-purple-100 text-purple-800' :
-                                                                    service === 'documents' ? 'bg-orange-100 text-orange-800' :
-                                                                        'bg-gray-100 text-gray-800'
+                                                        service === 'email' ? 'bg-green-100 text-green-800' :
+                                                            service === 'calendar' ? 'bg-purple-100 text-purple-800' :
+                                                                service === 'documents' ? 'bg-orange-100 text-orange-800' :
+                                                                    'bg-gray-100 text-gray-800'
                                                         }`}
                                                 >
                                                     {service}

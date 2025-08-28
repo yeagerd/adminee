@@ -220,9 +220,9 @@ class ContactService:
 
                     if existing_contact:
                         # Update existing contact with office data
-                        # Preserve existing source services and add 'office' if not present
-                        if "office" not in existing_contact.source_services:
-                            existing_contact.source_services.append("office")
+                        # Preserve existing source services and add 'contacts' if not present
+                        if "contacts" not in existing_contact.source_services:
+                            existing_contact.source_services.append("contacts")
                         # Handle provider field properly - avoid converting None to "None"
                         provider_value = office_contact.get("provider")
                         existing_contact.provider = (
@@ -249,7 +249,7 @@ class ContactService:
                             family_name=office_contact.get("family_name"),
                             tags=[],  # Office Service doesn't provide tags
                             notes=notes,
-                            source_services=["office"],
+                            source_services=["contacts"],
                             provider=(
                                 provider_value if provider_value is not None else None
                             ),
@@ -315,11 +315,11 @@ class ContactService:
             )
 
             # If no local contacts or force sync requested, sync from Office Service
-            # Also sync if specifically requesting office contacts but none exist
+            # Also sync if specifically requesting contacts but none exist
             should_sync = (
                 not local_contacts or 
                 force_sync or 
-                (source_services and "office" in source_services and not any(c.source_services and "office" in c.source_services for c in local_contacts))
+                (source_services and "contacts" in source_services and not any(c.source_services and "contacts" in c.source_services for c in local_contacts))
             )
             
             if should_sync:

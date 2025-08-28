@@ -1,7 +1,5 @@
-import React from 'react';
-import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import React from 'react';
 
 export interface SourceFilterProps {
     sourceFilter: string[];
@@ -18,11 +16,11 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
 }) => {
     const [isOpen, setIsOpen] = React.useState(false);
     const [allSourcesExplicitlySelected, setAllSourcesExplicitlySelected] = React.useState(true);
-    const allSources = ['office', 'email', 'calendar', 'documents'];
-    
+    const allSources = ['contacts', 'email', 'calendar', 'documents'];
+
     // "All Sources" is selected when explicitly chosen, not when filter is empty
     const allSourcesSelected = allSourcesExplicitlySelected;
-    
+
     // Get the sources that are actually available in the data
     const effectiveAvailableSources = allSources.filter(source => availableSources.includes(source));
 
@@ -57,12 +55,12 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
 
     const getSourceLabel = (source: string) => {
         switch (source) {
-            case 'office':
+            case 'contacts':
                 const provider = providerInfo[source];
                 if (provider) {
                     return `${provider.charAt(0).toUpperCase() + provider.slice(1)} Contacts`;
                 }
-                return 'Office Contacts';
+                return 'Contacts';
             case 'email':
                 return 'Email';
             case 'calendar':
@@ -76,8 +74,8 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
 
     const getSourceIcon = (source: string) => {
         switch (source) {
-            case 'office':
-                return '🏢';
+            case 'contacts':
+                return '👥';
             case 'email':
                 return '📧';
             case 'calendar':
@@ -116,54 +114,53 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
 
             {isOpen && (
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px] z-10">
-                <div className="space-y-3">
-                    {/* All Sources Option */}
-                    <div className="border-b border-gray-200 pb-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={allSourcesSelected}
-                                onChange={handleAllSourcesToggle}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className={`font-medium ${allSourcesSelected ? 'text-gray-900' : 'text-gray-600'}`}>
-                                All Sources
-                            </span>
-                        </label>
+                    <div className="space-y-3">
+                        {/* All Sources Option */}
+                        <div className="border-b border-gray-200 pb-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={allSourcesSelected}
+                                    onChange={handleAllSourcesToggle}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className={`font-medium ${allSourcesSelected ? 'text-gray-900' : 'text-gray-600'}`}>
+                                    All Sources
+                                </span>
+                            </label>
+                        </div>
+
+                        {/* Individual Source Options */}
+                        <div className="space-y-2">
+                            {allSources.map(source => {
+                                const isAvailable = availableSources.includes(source);
+                                const isSelected = sourceFilter.includes(source);
+                                const isDisabled = allSourcesSelected;
+
+                                return (
+                                    <label
+                                        key={source}
+                                        className={`flex items-center gap-2 cursor-pointer ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                                            }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => handleSourceToggle(source)}
+                                            disabled={isDisabled}
+                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                                        />
+                                        <span className="text-sm">{getSourceIcon(source)} {getSourceLabel(source)}</span>
+                                        {!isAvailable && (
+                                            <span className="text-xs text-gray-400">(No data)</span>
+                                        )}
+                                    </label>
+                                );
+                            })}
+                        </div>
+
+
                     </div>
-
-                    {/* Individual Source Options */}
-                    <div className="space-y-2">
-                        {allSources.map(source => {
-                            const isAvailable = availableSources.includes(source);
-                            const isSelected = sourceFilter.includes(source);
-                            const isDisabled = allSourcesSelected;
-
-                            return (
-                                <label
-                                    key={source}
-                                    className={`flex items-center gap-2 cursor-pointer ${
-                                        isDisabled ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        onChange={() => handleSourceToggle(source)}
-                                        disabled={isDisabled}
-                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
-                                    />
-                                    <span className="text-sm">{getSourceIcon(source)} {getSourceLabel(source)}</span>
-                                    {!isAvailable && (
-                                        <span className="text-xs text-gray-400">(No data)</span>
-                                    )}
-                                </label>
-                            );
-                        })}
-                    </div>
-
-
-                </div>
                 </div>
             )}
         </div>
