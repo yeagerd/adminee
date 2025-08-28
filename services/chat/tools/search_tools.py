@@ -74,6 +74,17 @@ class UserDataSearchTool:
                 results, query, self.user_id
             )
 
+            # Check if we got an error response
+            if hasattr(processed_results, "error"):
+                # This is a SearchError
+                return {
+                    "status": "error",
+                    "query": query,
+                    "error": processed_results.error,
+                    "grouped_results": {},
+                }
+
+            # This is a SearchResponse
             grouped_results = self._group_results_by_type(processed_results.documents)
             summary = self._generate_search_summary(grouped_results, query)
 

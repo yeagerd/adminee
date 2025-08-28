@@ -4,7 +4,7 @@ Result processor for handling and formatting Vespa search results
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from services.api.v1.vespa.search_models import (
     SearchError,
@@ -34,7 +34,7 @@ class ResultProcessor:
         user_id: str,
         include_highlights: bool = True,
         include_facets: bool = True,
-    ) -> SearchResponse:
+    ) -> Union[SearchResponse, SearchError]:
         """Process raw Vespa search results into formatted output"""
         with tracer.start_as_current_span(
             "result_processor.process_search_results"
@@ -453,15 +453,13 @@ class ResultProcessor:
 
     def _create_error_results(
         self, query: str, user_id: str, error_message: str
-    ) -> SearchResponse:
+    ) -> SearchError:
         """Create error results structure"""
-        return SearchResponse(
+        return SearchError(
             query=query,
             user_id=user_id,
-            total_hits=0,
-            documents=[],
-            facets=SearchFacets(),
-            performance=SearchPerformance(),
-            coverage={},
+            error=error_message,
+            error_code=None,
+            details=None,
             processed_at=datetime.utcnow().isoformat(),
         )

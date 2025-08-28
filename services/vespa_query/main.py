@@ -5,12 +5,13 @@ Vespa Query Service - Query interface for hybrid search capabilities
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from services.api.v1.vespa.search_models import SearchError, SearchResponse
 from services.common.http_errors import (
     ErrorCode,
     NotFoundError,
@@ -195,7 +196,7 @@ async def search(
     folders: Optional[List[str]] = Query(None, description="Filter by folders"),
     include_facets: bool = Query(True, description="Include facets in results"),
     api_key: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> Union[SearchResponse, SearchError]:
     """Execute a search query"""
     if not query_builder:
         raise ServiceError(
