@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class ChunkingStrategy(str, Enum):
@@ -98,6 +98,14 @@ class DocumentChunk(BaseModel):
         description="When this chunk was last updated",
     )
 
+    @field_serializer("created_at", "updated_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Optional[str]:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict(
+        # Ensure proper JSON serialization of datetime objects
+        json_encoders={datetime: lambda v: v.isoformat() if v else None}
+    )
     def to_vespa_document(self, user_id: str, provider: str) -> Dict[str, Any]:
         """Convert to Vespa document format."""
         return {
@@ -235,6 +243,14 @@ class ChunkingResult(BaseModel):
         description="When chunking was completed",
     )
 
+    @field_serializer("created_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Optional[str]:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict(
+        # Ensure proper JSON serialization of datetime objects
+        json_encoders={datetime: lambda v: v.isoformat() if v else None}
+    )
     def get_chunk_by_sequence(self, sequence: int) -> Optional[DocumentChunk]:
         """Get a chunk by its sequence number."""
         for chunk in self.chunks:

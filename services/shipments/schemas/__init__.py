@@ -3,10 +3,10 @@ Pydantic schemas for the shipments service
 """
 
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 from services.shipments.models import PackageStatus
 
@@ -17,6 +17,12 @@ class LabelOut(BaseModel):
     name: str
     color: str
     created_at: datetime
+
+    @field_serializer("created_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
 
 
 class PackageOut(BaseModel):
@@ -36,6 +42,12 @@ class PackageOut(BaseModel):
     updated_at: datetime
     events_count: int
     labels: List[LabelOut]
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
 
 
 class PackageCreate(BaseModel):
@@ -63,6 +75,12 @@ class PackageUpdate(BaseModel):
     tracking_link: Optional[str]
     archived_at: Optional[datetime]
 
+    @field_serializer("archived_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
+
 
 class TrackingEventOut(BaseModel):
     id: UUID
@@ -72,6 +90,12 @@ class TrackingEventOut(BaseModel):
     description: Optional[str]
     created_at: datetime
 
+    @field_serializer("event_date", "created_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
+
 
 class TrackingEventCreate(BaseModel):
     event_date: datetime
@@ -79,6 +103,12 @@ class TrackingEventCreate(BaseModel):
     location: Optional[str] = None
     description: Optional[str] = None
     email_message_id: Optional[str] = None
+
+    @field_serializer("event_date")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
 
 
 class LabelCreate(BaseModel):
@@ -97,6 +127,12 @@ class PackageLabelOut(BaseModel):
     label_id: UUID
     created_at: datetime
 
+    @field_serializer("created_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
+
 
 class CarrierConfigOut(BaseModel):
     id: UUID
@@ -106,3 +142,9 @@ class CarrierConfigOut(BaseModel):
     is_active: bool
     email_patterns: Optional[str]
     created_at: datetime
+
+    @field_serializer("created_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()

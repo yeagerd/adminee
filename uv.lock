@@ -265,6 +265,7 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "gocept-testdb" },
     { name = "mypy" },
     { name = "nox" },
     { name = "pytest-timeout" },
@@ -297,6 +298,7 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "gocept-testdb", specifier = ">=6.0" },
     { name = "mypy", specifier = ">=1.16.1" },
     { name = "nox", specifier = ">=2025.5.1" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
@@ -394,6 +396,7 @@ dependencies = [
 
 [package.optional-dependencies]
 test = [
+    { name = "gocept-testdb" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "respx" },
@@ -402,6 +405,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.68.0" },
+    { name = "gocept-testdb", marker = "extra == 'test'", specifier = ">=2.0.0" },
     { name = "httpx", specifier = ">=0.24.0" },
     { name = "itsdangerous", specifier = ">=2.1.0" },
     { name = "opentelemetry-api", specifier = ">=1.36.0" },
@@ -443,6 +447,7 @@ dependencies = [
 
 [package.optional-dependencies]
 test = [
+    { name = "gocept-testdb" },
     { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -453,6 +458,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.12.0,<2.0.0" },
     { name = "asyncpg", specifier = ">=0.29.0,<1.0.0" },
     { name = "fastapi", specifier = ">=0.116.1,<1.0.0" },
+    { name = "gocept-testdb", marker = "extra == 'test'", specifier = ">=2.0.0" },
     { name = "google-cloud-pubsub", specifier = ">=2.18.0,<3.0.0" },
     { name = "google-cloud-secret-manager", specifier = ">=2.16.0,<3.0.0" },
     { name = "httpx", specifier = ">=0.25.0,<1.0.0" },
@@ -1286,6 +1292,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/8b/02/0835e6ab9cfc03916fe3f78c0956cfcdb6ff2669ffa6651065d5ebf7fc98/fsspec-2025.7.0.tar.gz", hash = "sha256:786120687ffa54b8283d942929540d8bc5ccfa820deb555a2b5d0ed2b737bf58", size = 304432 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/e0/014d5d9d7a4564cf1c40b5039bc882db69fd881111e03ab3657ac0b218e2/fsspec-2025.7.0-py3-none-any.whl", hash = "sha256:8b012e39f63c7d5f10474de957f3ab793b47b45ae7d39f2fb735f8bbe25c0e21", size = 199597 },
+]
+
+[[package]]
+name = "gocept-testdb"
+version = "6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "setuptools" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/55/07209b959c4784473d642ed5e7b45f4d0b4769cc934557792533b67f6727/gocept.testdb-6.0.tar.gz", hash = "sha256:fc3e3a747a1c8b9d2f603a2c8d14f9d1a5f2c2d887cf393a629a8535475b3f6d", size = 23325 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/27/19fc4310007fd80b151da71d68214a76281aa435a6a8b3a899b75557d109/gocept.testdb-6.0-py3-none-any.whl", hash = "sha256:5b0b477e72bcc73e7acebf6ed2a3ff05ce1d352f98f2e071da1df014691a4b4e", size = 21837 },
 ]
 
 [[package]]
