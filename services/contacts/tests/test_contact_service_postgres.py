@@ -35,18 +35,28 @@ class TestContactServicePostgres(PostgresTestDB):
         """Clean up test database."""
         super().teardown_class()
 
+    @pytest.fixture(scope="class")
+    async def database(self):
+        """Ensure database is created and ready for the test class."""
+        # This fixture ensures database exists before any session is created
+        if not hasattr(self.__class__, "_db_name") or self.__class__._db_name is None:
+            await self.__class__.create_test_database()
+        yield
+        # Database cleanup is handled by teardown_class
+
     @pytest.fixture(autouse=True)
-    async def setup_tables(self):
+    async def setup_tables(self, database):
         """Set up and tear down tables for each test."""
-        # Create tables before each test
+        # Create tables before each test (depends on database fixture)
         await self.create_tables()
         yield
         # Drop tables after each test
         await self.drop_tables()
 
     @pytest.fixture
-    async def session(self):
+    async def session(self, database):
         """Provide database session for tests."""
+        # Database is guaranteed to exist due to dependency on database fixture
         async with self.get_session() as session:
             yield session
 
