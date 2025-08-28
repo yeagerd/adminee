@@ -21,9 +21,6 @@ class EmailContactUpdate(BaseModel):
     tags: Optional[List[str]] = None
     notes: Optional[str] = None
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
-
 
 class EmailContactSearchResult(BaseModel):
     """Search result for email contacts."""
@@ -31,9 +28,6 @@ class EmailContactSearchResult(BaseModel):
     contact: Contact
     relevance_score: float
     match_highlights: List[str] = Field(default_factory=list)
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class ContactCreate(BaseModel):
