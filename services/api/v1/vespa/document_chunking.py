@@ -106,7 +106,6 @@ class DocumentChunk(BaseModel):
         # Ensure proper JSON serialization of datetime objects
         json_encoders={datetime: lambda v: v.isoformat() if v else None}
     )
-
     def to_vespa_document(self, user_id: str, provider: str) -> Dict[str, Any]:
         """Convert to Vespa document format."""
         return {
@@ -252,7 +251,6 @@ class ChunkingResult(BaseModel):
         # Ensure proper JSON serialization of datetime objects
         json_encoders={datetime: lambda v: v.isoformat() if v else None}
     )
-
     def get_chunk_by_sequence(self, sequence: int) -> Optional[DocumentChunk]:
         """Get a chunk by its sequence number."""
         for chunk in self.chunks:
