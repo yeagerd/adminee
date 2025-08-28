@@ -2,10 +2,6 @@ import { BulkActionType } from '@/types';
 import { getSession } from 'next-auth/react';
 import { getUserId } from '../../lib/session-utils';
 import type {
-    ContactCreateResponse,
-    ContactDeleteResponse,
-    ContactList,
-    ContactUpdateResponse,
     CreateCalendarEventRequest,
     EmailDraftResponse,
     EmailFolderList,
@@ -276,37 +272,6 @@ export class OfficeClient extends GatewayClient {
         if (path) params.append('path', path);
 
         return this.request(`/api/v1/files?provider=${provider}&${params.toString()}`);
-    }
-
-    // Contacts Service
-    async getContacts(providers?: string[], limit?: number, q?: string, company?: string, noCache?: boolean): Promise<ContactList> {
-        const params = new URLSearchParams();
-        if (providers) providers.forEach(p => params.append('providers', p));
-        if (limit) params.append('limit', String(limit));
-        if (q) params.append('q', q);
-        if (company) params.append('company', company);
-        if (noCache) params.append('no_cache', 'true');
-        return this.request<ContactList>(`/api/v1/office/contacts?${params.toString()}`);
-    }
-
-    async updateContact(contactId: string, payload: Partial<ContactList>): Promise<ContactUpdateResponse> {
-        return this.request<ContactUpdateResponse>(`/api/v1/office/contacts/${contactId}`, {
-            method: 'PUT',
-            body: payload,
-        });
-    }
-
-    async createContact(payload: Partial<ContactList> & { provider?: 'google' | 'microsoft' }): Promise<ContactCreateResponse> {
-        return this.request<ContactCreateResponse>(`/api/v1/office/contacts`, {
-            method: 'POST',
-            body: payload,
-        });
-    }
-
-    async deleteContact(contactId: string): Promise<ContactDeleteResponse> {
-        return this.request<ContactDeleteResponse>(`/api/v1/office/contacts/${contactId}`, {
-            method: 'DELETE',
-        });
     }
 
     // Additional methods for office integration

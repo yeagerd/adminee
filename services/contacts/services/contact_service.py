@@ -123,7 +123,7 @@ class ContactService:
                 service_conditions = []
                 for service in source_services:
                     service_conditions.append(
-                        Contact.source_services.contains([service])  # type: ignore
+                        Contact.source_services.contains(service)  # type: ignore
                     )
                 query = query.where(or_(*service_conditions))  # type: ignore
 
@@ -164,14 +164,18 @@ class ContactService:
         try:
             office_service = OfficeIntegrationService()
             # Get office contacts for this user
+            # Note: Office service has a limit of 500, so we'll get up to 500 contacts
             office_contacts = await office_service.get_office_contacts(
-                user_id, limit=1000
+                user_id, limit=500
             )
             if not office_contacts:
                 logger.info(f"No office contacts found for user {user_id}")
                 return []
 
             synced_contacts = []
+            contacts_to_add = []
+            contacts_to_update = []
+            
             for office_contact in office_contacts:
                 try:
                     # Extract email from Office Service contact structure
@@ -216,9 +220,9 @@ class ContactService:
 
                     if existing_contact:
                         # Update existing contact with office data
-                        # Preserve existing source services and add 'office' if not present
-                        if "office" not in existing_contact.source_services:
-                            existing_contact.source_services.append("office")
+                        # Preserve existing source services and add 'contacts' if not present
+                        if "contacts" not in existing_contact.source_services:
+                            existing_contact.source_services.append("contacts")
                         # Handle provider field properly - avoid converting None to "None"
                         provider_value = office_contact.get("provider")
                         existing_contact.provider = (
@@ -227,10 +231,10 @@ class ContactService:
                         existing_contact.last_synced = datetime.now(timezone.utc)
                         existing_contact.phone_numbers = phone_numbers
                         existing_contact.notes = notes or existing_contact.notes
-                        await session.commit()
+                        contacts_to_update.append(existing_contact)
                         synced_contacts.append(existing_contact)
                         logger.debug(
-                            f"Updated existing contact: {existing_contact.email_address}"
+                            f"Prepared update for existing contact: {existing_contact.email_address}"
                         )
                     else:
                         # Create new contact from office data
@@ -245,7 +249,7 @@ class ContactService:
                             family_name=office_contact.get("family_name"),
                             tags=[],  # Office Service doesn't provide tags
                             notes=notes,
-                            source_services=["office"],
+                            source_services=["contacts"],
                             provider=(
                                 provider_value if provider_value is not None else None
                             ),
@@ -256,23 +260,30 @@ class ContactService:
                             first_seen=datetime.now(timezone.utc),
                             last_seen=datetime.now(timezone.utc),
                         )
-                        session.add(new_contact)
-                        await session.commit()
-                        await session.refresh(new_contact)
+                        contacts_to_add.append(new_contact)
                         synced_contacts.append(new_contact)
                         logger.debug(
-                            f"Created new contact from office: {new_contact.email_address}"
+                            f"Prepared new contact from office: {new_contact.email_address}"
                         )
 
                 except Exception as e:
                     logger.error(
-                        f"Error syncing office contact {office_contact.get('id', 'unknown')}: {e}"
+                        f"Error processing office contact {office_contact.get('id', 'unknown')}: {e}"
                     )
                     continue
+            
+            # Batch commit all changes
+            try:
+                if contacts_to_add:
+                    logger.info(f"Adding {len(contacts_to_add)} new contacts to database for user {user_id}")
+                    session.add_all(contacts_to_add)
+                await session.commit()
+                logger.info(f"Successfully synced {len(synced_contacts)} contacts from Office Service for user {user_id}")
+            except Exception as e:
+                logger.error(f"Error committing synced contacts for user {user_id}: {e}")
+                await session.rollback()
+                return []
 
-            logger.info(
-                f"Successfully synced {len(synced_contacts)} contacts from Office Service for user {user_id}"
-            )
             return synced_contacts
 
         except Exception as e:
@@ -304,7 +315,14 @@ class ContactService:
             )
 
             # If no local contacts or force sync requested, sync from Office Service
-            if not local_contacts or force_sync:
+            # Also sync if specifically requesting contacts but none exist
+            should_sync = (
+                not local_contacts or 
+                force_sync or 
+                (source_services and "contacts" in source_services and not any(c.source_services and "contacts" in c.source_services for c in local_contacts))
+            )
+            
+            if should_sync:
                 logger.info(f"Syncing contacts from Office Service for user {user_id}")
                 synced_contacts = await self.sync_office_contacts(session, user_id)
 
@@ -365,7 +383,7 @@ class ContactService:
                 service_conditions = []
                 for service in source_services:
                     service_conditions.append(
-                        Contact.source_services.contains([service])  # type: ignore
+                        Contact.source_services.contains(service)  # type: ignore
                     )
                 base_query = base_query.where(or_(*service_conditions))  # type: ignore
 
