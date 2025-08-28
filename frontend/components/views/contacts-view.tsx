@@ -1,12 +1,11 @@
-import { contactsApi } from '@/api';
 import SourceFilter from '@/components/contacts/source-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useIntegrations } from '@/contexts/integrations-context';
+import { useContacts } from '@/contexts/contacts-context';
 import type { Contact } from "@/types/api/contacts";
 import { BarChart3, Plus, RefreshCw, Settings } from 'lucide-react';
-import { getSession } from 'next-auth/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 interface ContactsViewProps {
     toolDataLoading?: boolean;
@@ -15,68 +14,39 @@ interface ContactsViewProps {
 
 const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, activeTool }) => {
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
-    const [contacts, setContacts] = useState<Contact[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { 
+        contacts, 
+        loading, 
+        error, 
+        refreshContacts, 
+        filterContacts, 
+        availableSources, 
+        sourceStats 
+    } = useContacts();
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [sourceFilter, setSourceFilter] = useState<string[]>([]);
     const [tagFilter, setTagFilter] = useState<string[]>([]);
 
-    const fetchContacts = useCallback(async (noCache = false) => {
-        try {
-            const session = await getSession();
-            const userId = session?.user?.id;
-            if (!userId) throw new Error('No user id found in session');
 
-            // Use source filter array directly - empty array means all sources
-            const sourceServices = sourceFilter.length > 0 ? sourceFilter : undefined;
-
-            const resp = await contactsApi.getContacts(
-                200, // limit
-                0,   // offset
-                tagFilter.length > 0 ? tagFilter : undefined,
-                sourceServices,
-                search || undefined
-            );
-
-            if (resp.success) {
-                setContacts(resp.contacts);
-                setError(null);
-            } else {
-                setError('Failed to fetch contacts');
-            }
-        } catch (e: unknown) {
-            setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load contacts' : 'Failed to load contacts');
-        }
-    }, [search, sourceFilter, tagFilter]);
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
-            await fetchContacts(true);
+            await refreshContacts();
         } finally {
             setRefreshing(false);
         }
-    }, [fetchContacts]);
+    }, [refreshContacts]);
 
-    useEffect(() => {
-        if (toolDataLoading || integrationsLoading) return;
-        if (activeTool !== 'contacts') {
-            setLoading(false);
-            return;
-        }
-
-        let mounted = true;
-        setLoading(true);
-        (async () => {
-            try { await fetchContacts(false); } finally { if (mounted) setLoading(false); }
-        })();
-        return () => { mounted = false; };
-    }, [integrationsLoading, toolDataLoading, activeTool, fetchContacts]);
-
-    // Use contacts directly since we removed relevance filtering
-    const filteredContacts = contacts;
+    // Client-side filtering
+    const filteredContacts = useMemo(() => {
+        return filterContacts({
+            search,
+            sourceServices: sourceFilter,
+            tags: tagFilter
+        });
+    }, [filterContacts, search, sourceFilter, tagFilter]);
 
     // Get unique tags from contacts
     const allTags = useMemo(() => {
@@ -89,44 +59,15 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
         return Array.from(tagSet).sort();
     }, [contacts]);
 
-    // Get available source services from contacts
-    const availableSources = useMemo(() => {
-        const sourceSet = new Set<string>();
-        contacts.forEach(contact => {
-            if (contact.source_services) {
-                contact.source_services.forEach(service => sourceSet.add(service));
-            }
-        });
-        return Array.from(sourceSet).sort();
-    }, [contacts]);
-
     // Get provider information for contacts
     const providerInfo = useMemo(() => {
         const info: Record<string, string> = {};
         contacts.forEach(contact => {
-            if (contact.source_services?.includes('contacts') && contact.provider) {
+            if ((contact.source_services?.includes('contacts') || contact.source_services?.includes('office')) && contact.provider) {
                 info['contacts'] = contact.provider;
             }
         });
         return info;
-    }, [contacts]);
-
-    // Get source service statistics
-    const sourceStats = useMemo(() => {
-        const stats = { contacts: 0, discovered: 0, both: 0 };
-        contacts.forEach(contact => {
-            const hasContacts = contact.source_services?.includes('contacts') || false;
-            const hasDiscovered = contact.source_services?.some(s => ['email', 'calendar', 'documents'].includes(s)) || false;
-
-            if (hasContacts && hasDiscovered) {
-                stats.both++;
-            } else if (hasContacts) {
-                stats.contacts++;
-            } else if (hasDiscovered) {
-                stats.discovered++;
-            }
-        });
-        return stats;
     }, [contacts]);
 
     return (
@@ -189,7 +130,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                 {/* Source Statistics */}
                 <div className="flex gap-4 mt-3 text-sm text-gray-600">
                     <span>Total: {contacts.length}</span>
-                                            <span>Contacts: {sourceStats.contacts}</span>
+                    <span>Contacts: {sourceStats.contacts}</span>
                     <span>Discovered: {sourceStats.discovered}</span>
                     <span>Both: {sourceStats.both}</span>
                 </div>
