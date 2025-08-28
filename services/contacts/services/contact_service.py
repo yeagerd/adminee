@@ -123,7 +123,7 @@ class ContactService:
                 service_conditions = []
                 for service in source_services:
                     service_conditions.append(
-                        Contact.source_services.contains([service])  # type: ignore
+                        Contact.source_services.contains(service)  # type: ignore
                     )
                 query = query.where(or_(*service_conditions))  # type: ignore
 
@@ -383,7 +383,7 @@ class ContactService:
                 service_conditions = []
                 for service in source_services:
                     service_conditions.append(
-                        Contact.source_services.contains([service])  # type: ignore
+                        Contact.source_services.contains(service)  # type: ignore
                     )
                 base_query = base_query.where(or_(*service_conditions))  # type: ignore
 
