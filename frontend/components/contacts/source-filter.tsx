@@ -19,7 +19,7 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
     const [isOpen, setIsOpen] = React.useState(false);
     const allSources = ['office', 'email', 'calendar', 'documents'];
     
-    // "All Sources" is selected when no specific sources are filtered
+    // "All Sources" is selected when explicitly chosen (empty array means no filter applied)
     const allSourcesSelected = sourceFilter.length === 0;
     
     // Get the sources that are actually available in the data
@@ -46,9 +46,7 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
         }
     };
 
-    const handleClearAll = () => {
-        onSourceFilterChange([]);
-    };
+
 
     const getSourceLabel = (source: string) => {
         switch (source) {
@@ -157,40 +155,7 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
                         })}
                     </div>
 
-                    {/* Active Filters Summary */}
-                    {sourceFilter.length > 0 && (
-                        <div className="border-t border-gray-200 pt-2">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-gray-600">Active:</span>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleClearAll}
-                                    className="h-6 px-2 text-xs text-gray-500 hover:text-gray-700"
-                                >
-                                    <X className="w-3 h-3 mr-1" />
-                                    Clear
-                                </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                                {sourceFilter.map(source => (
-                                    <Badge
-                                        key={source}
-                                        variant="secondary"
-                                        className="text-xs"
-                                    >
-                                        {getSourceIcon(source)} {getSourceLabel(source)}
-                                        <button
-                                            onClick={() => handleSourceToggle(source)}
-                                            className="ml-1 hover:text-red-500"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+
                 </div>
                 </div>
             )}
