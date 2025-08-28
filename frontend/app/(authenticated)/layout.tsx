@@ -2,7 +2,6 @@ import { ChatPanelProvider } from '@/contexts/chat-panel-context';
 import { IntegrationsProvider } from '@/contexts/integrations-context';
 import { OfficeDataProvider } from '@/contexts/office-data-context';
 import { UserPreferencesProvider } from '@/contexts/settings-context';
-import { ContactsProvider } from '@/contexts/contacts-context';
 
 export default function AuthenticatedLayout({
     children,
@@ -14,9 +13,7 @@ export default function AuthenticatedLayout({
             <IntegrationsProvider>
                 <UserPreferencesProvider>
                     <ChatPanelProvider>
-                        <ContactsProvider>
-                            {children}
-                        </ContactsProvider>
+                        {children}
                     </ChatPanelProvider>
                 </UserPreferencesProvider>
             </IntegrationsProvider>

@@ -1,9 +1,8 @@
 import SourceFilter from '@/components/contacts/source-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useIntegrations } from '@/contexts/integrations-context';
 import { useContacts } from '@/contexts/contacts-context';
-import type { Contact } from "@/types/api/contacts";
+import { useIntegrations } from '@/contexts/integrations-context';
 import { BarChart3, Plus, RefreshCw, Settings } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 
@@ -14,14 +13,14 @@ interface ContactsViewProps {
 
 const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, activeTool }) => {
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
-    const { 
-        contacts, 
-        loading, 
-        error, 
-        refreshContacts, 
-        filterContacts, 
-        availableSources, 
-        sourceStats 
+    const {
+        contacts,
+        loading,
+        error,
+        refreshContacts,
+        filterContacts,
+        availableSources,
+        sourceStats
     } = useContacts();
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
