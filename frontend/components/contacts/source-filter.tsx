@@ -17,10 +17,11 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
     providerInfo = {},
 }) => {
     const [isOpen, setIsOpen] = React.useState(false);
+    const [allSourcesExplicitlySelected, setAllSourcesExplicitlySelected] = React.useState(true);
     const allSources = ['office', 'email', 'calendar', 'documents'];
     
-    // "All Sources" is selected when explicitly chosen (empty array means no filter applied)
-    const allSourcesSelected = sourceFilter.length === 0;
+    // "All Sources" is selected when explicitly chosen, not when filter is empty
+    const allSourcesSelected = allSourcesExplicitlySelected;
     
     // Get the sources that are actually available in the data
     const effectiveAvailableSources = allSources.filter(source => availableSources.includes(source));
@@ -29,9 +30,11 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
         if (allSourcesSelected) {
             // If "All Sources" is selected, select all available sources
             onSourceFilterChange([...effectiveAvailableSources]);
+            setAllSourcesExplicitlySelected(false);
         } else {
             // If specific sources are selected, clear the selection (back to "All Sources")
             onSourceFilterChange([]);
+            setAllSourcesExplicitlySelected(true);
         }
     };
 
@@ -40,9 +43,13 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
             // Remove source from filter
             const newFilter = sourceFilter.filter(s => s !== source);
             onSourceFilterChange(newFilter);
+            // If we're removing sources, "All Sources" is no longer explicitly selected
+            setAllSourcesExplicitlySelected(false);
         } else {
             // Add source to filter
             onSourceFilterChange([...sourceFilter, source]);
+            // If we're adding sources, "All Sources" is no longer explicitly selected
+            setAllSourcesExplicitlySelected(false);
         }
     };
 
