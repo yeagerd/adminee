@@ -7,6 +7,7 @@ to get PostgreSQL test database functionality without duplicating setup code.
 
 import asyncio
 import os
+import re
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -27,6 +28,28 @@ class PostgresTestDB:
     - Table creation/dropping utilities
     - Session fixtures for pytest
     """
+
+    @classmethod
+    def _escape_db_name(cls, db_name: str) -> str:
+        """
+        Safely escape a database name for use in SQL commands.
+
+        Args:
+            db_name: The database name to escape
+
+        Returns:
+            Safely escaped database name
+
+        Raises:
+            ValueError: If the database name contains invalid characters
+        """
+        # PostgreSQL database names can only contain alphanumeric characters
+        # and underscores, and must start with a letter or underscore
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", db_name):
+            raise ValueError(f"Invalid database name: {db_name}")
+
+        # Double quote the name to handle any edge cases
+        return f'"{db_name}"'
 
     @classmethod
     def setup_class(cls):
@@ -80,7 +103,8 @@ class PostgresTestDB:
 
             async with temp_engine.connect() as conn:
                 # Create the test database
-                await conn.execute(text(f"CREATE DATABASE {cls._db_name}"))
+                escaped_db_name = cls._escape_db_name(cls._db_name)
+                await conn.execute(text(f"CREATE DATABASE {escaped_db_name}"))
 
             await temp_engine.dispose()
 
@@ -113,16 +137,19 @@ class PostgresTestDB:
                 async def drop_test_db():
                     async with temp_engine.begin() as conn:
                         # Terminate all connections to the test database
+                        # Use parameterized query for the terminate connections command
                         await conn.execute(
                             text(
-                                f"SELECT pg_terminate_backend(pid) "
-                                f"FROM pg_stat_activity "
-                                f"WHERE datname = '{cls._db_name}'"
-                            )
+                                "SELECT pg_terminate_backend(pid) "
+                                "FROM pg_stat_activity "
+                                "WHERE datname = :db_name"
+                            ),
+                            {"db_name": cls._db_name},
                         )
                         # Drop the database
+                        escaped_db_name = cls._escape_db_name(cls._db_name)
                         await conn.execute(
-                            text(f"DROP DATABASE IF EXISTS {cls._db_name}")
+                            text(f"DROP DATABASE IF EXISTS {escaped_db_name}")
                         )
 
                 asyncio.run(drop_test_db())
