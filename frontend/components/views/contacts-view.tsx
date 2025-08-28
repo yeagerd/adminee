@@ -24,7 +24,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
     } = useContacts();
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
-    const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+    const [sourceFilter, setSourceFilter] = useState<string[] | undefined>(undefined);
     const [tagFilter, setTagFilter] = useState<string[]>([]);
 
 
@@ -85,7 +85,10 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                         {/* Source Filter */}
                         <SourceFilter
                             sourceFilter={sourceFilter}
-                            onSourceFilterChange={setSourceFilter}
+                            onSourceFilterChange={(sources) => {
+                                // Convert empty array to undefined for "All Sources" behavior
+                                setSourceFilter(sources.length === 0 ? undefined : sources);
+                            }}
                             availableSources={availableSources}
                             providerInfo={providerInfo}
                         />
