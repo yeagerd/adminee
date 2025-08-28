@@ -150,7 +150,7 @@ class SearchResponse(BaseModel):
         None, description="Search coverage information"
     )
     processed_at: str = Field(
-        default_factory=lambda: datetime.now().isoformat(),
+        default_factory=lambda: datetime.utcnow().isoformat(),
         description="Processing timestamp",
     )
 
@@ -169,7 +169,7 @@ class SearchError(BaseModel):
         None, description="Additional error details"
     )
     processed_at: str = Field(
-        default_factory=lambda: datetime.now().isoformat(),
+        default_factory=lambda: datetime.utcnow().isoformat(),
         description="Error timestamp",
     )
 
