@@ -275,6 +275,7 @@ class ContactService:
             # Batch commit all changes
             try:
                 if contacts_to_add:
+                    logger.info(f"Adding {len(contacts_to_add)} new contacts to database for user {user_id}")
                     session.add_all(contacts_to_add)
                 await session.commit()
                 logger.info(f"Successfully synced {len(synced_contacts)} contacts from Office Service for user {user_id}")
@@ -314,7 +315,14 @@ class ContactService:
             )
 
             # If no local contacts or force sync requested, sync from Office Service
-            if not local_contacts or force_sync:
+            # Also sync if specifically requesting office contacts but none exist
+            should_sync = (
+                not local_contacts or 
+                force_sync or 
+                (source_services and "office" in source_services and not any(c.source_services and "office" in c.source_services for c in local_contacts))
+            )
+            
+            if should_sync:
                 logger.info(f"Syncing contacts from Office Service for user {user_id}")
                 synced_contacts = await self.sync_office_contacts(session, user_id)
 
