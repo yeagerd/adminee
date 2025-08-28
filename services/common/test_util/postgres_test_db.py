@@ -132,10 +132,11 @@ class PostgresTestDB:
                     f"{os.environ.get('POSTGRES_PORT', '5432')}/postgres",
                     echo=False,
                     future=True,
+                    isolation_level="AUTOCOMMIT",  # Required for DROP DATABASE
                 )
 
                 async def drop_test_db():
-                    async with temp_engine.begin() as conn:
+                    async with temp_engine.connect() as conn:
                         # Terminate all connections to the test database
                         # Use parameterized query for the terminate connections command
                         await conn.execute(
