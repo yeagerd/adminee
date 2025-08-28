@@ -100,6 +100,17 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
         return Array.from(sourceSet).sort();
     }, [contacts]);
 
+    // Get provider information for office contacts
+    const providerInfo = useMemo(() => {
+        const info: Record<string, string> = {};
+        contacts.forEach(contact => {
+            if (contact.source_services?.includes('office') && contact.provider) {
+                info['office'] = contact.provider;
+            }
+        });
+        return info;
+    }, [contacts]);
+
     // Get source service statistics
     const sourceStats = useMemo(() => {
         const stats = { office: 0, discovered: 0, both: 0 };
@@ -136,6 +147,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                             sourceFilter={sourceFilter}
                             onSourceFilterChange={setSourceFilter}
                             availableSources={availableSources}
+                            providerInfo={providerInfo}
                         />
 
                         {/* Tags Filter */}

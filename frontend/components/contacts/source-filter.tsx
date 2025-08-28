@@ -7,12 +7,14 @@ export interface SourceFilterProps {
     sourceFilter: string[];
     onSourceFilterChange: (sources: string[]) => void;
     availableSources: string[];
+    providerInfo?: Record<string, string>; // e.g., { 'office': 'microsoft' }
 }
 
 const SourceFilter: React.FC<SourceFilterProps> = ({
     sourceFilter,
     onSourceFilterChange,
     availableSources,
+    providerInfo = {},
 }) => {
     const [isOpen, setIsOpen] = React.useState(false);
     const allSources = ['office', 'email', 'calendar', 'documents'];
@@ -36,7 +38,8 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
     const handleSourceToggle = (source: string) => {
         if (sourceFilter.includes(source)) {
             // Remove source from filter
-            onSourceFilterChange(sourceFilter.filter(s => s !== source));
+            const newFilter = sourceFilter.filter(s => s !== source);
+            onSourceFilterChange(newFilter);
         } else {
             // Add source to filter
             onSourceFilterChange([...sourceFilter, source]);
@@ -50,7 +53,11 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
     const getSourceLabel = (source: string) => {
         switch (source) {
             case 'office':
-                return 'Office';
+                const provider = providerInfo[source];
+                if (provider) {
+                    return `${provider.charAt(0).toUpperCase() + provider.slice(1)} Contacts`;
+                }
+                return 'Office Contacts';
             case 'email':
                 return 'Email';
             case 'calendar':
