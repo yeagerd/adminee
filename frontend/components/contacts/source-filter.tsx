@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import React from 'react';
 
 export interface SourceFilterProps {
-    sourceFilter: string[];
+    sourceFilter?: string[];
     onSourceFilterChange: (sources: string[]) => void;
     availableSources: string[];
     providerInfo?: Record<string, string>; // e.g., { 'office': 'microsoft' }
@@ -26,26 +26,28 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
 
     const handleAllSourcesToggle = () => {
         if (allSourcesSelected) {
-            // If "All Sources" is selected, select all available sources
-            onSourceFilterChange([...effectiveAvailableSources]);
+            // Currently on "All Sources" -> switch to specific selection mode with none selected
+            onSourceFilterChange([]);
             setAllSourcesExplicitlySelected(false);
         } else {
-            // If specific sources are selected, clear the selection (back to "All Sources")
+            // Switch back to "All Sources" mode
+            // Represent "All" by undefined at the caller; we send an empty array here and let the caller decide
             onSourceFilterChange([]);
             setAllSourcesExplicitlySelected(true);
         }
     };
 
     const handleSourceToggle = (source: string) => {
-        if (sourceFilter.includes(source)) {
+        const current = sourceFilter ?? [];
+        if (current.includes(source)) {
             // Remove source from filter
-            const newFilter = sourceFilter.filter(s => s !== source);
+            const newFilter = current.filter(s => s !== source);
             onSourceFilterChange(newFilter);
             // If we're removing sources, "All Sources" is no longer explicitly selected
             setAllSourcesExplicitlySelected(false);
         } else {
             // Add source to filter
-            onSourceFilterChange([...sourceFilter, source]);
+            onSourceFilterChange([...current, source]);
             // If we're adding sources, "All Sources" is no longer explicitly selected
             setAllSourcesExplicitlySelected(false);
         }
@@ -134,7 +136,7 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
                         <div className="space-y-2">
                             {allSources.map(source => {
                                 const isAvailable = availableSources.includes(source);
-                                const isSelected = sourceFilter.includes(source);
+                                const isSelected = (sourceFilter ?? []).includes(source);
                                 const isDisabled = allSourcesSelected;
 
                                 return (
