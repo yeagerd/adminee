@@ -51,6 +51,18 @@ class TestMinimalPostgres(PostgresTestDB):
             await self.async_teardown()
 
     def test_metadata_access(self):
-        """Test that metadata can be accessed."""
-        # This should work without errors
-        assert self.metadata is not None
+        """Test that metadata can be accessed and is properly configured."""
+        # Ensure class setup has been called
+        assert hasattr(
+            self.__class__, "metadata"
+        ), "Class setup should have set metadata"
+        assert self.metadata is not None, "Metadata should not be None"
+
+        # Test that metadata has expected structure for contacts
+        assert hasattr(self.metadata, "tables"), "Metadata should have tables attribute"
+
+        # Verify contacts table is in the metadata
+        table_names = list(self.metadata.tables.keys())
+        assert (
+            "contacts" in table_names
+        ), f"Contacts table should be in metadata. Found tables: {table_names}"
