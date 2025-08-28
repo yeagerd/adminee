@@ -1,16 +1,16 @@
 'use client';
 
-import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import React from 'react';
 
 export interface SourceFilterProps {
     sourceFilter?: string[];
-    onSourceFilterChange: (sources: string[]) => void;
+    onSourceFilterChange: (sources: string[] | undefined) => void;
     availableSources: string[];
     providerInfo?: Record<string, string>; // e.g., { 'contacts': 'microsoft' }
 }
@@ -23,10 +23,10 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
 }) => {
     const [open, setOpen] = React.useState(false);
     const allSources = ['contacts', 'email', 'calendar', 'documents'];
-    
+
     // "All Sources" is selected when sourceFilter is undefined
     const allSourcesSelected = sourceFilter === undefined;
-    
+
     // Get the sources that are actually available in the data
     const effectiveAvailableSources = allSources.filter(source => availableSources.includes(source));
 
@@ -35,10 +35,8 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
             // If "All Sources" is selected, switch to explicit selection mode with none selected
             onSourceFilterChange([]);
         } else {
-            // Switch back to "All Sources" mode (undefined)
-            onSourceFilterChange([]);
-            // The parent component should interpret empty array as "show all" by setting to undefined
-            // We'll handle this in the parent
+            // Switch back to "All Sources" mode by sending undefined
+            onSourceFilterChange(undefined);
         }
     };
 
@@ -129,7 +127,7 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
                             />
                             <span className="font-medium">All Sources</span>
                         </CommandItem>
-                        
+
                         {/* Individual Source Options */}
                         {allSources.map((source) => {
                             const isAvailable = availableSources.includes(source);
@@ -161,7 +159,7 @@ const SourceFilter: React.FC<SourceFilterProps> = ({
                             );
                         })}
                     </CommandGroup>
-                    
+
                     {sourceFilter && sourceFilter.length > 0 && (
                         <>
                             <CommandEmpty>No sources available</CommandEmpty>

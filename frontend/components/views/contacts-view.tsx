@@ -86,8 +86,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ toolDataLoading = false, ac
                         <SourceFilter
                             sourceFilter={sourceFilter}
                             onSourceFilterChange={(sources) => {
-                                // Convert empty array to undefined for "All Sources" behavior
-                                setSourceFilter(sources.length === 0 ? undefined : sources);
+                                setSourceFilter(sources);
                             }}
                             availableSources={availableSources}
                             providerInfo={providerInfo}
