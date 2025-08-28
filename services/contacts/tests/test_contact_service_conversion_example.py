@@ -17,6 +17,39 @@ from services.contacts.database import metadata
 from services.contacts.models.contact import Contact
 from services.contacts.services.contact_service import ContactService
 
+# Create a module-level test database instance
+test_db = None
+
+
+def setup_module():
+    """Set up module-level test database."""
+    global test_db
+    test_db = PostgresTestDB()
+    test_db.metadata = metadata
+    test_db.setup_class()
+    asyncio.run(test_db.create_test_database())
+
+
+def teardown_module():
+    """Clean up module-level test database."""
+    global test_db
+    if test_db:
+        test_db.teardown_class()
+
+
+# Module-level fixtures
+@pytest.fixture
+async def session():
+    """Provide database session for tests."""
+    async with test_db.get_session() as session:
+        yield session
+
+
+@pytest.fixture
+def contact_service():
+    """Create ContactService instance."""
+    return ContactService()
+
 
 class TestContactServiceConversionExample(PostgresTestDB):
     """
@@ -26,37 +59,13 @@ class TestContactServiceConversionExample(PostgresTestDB):
     to tests that use real PostgreSQL databases.
     """
 
-    @classmethod
-    def setup_class(cls):
-        """Set up test database and create tables."""
-        super().setup_class()
-        cls.metadata = metadata
-        # Create the test database
-        asyncio.run(cls.create_test_database())
-
-    @classmethod
-    def teardown_class(cls):
-        """Clean up test database."""
-        super().teardown_class()
-
     async def async_setup(self):
         """Async setup - create tables."""
-        await self.create_tables()
+        await test_db.create_tables()
 
     async def async_teardown(self):
         """Async teardown - drop tables."""
-        await self.drop_tables()
-
-    @pytest.fixture
-    async def session(self):
-        """Provide database session for tests."""
-        async with self.get_session() as session:
-            yield session
-
-    @pytest.fixture
-    def contact_service(self):
-        """Create ContactService instance."""
-        return ContactService()
+        await test_db.drop_tables()
 
     # BEFORE: Mock-based test (from original test_contact_service.py)
     # async def test_create_contact_success_mock(self, contact_service, mock_session, sample_contact_data):

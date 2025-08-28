@@ -65,9 +65,11 @@ class PostgresTestDB:
     async def create_test_database(cls):
         """Create the test database using SQL."""
         try:
-            # Create a temporary engine to the default database to create the test database
+            # Create a temporary engine to the default database
+            # to create the test database
             temp_engine = create_async_engine(
-                f"postgresql+asyncpg://{os.environ.get('POSTGRES_USER', 'postgres')}:"
+                f"postgresql+asyncpg://"
+                f"{os.environ.get('POSTGRES_USER', 'postgres')}:"
                 f"{os.environ.get('POSTGRES_PASSWORD', 'postgres')}@"
                 f"{os.environ.get('POSTGRES_HOST', 'localhost')}:"
                 f"{os.environ.get('POSTGRES_PORT', '5432')}/postgres",
@@ -96,9 +98,11 @@ class PostgresTestDB:
         # Drop the test database using SQL
         if cls._db_name:
             try:
-                # Create a temporary engine to the default database to drop the test database
+                # Create a temporary engine to the default database
+                # to drop the test database
                 temp_engine = create_async_engine(
-                    f"postgresql+asyncpg://{os.environ.get('POSTGRES_USER', 'postgres')}:"
+                    f"postgresql+asyncpg://"
+                    f"{os.environ.get('POSTGRES_USER', 'postgres')}:"
                     f"{os.environ.get('POSTGRES_PASSWORD', 'postgres')}@"
                     f"{os.environ.get('POSTGRES_HOST', 'localhost')}:"
                     f"{os.environ.get('POSTGRES_PORT', '5432')}/postgres",
@@ -111,7 +115,8 @@ class PostgresTestDB:
                         # Terminate all connections to the test database
                         await conn.execute(
                             text(
-                                f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                                f"SELECT pg_terminate_backend(pid) "
+                                f"FROM pg_stat_activity "
                                 f"WHERE datname = '{cls._db_name}'"
                             )
                         )
