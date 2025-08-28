@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from services.api.v1.contacts import ContactCreate
 from services.common.test_util import PostgresTestDB
 from services.contacts.database import metadata
 from services.contacts.models.contact import Contact
@@ -97,48 +98,36 @@ class TestContactServiceConversionExample(PostgresTestDB):
         await self.async_setup()
 
         try:
-            # Create contact data
-            contact_data = {
-                "user_id": "test_user_123",
-                "email_address": "test@example.com",
-                "display_name": "Test User",
-                "given_name": "Test",
-                "family_name": "User",
-                "tags": ["test", "example"],
-                "notes": "A test contact",
-            }
-
-            # Test the service method with real database
-            # Note: This would call the actual ContactService.create_contact method
-            # which would make real database calls
-
-            # For now, let's test the database operations directly
-            contact = Contact(
-                user_id=contact_data["user_id"],
-                email_address=contact_data["email_address"],
-                display_name=contact_data["display_name"],
-                given_name=contact_data["given_name"],
-                family_name=contact_data["family_name"],
-                first_seen=datetime.now(timezone.utc),
-                last_seen=datetime.now(timezone.utc),
-                tags=contact_data["tags"],
-                notes=contact_data["notes"],
+            # Create contact data using ContactCreate model
+            contact_data = ContactCreate(
+                user_id="test_user_123",
+                email_address="test@example.com",
+                display_name="Test User",
+                given_name="Test",
+                family_name="User",
+                tags=["test", "example"],
+                notes="A test contact",
             )
 
-            # Add to database
-            session.add(contact)
-            await session.commit()
-            await session.refresh(contact)
+            # Test the service method with real database
+            contact = await contact_service.create_contact(session, contact_data)
 
             # Verify contact was created
             assert contact.id is not None
-            assert contact.user_id == contact_data["user_id"]
-            assert contact.email_address == contact_data["email_address"]
+            assert contact.user_id == contact_data.user_id
+            assert (
+                contact.email_address == contact_data.email_address.lower()
+            )  # Service lowercases email
+            assert contact.display_name == contact_data.display_name
+            assert contact.given_name == contact_data.given_name
+            assert contact.family_name == contact_data.family_name
+            assert contact.tags == contact_data.tags
+            assert contact.notes == contact_data.notes
 
             # Query from database to verify persistence
             result = await session.execute(
                 select(Contact).where(
-                    Contact.email_address == contact_data["email_address"]
+                    Contact.email_address == contact_data.email_address.lower()
                 )
             )
             db_contact = result.scalar_one_or_none()
@@ -169,26 +158,22 @@ class TestContactServiceConversionExample(PostgresTestDB):
         await self.async_setup()
 
         try:
-            # Create a contact in the database
-            contact = Contact(
+            # Create a contact using the service layer
+            contact_data = ContactCreate(
                 user_id="test_user_123",
                 email_address="test@example.com",
                 display_name="Test User",
                 given_name="Test",
                 family_name="User",
-                first_seen=datetime.now(timezone.utc),
-                last_seen=datetime.now(timezone.utc),
                 tags=["test"],
                 notes="A test contact",
             )
 
-            session.add(contact)
-            await session.commit()
-            await session.refresh(contact)
+            contact = await contact_service.create_contact(session, contact_data)
 
             # Test the service method with real database
             retrieved_contact = await contact_service.get_contact_by_email(
-                session, "test@example.com"
+                session, "test_user_123", "test@example.com"
             )
 
             # Verify the contact was retrieved correctly
@@ -220,21 +205,17 @@ class TestContactServiceConversionExample(PostgresTestDB):
         await self.async_setup()
 
         try:
-            # Create initial contact
-            contact = Contact(
+            # Create initial contact using the service layer
+            contact_data = ContactCreate(
                 user_id="test_user_123",
                 email_address="test@example.com",
                 display_name="Original Name",
                 given_name="Test",
                 family_name="User",
-                first_seen=datetime.now(timezone.utc),
-                last_seen=datetime.now(timezone.utc),
                 tags=["test"],
             )
 
-            session.add(contact)
-            await session.commit()
-            await session.refresh(contact)
+            contact = await contact_service.create_contact(session, contact_data)
 
             # Update the contact
             new_display_name = "Updated Name"
