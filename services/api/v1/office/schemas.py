@@ -3,9 +3,11 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     EmailStr,
     Field,
     ValidationInfo,
+    field_serializer,
     field_validator,
     model_validator,
 )
@@ -56,6 +58,12 @@ class EmailMessage(BaseModel):
     account_email: EmailStr  # Which account this message belongs to
     account_name: Optional[str] = None  # Display name for the account
 
+    @field_serializer("date")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
+
 
 class EmailThread(BaseModel):
     id: str
@@ -65,6 +73,12 @@ class EmailThread(BaseModel):
     last_message_date: datetime
     is_read: bool = False
     providers: List[Provider]
+
+    @field_serializer("last_message_date")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
 
 
 class Conversation(BaseModel):
@@ -82,6 +96,12 @@ class Conversation(BaseModel):
         default_factory=list, description="Unique sender email addresses"
     )
     preview: Optional[str] = Field(None, description="Preview of the conversation")
+
+    @field_serializer("last_delivered_date_time")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
 
 
 class EmailThreadListData(BaseModel):
@@ -183,6 +203,12 @@ class EmailDraftResult(BaseModel):
     updated_at: Optional[datetime] = None
     action: str  # new, reply, reply_all, forward
 
+    @field_serializer("created_at", "updated_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
+
 
 class EmailDraftResponse(BaseModel):
     """Response model for email draft operations."""
@@ -272,6 +298,13 @@ class CalendarEvent(BaseModel):
     organizer: Optional[EmailAddress] = None
     status: str = "confirmed"  # confirmed, tentative, cancelled
     visibility: str = "default"  # default, public, private
+
+    @field_serializer("start_time", "end_time")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
+
     # Provenance Information
     provider: Provider
     provider_event_id: str
@@ -280,6 +313,10 @@ class CalendarEvent(BaseModel):
     calendar_name: str  # Name of the specific calendar
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_dt_timestamps(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
 
 
 class Calendar(BaseModel):
@@ -332,6 +369,12 @@ class CreateCalendarEventRequest(BaseModel):
         if "start_time" in info.data and v <= info.data["start_time"]:
             raise ValueError("end_time must be after start_time")
         return v
+
+    @field_serializer("start_time", "end_time")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
+
+    model_config = ConfigDict()
 
     @field_validator("title")
     @classmethod

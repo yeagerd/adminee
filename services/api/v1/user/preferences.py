@@ -8,9 +8,9 @@ integration settings, and privacy controls.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
 from services.common.validation import (
     check_sql_injection_patterns,
@@ -470,6 +470,10 @@ class UserPreferencesResponse(BaseModel):
         default="",
         description="Manual timezone override (IANA name, or empty if not set)",
     )
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+        return dt.isoformat() if dt else None
 
     model_config = ConfigDict(
         json_schema_extra={
